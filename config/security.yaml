@@ -1,0 +1,83 @@
+# Misaka Cipher - Intelligence Firewall Configuration
+# Pre-flight scanning and routing for sensitive content
+
+firewall:
+  enabled: true
+  scan_all_requests: true
+  log_blocked_requests: true
+  
+  # Local Inference Node (Placeholder - to be integrated later)
+  local_inference:
+    enabled: false  # Set to true when Ollama/vLLM is ready
+    endpoint: "http://localhost:11434"  # Ollama default
+    fallback_to_external: true  # If local node fails, route to external
+    models:
+      - "llama2"
+      - "mistral"
+
+# Restricted Content Patterns
+# If detected, route to local inference (or block if local unavailable)
+restricted_patterns:
+  # Personal Identifiable Information (PII)
+  - pattern: '\b\d{3}-\d{2}-\d{4}\b'  # SSN
+    category: "pii"
+    action: "route_local"
+    severity: "high"
+    
+  - pattern: '\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b'  # Email
+    category: "pii"
+    action: "route_local"
+    severity: "medium"
+    
+  - pattern: '\b(?:\d{4}[-\s]?){3}\d{4}\b'  # Credit card
+    category: "pii"
+    action: "route_local"
+    severity: "critical"
+
+  # Sensitive Keywords
+  - pattern: '(api[_-]?key|secret|password|token|credentials)'
+    category: "credentials"
+    action: "route_local"
+    severity: "high"
+    case_sensitive: false
+    
+  - pattern: '(confidential|proprietary|internal_only)'
+    category: "classified"
+    action: "route_local"
+    severity: "medium"
+    case_sensitive: false
+
+  # Code Injection Attempts
+  - pattern: '(eval\(|exec\(|__import__|subprocess)'
+    category: "code_injection"
+    action: "block"
+    severity: "critical"
+    case_sensitive: true
+
+# Scanning Configuration
+scanner:
+  max_prompt_length: 50000  # characters
+  enable_context_analysis: true
+  whitelist_trace_ids: []  # Trace IDs exempt from scanning
+  
+# Action Definitions
+actions:
+  route_local:
+    description: "Route to local inference node"
+    fallback: "block"  # If local node unavailable
+    log_level: "warning"
+    
+  block:
+    description: "Block request entirely"
+    return_message: "Request blocked by Intelligence Firewall"
+    log_level: "error"
+    
+  allow:
+    description: "Allow request to external provider"
+    log_level: "info"
+
+# Audit Trail
+audit:
+  log_all_scans: true
+  include_prompt_hash: true  # Hash prompt for privacy
+  retention_days: 90

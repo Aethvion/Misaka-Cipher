@@ -1,0 +1,112 @@
+"""
+Misaka Cipher - Main Entry Point
+M.I.S.A.K.A.: Multitask Intelligence & Strategic Analysis Kernel Architecture
+Framework: A.E.G.I.S.
+
+This is a test script to verify Sprint 1 functionality.
+"""
+
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+env_path = Path(__file__).parent / '.env'
+if env_path.exists():
+    load_dotenv(env_path)
+
+from nexus_core import NexusCore, Request
+from utils import get_logger
+
+logger = get_logger(__name__)
+
+
+def test_nexus_core():
+    """Test Nexus Core functionality."""
+    
+    print("\n" + "=" * 70)
+    print("MISAKA CIPHER - SPRINT 1 VERIFICATION TEST")
+    print("=" * 70 + "\n")
+    
+    # Initialize Nexus Core
+    nexus = NexusCore()
+    nexus.initialize()
+    
+    print("\n" + "-" * 70)
+    print("SYSTEM STATUS")
+    print("-" * 70)
+    
+    status = nexus.get_status()
+    print(f"Initialized: {status['initialized']}")
+    print(f"Active Traces: {status['active_traces']}")
+    print(f"\nFirewall Status:")
+    for key, value in status['firewall'].items():
+        print(f"  {key}: {value}")
+    
+    print(f"\nProvider Status:")
+    for provider_name, provider_info in status['providers']['providers'].items():
+        print(f"  {provider_name}:")
+        print(f"    Status: {provider_info['status']}")
+        print(f"    Model: {provider_info['model']}")
+        print(f"    Healthy: {provider_info['is_healthy']}")
+    
+    print("\n" + "-" * 70)
+    print("TEST 1: Clean Request")
+    print("-" * 70 + "\n")
+    
+    # Test clean request
+    request = Request(
+        prompt="Hello! This is a test of the Misaka Cipher system. Please respond with a brief greeting.",
+        request_type="generation"
+    )
+    
+    response = nexus.route_request(request)
+    
+    print(f"Trace ID: {response.trace_id}")
+    print(f"Provider: {response.provider}")
+    print(f"Success: {response.success}")
+    print(f"Firewall Status: {response.firewall_status}")
+    print(f"Routing Decision: {response.routing_decision}")
+    
+    if response.success:
+        print(f"\nResponse Content:")
+        print(response.content[:200] + "..." if len(response.content) > 200 else response.content)
+    else:
+        print(f"\nError: {response.error}")
+    
+    print("\n" + "-" * 70)
+    print("TEST 2: Flagged Request (PII Test)")
+    print("-" * 70 + "\n")
+    
+    # Test flagged request
+    request_flagged = Request(
+        prompt="My email is test@example.com and I need help.",
+        request_type="generation"
+    )
+    
+    response_flagged = nexus.route_request(request_flagged)
+    
+    print(f"Trace ID: {response_flagged.trace_id}")
+    print(f"Provider: {response_flagged.provider}")
+    print(f"Success: {response_flagged.success}")
+    print(f"Firewall Status: {response_flagged.firewall_status}")
+    print(f"Routing Decision: {response_flagged.routing_decision}")
+    
+    if response_flagged.success:
+        print(f"\nResponse Content:")
+        print(response_flagged.content[:200] + "..." if len(response_flagged.content) > 200 else response_flagged.content)
+    else:
+        print(f"\nError: {response_flagged.error}")
+    
+    print("\n" + "=" * 70)
+    print("SPRINT 1 VERIFICATION: COMPLETE")
+    print("=" * 70 + "\n")
+
+
+if __name__ == "__main__":
+    try:
+        test_nexus_core()
+    except Exception as e:
+        logger.error(f"Test failed: {str(e)}")
+        import traceback
+        traceback.print_exc()

@@ -1,0 +1,60 @@
+# Misaka Cipher - Provider Configuration
+# Priority: Google AI (Primary) → OpenAI (Fallback) → Grok (Tertiary)
+
+providers:
+  google_ai:
+    enabled: true
+    priority: 1
+    name: "Google AI"
+    model: "gemini-1.5-pro"
+    api_key_env: "GOOGLE_AI_API_KEY"
+    endpoint: "https://generativelanguage.googleapis.com/v1beta"
+    timeout: 30
+    max_retries: 3
+    fallback_models:
+      - "gemini-1.5-flash"
+      - "gemini-pro"
+    
+  openai:
+    enabled: true
+    priority: 2
+    name: "OpenAI"
+    model: "gpt-4-turbo-preview"
+    api_key_env: "OPENAI_API_KEY"
+    endpoint: "https://api.openai.com/v1"
+    timeout: 30
+    max_retries: 3
+    fallback_models:
+      - "gpt-4"
+      - "gpt-3.5-turbo"
+    
+  grok:
+    enabled: true
+    priority: 3
+    name: "xAI Grok"
+    model: "grok-beta"
+    api_key_env: "GROK_API_KEY"
+    endpoint: "https://api.x.ai/v1"
+    timeout: 30
+    max_retries: 2
+    fallback_models:
+      - "grok-1"
+
+# Failover Configuration
+failover:
+  auto_failover: true
+  health_check_interval: 60  # seconds
+  max_consecutive_failures: 3
+  cooldown_period: 300  # seconds before retrying failed provider
+
+# Rate Limiting
+rate_limits:
+  google_ai:
+    requests_per_minute: 60
+    tokens_per_minute: 100000
+  openai:
+    requests_per_minute: 90
+    tokens_per_minute: 150000
+  grok:
+    requests_per_minute: 30
+    tokens_per_minute: 50000
