@@ -1,0 +1,90 @@
+{
+  "Tool_Create_Calculator": {
+    "name": "Tool_Create_Calculator",
+    "domain": "Tool",
+    "action": "Create",
+    "object": "Calculator",
+    "description": "Adds two numbers together.",
+    "parameters": [
+      {
+        "name": "number1",
+        "type": "int",
+        "description": "The first number to add.",
+        "required": true,
+        "default": null
+      },
+      {
+        "name": "number2",
+        "type": "int",
+        "description": "The second number to add.",
+        "required": true,
+        "default": null
+      }
+    ],
+    "return_type": "int",
+    "implementation_type": "function",
+    "implementation_hints": {},
+    "imports": [],
+    "created_at": "2026-02-01T14:52:52.941573",
+    "trace_id": "MCTR-20260201145251-N305IHAE",
+    "file_path": "C:\\Aethvion\\MisakaCipher\\tools\\generated\\tool_create_calculator.py",
+    "code_length": 521,
+    "validation_status": "passed",
+    "registered_at": "2026-02-01T14:52:52.944105",
+    "version": "1.0.0"
+  },
+  "Data_Analyze_Numberlist": {
+    "name": "Data_Analyze_Numberlist",
+    "domain": "Data",
+    "action": "Analyze",
+    "object": "Numberlist",
+    "description": "Calculates the average of a list of numbers",
+    "parameters": [
+      {
+        "name": "numbers",
+        "type": "list",
+        "description": "List of numbers to average",
+        "required": true,
+        "default": null
+      }
+    ],
+    "return_type": "float",
+    "implementation_type": "function",
+    "implementation_hints": {},
+    "imports": [],
+    "created_at": "2026-02-01T14:52:53.769884",
+    "trace_id": "MCTR-20260201145252-C2PI9GRF",
+    "file_path": "C:\\Aethvion\\MisakaCipher\\tools\\generated\\data_analyze_numberlist.py",
+    "code_length": 471,
+    "validation_status": "passed",
+    "registered_at": "2026-02-01T14:52:53.771401",
+    "version": "1.0.0"
+  },
+  "System_Read_File": {
+    "name": "System_Read_File",
+    "domain": "System",
+    "action": "Read",
+    "object": "File",
+    "description": "Reads a file from the filesystem.",
+    "parameters": [
+      {
+        "name": "filepath",
+        "type": "str",
+        "description": "Path to the file to read.",
+        "required": true,
+        "default": null
+      }
+    ],
+    "return_type": "str",
+    "implementation_type": "function",
+    "implementation_hints": {},
+    "imports": [],
+    "created_at": "2026-02-01T14:52:54.592753",
+    "trace_id": "MCTR-20260201145253-9FCVLMK7",
+    "file_path": "C:\\Aethvion\\MisakaCipher\\tools\\generated\\system_read_file.py",
+    "code_length": 441,
+    "validation_status": "passed",
+    "registered_at": "2026-02-01T14:52:54.595773",
+    "version": "1.0.0"
+  }
+}
