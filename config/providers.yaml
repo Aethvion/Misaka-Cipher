@@ -6,39 +6,42 @@ providers:
     enabled: true
     priority: 1
     name: "Google AI"
-    model: "gemini-pro"
+    # UPDATED: Matching your working proxy
+    model: "gemini-2.0-flash" 
     api_key_env: "GOOGLE_AI_API_KEY"
     endpoint: "https://generativelanguage.googleapis.com/v1beta"
     timeout: 30
     max_retries: 3
     fallback_models:
+      - "gemini-1.5-pro-latest"
       - "gemini-1.5-flash"
-      - "gemini-1.0-pro"
     
   openai:
     enabled: true
     priority: 2
     name: "OpenAI"
-    model: "gpt-4-turbo-preview"
+    # UPDATED: Standard high-performance model for 2026
+    model: "gpt-4o" 
     api_key_env: "OPENAI_API_KEY"
     endpoint: "https://api.openai.com/v1"
     timeout: 30
     max_retries: 3
     fallback_models:
-      - "gpt-4"
-      - "gpt-3.5-turbo"
+      - "gpt-4-turbo"
+      - "gpt-4o-mini"
     
   grok:
     enabled: true
     priority: 3
     name: "xAI Grok"
-    model: "grok-beta"
+    # UPDATED: Current beta/high-tier string
+    model: "grok-2" 
     api_key_env: "GROK_API_KEY"
     endpoint: "https://api.x.ai/v1"
     timeout: 30
     max_retries: 2
     fallback_models:
-      - "grok-1"
+      - "grok-beta"
 
 # Failover Configuration
 failover:
