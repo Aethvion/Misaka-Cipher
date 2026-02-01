@@ -23,8 +23,10 @@ class OpenAIProvider(BaseProvider):
         """Initialize OpenAI provider."""
         super().__init__(config)
         
-        # Get API key
-        api_key = os.getenv(config.api_key) if config.api_key.startswith('$') else config.api_key
+        # Get API key - read from environment variable
+        api_key = os.getenv(config.api_key, config.api_key)
+        if not api_key:
+            logger.warning(f"OpenAI API key not found in environment: {config.api_key}")
         
         # Initialize client
         self.client = OpenAI(

@@ -23,8 +23,11 @@ class GoogleAIProvider(BaseProvider):
         """Initialize Google AI provider."""
         super().__init__(config)
         
-        # Configure API
-        api_key = os.getenv(config.api_key) if config.api_key.startswith('$') else config.api_key
+        # Configure API - read from environment variable
+        api_key = os.getenv(config.api_key, config.api_key)
+        if not api_key:
+            logger.error(f"Google AI API key not found in environment: {config.api_key}")
+        
         genai.configure(api_key=api_key)
         
         # Initialize model

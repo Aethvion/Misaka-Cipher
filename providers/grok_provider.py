@@ -23,8 +23,10 @@ class GrokProvider(BaseProvider):
         """Initialize Grok provider."""
         super().__init__(config)
         
-        # Get API key
-        self.api_key = os.getenv(config.api_key) if config.api_key.startswith('$') else config.api_key
+        # Get API key - read from environment variable
+        self.api_key = os.getenv(config.api_key, config.api_key)
+        if not self.api_key:
+            logger.warning(f"Grok API key not found in environment: {config.api_key}")
         
         # Set up headers
         self.headers = {
