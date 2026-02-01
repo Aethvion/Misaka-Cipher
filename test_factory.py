@@ -42,7 +42,7 @@ def test_factory():
     
     # Test 1: Generic agent with custom spec
     spec1 = AgentSpec(
-        domain="Test",
+        domain="System",
         action="Execute",
         object="Demo",
         context={
@@ -143,9 +143,9 @@ def test_factory():
     # Test 5: Try invalid name (should fail)
     try:
         invalid_spec = AgentSpec(
-            domain="test",  # lowercase
-            action="do",    # lowercase
-            object="thing", # lowercase
+            domain="agent",   # lowercase - will auto-capitalize
+            action="test",    # lowercase - will auto-capitalize
+            object="demo",    # lowercase - will auto-capitalize
             context={'prompt': "test"}
         )
         print(f"Agent Name (auto-corrected): {invalid_spec.name}")
