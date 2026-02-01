@@ -6,14 +6,14 @@ providers:
     enabled: true
     priority: 1
     name: "Google AI"
-    model: "gemini-1.5-pro"
+    model: "gemini-pro"
     api_key_env: "GOOGLE_AI_API_KEY"
     endpoint: "https://generativelanguage.googleapis.com/v1beta"
     timeout: 30
     max_retries: 3
     fallback_models:
       - "gemini-1.5-flash"
-      - "gemini-pro"
+      - "gemini-1.0-pro"
     
   openai:
     enabled: true
