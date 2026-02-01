@@ -1,0 +1,29 @@
+# --- SECURITY ---
+# Never commit your API keys. 
+# Image 2 shows your .env contains sensitive Google/OpenAI keys.
+.env
+
+# --- PYTHON ---
+# Ignore compiled bytecode that clutters your "Changes" list.
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# --- ENVIRONMENTS ---
+# If you use a virtual environment (highly recommended).
+.venv/
+venv/
+env/
+bin/
+lib/
+include/
+
+# --- LOGS ---
+# Keep your "Audit Logs" local and out of the repository.
+*.log
+logs/
+
+# --- OS SPECIFIC ---
+.DS_Store
+Thumbs.db
