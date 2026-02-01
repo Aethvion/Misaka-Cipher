@@ -1,39 +1,52 @@
-# Misaka Cipher: Project Alpha Design & Roadmap
+# Misaka Cipher (M.I.S.A.K.A.)
+**Multitask Intelligence & Strategic Analysis Kernel Architecture** *Operating within the A.E.G.I.S. Framework (Analytic Engine for Global Insights & Strategy)*
 
-## 1. Primary Identity
-* **Name:** Misaka Cipher
-* **Acronym (M.I.S.A.K.A.):** Multitask Intelligence & Strategic Analysis Kernel Architecture
-* **Framework (A.E.G.I.S.):** Analytic Engine for Global Insights & Strategy
+---
 
-## 2. Infrastructure & Workspace
-* **Interface:** Text-based chat (Primary Phase); Voice integration (Secondary Phase).
-* **Sandbox Folder:** `C:\Aethvion\MisakaCipher\`
-* **Nexus Portal:** Centralized control plane. Every internal agent call, tool execution, and external API request MUST route through the `nexus_core` script for universal logging and auditing.
+## 1. System Purpose
+Misaka Cipher is a modular, self-evolving strategic kernel designed for **Aethvion**. Unlike traditional "wrapped" agents, Misaka Cipher functions as a central orchestrator capable of autonomous tool generation and multi-agent delegation. The system's primary goal is to provide high-tier strategic analysis while maintaining absolute data sovereignty and operational transparency.
 
-## 3. Agentic Autonomy
-* **Primary Kernel:** Misaka Cipher handles user interaction, intent orchestration, and high-level strategy.
-* **The Factory (Worker Spawning):** Capability to spin up task-specific, stateless agents (e.g., `Worker_Research_Alpha`) with functional naming and isolated task scopes.
-* **The Forge (Tool Generation):** Autonomous creation of standalone tools using the `[Domain]_[Action]_[Object]` naming standard (e.g., `invest_analyze_ticker`).
-* **API Isolation:** All tools must function as standalone microservices with standardized JSON interfaces to prevent a tangled core.
+## 2. Core Architecture: The Nexus Portal
+The foundation of the system is the **Nexus Core**, which serves as the absolute single point of entry for all operations. This design ensures that every interaction—whether from a user, an internal agent, or an automated tool—is audited, filtered, and logged.
 
-## 4. Security & Scalability
-* **Intelligence Firewall:** Pre-flight scanning for all outgoing prompts to ensure compliance and prevent API bans.
-* **Local Fallback Node:** Automatic re-routing of restricted, sensitive, or flagged calls to a local inference node (Ollama or vLLM).
-* **Audit Dashboard:** Real-time timestamped logging of every system event, including `Trace_ID`, `Source_Agent`, `Target_Provider`, and `Payload`.
+* **Centralized Orchestration:** All requests route through `nexus_core.py`.
+* **Traceability:** Every transaction is assigned a unique `Trace_ID` (e.g., `MCTR-20260201...`) to facilitate deep auditing of AI reasoning chains.
+* **Provider Abstraction:** A unified interface for multi-model failover, supporting Google Gemini 2.0 Flash, OpenAI GPT-4o, and xAI Grok-2.
 
-## 5. Memory Architecture
-* **Episodic Memory:** Short-term vector-based retrieval.
-* **Recursive Summarization:** Periodic compression of history into "Core Insights" for token efficiency.
-* **Knowledge Graph:** Structural mapping of relationships across tech, gaming, and investing domains.
+
+
+## 3. Scalability Design: The Factory & The Forge
+To ensure the system scales without becoming monolithic or "spaghetti code," Misaka Cipher utilizes a decoupled agentic hierarchy:
+
+### The Factory (Worker Spawning)
+A dynamic spawning engine that creates transient, stateless worker agents for specific tasks. 
+* **Lifecycle Management:** Agents are initialized for a single objective, execute via the Nexus, and are terminated upon completion to preserve resources.
+* **Functional Naming:** All agents follow the Aethvion Standard naming convention: `[Domain]_[Action]_[Object]`.
+
+
+
+### The Forge (Tool Generation)
+An autonomous pipeline where the Primary Kernel identifies missing functionality and writes its own standalone micro-tools.
+* **Modular Extensibility:** Tools function as isolated microservices, ensuring that new capabilities do not introduce dependencies into the core architecture.
+* **Self-Registration:** Generated tools are automatically registered into a system-wide library for use by future worker agents.
+
+## 4. Security & The Intelligence Firewall
+Data sovereignty is enforced through a multi-layered **Intelligence Firewall**:
+
+* **Pre-Flight Scanning:** Every outgoing prompt is analyzed by a regex-based `ContentScanner` for PII, credentials, or restricted patterns.
+* **Policy Routing:** Based on scan results, the `RequestRouter` directs traffic to either external APIs or a **Local Fallback Node** (Ollama/vLLM) to ensure sensitive data never leaves the local environment.
+* **Safety Countermeasures:** High-severity flags automatically bypass external providers to protect API standing and corporate privacy.
+
+## 5. Memory Tiering
+Efficient context management is achieved through a three-layer memory strategy:
+* **Episodic Memory:** Short-term, vector-based storage for immediate session context.
+* **Recursive Summarization:** Periodic compression of interaction logs into "Core Insights" to keep the context window focused and token-efficient.
+* **Knowledge Graph:** Structural mapping of complex entities and relationships across tech, gaming, and strategic investment domains.
 
 ## 6. Technical Requirements
-* **Central Orchestrator:** Unified API wrapper for multi-model support (Google, OpenAI, Grok).
-* **Local Node:** Local server running unrestricted open-weights models (e.g., Llama 3).
-* **Design Choice:** Modular micro-kernel architecture prioritizing data sovereignty and scalability.
-
-## 7. Action Items for Antigravity
-1. **Nexus Core Deployment:** Set up the centralized routing and logging system in `C:\Aethvion\MisakaCipher\`.
-2. **Provider Abstraction Layer:** Implement the multi-model wrapper with automatic safety-based local fallback.
-3. **Agent Factory Implementation:** Develop the logic for spawning and managing transient worker agents.
-4. **Tool Registry Infrastructure:** Build the automated registration and manifest system for "The Forge."
-5. **Implementation Plan:** Convert this design into a step-by-step development sprint for final review.
+* **Local Root:** `C:\Aethvion\MisakaCipher\`
+* **Environment:** Python 3.10+
+* **Primary Inference:** Google Gemini 2.0 Flash
+* **Secondary/Fallback Inference:** OpenAI GPT-4o, xAI Grok-2
+* **Local Inference Node:** Ollama/vLLM (hosting open-weights models like Llama 3 or Mistral)
+* **Configuration:** YAML-based management for providers, security protocols, and system-wide settings.
