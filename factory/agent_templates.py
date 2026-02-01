@@ -153,7 +153,7 @@ class AgentTemplates:
             AgentSpec for Text Summarizer
         """
         return AgentSpec(
-            domain="Text",
+            domain="Data",
             action="Summarize",
             object="Content",
             context={
@@ -184,8 +184,8 @@ class AgentTemplates:
             prompt = f"Context:\n{context}\n\nQuestion: {question}"
         
         return AgentSpec(
-            domain="Question",
-            action="Answer",
+            domain="Knowledge",
+            action="Generate",
             object="Query",
             context={
                 'prompt': prompt,
