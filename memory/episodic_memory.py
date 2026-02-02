@@ -105,19 +105,22 @@ class EpisodicMemoryStore:
             text = f"{memory.summary} {memory.content}"
             embedding = self.embedding_model.encode(text).tolist()
             
+            # Flatten metadata (ChromaDB doesn't accept lists)
+            flattened_metadata = self._flatten_metadata({
+                'trace_id': memory.trace_id,
+                'timestamp': memory.timestamp,
+                'event_type': memory.event_type,
+                'domain': memory.domain,
+                'content': memory.content,
+                **memory.metadata
+            })
+            
             # Store in ChromaDB
             self.collection.add(
                 ids=[memory.memory_id],
                 embeddings=[embedding],
                 documents=[memory.summary],  # Store summary as document
-                metadatas=[{
-                    'trace_id': memory.trace_id,
-                    'timestamp': memory.timestamp,
-                    'event_type': memory.event_type,
-                    'domain': memory.domain,
-                    'content': memory.content,
-                    **memory.metadata
-                }]
+                metadatas=[flattened_metadata]
             )
             
             logger.info(f"Stored memory: {memory.memory_id} (event: {memory.event_type}, domain: {memory.domain})")
@@ -130,6 +133,31 @@ class EpisodicMemoryStore:
         except Exception as e:
             logger.error(f"Failed to store memory {memory.memory_id}: {str(e)}")
             return False
+    
+    def _flatten_metadata(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Flatten metadata to ensure ChromaDB compatibility.
+        
+        ChromaDB doesn't accept list values in metadata.
+        Convert lists to comma-separated strings.
+        
+        Args:
+            metadata: Original metadata dict
+            
+        Returns:
+            Flattened metadata dict
+        """
+        flattened = {}
+        for key, value in metadata.items():
+            if isinstance(value, list):
+                # Join list into comma-separated string
+                flattened[key] = ", ".join(str(v) for v in value)
+            elif isinstance(value, dict):
+                # Convert dict to string representation
+                flattened[key] = str(value)
+            else:
+                flattened[key] = value
+        return flattened
     
     def search(self, query: str, k: int = 5, domain: Optional[str] = None) -> List[EpisodicMemory]:
         """

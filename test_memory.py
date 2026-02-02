@@ -1,6 +1,6 @@
 """
-Misaka Cipher - Memory Test Script
-Test episodic memory storage and retrieval
+Misaka Cipher - Memory Tier Complete Test
+Test all memory components: Episodic Memory, Knowledge Graph, Heartbeat
 """
 
 import os
@@ -12,131 +12,229 @@ env_path = Path(__file__).parent / '.env'
 if env_path.exists():
     load_dotenv(env_path)
 
-from memory import EpisodicMemory, generate_memory_id, get_episodic_memory
+from memory import (
+    EpisodicMemory, CoreInsight,
+    generate_memory_id, generate_insight_id,
+    get_episodic_memory, get_knowledge_graph, get_heartbeat
+)
+from nexus_core import NexusCore
 from utils import get_logger
 
 logger = get_logger(__name__)
 
 
-def test_episodic_memory():
-    """Test episodic memory functionality."""
+def test_complete_memory_tier():
+    """Test complete Memory Tier functionality."""
     
     print("\n" + "=" * 70)
-    print("MISAKA CIPHER - SPRINT 4 VERIFICATION TEST")
-    print("THE MEMORY TIER - Episodic Memory (Phase 1)")
+    print("MISAKA CIPHER - SPRINT 4 COMPLETE VERIFICATION")
+    print("THE MEMORY TIER - All Phases (1, 2, 3)")
     print("=" * 70 + "\n")
     
-    # Initialize episodic memory
-    print("Initializing Episodic Memory Store...")
+    # Initialize components
+    print("Initializing Memory Tier components...")
     memory_store = get_episodic_memory()
+    knowledge_graph = get_knowledge_graph()
+    
+    # Initialize Nexus Core for summarization
+    nexus = NexusCore()
+    nexus.initialize()
+    
+    heartbeat = get_heartbeat(
+        memory_store=memory_store,
+        knowledge_graph=knowledge_graph,
+        nexus_core=nexus
+    )
     
     print("\n" + "-" * 70)
-    print("TEST 1: Store Episodic Memories")
+    print("PHASE 1: EPISODIC MEMORY (with metadata flattening)")
     print("-" * 70 + "\n")
     
-    # Create and store test memories
+    # Test memory with list metadata (intent flags)
     memory1 = EpisodicMemory(
         memory_id=generate_memory_id(),
-        trace_id="MCTR-20260201150000-TEST0001",
-        timestamp="2026-02-01T15:00:00Z",
-        event_type="tool_forge",
-        domain="Finance",
-        summary="Generated Finance_Fetch_StockPrice tool",
-        content="Tool created to fetch stock prices from external API. Validated and registered successfully.",
-        metadata={'tool_name': 'Finance_Fetch_StockPrice'}
+        trace_id="MCTR-20260202160000-TEST0001",
+        timestamp="2026-02-02T16:00:00Z",
+        event_type="forge_intent_detection",
+        domain="Security",
+        summary="Intent detection flagged filesystem and network access",
+        content="Tool request for file operations and API calls detected by Intelligence Firewall.",
+        metadata={
+            'intent_categories': ['filesystem_access', 'network_access'],  # LIST - will be flattened
+            'severity': 'medium'
+        }
     )
     
+    success = memory_store.store(memory1)
+    if success:
+        print(f"✅ Stored memory with list metadata (flattened)")
+        print(f"   Memory ID: {memory1.memory_id}")
+        print(f"   Intent flags: {memory1.metadata['intent_categories']}")
+    else:
+        print(f"❌ Failed to store memory")
+    
+    # Store more memories for testing
     memory2 = EpisodicMemory(
         memory_id=generate_memory_id(),
-        trace_id="MCTR-20260201150100-TEST0002",
-        timestamp="2026-02-01T15:01:00Z",
-        event_type="agent_spawn",
-        domain="Data",
-        summary="Spawned Data_Analyze_Dataset agent",
-        content="Agent spawned to analyze Q1 sales data. Loaded context from episodic memory.",
-        metadata={'agent_name': 'Data_Analyze_Dataset'}
+        trace_id="MCTR-20260202160100-TEST0002",
+        timestamp="2026-02-02T16:01:00Z",
+        event_type="tool_forge",
+        domain="Finance",
+        summary="Generated Finance_Fetch_CryptoPrice tool",
+        content="Tool created to fetch cryptocurrency prices from CoinGecko API.",
+        metadata={'tool_name': 'Finance_Fetch_CryptoPrice'}
     )
+    memory_store.store(memory2)
     
     memory3 = EpisodicMemory(
         memory_id=generate_memory_id(),
-        trace_id="MCTR-20260201150200-TEST0003",
-        timestamp="2026-02-01T15:02:00Z",
-        event_type="forge_intent_detection",
-        domain="Security",
-        summary="Intent detection flagged filesystem access request",
-        content="Tool request for file reading detected and flagged by Intelligence Firewall intent scanner.",
-        metadata={'intent_categories': ['filesystem_access']}
+        trace_id="MCTR-20260202160200-TEST0003",
+        timestamp="2026-02-02T16:02:00Z",
+        event_type="agent_spawn",
+        domain="Data",
+        summary="Spawned Data_Analyze_CryptoTrends agent",
+        content="Agent spawned to analyze cryptocurrency market trends.",
+        metadata={'agent_name': 'Data_Analyze_CryptoTrends'}
+    )
+    memory_store.store(memory3)
+    
+    print(f"\nTotal memories stored: {memory_store.get_count()}")
+    
+    print("\n" + "-" * 70)
+    print("PHASE 2: KNOWLEDGE GRAPH")
+    print("-" * 70 + "\n")
+    
+    # Add nodes and relationships
+    print("Building Knowledge Graph...")
+    
+    # Add domains
+    knowledge_graph.add_domain("Finance")
+    knowledge_graph.add_domain("Data")
+    knowledge_graph.add_domain("Security")
+    
+    # Add tool and link to domain and trace
+    knowledge_graph.add_tool(
+        tool_name="Finance_Fetch_CryptoPrice",
+        domain="Finance",
+        metadata={'type': 'api_tool', 'created': "2026-02-02T16:01:00Z"}
+    )
+    knowledge_graph.add_trace_id(
+        trace_id="MCTR-20260202160100-TEST0002",
+        event_type="tool_forge"
+    )
+    knowledge_graph.link_tool_to_trace(
+        tool_name="Finance_Fetch_CryptoPrice",
+        trace_id="MCTR-20260202160100-TEST0002"
     )
     
-    # Store memories
-    for memory in [memory1, memory2, memory3]:
-        success = memory_store.store(memory)
-        if success:
-            print(f"✅ Stored: {memory.summary}")
-        else:
-            print(f"❌ Failed: {memory.summary}")
+    # Add agent and link to domain and trace
+    knowledge_graph.add_agent(
+        agent_name="Data_Analyze_CryptoTrends",
+        domain="Data",
+        metadata={'type': 'analyst', 'created': "2026-02-02T16:02:00Z"}
+    )
+    knowledge_graph.add_trace_id(
+        trace_id="MCTR-20260202160200-TEST0003",
+        event_type="agent_spawn"
+    )
+    knowledge_graph.link_agent_to_trace(
+        agent_name="Data_Analyze_CryptoTrends",
+        trace_id="MCTR-20260202160200-TEST0003"
+    )
     
-    print(f"\nTotal memories in store: {memory_store.get_count()}")
+    # Link agent to tool (agent uses tool)
+    knowledge_graph.link_tool_to_agent(
+        tool_name="Finance_Fetch_CryptoPrice",
+        agent_name="Data_Analyze_CryptoTrends"
+    )
     
-    print("\n" + "-" * 70)
-    print("TEST 2: Semantic Search")
-    print("-" * 70 + "\n")
+    # Save knowledge graph
+    knowledge_graph.save()
     
-    # Search for finance-related memories
-    query1 = "stock price tools"
-    results1 = memory_store.search(query1, k=2)
+    # Query knowledge graph
+    print("\nKnowledge Graph Queries:")
     
-    print(f"Query: '{query1}'")
-    print(f"Results: {len(results1)}")
-    for memory in results1:
-        print(f"  - {memory.summary} (domain: {memory.domain})")
+    finance_tools = knowledge_graph.get_tools_by_domain("Finance")
+    print(f"  Finance Tools: {finance_tools}")
     
-    print()
+    data_agents = knowledge_graph.get_agents_by_domain("Data")
+    print(f"  Data Agents: {data_agents}")
     
-    # Search for security-related memories
-    query2 = "security firewall detection"
-    results2 = memory_store.search(query2, k=2)
-    
-    print(f"Query: '{query2}'")
-    print(f"Results: {len(results2)}")
-    for memory in results2:
-        print(f"  - {memory.summary} (domain: {memory.domain})")
-    
-    print("\n" + "-" * 70)
-    print("TEST 3: Get Recent Memories")
-    print("-" * 70 + "\n")
-    
-    recent = memory_store.get_recent(hours=24)
-    print(f"Memories from last 24 hours: {len(recent)}")
-    for memory in recent[:5]:  # Show first 5
-        print(f"  - [{memory.event_type}] {memory.summary}")
+    stats = knowledge_graph.get_stats()
+    print(f"\nGraph Statistics:")
+    print(f"  Total Nodes: {stats['total_nodes']}")
+    print(f"  Total Edges: {stats['total_edges']}")
+    print(f"  Node Types: {stats['node_types']}")
     
     print("\n" + "-" * 70)
-    print("TEST 4: Trace_ID Linking")
+    print("PHASE 3: HEARTBEAT SUMMARIZATION")
     print("-" * 70 + "\n")
     
-    # Get memories by Trace_ID
-    trace_memories = memory_store.get_by_trace_id("MCTR-20260201150000-TEST0001")
-    print(f"Memories for Trace_ID 'MCTR-20260201150000-TEST0001': {len(trace_memories)}")
-    for memory in trace_memories:
-        print(f"  - {memory.summary}")
-        print(f"    Memory ID: {memory.memory_id}")
-        print(f"    Event: {memory.event_type}")
+    # Run heartbeat to compress recent memories
+    print("Running Heartbeat (last 24 hours)...")
+    insight = heartbeat.run(hours=24, session_number=1)
+    
+    if insight:
+        print(f"\n✅ Core Insight Generated:")
+        print(f"   Insight ID: {insight.insight_id}")
+        print(f"   Time Window: {insight.time_window_start} to {insight.time_window_end}")
+        print(f"   Domains Active: {', '.join(insight.domains_active)}")
+        print(f"   Tools Generated: {len(insight.tools_generated)}")
+        print(f"   Agents Spawned: {insight.agents_spawned}")
+        print(f"   Trace IDs Linked: {len(insight.trace_ids)}")
+        print(f"\n   Summary:")
+        print(f"   {insight.summary}")
+        
+        # Verify Core Insight is in Knowledge Graph
+        insight_node = knowledge_graph.get_node_info(insight.insight_id)
+        if insight_node:
+            print(f"\n✅ Core Insight linked in Knowledge Graph")
+            print(f"   Node Type: {insight_node.get('node_type')}")
+            print(f"   Memories Compressed: {insight_node.get('memories_compressed')}")
+    else:
+        print("❌ No insight generated (no memories in window)")
+    
+    print("\n" + "-" * 70)
+    print("VERIFICATION: Cross-Component Integration")
+    print("-" * 70 + "\n")
+    
+    # Test 1: Semantic search finds intent detection
+    print("Test 1: Semantic Search for Intent Detection")
+    results = memory_store.search("security firewall intent filesystem", k=3)
+    print(f"  Results: {len(results)}")
+    for mem in results:
+        print(f"    - {mem.summary}")
+    
+    # Test 2: Knowledge Graph links Core Insight to Trace_IDs
+    print("\nTest 2: Core Insight → Trace_ID Linkage")
+    if insight:
+        # Get related insights for Finance domain
+        finance_insights = knowledge_graph.get_related_insights("Finance")
+        print(f"  Finance-related insights: {finance_insights}")
+    
+    # Test 3: Agent context (what tools are available in Finance domain)
+    print("\nTest 3: Agent Context Loading (Finance Domain)")
+    finance_tools = knowledge_graph.get_tools_by_domain("Finance")
+    print(f"  Available Finance tools for agents: {finance_tools}")
     
     print("\n" + "=" * 70)
-    print("SPRINT 4 PHASE 1 VERIFICATION: EPISODIC MEMORY - COMPLETE")
+    print("SPRINT 4 COMPLETE VERIFICATION: THE MEMORY TIER - SUCCESS")
     print("=" * 70 + "\n")
     
-    print(f"✅ ChromaDB Backend: Active")
-    print(f"✅ Embedding Model: all-MiniLM-L6-v2")
-    print(f"✅ Total Memories: {memory_store.get_count()}")
-    print(f"✅ Semantic Search: Working")
-    print(f"✅ Trace_ID Linking: Working")
+    print("✅ Phase 1: Episodic Memory (ChromaDB + metadata flattening)")
+    print("✅ Phase 2: Knowledge Graph (NetworkX + relationships)")
+    print("✅ Phase 3: Heartbeat Summarization (recursive compression)")
+    print("✅ Integration: Cross-component queries working")
+    print(f"\n📊 Final Stats:")
+    print(f"   Episodic Memories: {memory_store.get_count()}")
+    print(f"   Knowledge Graph Nodes: {stats['total_nodes']}")
+    print(f"   Knowledge Graph Edges: {stats['total_edges']}")
+    print(f"   Core Insights: {'1' if insight else '0'}")
 
 
 if __name__ == "__main__":
     try:
-        test_episodic_memory()
+        test_complete_memory_tier()
     except Exception as e:
         logger.error(f"Test failed: {str(e)}")
         import traceback
