@@ -80,7 +80,8 @@ class IntelligenceFirewall:
     def scan_and_route(
         self,
         prompt: str,
-        trace_id: str
+        trace_id: str,
+        request_type: Optional[str] = None
     ) -> Tuple[RoutingDecision, Optional[ScanResult]]:
         """
         Scan content and determine routing.
@@ -88,6 +89,7 @@ class IntelligenceFirewall:
         Args:
             prompt: Content to scan
             trace_id: Trace ID for this request
+            request_type: Type of request (e.g., "forge_analysis")
             
         Returns:
             Tuple of (RoutingDecision, ScanResult)
@@ -97,8 +99,8 @@ class IntelligenceFirewall:
             logger.debug(f"[{trace_id}] Firewall disabled, routing to EXTERNAL")
             return RoutingDecision.EXTERNAL, None
         
-        # Scan content
-        scan_result = self.scanner.scan(prompt, trace_id)
+        # Scan content (with intent detection for forge_analysis)
+        scan_result = self.scanner.scan(prompt, trace_id, request_type=request_type)
         
         # Log scan result
         if self.audit_config.get('log_all_scans', True):

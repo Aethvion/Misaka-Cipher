@@ -27,3 +27,11 @@ logs/
 # --- OS SPECIFIC ---
 .DS_Store
 Thumbs.db
+
+# --- MEMORY STORAGE ---
+# ChromaDB and episodic memory storage
+memory/storage/
+*.db
+*.sqlite
+*.chroma
+chroma.sqlite3

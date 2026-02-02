@@ -1,0 +1,40 @@
+# Misaka Cipher - Memory Configuration
+
+episodic_memory:
+  enabled: true
+  storage_backend: "chromadb"  # chromadb, sqlite
+  storage_path: "memory/storage"
+  collection_name: "misaka_episodic"
+  retention_days: 30
+  max_memories: 10000
+  
+  # Embedding configuration
+  embedding_model: "all-MiniLM-L6-v2"  # Sentence transformers model
+  embedding_dimension: 384
+  
+  # Search configuration
+  default_top_k: 5
+  similarity_threshold: 0.7
+
+knowledge_graph:
+  enabled: true
+  storage_path: "memory/storage/knowledge_graph.json"
+  auto_update: true
+  max_nodes: 5000
+
+summarization:
+  enabled: true
+  heartbeat_intervals:
+    short: 3600      # 1 hour (seconds)
+    medium: 21600    # 6 hours  
+    long: 86400      # 24 hours
+  core_insights_retention: 365  # days
+  max_insights: 1000
+
+integration:
+  factory_agent_context: true  # Agents load memory context on spawn
+  forge_tool_logging: true     # Log tool generation to memory
+
+audit:
+  log_all_memory_operations: true
+  retention_days: 90

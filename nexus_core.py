@@ -139,10 +139,11 @@ class NexusCore:
         logger.info(f"[{trace_id}] Prompt length: {len(request.prompt)} chars")
         
         try:
-            # Pre-flight firewall scan
+            # Pre-flight firewall scan (with intent detection)
             routing_decision, scan_result = self.firewall.scan_and_route(
                 prompt=request.prompt,
-                trace_id=trace_id
+                trace_id=trace_id,
+                request_type=request.request_type  # Pass for intent detection
             )
             
             # Handle routing decision
