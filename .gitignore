@@ -35,3 +35,6 @@ memory/storage/
 *.sqlite
 *.chroma
 chroma.sqlite3
+
+# --- VISUAL STUDIO ---
+*.vs
