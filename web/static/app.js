@@ -1,233 +1,376 @@
-// Misaka Cipher - Nexus Portal - Frontend JavaScript
+// Misaka Cipher - Web Dashboard JavaScript
+// Handles WebSocket connections, UI interactions, and real-time updates
 
-// ===== CONFIGURATION =====
-const WS_URL = `ws://${window.location.host}`;
-const API_URL = '/api';
+// WebSocket connections
+let chatWs = null;
+let logsWs = null;
+let agentsWs = null;
 
-// ===== STATE =====
-let chatSocket = null;
-let logsSocket = null;
-let agentsSocket = null;
-let currentTraceId = null;
-let isRecording = false;
+// UI state
+let currentMainTab = 'chat';
 
-// ===== INITIALIZATION =====
+// Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     initializeWebSockets();
-    initializeEventListeners();
-    updateStatus('online');
+    initializeUI();
+    loadInitialData();
 });
 
-// ===== WEBSOCKET MANAGEMENT =====
+// ===== WebSocket Management =====
+
 function initializeWebSockets() {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.host;
+
     // Chat WebSocket
-    chatSocket = new WebSocket(`${WS_URL}/ws/chat`);
-
-    chatSocket.onopen = () => {
-        console.log('Chat WebSocket connected');
-        updateStatus('online');
+    chatWs = new WebSocket(`${wsProtocol}//${wsHost}/ws/chat`);
+    chatWs.onopen = () => updateConnectionStatus(true);
+    chatWs.onclose = () => {
+        updateConnectionStatus(false);
+        setTimeout(initializeWebSockets, 3000); // Reconnect
     };
-
-    chatSocket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        handleChatMessage(data);
-    };
-
-    chatSocket.onerror = () => {
-        console.error('Chat WebSocket error');
-        updateStatus('offline');
-    };
-
-    chatSocket.onclose = () => {
-        console.log('Chat WebSocket disconnected');
-        updateStatus('offline');
-        // Reconnect after 3 seconds
-        setTimeout(initializeWebSockets, 3000);
-    };
+    chatWs.onmessage = handleChatMessage;
 
     // Logs WebSocket
-    logsSocket = new WebSocket(`${WS_URL}/ws/logs`);
-
-    logsSocket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'log') {
-            addLogEntry(data);
-        }
-    };
+    logsWs = new WebSocket(`${wsProtocol}//${wsHost}/ws/logs`);
+    logsWs.onmessage = handleLogMessage;
 
     // Agents WebSocket
-    agentsSocket = new WebSocket(`${WS_URL}/ws/agents`);
-
-    agentsSocket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'agents_update') {
-            updateAgentsPanel(data.agents);
-        }
-    };
+    agentsWs = new WebSocket(`${wsProtocol}//${wsHost}/ws/agents`);
+    agentsWs.onmessage = handleAgentsUpdate;
 }
 
-function updateStatus(status) {
+function updateConnectionStatus(connected) {
     const indicator = document.getElementById('status-indicator');
     const dot = indicator.querySelector('.status-dot');
     const text = indicator.querySelector('.status-text');
 
-    if (status === 'online') {
-        dot.classList.remove('offline');
+    if (connected) {
+        dot.classList.add('connected');
         text.textContent = 'Connected';
     } else {
-        dot.classList.add('offline');
+        dot.classList.remove('connected');
         text.textContent = 'Disconnected';
     }
 }
 
-// ===== EVENT LISTENERS =====
-function initializeEventListeners() {
-    // Send message on Enter
-    const chatInput = document.getElementById('chat-input');
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendMessage();
-        }
+// ===== UI Initialization =====
+
+function initializeUI() {
+    // Main tab switching
+    document.querySelectorAll('.main-tab').forEach(tab => {
+        tab.addEventListener('click', () => switchMainTab(tab.dataset.maintab));
     });
 
-    // Send button
-    document.getElementById('send-button').addEventListener('click', sendMessage);
+    // Chat input
+    const chatInput = document.getElementById('chat-input');
+    const sendButton = document.getElementById('send-button');
 
-    // Voice button
-    document.getElementById('voice-button').addEventListener('click', toggleVoiceRecording);
-
-    // Tab switching
-    const tabs = document.querySelectorAll('.tab');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            const targetTab = tab.dataset.tab;
-            switchTab(targetTab);
-        });
+    sendButton.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
     });
 
     // Memory search
     document.getElementById('memory-search-button').addEventListener('click', searchMemory);
     document.getElementById('memory-search').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            searchMemory();
-        }
+        if (e.key === 'Enter') searchMemory();
+    });
+
+    // Files filters
+    document.getElementById('domain-filter').addEventListener('change', loadFiles);
+    document.getElementById('type-filter').addEventListener('change', loadFiles);
+    document.getElementById('refresh-files').addEventListener('click', loadFiles);
+
+    // Tools forge button
+    document.getElementById('forge-tool-button').addEventListener('click', () => {
+        alert('Tool forging via UI coming soon! For now, use the chat: "Create a tool to..."');
     });
 }
 
-// ===== CHAT FUNCTIONALITY =====
-async function sendMessage() {
+function switchMainTab(tabName) {
+    currentMainTab = tabName;
+
+    // Update tab buttons
+    document.querySelectorAll('.main-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.maintab === tabName);
+    });
+
+    // Update panels
+    document.querySelectorAll('.main-tab-panel').forEach(panel => {
+        panel.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-panel`).classList.add('active');
+
+    // Load data for tab
+    if (tabName === 'files') {
+        loadFiles();
+    } else if (tabName === 'tools') {
+        loadTools();
+    }
+}
+
+// ===== Data Loading =====
+
+async function loadInitialData() {
+    await loadSystemStatus();
+    await loadTools();
+
+    // Refresh status every 5 seconds
+    setInterval(loadSystemStatus, 5000);
+}
+
+async function loadSystemStatus() {
+    try {
+        const response = await fetch('/api/system/status');
+        const data = await response.json();
+
+        // Update compact status bar
+        document.getElementById('nexus-status').textContent = data.nexus?.initialized ? '✓' : '✗';
+        document.getElementById('agents-count').textContent = data.factory?.active_agents || 0;
+        document.getElementById('tools-count').textContent = data.forge?.total_tools || 0;
+
+        // Load files count
+        const filesResp = await fetch('/api/workspace/files');
+        const filesData = await filesResp.json();
+        document.getElementById('files-count').textContent = filesData.count || 0;
+
+    } catch (error) {
+        console.error('Status load error:', error);
+    }
+}
+
+async function loadFiles() {
+    const domain = document.getElementById('domain-filter').value;
+    const type = document.getElementById('type-filter').value;
+
+    try {
+        let url = '/api/workspace/files';
+        if (domain) url += `?domain=${domain}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        const grid = document.getElementById('files-grid');
+
+        if (data.count === 0) {
+            grid.innerHTML = '<p class="placeholder-text">No files yet. Ask Misaka to create reports, analysis, or other outputs!</p>';
+            return;
+        }
+
+        // Filter by type if selected
+        let files = data.files;
+        if (type) {
+            files = files.filter(f => f.file_type === type);
+        }
+
+        grid.innerHTML = files.map(file => `
+            <div class="file-card" onclick="downloadFile('${file.domain}', '${file.filename}')">
+                <div class="file-icon">${getFileIcon(file.file_type)}</div>
+                <div class="file-name">${file.filename}</div>
+                <div class="file-meta">
+                    <div>${file.domain}</div>
+                    <div>${formatFileSize(file.size_bytes)}</div>
+                    <div>${formatDate(file.created_at)}</div>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Files load error:', error);
+        document.getElementById('files-grid').innerHTML =
+            '<p class="placeholder-text">Error loading files</p>';
+    }
+}
+
+async function loadTools() {
+    try {
+        const response = await fetch('/api/tools/list');
+        const data = await response.json();
+
+        const grid = document.getElementById('tools-grid');
+
+        if (data.count === 0) {
+            grid.innerHTML = '<p class="placeholder-text">No tools yet. The Forge will create them as needed!</p>';
+            return;
+        }
+
+        grid.innerHTML = data.tools.map(tool => `
+            <div class="tool-card">
+                <div class="tool-header">
+                    <div class="tool-name">${tool.name}</div>
+                    <div class="tool-domain">${tool.domain}</div>
+                </div>
+                <div class="tool-description">${tool.description || 'No description'}</div>
+                <div class="tool-params">
+                    Parameters: ${Object.keys(tool.parameters || {}).length || 0}
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Tools load error:', error);
+    }
+}
+
+async function searchMemory() {
+    const query = document.getElementById('memory-search').value;
+    const domain = document.getElementById('memory-domain-filter').value;
+
+    if (!query) return;
+
+    try {
+        const response = await fetch('/api/memory/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, domain: domain || null, limit: 10 })
+        });
+
+        const data = await response.json();
+        const results = document.getElementById('memory-results');
+
+        if (data.count === 0) {
+            results.innerHTML = '<p class="placeholder-text">No memories found</p>';
+            return;
+        }
+
+        results.innerHTML = data.results.map(mem => `
+            <div class="memory-card">
+                <div style="color: var(--primary); font-weight: 600;">${mem.event_type}</div>
+                <div style="margin: 0.5rem 0;">${mem.summary}</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                    <span>${mem.domain}</span> • 
+                    <span>${formatDate(mem.timestamp)}</span> • 
+                    <span style="font-family: 'Fira Code', monospace; color: var(--accent);">${mem.memory_id}</span>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Memory search error:', error);
+    }
+}
+
+// ===== Chat Functions =====
+
+function sendMessage() {
     const input = document.getElementById('chat-input');
     const message = input.value.trim();
 
-    if (!message) return;
+    if (!message || chatWs.readyState !== WebSocket.OPEN) return;
+
+    // Add user message to UI
+    addMessage('user', message);
+
+    // Send via WebSocket
+    chatWs.send(JSON.stringify({ message }));
 
     // Clear input
     input.value = '';
+}
 
-    // Add user message to chat
-    appendChatMessage('user', message);
+function handleChatMessage(event) {
+    const data = JSON.parse(event.data);
 
-    // Send via WebSocket (preferred) or REST API (fallback)
-    if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
-        chatSocket.send(JSON.stringify({ message }));
-    } else {
-        // Fallback to REST API
-        try {
-            const response = await fetch(`${API_URL}/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message })
-            });
+    if (data.type === 'response') {
+        addMessage('ai', data.response, {
+            trace_id: data.trace_id,
+            actions: data.actions_taken,
+            tools: data.tools_forged,
+            agents: data.agents_spawned
+        });
 
-            const data = await response.json();
-            handleChatMessage({ type: 'response', ...data });
-        } catch (error) {
-            console.error('Error sending message:', error);
-            appendChatMessage('system', 'Error: Could not send message');
+        // Reload files if any were created
+        if (currentMainTab === 'files') {
+            loadFiles();
         }
     }
 }
 
-function handleChatMessage(data) {
-    if (data.type === 'response' || data.type === 'chat_response') {
-        currentTraceId = data.trace_id;
-        appendChatMessage('ai', data.response, data.trace_id, data.actions);
-    }
-}
-
-function appendChatMessage(role, content, traceId = null, actions = null) {
-    const messagesContainer = document.getElementById('chat-messages');
+function addMessage(sender, content, metadata = {}) {
+    const messages = document.getElementById('chat-messages');
     const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${role}-message`;
+    messageDiv.className = `message ${sender}-message`;
 
-    let messageHTML = `<div class="message-content">`;
+    let html = '';
 
-    if (role === 'user') {
-        messageHTML += `<strong>You:</strong> ${escapeHtml(content)}`;
-    } else if (role === 'ai') {
-        // Parse markdown for AI responses
-        messageHTML += `<strong>Misaka:</strong><br>${marked.parse(content)}`;
+    if (sender === 'ai') {
+        html = `
+            <div class="message-header">
+                <span class="message-sender">Misaka</span>
+                ${metadata.trace_id ? `<span class="trace-id">${metadata.trace_id}</span>` : ''}
+            </div>
+            <div class="message-content">${marked.parse(content)}</div>
+        `;
 
-        if (actions && actions.length > 0) {
-            messageHTML += `<br><small style="color: var(--text-secondary);">Actions: ${actions.join(', ')}</small>`;
+        if (metadata.actions && metadata.actions.length > 0) {
+            html += `<div class="action-pills">`;
+            metadata.actions.forEach(action => {
+                html += `<span class="action-pill">${action}</span>`;
+            });
+            html += `</div>`;
         }
+    } else if (sender === 'user') {
+        html = `
+            <div class="message-header">
+                <span class="message-sender">You</span>
+            </div>
+            <div class="message-content">${content}</div>
+        `;
     } else {
-        messageHTML += content;
+        html = `<div class="message-content">${content}</div>`;
     }
 
-    messageHTML += `</div>`;
-
-    if (traceId) {
-        messageHTML += `<span class="trace-id">Trace: ${traceId}</span>`;
-    }
-
-    messageDiv.innerHTML = messageHTML;
+    messageDiv.innerHTML = html;
+    messages.appendChild(messageDiv);
+    messages.scrollTop = messages.scrollHeight;
 
     // Syntax highlighting for code blocks
-    messageDiv.querySelectorAll('pre code').forEach((block) => {
+    messageDiv.querySelectorAll('pre code').forEach(block => {
         hljs.highlightElement(block);
     });
-
-    messagesContainer.appendChild(messageDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// ===== VOICE INPUT =====
-function toggleVoiceRecording() {
-    const button = document.getElementById('voice-button');
+// ===== Log Handling =====
 
-    if (isRecording) {
-        stopVoiceRecording();
-    } else {
-        startVoiceRecording();
+function handleLogMessage(event) {
+    const log = JSON.parse(event.data);
+    const container = document.getElementById('logs-container');
+
+    const logDiv = document.createElement('div');
+    logDiv.className = `log-entry ${log.level.toLowerCase()}`;
+    logDiv.innerHTML = `
+        <span class="log-time">${formatTime(log.timestamp)}</span>
+        <span class="log-level">${log.level}</span>
+        <span class="log-message">${log.message}</span>
+    `;
+
+    container.appendChild(logDiv);
+
+    // Keep only last 100 logs
+    while (container.children.length > 100) {
+        container.removeChild(container.firstChild);
     }
+
+    // Auto-scroll to bottom
+    container.scrollTop = container.scrollHeight;
 }
 
-function startVoiceRecording() {
-    const button = document.getElementById('voice-button');
-    button.classList.add('recording');
-    isRecording = true;
+// ===== Agents Handling =====
 
-    // TODO: Implement actual voice recording
-    // For now, show a placeholder
-    appendChatMessage('system', 'Voice input not yet implemented. Coming soon!');
+function handleAgentsUpdate(event) {
+    const data = JSON.parse(event.data);
+    const agents = data.agents || [];
 
-    setTimeout(() => {
-        stopVoiceRecording();
-    }, 3000);
-}
+    // Update agents count in header
+    document.getElementById('agents-count').textContent = agents.length;
 
-function stopVoiceRecording() {
-    const button = document.getElementById('voice-button');
-    button.classList.remove('recording');
-    isRecording = false;
-}
-
-// ===== AGENTS PANEL =====
-function updateAgentsPanel(agents) {
     const agentsList = document.getElementById('agents-list');
 
-    if (!agents || agents.length === 0) {
+    if (agents.length === 0) {
         agentsList.innerHTML = '<div class="no-agents">No active agents</div>';
         return;
     }
@@ -235,110 +378,51 @@ function updateAgentsPanel(agents) {
     agentsList.innerHTML = agents.map(agent => `
         <div class="agent-card">
             <div class="agent-name">${agent.name}</div>
-            <div class="agent-status">Status: ${agent.status}</div>
-            <div class="agent-status">Trace: ${agent.trace_id}</div>
+            <div class="agent-status">${agent.status}</div>
+            <div class="agent-trace">${agent.trace_id}</div>
         </div>
     `).join('');
 }
 
-// ===== TABS =====
-function switchTab(tabName) {
-    // Update tab buttons
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.classList.remove('active');
-        if (tab.dataset.tab === tabName) {
-            tab.classList.add('active');
-        }
+// ===== File Operations =====
+
+function downloadFile(domain, filename) {
+    window.location.href = `/api/workspace/files/${domain}/${filename}`;
+}
+
+// ===== Utility Functions =====
+
+function getFileIcon(type) {
+    const icons = {
+        'pdf': '📄',
+        'txt': '📝',
+        'csv': '📊',
+        'json': '🔧',
+        'html': '🌐',
+        'png': '🖼️',
+        'jpg': '🖼️',
+        'mp3': '🎵'
+    };
+    return icons[type] || '📁';
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
     });
-
-    // Update tab panels
-    document.querySelectorAll('.tab-panel').forEach(panel => {
-        panel.classList.remove('active');
-    });
-    document.getElementById(`${tabName}-tab`).classList.add('active');
 }
 
-// ===== MEMORY SEARCH =====
-async function searchMemory() {
-    const input = document.getElementById('memory-search');
-    const query = input.value.trim();
-
-    if (!query) return;
-
-    const resultsContainer = document.getElementById('memory-results');
-    resultsContainer.innerHTML = '<p class="placeholder-text">Searching...</p>';
-
-    try {
-        const response = await fetch(`${API_URL}/memory/search`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, limit: 10 })
-        });
-
-        const data = await response.json();
-
-        if (data.results.length === 0) {
-            resultsContainer.innerHTML = '<p class="placeholder-text">No memories found</p>';
-            return;
-        }
-
-        resultsContainer.innerHTML = data.results.map(result => `
-            <div class="memory-card">
-                <div class="memory-summary">${escapeHtml(result.summary)}</div>
-                <div class="memory-meta">
-                    <span>Domain: ${result.domain}</span>
-                    <span>Type: ${result.event_type}</span>
-                    <span>Trace: ${result.trace_id}</span>
-                </div>
-            </div>
-        `).join('');
-
-    } catch (error) {
-        console.error('Memory search error:', error);
-        resultsContainer.innerHTML = '<p class="placeholder-text">Search failed</p>';
-    }
+function formatTime(timestamp) {
+    const date = new Date(timestamp);
+    return date.toTimeString().split(' ')[0];
 }
-
-// ===== LOGS =====
-function addLogEntry(log) {
-    const logsContainer = document.getElementById('logs-container');
-    const logEntry = document.createElement('div');
-    logEntry.className = `log-entry ${log.level}`;
-
-    const time = new Date(log.timestamp).toLocaleTimeString();
-
-    logEntry.innerHTML = `
-        <span class="log-time">${time}</span>
-        <span class="log-level">${log.level.toUpperCase()}</span>
-        <span class="log-message">${escapeHtml(log.message)}</span>
-    `;
-
-    logsContainer.appendChild(logEntry);
-    logsContainer.scrollTop = logsContainer.scrollHeight;
-
-    // Limit log entries to 100
-    while (logsContainer.children.length > 100) {
-        logsContainer.removeChild(logsContainer.firstChild);
-    }
-}
-
-// ===== UTILITY FUNCTIONS =====
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// ===== SYSTEM STATUS MONITORING =====
-async function fetchSystemStatus() {
-    try {
-        const response = await fetch(`${API_URL}/system/status`);
-        const status = await response.json();
-        console.log('System status:', status);
-    } catch (error) {
-        console.error('Status fetch error:', error);
-    }
-}
-
-// Poll system status every 30 seconds
-setInterval(fetchSystemStatus, 30000);
