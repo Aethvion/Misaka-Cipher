@@ -47,7 +47,52 @@ class BaseAgent(ABC):
         # Logger
         self.logger = get_logger(f"factory.{self.name}")
         
+        # Load memory context
+        self.context = self._load_memory_context()
+        
         self.logger.info(f"[{self.trace_id}] Agent initialized: {self.name}")
+        if self.context.get('available_tools'):
+            self.logger.info(
+                f"[{self.trace_id}] Loaded context: "
+                f"{len(self.context['available_tools'])} tools available in {spec.domain}"
+            )
+    
+    def _load_memory_context(self) -> dict:
+        """
+        Load relevant context from Memory Tier.
+        
+        Queries:
+        - Available tools in agent's domain (Knowledge Graph)
+        - Recent domain activity (Episodic Memory)
+        
+        Returns:
+            Context dictionary
+        """
+        context = {
+            'available_tools': [],
+            'recent_activity': []
+        }
+        
+        try:
+            # Import here to avoid circular dependencies
+            from memory import get_knowledge_graph, get_episodic_memory
+            
+            # Get available tools from Knowledge Graph
+            kg = get_knowledge_graph()
+            context['available_tools'] = kg.get_tools_by_domain(self.spec.domain)
+            
+            # Get recent activity in this domain (last 24 hours)
+            memory_store = get_episodic_memory()
+            recent_memories = memory_store.get_recent(hours=24, domain=self.spec.domain)
+            context['recent_activity'] = [
+                {'event': mem.event_type, 'summary': mem.summary}
+                for mem in recent_memories[:5]  # Limit to 5 most recent
+            ]
+            
+        except Exception as e:
+            self.logger.debug(f"[{self.trace_id}] Memory context loading failed: {str(e)}")
+        
+        return context
     
     @abstractmethod
     def execute(self) -> AgentResult:

@@ -123,6 +123,9 @@ class ToolForge:
             
             logger.info(f"[{trace_id}] Tool registered: {spec.name}")
             
+            # Log to Memory Tier
+            self._log_to_memory(spec, trace_id, file_path)
+            
             # Complete trace
             self.trace_manager.end_trace(trace_id)
             
@@ -240,3 +243,77 @@ Be precise. Choose the most appropriate domain and action from the allowed lists
     def search_tools(self, query: str):
         """Search tools by name or description."""
         return self.registry.search_tools(query)
+    
+    def _log_to_memory(self, spec: ToolSpec, trace_id: str, file_path: Path):
+        """
+        Log tool creation to Memory Tier.
+        
+        Args:
+            spec: Tool specification
+            trace_id: Trace ID for this generation
+            file_path: Path to generated tool file
+        """
+        try:
+            # Import here to avoid circular dependencies
+            from memory import (
+                get_episodic_memory,
+                get_knowledge_graph,
+                EpisodicMemory,
+                generate_memory_id
+            )
+            from datetime import datetime
+            
+            # Create episodic memory
+            memory = EpisodicMemory(
+                memory_id=generate_memory_id(),
+                trace_id=trace_id,
+                timestamp=datetime.now().isoformat(),
+                event_type='tool_forge',
+                domain=spec.domain,
+                summary=f"Generated {spec.name} tool",
+                content=f"Tool '{spec.name}' created: {spec.description}",
+                metadata={
+                    'tool_name': spec.name,
+                    'tool_file': str(file_path),
+                    'parameters': [p.name for p in spec.parameters],
+                    'return_type': spec.return_type
+                }
+            )
+            
+            # Store in episodic memory
+            memory_store = get_episodic_memory()
+            memory_store.store(memory)
+            
+            logger.debug(f"[{trace_id}] Tool logged to episodic memory")
+            
+            # Add to knowledge graph
+            kg = get_knowledge_graph()
+            
+            # Add tool node and link to domain
+            kg.add_tool(
+                tool_name=spec.name,
+                domain=spec.domain,
+                metadata={
+                    'type': spec.implementation_type,
+                    'description': spec.description
+                }
+            )
+            
+            # Add trace ID node
+            kg.add_trace_id(
+                trace_id=trace_id,
+                event_type='tool_forge'
+            )
+            
+            # Link tool to trace
+            kg.link_tool_to_trace(spec.name, trace_id)
+            
+            # Save graph
+            kg.save()
+            
+            logger.debug(f"[{trace_id}] Tool linked in knowledge graph")
+            
+        except Exception as e:
+            # Don't fail tool generation if memory logging fails
+            logger.warning(f"[{trace_id}] Memory logging failed: {str(e)}")
+
