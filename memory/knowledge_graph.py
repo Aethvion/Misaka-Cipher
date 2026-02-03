@@ -170,7 +170,8 @@ class KnowledgeGraph:
             self.add_trace_id(trace_id, 'file_creation')
         
         # Create unique file ID
-        file_id = f"file_{file_path.replace('/', '_').replace('\\', '_')}"
+        normalized_path = file_path.replace('/', '_').replace('\\', '_')
+        file_id = f"file_{normalized_path}"
         
         # Add file node
         if not self.graph.has_node(file_id):
