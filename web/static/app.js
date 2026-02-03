@@ -337,27 +337,39 @@ function addMessage(sender, content, metadata = {}) {
 // ===== Log Handling =====
 
 function handleLogMessage(event) {
-    const log = JSON.parse(event.data);
-    const container = document.getElementById('logs-container');
+    try {
+        const log = JSON.parse(event.data);
+        const container = document.getElementById('logs-container');
 
-    const logDiv = document.createElement('div');
-    logDiv.className = `log-entry ${log.level.toLowerCase()}`;
-    logDiv.innerHTML = `
-        <span class="log-time">${formatTime(log.timestamp)}</span>
-        <span class="log-level">${log.level}</span>
-        <span class="log-message">${log.message}</span>
-    `;
+        // Defensive checks for log structure
+        if (!log || typeof log !== 'object') return;
 
-    container.appendChild(logDiv);
+        const level = (log.level || 'info').toLowerCase();
+        const timestamp = log.timestamp || new Date().toISOString();
+        const message = log.message || JSON.stringify(log);
 
-    // Keep only last 100 logs
-    while (container.children.length > 100) {
-        container.removeChild(container.firstChild);
+        const logDiv = document.createElement('div');
+        logDiv.className = `log-entry ${level}`;
+        logDiv.innerHTML = `
+            <span class="log-time">${formatTime(timestamp)}</span>
+            <span class="log-level">${level.toUpperCase()}</span>
+            <span class="log-message">${message}</span>
+        `;
+
+        container.appendChild(logDiv);
+
+        // Keep only last 100 logs
+        while (container.children.length > 100) {
+            container.removeChild(container.firstChild);
+        }
+
+        // Auto-scroll to bottom
+        container.scrollTop = container.scrollHeight;
+    } catch (error) {
+        console.warn('Invalid log message:', error);
     }
-
-    // Auto-scroll to bottom
-    container.scrollTop = container.scrollHeight;
 }
+
 
 // ===== Agents Handling =====
 
