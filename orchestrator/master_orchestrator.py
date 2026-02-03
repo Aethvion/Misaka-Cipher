@@ -337,7 +337,7 @@ class MasterOrchestrator:
         logger.info(f"[{trace_id}] Querying memory: {query[:50]}...")
         
         # Search episodic memory
-        results = self.episodic_memory.search(query, domain=domain, limit=5)
+        results = self.episodic_memory.search(query, k=5, domain=domain)
         
         return [
             {
