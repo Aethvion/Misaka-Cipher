@@ -24,8 +24,8 @@ logger = get_logger(__name__)
 
 def run_cli():
     """Launch interactive CLI."""
-    from cli import main as cli_main
-    cli_main()
+    import cli
+    cli.main()
 
 
 def run_verification_tests():

@@ -3,7 +3,7 @@ Misaka Cipher - Memory Module
 Memory Tier query interface
 """
 
-from cli.utils import (
+from cli_modules.utils import (
     console, clear_screen, print_header, print_menu, get_user_choice,
     get_text_input, print_table, print_key_value, pause, print_info,
     print_warning, confirm

@@ -4,15 +4,15 @@ Interactive command-line interface for Misaka Cipher system
 """
 
 import sys
-from cli.utils import (
+from cli_modules.utils import (
     console, clear_screen, print_banner, print_menu, get_user_choice,
     print_success, print_error
 )
-from cli.system_module import show_system_status
-from cli.nexus_module import nexus_core_module
-from cli.factory_module import factory_module
-from cli.forge_module import forge_module
-from cli.memory_module import memory_module
+from cli_modules.system_module import show_system_status
+from cli_modules.nexus_module import nexus_core_module
+from cli_modules.factory_module import factory_module
+from cli_modules.forge_module import forge_module
+from cli_modules.memory_module import memory_module
 
 from nexus_core import NexusCore
 from factory import AgentFactory

@@ -3,7 +3,7 @@ Misaka Cipher - Nexus Core Module
 Direct AI interaction through Nexus Core
 """
 
-from cli.utils import (
+from cli_modules.utils import (
     console, clear_screen, print_header, get_text_input,
     format_trace_id, print_success, print_error, print_key_value,
     confirm, pause, show_progress
