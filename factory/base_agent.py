@@ -64,33 +64,50 @@ class BaseAgent(ABC):
         Queries:
         - Available tools in agent's domain (Knowledge Graph)
         - Recent domain activity (Episodic Memory)
+        - Workspace manager for output file organization
         
         Returns:
             Context dictionary
         """
         context = {
             'available_tools': [],
-            'recent_activity': []
+            'recent_activity': [],
+            'workspace_manager': None,
+            'output_path': None
         }
         
         try:
             # Import here to avoid circular dependencies
             from memory import get_knowledge_graph, get_episodic_memory
+            from workspace import get_workspace_manager
+            
+            # Get workspace manager
+            workspace_manager = get_workspace_manager()
+            context['workspace_manager'] = workspace_manager
+            context['output_path'] = workspace_manager.get_output_path(
+                self.spec.domain, 
+                ''  # Empty filename - agent will choose filename
+            )
             
             # Get available tools from Knowledge Graph
-            kg = get_knowledge_graph()
-            context['available_tools'] = kg.get_tools_by_domain(self.spec.domain)
+            graph = get_knowledge_graph()
+            tools_in_domain = graph.get_tools_by_domain(self.spec.domain)
+            context['available_tools'] = tools_in_domain
             
-            # Get recent activity in this domain (last 24 hours)
-            memory_store = get_episodic_memory()
-            recent_memories = memory_store.get_recent(hours=24, domain=self.spec.domain)
+            # Get recent activity from Episodic Memory
+            episodic = get_episodic_memory()
+            recent = episodic.get_recent(k=5, domain=self.spec.domain)
             context['recent_activity'] = [
-                {'event': mem.event_type, 'summary': mem.summary}
-                for mem in recent_memories[:5]  # Limit to 5 most recent
+                {
+                    'event': mem.event_type,
+                    'summary': mem.summary,
+                    'timestamp': mem.timestamp
+                }
+                for mem in recent
             ]
             
         except Exception as e:
-            self.logger.debug(f"[{self.trace_id}] Memory context loading failed: {str(e)}")
+            self.logger.warning(f"[{self.trace_id}] Failed to load memory context: {str(e)}")
         
         return context
     

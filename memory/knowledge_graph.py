@@ -146,6 +146,54 @@ class KnowledgeGraph:
             )
             logger.debug(f"Added Trace_ID: {trace_id}")
     
+    def add_file_node(
+        self,
+        file_path: str,
+        domain: str,
+        trace_id: str,
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """
+        Add a file node for user deliverables.
+        
+        Args:
+            file_path: Relative path to file in WorkFolder
+            domain: Domain category (Finance, System, etc.)
+            trace_id: Trace_ID that created this file
+            metadata: Optional metadata (size, type, etc.)
+        """
+        # Ensure domain exists
+        self.add_domain(domain)
+        
+        # Ensure trace_id exists
+        if not self.graph.has_node(trace_id):
+            self.add_trace_id(trace_id, 'file_creation')
+        
+        # Create unique file ID
+        file_id = f"file_{file_path.replace('/', '_').replace('\\', '_')}"
+        
+        # Add file node
+        if not self.graph.has_node(file_id):
+            safe_metadata = {k: v for k, v in (metadata or {}).items()
+                           if k not in ['node_type', 'domain', 'path', 'trace_id', 'created']}
+            
+            self.graph.add_node(
+                file_id,
+                node_type='file',
+                domain=domain,
+                path=file_path,
+                trace_id=trace_id,
+                created=datetime.now().isoformat(),
+                **safe_metadata
+            )
+            logger.debug(f"Added file node: {file_id}")
+        
+        # Link file to domain
+        self.graph.add_edge(domain, file_id, edge_type='contains', relationship='domain_contains_file')
+        
+        # Link trace_id to file
+        self.graph.add_edge(trace_id, file_id, edge_type='created', relationship='trace_created_file')
+    
     def add_core_insight(self, insight_id: str, trace_ids: List[str], metadata: Optional[Dict[str, Any]] = None) -> None:
         """
         Add a Core Insight and link it to originating Trace_IDs.
@@ -213,6 +261,50 @@ class KnowledgeGraph:
                 agents.append(successor)
         
         return agents
+    
+    def get_files_by_domain(self, domain: str) -> List[Dict[str, Any]]:
+        """
+        Get all files in a specific domain.
+        
+        Args:
+            domain: Domain name
+            
+        Returns:
+            List of file info dicts
+        """
+        if not self.graph.has_node(domain):
+            return []
+        
+        files = []
+        for successor in self.graph.successors(domain):
+            if self.graph.nodes[successor].get('node_type') == 'file':
+                file_data = dict(self.graph.nodes[successor])
+                file_data['file_id'] = successor
+                files.append(file_data)
+        
+        return files
+    
+    def get_file_by_trace(self, trace_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get file created by a specific Trace_ID.
+        
+        Args:
+            trace_id: Trace ID
+            
+        Returns:
+            File info dict or None
+        """
+        if not self.graph.has_node(trace_id):
+            return None
+        
+        # Find file nodes created by this trace
+        for successor in self.graph.successors(trace_id):
+            if self.graph.nodes[successor].get('node_type') == 'file':
+                file_data = dict(self.graph.nodes[successor])
+                file_data['file_id'] = successor
+                return file_data
+        
+        return None
     
     def get_domains(self) -> List[str]:
         """Get all domain nodes."""
