@@ -34,8 +34,12 @@ def show_system_status(nexus: NexusCore, factory: AgentFactory, forge: ToolForge
     
     print_key_value("Initialized", "✓ Yes" if status['initialized'] else "✗ No")
     print_key_value("Active Traces", status['active_traces'])
-    print_key_value("Firewall Status", 
-                   f"[green]ACTIVE[/green] ({status['firewall']['mode']})")
+    
+    # Firewall status
+    firewall_enabled = status['firewall'].get('enabled', False)
+    firewall_status = "ACTIVE" if firewall_enabled else "DISABLED"
+    firewall_color = "green" if firewall_enabled else "yellow"
+    print_key_value("Firewall Status", f"[{firewall_color}]{firewall_status}[/{firewall_color}]")
     
     # Provider Status
     console.print("\n[bold yellow]Providers:[/bold yellow]")
