@@ -53,7 +53,8 @@ def show_system_status(nexus: NexusCore, factory: AgentFactory, forge: ToolForge
     # Factory Status
     console.print("\n[bold cyan]═══ The Factory ═══[/bold cyan]")
     try:
-        agent_count = factory.registry.get_agent_count()
+        agents = factory.registry.get_all_agents()
+        agent_count = len(agents)
         template_count = len(factory.templates.get_all_templates())
         
         print_key_value("Registered Agents", agent_count)
