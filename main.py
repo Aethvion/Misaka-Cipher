@@ -28,6 +28,34 @@ def run_cli():
     cli.main()
 
 
+def run_web_server():
+    """Launch web dashboard with orchestrator."""
+    print("\n" + "=" * 70)
+    print("MISAKA CIPHER - NEXUS PORTAL (WEB)")
+    print("=" * 70 + "\n")
+    print("Launching web server...")
+    print("Dashboard will be available at: http://localhost:8000")
+    print("API documentation at: http://localhost:8000/docs\n")
+    print("Press CTRL+C to stop the server\n")
+    
+    try:
+        import uvicorn
+        from web.server import app
+        
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=8000,
+            log_level="info"
+        )
+    except KeyboardInterrupt:
+        print("\n\nServer stopped by user")
+    except Exception as e:
+        logger.error(f"Web server failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
+
 def run_verification_tests():
     """Run Sprint 1 verification tests."""
     from nexus_core import NexusCore, Request
@@ -113,11 +141,13 @@ def run_verification_tests():
 
 if __name__ == "__main__":
     try:
-        # Check for --test flag
+        # Check for flags
         if "--test" in sys.argv:
             run_verification_tests()
-        else:
+        elif "--cli" in sys.argv:
             run_cli()
+        else:
+            run_web_server()  # Default to web interface
     except Exception as e:
         logger.error(f"Application failed: {str(e)}")
         import traceback
