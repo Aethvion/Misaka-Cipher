@@ -96,7 +96,7 @@ class MasterOrchestrator:
             ExecutionResult with complete execution details
         """
         start_time = datetime.now()
-        trace_id = generate_trace_id("ORCH")
+        trace_id = generate_trace_id()
         self.current_trace_id = trace_id
         
         logger.info(f"[{trace_id}] Processing message: {user_message[:50]}...")
@@ -401,8 +401,8 @@ class MasterOrchestrator:
 **Providers**: {providers_healthy}/{total_providers} healthy
 
 **The Factory**: {len(self.factory.registry.get_all_agents())} agents (all time)
-**The Forge**: {len(self.forge.tool_registry.list_tools())} tools registered
-**Memory Tier**: {self.episodic_memory.get_memory_count()} episodic memories
+**The Forge**: {len(self.forge.registry.list_tools())} tools registered
+**Memory Tier**: {self.episodic_memory.collection.count() if hasattr(self.episodic_memory, 'collection') else 0} episodic memories
 
 System operational and ready."""
     

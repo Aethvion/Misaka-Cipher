@@ -239,32 +239,42 @@ async def get_system_status():
     if not nexus:
         raise HTTPException(status_code=503, detail="System not initialized")
     
-    status = nexus.get_status()
-    
-    return {
-        "nexus": {
-            "initialized": status['initialized'],
-            "active_traces": status['active_traces'],
-            "firewall": status['firewall'],
-            "providers": status['providers']
-        },
-        "factory": {
-            "total_agents": len(factory.registry.get_all_agents()),
-            "active_agents": factory.registry.get_active_count(),
-            "max_concurrent": factory.max_concurrent_agents
-        },
-        "forge": {
-            "total_tools": len(forge.tool_registry.list_tools()),
-            "recent_tools": [
-                {"name": t.name, "domain": t.domain}
-                for t in forge.tool_registry.list_tools()[:5]
-            ]
-        },
-        "memory": {
-            "episodic_count": orchestrator.episodic_memory.get_memory_count(),
-            "graph_stats": orchestrator.knowledge_graph.get_stats()
+    try:
+        status = nexus.get_status()
+        
+        # Get tool list safely
+        tools = forge.registry.list_tools()
+        recent_tools = []
+        for t in tools[:5]:
+            recent_tools.append({
+                "name": t.get('name', 'unknown'),
+                "domain": t.get('domain', 'unknown')
+            })
+        
+        return {
+            "nexus": {
+                "initialized": status['initialized'],
+                "active_traces": status['active_traces'],
+                "firewall": status['firewall'],
+                "providers": status['providers']
+            },
+            "factory": {
+                "total_agents": len(factory.registry.get_all_agents()),
+                "active_agents": factory.registry.get_active_count(),
+                "max_concurrent": factory.max_concurrent_agents
+            },
+            "forge": {
+                "total_tools": len(tools),
+                "recent_tools": recent_tools
+            },
+            "memory": {
+                "episodic_count": orchestrator.episodic_memory.collection.count() if hasattr(orchestrator.episodic_memory, 'collection') else 0,
+                "graph_stats": orchestrator.knowledge_graph.get_stats()
+            }
         }
-    }
+    except Exception as e:
+        logger.error(f"System status error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/agents/active")
@@ -286,16 +296,35 @@ async def search_memory(request: MemorySearchRequest):
     if not orchestrator:
         raise HTTPException(status_code=503, detail="Orchestrator not initialized")
     
-    results = orchestrator.query_memory(
-        query=request.query,
-        trace_id="WEB_SEARCH",
-        domain=request.domain
-    )
-    
-    return {
-        "count": len(results),
-        "results": results[:request.limit]
-    }
+    try:
+        results = orchestrator.query_memory(
+            query=request.query,
+            trace_id="WEB_SEARCH",
+            domain=request.domain
+        )
+        
+        # Convert MemoryEntry objects to dicts
+        serialized_results = []
+        for r in results[:request.limit]:
+            try:
+                serialized_results.append({
+                    "memory_id": r.memory_id if hasattr(r, 'memory_id') else str(r),
+                    "summary": r.summary if hasattr(r, 'summary') else str(r),
+                    "domain": r.domain if hasattr(r, 'domain') else "unknown",
+                    "timestamp": r.timestamp if hasattr(r, 'timestamp') else datetime.now().isoformat(),
+                    "event_type": r.event_type if hasattr(r, 'event_type') else "unknown"
+                })
+            except Exception:
+                # Skip problematic entries
+                continue
+        
+        return {
+            "count": len(serialized_results),
+            "results": serialized_results
+        }
+    except Exception as e:
+        logger.error(f"Memory search error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/tools/list")
@@ -304,15 +333,15 @@ async def list_tools():
     if not forge:
         raise HTTPException(status_code=503, detail="Forge not initialized")
     
-    tools = forge.tool_registry.list_tools()
+    tools = forge.registry.list_tools()
     return {
         "count": len(tools),
         "tools": [
             {
-                "name": t.name,
-                "domain": t.domain,
-                "description": t.description,
-                "parameters": t.parameters
+                "name": t.get('name', 'unknown'),
+                "domain": t.get('domain', 'unknown'),
+                "description": t.get('description', ''),
+                "parameters": t.get('parameters', {})
             }
             for t in tools
         ]
