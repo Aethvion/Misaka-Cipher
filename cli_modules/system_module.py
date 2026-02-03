@@ -55,10 +55,11 @@ def show_system_status(nexus: NexusCore, factory: AgentFactory, forge: ToolForge
     try:
         agents = factory.registry.get_all_agents()
         agent_count = len(agents)
-        template_count = len(factory.templates.get_all_templates())
+        active_count = factory.registry.get_active_count()
         
-        print_key_value("Registered Agents", agent_count)
-        print_key_value("Available Templates", template_count)
+        print_key_value("Total Agents (All Time)", agent_count)
+        print_key_value("Currently Active", active_count)
+        print_key_value("Max Concurrent", factory.max_concurrent_agents)
         print_success("Factory operational")
     except Exception as e:
         print_warning(f"Factory status unavailable: {str(e)}")
