@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any
 from .tool_spec import ToolSpec, ParameterSpec
 from .tool_registry import get_tool_registry
 from .code_generator import CodeGenerator
-from .validators import ToolValidator
+from .tool_validator import ToolValidator, ValidationResult
 from nexus_core import NexusCore, Request
 from utils import get_logger, get_trace_manager
 
@@ -80,7 +80,7 @@ class ToolForge:
         logger.info(f"[{trace_id}] Starting tool generation: {description[:100]}...")
         
         try:
-            # 1. Analyze description
+            # 1. Analyze description (extract spec)
             spec = self.analyze_description(description, trace_id)
             spec.trace_id = trace_id
             
@@ -89,29 +89,39 @@ class ToolForge:
             
             logger.info(f"[{trace_id}] Tool spec generated: {spec.name}")
             
-            # 2. Generate code
+            # 2. Generate implementation (NEW - real code via Nexus)
+            implementation_code = self.generate_implementation(spec, trace_id)
+            spec.implementation_hints['code'] = implementation_code
+            
+            logger.info(f"[{trace_id}] Implementation code generated ({len(implementation_code)} chars)")
+            
+            # 3. Generate code file
             code = self.generator.generate(spec)
             
-            logger.info(f"[{trace_id}] Code generated ({len(code)} chars)")
+            logger.info(f"[{trace_id}] Tool file generated ({len(code)} chars)")
             
-            # 3. Validate
-            is_valid, errors = self.validator.validate_tool(code, spec.name)
+            # 4. Validate
+            validation = self.validator.validate(code, spec)
             
-            if not is_valid:
-                error_msg = "; ".join(errors)
+            if not validation.success:
+                error_msg = "; ".join(validation.errors)
                 logger.error(f"[{trace_id}] Tool validation failed: {error_msg}")
                 raise ValueError(f"Tool validation failed: {error_msg}")
             
+            if validation.warnings:
+                warnings_msg = "; ".join(validation.warnings)
+                logger.warning(f"[{trace_id}] Tool validation warnings: {warnings_msg}")
+            
             logger.info(f"[{trace_id}] Tool validation passed")
             
-            # 4. Save to file
+            # 5. Save to file
             file_path = self.tools_dir / spec.file_name
             with open(file_path, 'w') as f:
                 f.write(code)
             
             logger.info(f"[{trace_id}] Tool saved: {file_path}")
             
-            # 5. Register
+            # 6. Register
             tool_info = {
                 **spec.to_dict(),
                 'file_path': str(file_path),
@@ -232,6 +242,194 @@ Be precise. Choose the most appropriate domain and action from the allowed lists
             logger.error(f"[{trace_id}] Response content: {response.content[:500]}")
             raise ValueError(f"Failed to parse tool specification: {str(e)}")
     
+    def generate_implementation(self, spec: ToolSpec, trace_id: str) -> str:
+        """
+        Generate actual implementation code using Nexus Core.
+        
+        This is Phase 2 of tool generation - generates working Python code
+        based on the tool specification extracted in Phase 1.
+        
+        Args:
+            spec: Tool specification with parameters and description
+            trace_id: Trace ID for logging
+            
+        Returns:
+            Python implementation code (function body)
+        """
+        # Build detailed prompt for code generation
+        params_desc = "\n".join([
+            f"  - {p.name} ({p.type}): {p.description}"
+            for p in spec.parameters
+        ])
+        
+        prompt = f"""Generate a complete, working Python implementation for this tool.
+
+Tool Name: {spec.name}
+Domain: {spec.domain}
+Description: {spec.description}
+Action: {spec.action}
+Object: {spec.object}
+
+Parameters:
+{params_desc if params_desc else "  (none)"}
+
+Return Type: {spec.return_type}
+
+REQUIREMENTS:
+1. Write ONLY the function body code (the implementation inside the function)
+2. Use proper Python syntax with error handling
+3. Include necessary imports at the top if needed (requests, json, pathlib, etc.)
+4. Return the correct type: {spec.return_type}
+5. Make it production-ready, not a placeholder
+6. Add helpful comments for complex logic
+7. Handle edge cases and errors gracefully
+
+IMPORTANT: Do NOT include the function definition line (def {spec.name}...) - only the body.
+If you need imports, put them at the very top as separate lines.
+
+Example format:
+```
+# Import statements (if needed)
+import requests
+import json
+
+# Function body
+try:
+    # Actual implementation here
+    result = do_something()
+    return result
+except Exception as e:
+    logger.error(f"Error: {{e}}")
+    return {{"error": str(e)}}
+```
+"""
+        
+        logger.info(f"[{trace_id}] Requesting implementation from Nexus for {spec.name}")
+        
+        # Call Nexus to generate code
+        request = Request(
+            content=prompt,
+            trace_id=trace_id,
+            context={'operation': 'code_generation', 'tool': spec.name}
+        )
+        
+        response = self.nexus.call(request)
+        implementation = response.content.strip()
+        
+        # Clean up code fences if Nexus wrapped it
+        if implementation.startswith('```'):
+            lines = implementation.split('\n')
+            # Remove first line if it's just ```python or ```
+            if lines[0].strip().startswith('```'):
+                lines = lines[1:]
+            # Remove last line if it's just ```
+            if lines and lines[-1].strip() == '```':
+                lines = lines[:-1]
+            implementation = '\n'.join(lines).strip()
+        
+        logger.info(f"[{trace_id}] Implementation generated ({len(implementation)} chars)")
+        
+        return implementation
+    
+    def self_heal_tool(
+        self,
+        broken_code: str,
+        error: str,
+        spec: ToolSpec,
+        trace_id: str,
+        max_attempts: int = 3
+    ) -> str:
+        """
+        Autonomously fix a broken tool.
+        
+        This is the self-healing loop - analyzes errors and regenerates
+        tool implementations until validation passes.
+        
+        Args:
+            broken_code: The code that failed validation
+            error: Error message from validation
+            spec: Tool specification
+            trace_id: Trace ID for logging
+            max_attempts: Maximum fix attempts (default: 3)
+            
+        Returns:
+            Fixed Python code
+            
+        Raises:
+            ValueError: If tool cannot be fixed after max_attempts
+        """
+        logger.warning(f"[{trace_id}] Starting self-heal for {spec.name}: {error}")
+        
+        current_code = broken_code
+        
+        for attempt in range(1, max_attempts + 1):
+            logger.info(f"[{trace_id}] Self-heal attempt {attempt}/{max_attempts}")
+            
+            # Build fix prompt
+            fix_prompt = f"""Fix this broken Python tool implementation.
+
+Tool: {spec.name}
+Domain: {spec.domain}
+Description: {spec.description}
+
+ERROR: {error}
+
+BROKEN CODE:
+```python
+{current_code}
+```
+
+REQUIREMENTS:
+1. Fix the error mentioned above
+2. Ensure proper syntax and imports
+3. Match the tool specification exactly
+4. Return type: {spec.return_type}
+5. Parameters: {[p.name + ': ' + p.type for p in spec.parameters]}
+
+Return ONLY the corrected Python code (function body + imports if needed).
+Do NOT include the function definition line.
+"""
+            
+            # Call Nexus to fix
+            request = Request(
+                content=fix_prompt,
+                trace_id=trace_id,
+                context={'operation': 'tool_healing', 'attempt': attempt}
+            )
+            
+            response = self.nexus.call(request)
+            fixed_code = response.content.strip()
+            
+            # Clean code fences
+            if fixed_code.startswith('```'):
+                lines = fixed_code.split('\n')
+                if lines[0].strip().startswith('```'):
+                    lines = lines[1:]
+                if lines and lines[-1].strip() == '```':
+                    lines = lines[:-1]
+                fixed_code = '\n'.join(lines).strip()
+            
+            logger.info(f"[{trace_id}] Fixed code generated ({len(fixed_code)} chars)")
+            
+            # Validate the fix
+            validation = self.validator.validate(fixed_code, spec)
+            
+            if validation.success:
+                logger.info(f"[{trace_id}] ✓ Self-heal successful on attempt {attempt}")
+                return fixed_code
+            else:
+                # Still broken, log and try again
+                error = "; ".join(validation.errors)
+                logger.warning(f"[{trace_id}] Attempt {attempt} failed: {error}")
+                current_code = fixed_code  # Use this version for next attempt
+        
+        # Failed all attempts
+        raise ValueError(
+            f"Could not fix {spec.name} after {max_attempts} attempts. "
+            f"Last error: {error}"
+        )
+    
+
     def get_tool_count(self) -> int:
         """Get number of registered tools."""
         return self.registry.get_tool_count()

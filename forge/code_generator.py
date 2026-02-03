@@ -55,8 +55,11 @@ class CodeGenerator:
         # Build imports
         imports = self._build_imports(spec.imports)
         
-        # Build implementation (placeholder or hint-based)
-        implementation = spec.implementation_hints.get('code', self._generate_placeholder_impl(spec))
+        # Build implementation (MUST be real code from Nexus)
+        implementation = spec.implementation_hints.get('code')
+        
+        if not implementation or implementation.strip() == '':
+            raise ValueError(f"No implementation code provided for {spec.name}. Tool generation requires real code from Nexus.")
         
         # Generate code
         code = f'''{imports}
@@ -81,8 +84,11 @@ def {spec.name}({params}):
         # Build imports
         imports = self._build_imports(spec.imports)
         
-        # Build implementation
-        implementation = spec.implementation_hints.get('code', self._generate_placeholder_impl(spec))
+        # Build implementation (MUST be real code from Nexus)
+        implementation = spec.implementation_hints.get('code')
+        
+        if not implementation or implementation.strip() == '':
+            raise ValueError(f"No implementation code provided for {spec.name}. Tool generation requires real code from Nexus.")
         
         # Generate code
         code = f'''{imports}
