@@ -348,6 +348,48 @@ async def list_tools():
     }
 
 
+@app.get("/api/workspace/files")
+async def list_workspace_files(domain: Optional[str] = None):
+    """List output files in workspace."""
+    try:
+        from workspace import get_workspace_manager
+        
+        workspace = get_workspace_manager()
+        outputs = workspace.list_outputs(domain=domain)
+        
+        return {
+            "count": len(outputs),
+            "files": [output.to_dict() for output in outputs]
+        }
+    except Exception as e:
+        logger.error(f"Workspace file listing error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/workspace/files/{domain}/{filename}")
+async def download_workspace_file(domain: str, filename: str):
+    """Download a specific file from workspace."""
+    try:
+        from workspace import get_workspace_manager
+        
+        workspace = get_workspace_manager()
+        file_path = workspace.get_output_path(domain, filename)
+        
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail=f"File not found: {domain}/{filename}")
+        
+        return FileResponse(
+            path=str(file_path),
+            filename=filename,
+            media_type="application/octet-stream"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"File download error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/traces/{trace_id}")
 async def get_trace_details(trace_id: str):
     """Get details for a specific trace ID."""

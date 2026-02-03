@@ -1,27 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Misaka Cipher - Nexus Portal</title>
-    
+
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;600&family=Fira+Code&display=swap" rel="stylesheet">
-    
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Inter:wght@400;600&family=Fira+Code&display=swap"
+        rel="stylesheet">
+
     <!-- Syntax Highlighting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-    
+
     <!-- Custom Styles -->
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
-    <!-- Header -->
+    <!-- Header with Tabs and Status -->
     <header class="header">
         <div class="header-left">
             <h1 class="logo">MISAKA CIPHER</h1>
-            <span class="subtitle">Nexus Portal - Autonomous AI Orchestration</span>
+            <div class="main-tabs">
+                <button class="main-tab active" data-maintab="chat">Chat</button>
+                <button class="main-tab" data-maintab="files">Files</button>
+                <button class="main-tab" data-maintab="tools">Tools</button>
+                <button class="main-tab" data-maintab="memory">Memory</button>
+            </div>
         </div>
         <div class="header-right">
+            <div class="compact-status" id="compact-status">
+                <span title="Nexus Core">Nexus: <strong id="nexus-status">--</strong></span>
+                <span class="status-divider">|</span>
+                <span title="Active Agents">Agents: <strong id="agents-count">0</strong></span>
+                <span class="status-divider">|</span>
+                <span title="Registered Tools">Tools: <strong id="tools-count">--</strong></span>
+                <span class="status-divider">|</span>
+                <span title="Output Files">Files: <strong id="files-count">--</strong></span>
+            </div>
             <div class="status-indicator" id="status-indicator">
                 <span class="status-dot"></span>
                 <span class="status-text">Connecting...</span>
@@ -29,102 +47,135 @@
         </div>
     </header>
 
-    <!-- Main Container -->
-    <div class="container">
-        <!-- Left Panel: Chat Interface -->
-        <div class="panel chat-panel">
-            <div class="panel-header">
-                <h2>Main Chat</h2>
-                <div class="voice-button" id="voice-button" title="Voice Input">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-                        <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-                    </svg>
-                </div>
-            </div>
-            
-            <div class="chat-messages" id="chat-messages">
-                <!-- Messages will be appended here -->
-                <div class="message system-message">
-                    <div class="message-content">
-                        <strong>System:</strong> Misaka Cipher Nexus Portal initialized. 
-                        Ask me anything - I'll autonomously coordinate agents, forge tools, and query your knowledge base.
+    <!-- Main Content Area -->
+    <main class="main-container">
+        <!-- Chat Tab (3-column layout) -->
+        <div class="main-tab-panel active" id="chat-panel">
+            <div class="three-column-layout">
+                <!-- Left: System Logs -->
+                <div class="column logs-column">
+                    <div class="column-header">
+                        <h2>System Logs</h2>
+                    </div>
+                    <div class="logs-container" id="logs-container">
+                        <div class="log-entry info">
+                            <span class="log-time">00:00:00</span>
+                            <span class="log-level">INFO</span>
+                            <span class="log-message">System initialized</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="chat-input-container">
-                <input 
-                    type="text" 
-                    id="chat-input" 
-                    class="chat-input" 
-                    placeholder="Ask me anything... (e.g., 'Analyze TSLA stock outlook')"
-                    autocomplete="off"
-                />
-                <button id="send-button" class="send-button">Send</button>
-            </div>
-        </div>
 
-        <!-- Right Panel: Active Agents -->
-        <div class="panel agents-panel">
-            <div class="panel-header">
-                <h2>Active Agents</h2>
-            </div>
-            
-            <div class="agents-list" id="agents-list">
-                <div class="no-agents">No active agents</div>
-            </div>
-        </div>
-    </div>
+                <!-- Center: Chat Interface -->
+                <div class="column chat-column">
+                    <div class="column-header">
+                        <h2>Main Chat</h2>
+                        <div class="voice-button" id="voice-button" title="Voice Input">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                                <path
+                                    d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                            </svg>
+                        </div>
+                    </div>
 
-    <!-- Bottom Tabs -->
-    <div class="tabs-container">
-        <div class="tabs">
-            <button class="tab active" data-tab="memory">Memory</button>
-            <button class="tab" data-tab="traces">Trace Explorer</button>
-            <button class="tab" data-tab="logs">System Logs</button>
-        </div>
-        
-        <div class="tab-content">
-            <!-- Memory Tab -->
-            <div class="tab-panel active" id="memory-tab">
-                <div class="search-bar">
-                    <input 
-                        type="text" 
-                        id="memory-search" 
-                        class="search-input" 
-                        placeholder="Search episodic memory..."
-                    />
-                    <button id="memory-search-button" class="search-button">Search</button>
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="message system-message">
+                            <div class="message-content">
+                                <strong>System:</strong> Misaka Cipher Nexus Portal initialized.
+                                Ask me anything - I'll autonomously coordinate agents, forge tools, and query your
+                                knowledge base.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-container">
+                        <input type="text" id="chat-input" class="chat-input"
+                            placeholder="Ask me anything... (e.g., 'Analyze TSLA stock outlook')" autocomplete="off" />
+                        <button id="send-button" class="send-button">Send</button>
+                    </div>
                 </div>
-                <div class="memory-results" id="memory-results">
-                    <p class="placeholder-text">Search your knowledge base...</p>
-                </div>
-            </div>
-            
-            <!-- Trace Explorer Tab -->
-            <div class="tab-panel" id="traces-tab">
-                <div class="trace-explorer" id="trace-explorer">
-                    <p class="placeholder-text">Trace timeline will appear here when you send a message...</p>
-                </div>
-            </div>
-            
-            <!-- System Logs Tab -->
-            <div class="tab-panel" id="logs-tab">
-                <div class="logs-container" id="logs-container">
-                    <div class="log-entry info">
-                        <span class="log-time">00:00:00</span>
-                        <span class="log-level">INFO</span>
-                        <span class="log-message">System initialized</span>
+
+                <!-- Right: Active Agents -->
+                <div class="column agents-column">
+                    <div class="column-header">
+                        <h2>Active Agents</h2>
+                    </div>
+                    <div class="agents-list" id="agents-list">
+                        <div class="no-agents">No active agents</div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+
+        <!-- Files Tab -->
+        <div class="main-tab-panel" id="files-panel">
+            <div class="panel-header">
+                <h2>Workspace Files</h2>
+                <div class="file-filters">
+                    <select id="domain-filter" class="filter-select">
+                        <option value="">All Domains</option>
+                        <option value="Finance">Finance</option>
+                        <option value="System">System</option>
+                        <option value="Data">Data</option>
+                        <option value="Code">Code</option>
+                        <option value="Audio">Audio</option>
+                        <option value="General">General</option>
+                    </select>
+                    <select id="type-filter" class="filter-select">
+                        <option value="">All Types</option>
+                        <option value="pdf">PDF</option>
+                        <option value="txt">Text</option>
+                        <option value="csv">CSV</option>
+                        <option value="json">JSON</option>
+                        <option value="html">HTML</option>
+                    </select>
+                    <button id="refresh-files" class="refresh-button">🔄 Refresh</button>
+                </div>
+            </div>
+            <div class="files-grid" id="files-grid">
+                <p class="placeholder-text">No files yet. Ask Misaka to create reports, analysis, or other outputs!</p>
+            </div>
+        </div>
+
+        <!-- Tools Tab -->
+        <div class="main-tab-panel" id="tools-panel">
+            <div class="panel-header">
+                <h2>Tool Registry</h2>
+                <button id="forge-tool-button" class="forge-button">+ Forge New Tool</button>
+            </div>
+            <div class="tools-grid" id="tools-grid">
+                <p class="placeholder-text">Loading tools...</p>
+            </div>
+        </div>
+
+        <!-- Memory Tab -->
+        <div class="main-tab-panel" id="memory-panel">
+            <div class="panel-header">
+                <h2>Episodic Memory Search</h2>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="memory-search" class="search-input" placeholder="Search episodic memory..." />
+                <select id="memory-domain-filter" class="filter-select">
+                    <option value="">All Domains</option>
+                    <option value="Finance">Finance</option>
+                    <option value="System">System</option>
+                    <option value="Data">Data</option>
+                    <option value="Code">Code</option>
+                </select>
+                <button id="memory-search-button" class="search-button">Search</button>
+            </div>
+            <div class="memory-results" id="memory-results">
+                <p class="placeholder-text">Search your knowledge base...</p>
+            </div>
+        </div>
+    </main>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/marked@latest/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="/static/app.js"></script>
 </body>
+
 </html>
