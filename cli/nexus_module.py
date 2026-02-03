@@ -1,0 +1,94 @@
+"""
+Misaka Cipher - Nexus Core Module
+Direct AI interaction through Nexus Core
+"""
+
+from cli.utils import (
+    console, clear_screen, print_header, get_text_input,
+    format_trace_id, print_success, print_error, print_key_value,
+    confirm, pause, show_progress
+)
+from nexus_core import NexusCore, Request
+from rich.panel import Panel
+from rich.markdown import Markdown
+
+
+def nexus_core_module(nexus: NexusCore):
+    """
+    Interactive Nexus Core chat interface.
+    
+    Args:
+        nexus: NexusCore instance
+    """
+    while True:
+        clear_screen()
+        print_header("Nexus Core", "Direct AI Interaction")
+        
+        console.print("\n[bold cyan]Enter your prompt below:[/bold cyan]")
+        console.print("[dim](Leave empty to return to main menu)[/dim]\n")
+        
+        prompt = get_text_input("Prompt", multiline=False)
+        
+        if not prompt.strip():
+            break
+        
+        # Optional configuration
+        console.print()
+        use_custom = confirm("Configure temperature/max_tokens?", default=False)
+        
+        temperature = None
+        max_tokens = None
+        
+        if use_custom:
+            temp_str = get_text_input("Temperature (0.0-1.0)", default="0.7")
+            tokens_str = get_text_input("Max Tokens", default="1000")
+            
+            try:
+                temperature = float(temp_str)
+                max_tokens = int(tokens_str)
+            except ValueError:
+                print_error("Invalid temperature or max_tokens, using defaults")
+        
+        # Send request
+        console.print()
+        with show_progress("Sending request to Nexus Core...") as progress:
+            progress.add_task("processing", total=None)
+            
+            request = Request(
+                prompt=prompt,
+                request_type="generation",
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            
+            response = nexus.route_request(request)
+        
+        # Display response
+        console.print("\n" + "═" * 50 + "\n")
+        
+        if response.success:
+            # Metadata
+            print_key_value("Trace ID", format_trace_id(response.trace_id))
+            print_key_value("Provider", response.provider)
+            print_key_value("Firewall Status", response.firewall_status)
+            print_key_value("Routing Decision", response.routing_decision)
+            
+            # Response content
+            console.print("\n[bold green]Response:[/bold green]\n")
+            
+            # Use Panel for clean formatting
+            response_panel = Panel(
+                response.content,
+                border_style="green",
+                title="AI Response"
+            )
+            console.print(response_panel)
+            
+            print_success("Request completed successfully")
+        else:
+            print_key_value("Trace ID", format_trace_id(response.trace_id))
+            print_error(f"Request failed: {response.error}")
+        
+        console.print()
+        if not confirm("Send another request?", default=True):
+            break

@@ -3,10 +3,12 @@ Misaka Cipher - Main Entry Point
 M.I.S.A.K.A.: Multitask Intelligence & Strategic Analysis Kernel Architecture
 Framework: A.E.G.I.S.
 
-This is a test script to verify Sprint 1 functionality.
+Interactive CLI Interface (default)
+Use --test flag to run verification tests
 """
 
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -15,14 +17,20 @@ env_path = Path(__file__).parent / '.env'
 if env_path.exists():
     load_dotenv(env_path)
 
-from nexus_core import NexusCore, Request
 from utils import get_logger
 
 logger = get_logger(__name__)
 
 
-def test_nexus_core():
-    """Test Nexus Core functionality."""
+def run_cli():
+    """Launch interactive CLI."""
+    from cli import main as cli_main
+    cli_main()
+
+
+def run_verification_tests():
+    """Run Sprint 1 verification tests."""
+    from nexus_core import NexusCore, Request
     
     print("\n" + "=" * 70)
     print("MISAKA CIPHER - SPRINT 1 VERIFICATION TEST")
@@ -105,8 +113,13 @@ def test_nexus_core():
 
 if __name__ == "__main__":
     try:
-        test_nexus_core()
+        # Check for --test flag
+        if "--test" in sys.argv:
+            run_verification_tests()
+        else:
+            run_cli()
     except Exception as e:
-        logger.error(f"Test failed: {str(e)}")
+        logger.error(f"Application failed: {str(e)}")
         import traceback
         traceback.print_exc()
+        sys.exit(1)
