@@ -53,6 +53,7 @@ naming_convention:
     - "Transform"
     - "Validate"
     - "Execute"
+    - "Save"
   
   # Validation
   validation:
