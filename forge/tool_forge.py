@@ -41,7 +41,7 @@ class ToolForge:
         self.trace_manager = get_trace_manager()
         self.registry = get_tool_registry()
         self.generator = CodeGenerator()
-        self.validator = ToolValidator(strict_mode=True)
+        self.validator = ToolValidator()
         
         # Tools directory
         if tools_dir is None:
