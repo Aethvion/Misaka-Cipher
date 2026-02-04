@@ -337,7 +337,7 @@ except Exception as e:
             }
         )
         
-        response = self.nexus.call(request)
+        response = self.nexus.route_request(request)
         implementation = response.content.strip()
         
         # Clean up code fences if Nexus wrapped it
@@ -424,7 +424,7 @@ Do NOT include the function definition line.
                 }
             )
             
-            response = self.nexus.call(request)
+            response = self.nexus.route_request(request)
             fixed_code = response.content.strip()
             
             # Clean code fences
