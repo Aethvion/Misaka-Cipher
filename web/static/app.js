@@ -280,6 +280,8 @@ function handleChatMessage(event) {
             trace_id: data.trace_id,
             actions: data.actions_taken,
             tools: data.tools_forged,
+            actions: data.actions_taken,
+            tools: data.tools_forged,
             agents: data.agents_spawned
         });
 
@@ -287,6 +289,13 @@ function handleChatMessage(event) {
         if (currentMainTab === 'files') {
             loadFiles();
         }
+    } else if (data.type === 'agent_step') {
+        addMessage('agent_step', data.content, {
+            title: data.title,
+            agent_name: data.agent_name,
+            status: data.status,
+            trace_id: data.trace_id
+        });
     }
 }
 
@@ -313,6 +322,24 @@ function addMessage(sender, content, metadata = {}) {
             });
             html += `</div>`;
         }
+    } else if (sender === 'agent_step') {
+        const title = metadata.title || 'Agent Action';
+        const agentName = metadata.agent_name || 'Agent';
+        const status = metadata.status || 'completed';
+        const isError = status === 'failed';
+
+        html = `
+            <details class="agent-step-details" ${isError ? 'open' : ''}>
+                <summary class="agent-step-summary ${isError ? 'error' : ''}">
+                    <span class="step-icon">${isError ? '⚠️' : '🤖'}</span>
+                    <span class="step-title">${title}</span>
+                    <span class="step-agent">${agentName}</span>
+                </summary>
+                <div class="step-content">
+                    ${marked.parse(content)}
+                </div>
+            </details>
+        `;
     } else if (sender === 'user') {
         html = `
             <div class="message-header">

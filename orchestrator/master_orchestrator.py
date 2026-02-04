@@ -4,7 +4,7 @@ Autonomous coordinator for Factory, Forge, and Memory Tier
 """
 
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable
 from datetime import datetime
 
 from nexus_core import NexusCore, Request, Response
@@ -82,8 +82,13 @@ class MasterOrchestrator:
         # Execution tracking
         self.current_trace_id: Optional[str] = None
         self.execution_history: List[ExecutionResult] = []
+        self.step_callback: Optional[Callable[[Dict], None]] = None
         
         logger.info("Master Orchestrator initialized")
+        
+    def set_step_callback(self, callback: Callable[[Dict], None]):
+        """Set callback for real-time step monitoring."""
+        self.step_callback = callback
     
     def process_message(self, user_message: str) -> ExecutionResult:
         """
@@ -217,23 +222,70 @@ class MasterOrchestrator:
             # Execute actions in sequence
             for action in plan.actions:
                 if action == "forge_tool":
+                    if self.step_callback:
+                        self.step_callback({
+                            "type": "agent_step",
+                            "title": "Forging Tool",
+                            "content": f"Analyzing requirements and forging tool for: {plan.forge_description}",
+                            "trace_id": plan.trace_id,
+                            "status": "running"
+                        })
+                        
                     tool_result = self.call_forge(plan.forge_description, plan.trace_id)
                     tools_forged.append(tool_result.get('tool_name', 'unknown'))
                     response_parts.append(f"✓ Forged tool: {tool_result.get('tool_name')}")
                     actions_taken.append("forge_tool")
+                    
+                    if self.step_callback:
+                        self.step_callback({
+                            "type": "agent_step",
+                            "title": "Tool Forged",
+                            "content": f"Successfully created tool: **{tool_result.get('tool_name')}**",
+                            "trace_id": plan.trace_id,
+                            "status": "completed"
+                        })
                 
                 elif action == "spawn_agent":
+                    if self.step_callback:
+                        self.step_callback({
+                            "type": "agent_step",
+                            "title": "Spawning Agent",
+                            "content": f"Spawning agent **{plan.agent_spec.name}** to execute task...",
+                            "trace_id": plan.trace_id,
+                            "status": "running"
+                        })
+                        
                     agent_result = self.call_factory(plan.agent_spec, plan.trace_id)
                     agents_spawned.append(agent_result.get('agent_name', 'unknown'))
                     response_parts.append(f"✓ Spawned agent: {agent_result.get('agent_name')}")
                     response_parts.append(f"\nAgent Output:\n{agent_result.get('output', 'No output')}")
                     actions_taken.append("spawn_agent")
+                    
+                    if self.step_callback:
+                        self.step_callback({
+                            "type": "agent_step",
+                            "title": "Agent Execution",
+                            "agent_name": agent_result.get('agent_name'),
+                            "content": agent_result.get('output', 'No output'),
+                            "trace_id": plan.trace_id,
+                            "status": "completed"
+                        })
                 
                 elif action == "query_memory":
                     memory_results = self.query_memory(plan.memory_query, plan.trace_id)
                     memories_queried = len(memory_results)
-                    response_parts.append(self._format_memory_results(memory_results))
+                    results_text = self._format_memory_results(memory_results)
+                    response_parts.append(results_text)
                     actions_taken.append("query_memory")
+                    
+                    if self.step_callback:
+                        self.step_callback({
+                            "type": "agent_step",
+                            "title": "Memory Search",
+                            "content": results_text,
+                            "trace_id": plan.trace_id,
+                            "status": "completed"
+                        })
                 
                 elif action == "system_status":
                     response_parts.append(plan.direct_response)

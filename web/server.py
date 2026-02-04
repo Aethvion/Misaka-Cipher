@@ -43,6 +43,7 @@ orchestrator: Optional[MasterOrchestrator] = None
 nexus: Optional[NexusCore] = None
 factory: Optional[AgentFactory] = None
 forge: Optional[ToolForge] = None
+main_event_loop = None
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -118,9 +119,12 @@ class MemorySearchRequest(BaseModel):
 @app.on_event("startup")
 async def startup_event():
     """Initialize system on startup."""
-    global orchestrator, nexus, factory, forge
+    global orchestrator, nexus, factory, forge, main_event_loop
     
     logger.info("Initializing Misaka Cipher Web Server...")
+    
+    # Capture main loop for thread-safe broadcasting
+    main_event_loop = asyncio.get_running_loop()
     
     try:
         # Initialize Nexus Core
@@ -138,7 +142,18 @@ async def startup_event():
         
         # Initialize Orchestrator
         orchestrator = MasterOrchestrator(nexus, factory, forge)
-        logger.info("✓ Master Orchestrator initialized")
+        
+        # Set up step broadcasting callback
+        def broadcast_step_callback(step_data: Dict):
+            """Thread-safe callback for orchestrator steps."""
+            if main_event_loop:
+                asyncio.run_coroutine_threadsafe(
+                    manager.broadcast(step_data, "chat"),
+                    main_event_loop
+                )
+        
+        orchestrator.set_step_callback(broadcast_step_callback)
+        logger.info("✓ Master Orchestrator initialized (with step broadcasting)")
         
         logger.info("Misaka Cipher Web Server ready!")
         
@@ -207,7 +222,9 @@ async def chat(message: ChatMessage):
     
     try:
         # Process message through orchestrator
-        result = orchestrator.process_message(message.message)
+        # Use simple blocking call here for HTTP API (websockets handles streaming)
+        # We could async it, but it might timeout the HTTP request if long running
+        result = await asyncio.to_thread(orchestrator.process_message, message.message)
         
         # Broadcast to WebSocket clients
         await manager.broadcast({
@@ -432,8 +449,8 @@ async def websocket_chat(websocket: WebSocket):
             data = await websocket.receive_json()
             
             if "message" in data:
-                # Process through orchestrator
-                result = orchestrator.process_message(data["message"])
+                # Process through orchestrator in thread pool to avoid blocking
+                result = await asyncio.to_thread(orchestrator.process_message, data["message"])
                 
                 # Send response
                 await websocket.send_json({
