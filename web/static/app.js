@@ -366,27 +366,47 @@ function addMessage(sender, content, metadata = {}) {
 function handleLogMessage(event) {
     try {
         const log = JSON.parse(event.data);
-        const container = document.getElementById('logs-container');
+        const container = document.getElementById('logs-container'); // Matched to index.html ID
+        if (!container) return;
 
         // Defensive checks for log structure
         if (!log || typeof log !== 'object') return;
 
-        const level = (log.level || 'info').toLowerCase();
-        const timestamp = log.timestamp || new Date().toISOString();
-        const message = log.message || JSON.stringify(log);
+        // Skip heartbeat/noise logs
+        if (log.type === 'heartbeat') return; // Explicit type check
 
-        const logDiv = document.createElement('div');
-        logDiv.className = `log-entry ${level}`;
-        logDiv.innerHTML = `
-            <span class="log-time">${formatTime(timestamp)}</span>
-            <span class="log-level">${level.toUpperCase()}</span>
-            <span class="log-message">${message}</span>
+        const msg = (log.message || "").toString();
+        if (msg.includes("GET /api/system/status") ||
+            msg.includes("GET /api/workspace/files") ||
+            msg.includes("WebSocket connected")) {
+            return;
+        }
+
+        const level = (log.level || 'info').toUpperCase();
+        if (level === 'DEBUG') return; // Hide debug logs in UI
+
+        const logLine = document.createElement('div');
+        logLine.className = 'log-line';
+
+        // Color classes
+        let levelClass = 'log-info';
+        if (level === 'WARNING') levelClass = 'log-warning';
+        if (level === 'ERROR') levelClass = 'log-error';
+
+        // Format: [LEVEL] Source: Message
+        // Remove timestamps as requested
+        const source = log.source ? `${log.source}: ` : '';
+
+        logLine.innerHTML = `
+            <span class="${levelClass}">[${level}]</span> 
+            <span class="log-source">${source}</span>
+            <span class="log-msg">${msg}</span>
         `;
 
-        container.appendChild(logDiv);
+        container.appendChild(logLine);
 
-        // Keep only last 100 logs
-        while (container.children.length > 100) {
+        // Keep only last 200 logs
+        while (container.children.length > 200) {
             container.removeChild(container.firstChild);
         }
 

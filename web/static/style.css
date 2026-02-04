@@ -207,51 +207,7 @@ body {
     font-size: 0.75rem;
 }
 
-.log-entry {
-    padding: 0.4rem 0.6rem;
-    margin-bottom: 0.3rem;
-    border-left: 3px solid var(--border);
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 2px;
-}
-
-.log-entry.info {
-    border-left-color: var(--primary);
-}
-
-.log-entry.warning {
-    border-left-color: var(--warning);
-}
-
-.log-entry.error {
-    border-left-color: var(--error);
-}
-
-.log-time {
-    color: var(--text-secondary);
-    margin-right: 0.5rem;
-}
-
-.log-level {
-    font-weight: 600;
-    margin-right: 0.5rem;
-}
-
-.log-entry.info .log-level {
-    color: var(--primary);
-}
-
-.log-entry.warning .log-level {
-    color: var(--warning);
-}
-
-.log-entry.error .log-level {
-    color: var(--error);
-}
-
-.log-message {
-    color: var(--text-primary);
-}
+/* Legacy log styles removed */
 
 /* Chat Column */
 .chat-column {
@@ -590,6 +546,45 @@ body {
     background: var(--bg-primary);
     padding: 0.8rem;
     border-radius: 4px;
+}
+
+/* Terminal-Style Logs */
+#logs-container {
+    background-color: #0c0c0c;
+    color: #e0e0e0;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    padding: 1rem;
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+}
+
+.log-line {
+    margin-bottom: 2px;
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+.log-info {
+    color: #88c0d0;
+}
+
+.log-warning {
+    color: #ebcb8b;
+}
+
+.log-error {
+    color: #bf616a;
+}
+
+.log-source {
+    color: #4c566a;
+    margin-right: 0.5rem;
+}
+
+.log-msg {
+    color: #d8dee9;
 }
 
 /* Memory Panel */

@@ -12,6 +12,7 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import asyncio
 import json
+import logging
 from datetime import datetime
 
 from nexus_core import NexusCore
@@ -62,13 +63,13 @@ class ConnectionManager:
         if channel not in self.active_connections:
             self.active_connections[channel] = []
         self.active_connections[channel].append(websocket)
-        logger.info(f"WebSocket connected to {channel} (total: {len(self.active_connections[channel])})")
+        # logger.info(f"WebSocket connected to {channel} (total: {len(self.active_connections[channel])})")
     
     def disconnect(self, websocket: WebSocket, channel: str):
         """Disconnect a WebSocket client."""
         if channel in self.active_connections and websocket in self.active_connections[channel]:
             self.active_connections[channel].remove(websocket)
-            logger.info(f"WebSocket disconnected from {channel} (remaining: {len(self.active_connections[channel])})")
+            # logger.info(f"WebSocket disconnected from {channel} (remaining: {len(self.active_connections[channel])})")
     
     async def broadcast(self, message: dict, channel: str):
         """Broadcast message to all clients on a channel."""
@@ -88,6 +89,38 @@ class ConnectionManager:
             self.disconnect(conn, channel)
 
 manager = ConnectionManager()
+
+
+# WebSocket Log Handler
+class WebSocketLogHandler(logging.Handler):
+    """Custom handler to pipe logs to WebSocket."""
+    
+    def emit(self, record):
+        try:
+            # Skip filtered logs here as well to save bandwidth?
+            # Or let frontend handle it. Let's filter obvious noise here.
+            msg = self.format(record)
+            
+            # Simple pre-filter for Uvicorn access logs which are very noisy
+            if "GET /api/system/status" in msg or "GET /api/workspace/files" in msg:
+                return
+                
+            log_entry = {
+                "type": "log",
+                "level": record.levelname,
+                "message": msg,
+                "source": record.name,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Broadcast thread-safely
+            if main_event_loop and main_event_loop.is_running():
+                asyncio.run_coroutine_threadsafe(
+                    manager.broadcast(log_entry, "logs"),
+                    main_event_loop
+                )
+        except Exception:
+            self.handleError(record)
 
 
 # Request/Response models
@@ -125,6 +158,16 @@ async def startup_event():
     
     # Capture main loop for thread-safe broadcasting
     main_event_loop = asyncio.get_running_loop()
+    
+    # Attach WebSocket Log Handler to Root Logger
+    root_logger = logging.getLogger()
+    ws_handler = WebSocketLogHandler()
+    ws_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(message)s') # Simplified format for UI
+    ws_handler.setFormatter(formatter)
+    root_logger.addHandler(ws_handler)
+    
+    logger.info("✓ WebSocket Log Streamer attached")
     
     try:
         # Initialize Nexus Core
