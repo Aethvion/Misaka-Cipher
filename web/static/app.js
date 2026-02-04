@@ -397,11 +397,7 @@ function handleLogMessage(event) {
         // Remove timestamps as requested
         const source = log.source ? `${log.source}: ` : '';
 
-        logLine.innerHTML = `
-            <span class="${levelClass}">[${level}]</span> 
-            <span class="log-source">${source}</span>
-            <span class="log-msg">${msg}</span>
-        `;
+        logLine.innerHTML = `<span class="${levelClass}">[${level}]</span> <span class="log-source">${source}</span><span class="log-msg">${msg}</span>`;
 
         container.appendChild(logLine);
 
