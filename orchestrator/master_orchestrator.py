@@ -315,11 +315,11 @@ class MasterOrchestrator:
         result = self.forge.generate_tool(description)
         
         return {
-            'tool_name': result.tool_spec.name,
-            'domain': result.tool_spec.domain,
-            'file_path': result.file_path,
-            'trace_id': result.trace_id,
-            'success': result.validation.is_valid
+            'tool_name': result['name'],
+            'domain': result['domain'],
+            'file_path': result['file_path'],
+            'trace_id': result.get('trace_id'),
+            'success': result.get('validation_status') == 'passed'
         }
     
     def query_memory(self, query: str, trace_id: str, domain: str = None) -> List[Dict]:
