@@ -282,10 +282,10 @@ class MasterOrchestrator:
         Returns:
             Dictionary with agent execution results
         """
-        logger.info(f"[{trace_id}] Spawning agent: {spec.to_name()}")
+        logger.info(f"[{trace_id}] Spawning agent: {spec.name}")
         
         # Spawn agent
-        agent = self.factory.spawn_agent(spec)
+        agent = self.factory.spawn(spec)
         
         # Execute agent
         result = agent.execute()
