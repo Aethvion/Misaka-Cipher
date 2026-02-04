@@ -66,7 +66,9 @@ class GenericAgent(BaseAgent):
                 f"{tools_desc}\n"
                 "Standard tools (save/read files) are available to import from 'tools.standard.file_ops'.\n"
                 "Global 'WORK_FOLDER' (Path object) is available for direct file access.\n"
-                "Example: `from tools.standard.file_ops import data_save_file`"
+                "IMPORTANT: All Custom Tools (like Finance_*, System_*, etc.) are PRE-LOADED as global functions/classes.\n"
+                "DO NOT import them. Just call them directly by name (e.g., `Finance_Analyze_Stockrisk(...)`).\n"
+                "Example: `from tools.standard.file_ops import data_save_file` (Standard tools MUST be imported)."
             )
             instructions += tool_instructions
             
@@ -175,6 +177,8 @@ class GenericAgent(BaseAgent):
         try:
             # Redirect stdout/stderr to capture output
             with redirect_stdout(output_buffer), redirect_stderr(output_buffer):
+                self.log(f"DEBUG: Executing code block:\n{full_code}")
+                self.log(f"DEBUG: Available globals: {list(exec_globals.keys())}")
                 exec(full_code, exec_globals)
             
             output = output_buffer.getvalue()
