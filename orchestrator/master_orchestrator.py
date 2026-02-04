@@ -245,30 +245,73 @@ class MasterOrchestrator:
                             "status": "completed"
                         })
                 
+                
                 elif action == "spawn_agent":
-                    if self.step_callback:
-                        self.step_callback({
-                            "type": "agent_step",
-                            "title": "Spawning Agent",
-                            "content": f"Spawning agent **{plan.agent_spec.name}** to execute task...",
-                            "trace_id": plan.trace_id,
-                            "status": "running"
-                        })
+                    # Circuit Breaker / Retry Loop
+                    max_retries = 3
+                    retry_count = 0
+                    success = False
+                    agent_result = None
+                    
+                    while retry_count < max_retries and not success:
+                        if retry_count > 0:
+                            if self.step_callback:
+                                self.step_callback({
+                                    "type": "agent_step",
+                                    "title": f"Retrying Agent (Attempt {retry_count+1}/{max_retries})",
+                                    "content": f"Previous attempt failed. Retrying agent execution...",
+                                    "trace_id": plan.trace_id,
+                                    "status": "running"
+                                })
+                        else:
+                            if self.step_callback:
+                                self.step_callback({
+                                    "type": "agent_step",
+                                    "title": "Spawning Agent",
+                                    "content": f"Spawning agent **{plan.agent_spec.name}** to execute task...",
+                                    "trace_id": plan.trace_id,
+                                    "status": "running"
+                                })
                         
-                    agent_result = self.call_factory(plan.agent_spec, plan.trace_id)
+                        # Add previous error to context if retrying
+                        if retry_count > 0 and agent_result:
+                            plan.agent_spec.context['instructions'] = (
+                                f"PREVIOUS ATTEMPT FAILED: {agent_result.get('error') or 'Verification failed'}. "
+                                "Please fix the issue and try again."
+                            )
+                        
+                        agent_result = self.call_factory(plan.agent_spec, plan.trace_id)
+                        
+                        # Verify result
+                        if agent_result.get('success'):
+                            # Check if code was executed if expected
+                            if "EXECUTION OUTPUT" in agent_result.get('output', ''):
+                                success = True
+                            elif "created and saved" in agent_result.get('output', '').lower() and "successfully" in agent_result.get('output', '').lower():
+                                success = True
+                            else:
+                                # FAIL if no execution output and no clear success message
+                                success = False
+                                logger.warning(f"[{plan.trace_id}] Agent verification failed: Missing execution output")
+                        
+                        if not success:
+                            retry_count += 1
+                            logger.warning(f"[{plan.trace_id}] Retry triggered (Attempt {retry_count}/{max_retries})")
+                    
                     agents_spawned.append(agent_result.get('agent_name', 'unknown'))
                     response_parts.append(f"✓ Spawned agent: {agent_result.get('agent_name')}")
                     response_parts.append(f"\nAgent Output:\n{agent_result.get('output', 'No output')}")
                     actions_taken.append("spawn_agent")
                     
                     if self.step_callback:
+                        status = "completed" if success else "failed"
                         self.step_callback({
                             "type": "agent_step",
                             "title": "Agent Execution",
                             "agent_name": agent_result.get('agent_name'),
                             "content": agent_result.get('output', 'No output'),
                             "trace_id": plan.trace_id,
-                            "status": "completed"
+                            "status": status
                         })
                 
                 elif action == "query_memory":

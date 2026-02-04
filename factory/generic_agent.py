@@ -10,6 +10,7 @@ import traceback
 from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
 from datetime import datetime
+import importlib.util
 from .base_agent import BaseAgent
 from .agent_result import AgentResult
 
@@ -80,12 +81,14 @@ class GenericAgent(BaseAgent):
             
             # Check for code execution
             execution_output = None
-            if "```python" in response:
-                self.log("Detected Python code block, attempting execution...")
-                execution_output = self._execute_code(response)
-                
-                if execution_output:
-                    response += f"\n\n--- EXECUTION OUTPUT ---\n{execution_output}"
+            # Check for code execution
+            execution_output = self._execute_code(response)
+            if execution_output:
+                self.log("Detected code block, executing...")
+                response += f"\n\n--- EXECUTION OUTPUT ---\n{execution_output}"
+            
+            # Legacy check for string match removed, logic moved to _execute_code
+            found_code = execution_output is not None
             
             return AgentResult(
                 content=response,
@@ -123,8 +126,8 @@ class GenericAgent(BaseAgent):
         Returns:
             Captured stdout/stderr from execution
         """
-        # Extract code blocks
-        code_blocks = re.findall(r"```python(.*?)```", response_text, re.DOTALL)
+        # Extract code blocks (python or generic)
+        code_blocks = re.findall(r"```(?:python)?(.*?)```", response_text, re.DOTALL)
         if not code_blocks:
             return None
             
@@ -139,8 +142,31 @@ class GenericAgent(BaseAgent):
             "__name__": "__agent_exec__",
             "datetime": datetime,
             "Path": Path,
-            "print": print,  # In case redirects fail, though we redirect below
+            "print": print,
         }
+        
+        # Dynamically import available tools into globals
+        if self.context.get('available_tools'):
+            for tool in self.context['available_tools']:
+                try:
+                    tool_name = tool['name']
+                    # Assuming tool['file_path'] exists
+                    if 'file_path' in tool:
+                        spec = importlib.util.spec_from_file_location(tool_name, tool['file_path'])
+                        if spec and spec.loader:
+                            module = importlib.util.module_from_spec(spec)
+                            spec.loader.exec_module(module)
+                            
+                            # If tool key class/func matches name, import it directly
+                            if hasattr(module, tool_name):
+                                exec_globals[tool_name] = getattr(module, tool_name)
+                            else:
+                                # Start searching for snake_case equivalent or just the module
+                                exec_globals[tool_name] = module
+                                
+                            self.log(f"Injected tool {tool_name} into execution context")
+                except Exception as e:
+                    self.log(f"Failed to inject tool {tool.get('name')}: {str(e)}", level="warning")
         
         try:
             # Redirect stdout/stderr to capture output
