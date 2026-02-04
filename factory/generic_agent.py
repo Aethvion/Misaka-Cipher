@@ -20,8 +20,6 @@ sys.path.append(str(Path(__file__).parent.parent))
 class GenericAgent(BaseAgent):
     """
     Generic agent for general-purpose tasks.
-    """
-    Generic agent for general-purpose tasks.
     
     Executes a single prompt from the context and returns the result.
     Capability: Can execute generated Python code if present.
@@ -53,7 +51,6 @@ class GenericAgent(BaseAgent):
                 error="No prompt provided in agent context"
             )
         
-        # Add instructions if provided
         # Add instructions if provided
         instructions = self.spec.context.get('instructions', '')
         

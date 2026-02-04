@@ -91,12 +91,32 @@ class BaseAgent(ABC):
             
             # Get available tools from Knowledge Graph
             graph = get_knowledge_graph()
-            tools_in_domain = graph.get_tools_by_domain(self.spec.domain)
-            context['available_tools'] = tools_in_domain
+            tool_names = graph.get_tools_by_domain(self.spec.domain)
+            
+            # Fetch full tool details
+            tools_full = []
+            for name in tool_names:
+                info = graph.get_node_info(name)
+                if info:
+                    info['name'] = name  # Ensure name is in dict
+                    tools_full.append(info)
+            
+            # ALWAYS inject standard Data tools (for file ops)
+            if self.spec.domain != 'Data':
+                data_tool_names = graph.get_tools_by_domain('Data')
+                for name in data_tool_names:
+                    # Only include standard file ops
+                    if name in ['Data_Save_File', 'Data_Read_File']:
+                        info = graph.get_node_info(name)
+                        if info:
+                            info['name'] = name
+                            tools_full.append(info)
+            
+            context['available_tools'] = tools_full
             
             # Get recent activity from Episodic Memory
             episodic = get_episodic_memory()
-            recent = episodic.get_recent(k=5, domain=self.spec.domain)
+            recent = episodic.get_recent(hours=24, domain=self.spec.domain)
             context['recent_activity'] = [
                 {
                     'event': mem.event_type,
