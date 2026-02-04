@@ -329,9 +329,12 @@ except Exception as e:
         
         # Call Nexus to generate code
         request = Request(
-            content=prompt,
-            trace_id=trace_id,
-            context={'operation': 'code_generation', 'tool': spec.name}
+            prompt=prompt,
+            metadata={
+                'trace_id': trace_id,
+                'operation': 'code_generation',
+                'tool': spec.name
+            }
         )
         
         response = self.nexus.call(request)
@@ -413,9 +416,12 @@ Do NOT include the function definition line.
             
             # Call Nexus to fix
             request = Request(
-                content=fix_prompt,
-                trace_id=trace_id,
-                context={'operation': 'tool_healing', 'attempt': attempt}
+                prompt=fix_prompt,
+                metadata={
+                    'trace_id': trace_id,
+                    'operation': 'tool_healing',
+                    'attempt': attempt
+                }
             )
             
             response = self.nexus.call(request)
