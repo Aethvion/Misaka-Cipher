@@ -7,6 +7,11 @@ from dataclasses import dataclass
 from typing import Optional, List, Dict, Any, Callable
 from datetime import datetime
 
+import re
+import json
+from pathlib import Path
+from tools.standard.file_ops import WORKSPACE_ROOT
+
 from nexus_core import NexusCore, Request, Response
 from factory import AgentFactory, AgentSpec
 from forge import ToolForge
@@ -284,15 +289,53 @@ class MasterOrchestrator:
                         
                         # Verify result
                         if agent_result.get('success'):
-                            # Check if code was executed if expected
-                            if "EXECUTION OUTPUT" in agent_result.get('output', ''):
+                            output = agent_result.get('output', '')
+                            success = False
+                            
+                            # 1. Check for File Creation
+                            # Look for typical path patterns or file extensions
+                            # We check existence in WORKSPACE_ROOT
+                            
+                            # Regex to find potential filenames (alphanumeric + . + ext)
+                            # Or absolute paths
+                            potential_files = re.findall(r'[\w\-\.]+\.[a-zA-Z]{2,4}', output)
+                            verified_files = []
+                            
+                            for fname in potential_files:
+                                # Check recursively in workspace
+                                for path in WORKSPACE_ROOT.rglob(fname):
+                                    if path.is_file():
+                                        verified_files.append(path)
+                            
+                            if verified_files:
                                 success = True
-                            elif "created and saved" in agent_result.get('output', '').lower() and "successfully" in agent_result.get('output', '').lower():
+                                # Append verified links to the output for the user
+                                links_msg = "\n\n**Verified Output Files:**\n"
+                                for vf in verified_files:
+                                    relative_path = vf.relative_to(WORKSPACE_ROOT)
+                                    # Assuming standard structure: Domain/Filename
+                                    try:
+                                        domain = relative_path.parts[0]
+                                        filename = relative_path.name
+                                        # Format for UI to pick up (or just markdown link)
+                                        links_msg += f"- [{filename}](/api/workspace/files/{domain}/{filename})\n"
+                                    except IndexError:
+                                        links_msg += f"- {filename}\n"
+                                
+                                agent_result['output'] = output + links_msg
+                                
+                            # 2. Check for Execution Output (Code)
+                            elif "EXECUTION OUTPUT" in output:
                                 success = True
+                            
+                            # 3. Simple text success legacy fallback
+                            elif "created and saved" in output.lower() and "successfully" in output.lower():
+                                success = True
+                                
                             else:
                                 # FAIL if no execution output and no clear success message
                                 success = False
-                                logger.warning(f"[{plan.trace_id}] Agent verification failed: Missing execution output")
+                                logger.warning(f"[{plan.trace_id}] Verification Failed: No files created or code executed.")
                         
                         if not success:
                             retry_count += 1

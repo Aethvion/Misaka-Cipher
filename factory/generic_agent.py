@@ -14,6 +14,8 @@ import importlib.util
 from .base_agent import BaseAgent
 from .agent_result import AgentResult
 
+from tools.standard.file_ops import WORKSPACE_ROOT
+
 # Add workspace root to path for tool imports
 sys.path.append(str(Path(__file__).parent.parent))
 
@@ -63,6 +65,7 @@ class GenericAgent(BaseAgent):
                 "To use them, you MUST write executable Python code blocks.\n"
                 f"{tools_desc}\n"
                 "Standard tools (save/read files) are available to import from 'tools.standard.file_ops'.\n"
+                "Global 'WORK_FOLDER' (Path object) is available for direct file access.\n"
                 "Example: `from tools.standard.file_ops import data_save_file`"
             )
             instructions += tool_instructions
@@ -143,6 +146,7 @@ class GenericAgent(BaseAgent):
             "datetime": datetime,
             "Path": Path,
             "print": print,
+            "WORK_FOLDER": WORKSPACE_ROOT,  # Injected workspace root
         }
         
         # Dynamically import available tools into globals

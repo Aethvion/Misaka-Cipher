@@ -4,12 +4,12 @@ Misaka Cipher - Standard File Operations
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 # Define workspace root
-WORKSPACE_ROOT = Path("C:/Aethvion/MisakaCipher/workspace")
+WORKSPACE_ROOT = Path("C:/Aethvion/MisakaCipher/WorkFolder")
 
-def data_save_file(filename: str, content: str, domain: str = "general", encoding: str = "utf-8") -> str:
+def data_save_file(filename: str, content: Union[str, bytes], domain: str = "general", encoding: str = "utf-8") -> str:
     """
     Save content to a file in the workspace.
     
