@@ -287,16 +287,21 @@ class MasterOrchestrator:
         # Spawn agent
         agent = self.factory.spawn(spec)
         
-        # Execute agent
-        result = agent.execute()
-        
-        return {
-            'agent_name': agent.name,
-            'trace_id': agent.trace_id,
-            'output': result.output,
-            'success': result.success,
-            'duration': result.duration
-        }
+        try:
+            # Execute agent
+            result = agent.execute()
+            
+            return {
+                'agent_name': agent.name,
+                'trace_id': agent.trace_id,
+                'output': result.content,
+                'success': result.success,
+                'duration': result.duration_seconds
+            }
+        finally:
+            # Unregister agent to clean up resources
+            if hasattr(self.factory, 'registry'):
+                self.factory.registry.unregister(agent.trace_id)
     
     def call_forge(self, description: str, trace_id: str) -> Dict[str, Any]:
         """
