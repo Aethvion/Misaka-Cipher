@@ -100,13 +100,34 @@ class ToolForge:
             
             logger.info(f"[{trace_id}] Tool file generated ({len(code)} chars)")
             
-            # 4. Validate
+            # 4. Validate (with self-healing if needed)
             validation = self.validator.validate(code, spec)
             
             if not validation.success:
                 error_msg = "; ".join(validation.errors)
-                logger.error(f"[{trace_id}] Tool validation failed: {error_msg}")
-                raise ValueError(f"Tool validation failed: {error_msg}")
+                logger.warning(f"[{trace_id}] Initial validation failed: {error_msg}")
+                logger.info(f"[{trace_id}] Attempting self-heal...")
+                
+                try:
+                    # Self-heal the implementation
+                    fixed_implementation = self.self_heal_tool(
+                        broken_code=implementation_code,
+                        error=error_msg,
+                        spec=spec,
+                        trace_id=trace_id
+                    )
+                    
+                    # Update spec with fixed code
+                    spec.implementation_hints['code'] = fixed_implementation
+                    
+                    # Regenerate tool file with fixed code
+                    code = self.generator.generate(spec)
+                    
+                    logger.info(f"[{trace_id}] Tool regenerated with healed implementation")
+                    
+                except Exception as heal_error:
+                    logger.error(f"[{trace_id}] Self-heal failed: {str(heal_error)}")
+                    raise ValueError(f"Tool validation failed and self-heal unsuccessful: {error_msg}")
             
             if validation.warnings:
                 warnings_msg = "; ".join(validation.warnings)
