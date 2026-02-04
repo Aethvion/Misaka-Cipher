@@ -3,16 +3,28 @@ Misaka Cipher - Generic Agent
 Default implementation of BaseAgent for general-purpose tasks
 """
 
+import re
+import sys
+import io
+import traceback
+from contextlib import redirect_stdout, redirect_stderr
+from pathlib import Path
 from datetime import datetime
 from .base_agent import BaseAgent
 from .agent_result import AgentResult
+
+# Add workspace root to path for tool imports
+sys.path.append(str(Path(__file__).parent.parent))
 
 
 class GenericAgent(BaseAgent):
     """
     Generic agent for general-purpose tasks.
+    """
+    Generic agent for general-purpose tasks.
     
     Executes a single prompt from the context and returns the result.
+    Capability: Can execute generated Python code if present.
     """
     
     def execute(self) -> AgentResult:
@@ -42,7 +54,21 @@ class GenericAgent(BaseAgent):
             )
         
         # Add instructions if provided
+        # Add instructions if provided
         instructions = self.spec.context.get('instructions', '')
+        
+        # Inject tool awareness
+        if self.context.get('available_tools'):
+            tools_desc = "\n".join([f"- {t['name']}: {t.get('description', 'No description')}" for t in self.context['available_tools']])
+            tool_instructions = (
+                "\n\nSYSTEM: You have access to the following tools via Python code. "
+                "To use them, you MUST write executable Python code blocks.\n"
+                f"{tools_desc}\n"
+                "Standard tools (save/read files) are available to import from 'tools.standard.file_ops'.\n"
+                "Example: `from tools.standard.file_ops import data_save_file`"
+            )
+            instructions += tool_instructions
+            
         if instructions:
             prompt = f"{instructions}\n\n{prompt}"
         
@@ -55,6 +81,15 @@ class GenericAgent(BaseAgent):
             
             self.log(f"Received response (length: {len(response)} chars)")
             
+            # Check for code execution
+            execution_output = None
+            if "```python" in response:
+                self.log("Detected Python code block, attempting execution...")
+                execution_output = self._execute_code(response)
+                
+                if execution_output:
+                    response += f"\n\n--- EXECUTION OUTPUT ---\n{execution_output}"
+            
             return AgentResult(
                 content=response,
                 agent_name=self.name,
@@ -64,7 +99,8 @@ class GenericAgent(BaseAgent):
                 iterations=self.iterations_count,
                 metadata={
                     'prompt_length': len(prompt),
-                    'response_length': len(response)
+                    'response_length': len(response),
+                    'executed_code': execution_output is not None
                 }
             )
             
@@ -79,3 +115,47 @@ class GenericAgent(BaseAgent):
                 error=str(e),
                 iterations=self.iterations_count
             )
+
+    def _execute_code(self, response_text: str) -> str:
+        """
+        Extract and execute Python code blocks from response.
+        
+        Args:
+            response_text: LLM response containing markdown code blocks
+            
+        Returns:
+            Captured stdout/stderr from execution
+        """
+        # Extract code blocks
+        code_blocks = re.findall(r"```python(.*?)```", response_text, re.DOTALL)
+        if not code_blocks:
+            return None
+            
+        # Combine all blocks
+        full_code = "\n".join(code_blocks)
+        
+        # Prepare execution environment
+        output_buffer = io.StringIO()
+        
+        # Safe globals with tool imports pre-loaded
+        exec_globals = {
+            "__name__": "__agent_exec__",
+            "datetime": datetime,
+            "Path": Path,
+            "print": print,  # In case redirects fail, though we redirect below
+        }
+        
+        try:
+            # Redirect stdout/stderr to capture output
+            with redirect_stdout(output_buffer), redirect_stderr(output_buffer):
+                exec(full_code, exec_globals)
+            
+            output = output_buffer.getvalue()
+            if not output.strip():
+                return "Code executed successfully (no output)."
+            return output
+            
+        except Exception:
+            error_trace = traceback.format_exc()
+            self.log(f"Code execution error: {error_trace}", level="error")
+            return f"Code execution failed:\n{error_trace}"
