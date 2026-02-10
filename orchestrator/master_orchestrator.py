@@ -374,9 +374,43 @@ class MasterOrchestrator:
                                 success = False
                                 break
                     
+                    
                     agents_spawned.append(agent_result.get('agent_name', 'unknown'))
                     response_parts.append(f"✓ Spawned agent: {agent_result.get('agent_name')}")
-                    response_parts.append(f"\nAgent Output:\n{agent_result.get('output', 'No output')}")
+                    
+                    # Format response based on success/failure
+                    if success:
+                        # Success - show the output
+                        response_parts.append(f"\n**Result:**\n{agent_result.get('output', 'No output')}")
+                    else:
+                        # Failure - show concise error summary
+                        error_msg = agent_result.get('error', 'Unknown error')
+                        output = agent_result.get('output', '')
+                        
+                        # Extract file and line number from traceback if available
+                        import re
+                        traceback_match = re.search(r'File "([^"]+)", line (\d+)', output)
+                        location = ""
+                        if traceback_match:
+                            file_path = traceback_match.group(1)
+                            line_num = traceback_match.group(2)
+                            # Get just the filename
+                            file_name = file_path.split('\\')[-1] if '\\' in file_path else file_path.split('/')[-1]
+                            location = f" in `{file_name}` line {line_num}"
+                        
+                        # Extract the actual error type and message
+                        error_type_match = re.search(r'(\w+Error): (.+?)(?:\n|$)', output)
+                        error_detail = ""
+                        if error_type_match:
+                            error_detail = f": {error_type_match.group(1)} - {error_type_match.group(2)}"
+                        
+                        response_parts.append(
+                            f"\n**Status:** ❌ Unsuccessful after {retry_count} attempt(s)\n"
+                            f"**Error{location}**{error_detail}\n\n"
+                            f"<details>\n<summary>View full error details</summary>\n\n"
+                            f"```\n{output}\n```\n</details>"
+                        )
+                    
                     actions_taken.append("spawn_agent")
                     
                     if self.step_callback:
