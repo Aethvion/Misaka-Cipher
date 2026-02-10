@@ -388,7 +388,6 @@ class MasterOrchestrator:
                         output = agent_result.get('output', '')
                         
                         # Extract file and line number from traceback if available
-                        import re
                         traceback_match = re.search(r'File "([^"]+)", line (\d+)', output)
                         location = ""
                         if traceback_match:

@@ -70,6 +70,7 @@ class GenericAgent(BaseAgent):
                 "IMPORTANT: All Custom Tools (like Finance_*, System_*, etc.) are PRE-LOADED as global functions/classes.\n"
                 "DO NOT import them. Just call them directly by name (e.g., `Finance_Analyze_Stockrisk(...)`).\n"
                 "CRITICAL: Do NOT write 'tool_code' or any placeholder text. Write actual Python code only.\n"
+                "When tools require file paths, use WORK_FOLDER to construct them (e.g., `str(WORK_FOLDER / 'report.pdf')`).\n"
                 "Example: `from tools.standard.file_ops import data_save_file` (Standard tools MUST be imported)."
             )
             instructions += tool_instructions
@@ -140,6 +141,12 @@ class GenericAgent(BaseAgent):
             
         # Combine all blocks
         full_code = "\n".join(code_blocks)
+        
+        # CRITICAL FIX: Remove 'tool_code' placeholder if agent wrote it
+        # Some LLMs write this as a placeholder despite instructions not to
+        lines = full_code.split('\n')
+        filtered_lines = [line for line in lines if line.strip() != 'tool_code']
+        full_code = '\n'.join(filtered_lines)
         
         # Prepare execution environment
         output_buffer = io.StringIO()
