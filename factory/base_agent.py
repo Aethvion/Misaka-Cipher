@@ -105,10 +105,13 @@ class BaseAgent(ABC):
                 if info:
                     info['name'] = name  # Ensure name is in dict
                     
-                    # Get file_path from tool registry
+                    # Get file_path and parameters from tool registry
                     tool_spec = registry.get_tool(name)
-                    if tool_spec and 'file_path' in tool_spec:
-                        info['file_path'] = tool_spec['file_path']
+                    if tool_spec:
+                        if 'file_path' in tool_spec:
+                            info['file_path'] = tool_spec['file_path']
+                        if 'parameters' in tool_spec:
+                            info['parameters'] = tool_spec['parameters']
                     
                     tools_full.append(info)
             
@@ -122,10 +125,13 @@ class BaseAgent(ABC):
                         if info:
                             info['name'] = name
                             
-                            # Get file_path from registry
+                            # Get file_path and parameters from registry
                             tool_spec = registry.get_tool(name)
-                            if tool_spec and 'file_path' in tool_spec:
-                                info['file_path'] = tool_spec['file_path']
+                            if tool_spec:
+                                if 'file_path' in tool_spec:
+                                    info['file_path'] = tool_spec['file_path']
+                                if 'parameters' in tool_spec:
+                                    info['parameters'] = tool_spec['parameters']
                             
                             tools_full.append(info)
             
