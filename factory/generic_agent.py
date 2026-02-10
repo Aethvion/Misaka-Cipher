@@ -60,7 +60,28 @@ class GenericAgent(BaseAgent):
         
         # Inject tool awareness
         if self.context.get('available_tools'):
-            tools_desc = "\n".join([f"- {t['name']}: {t.get('description', 'No description')}" for t in self.context['available_tools']])
+            # Build detailed tool descriptions with parameters
+            tool_desc_lines = []
+            for t in self.context['available_tools']:
+                tool_name = t['name']
+                tool_desc = t.get('description', 'No description')
+                
+                # Add parameter info if available
+                params_info = ""
+                if 'parameters' in t and t['parameters']:
+                    # Format parameters as function signature
+                    param_list = []
+                    for param in t['parameters']:
+                        param_name = param.get('name', 'unknown')
+                        param_type = param.get('type', 'any')
+                        param_list.append(f"{param_name}: {param_type}")
+                    params_info = f"({', '.join(param_list)})"
+                else:
+                    params_info = "()"
+                
+                tool_desc_lines.append(f"- {tool_name}{params_info}: {tool_desc}")
+            
+            tools_desc = "\n".join(tool_desc_lines)
             tool_instructions = (
                 "\n\nSYSTEM: You have access to the following tools via Python code. "
                 "To use them, you MUST write executable Python code blocks.\n"
