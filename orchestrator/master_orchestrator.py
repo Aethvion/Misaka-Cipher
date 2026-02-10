@@ -287,59 +287,92 @@ class MasterOrchestrator:
                         
                         agent_result = self.call_factory(plan.agent_spec, plan.trace_id)
                         
-                        # Verify result
-                        if agent_result.get('success'):
+                        # Check if agent execution failed
+                        if not agent_result.get('success'):
+                            # Agent failed - extract error and retry
+                            error_msg = agent_result.get('error', 'Unknown error')
                             output = agent_result.get('output', '')
-                            success = False
                             
-                            # 1. Check for File Creation
-                            # Look for typical path patterns or file extensions
-                            # We check existence in WORKSPACE_ROOT
+                            logger.error(f"[{plan.trace_id}] Agent execution failed: {error_msg}")
+                            logger.error(f"[{plan.trace_id}] Agent output: {output[:500]}")
                             
-                            # Regex to find potential filenames (alphanumeric + . + ext)
-                            # Or absolute paths
-                            potential_files = re.findall(r'[\w\-\.]+\.[a-zA-Z]{2,4}', output)
-                            verified_files = []
-                            
-                            for fname in potential_files:
-                                # Check recursively in workspace
-                                for path in WORKSPACE_ROOT.rglob(fname):
-                                    if path.is_file():
-                                        verified_files.append(path)
-                            
-                            if verified_files:
-                                success = True
-                                # Append verified links to the output for the user
-                                links_msg = "\n\n**Verified Output Files:**\n"
-                                for vf in verified_files:
-                                    relative_path = vf.relative_to(WORKSPACE_ROOT)
-                                    # Assuming standard structure: Domain/Filename
-                                    try:
-                                        domain = relative_path.parts[0]
-                                        filename = relative_path.name
-                                        # Format for UI to pick up (or just markdown link)
-                                        links_msg += f"- [{filename}](/api/workspace/files/{domain}/{filename})\n"
-                                    except IndexError:
-                                        links_msg += f"- {filename}\n"
-                                
-                                agent_result['output'] = output + links_msg
-                                
-                            # 2. Check for Execution Output (Code)
-                            elif "EXECUTION OUTPUT" in output:
-                                success = True
-                            
-                            # 3. Simple text success legacy fallback
-                            elif "created and saved" in output.lower() and "successfully" in output.lower():
-                                success = True
-                                
-                            else:
-                                # FAIL if no execution output and no clear success message
-                                success = False
-                                logger.warning(f"[{plan.trace_id}] Verification Failed: No files created or code executed.")
-                        
-                        if not success:
                             retry_count += 1
-                            logger.warning(f"[{plan.trace_id}] Retry triggered (Attempt {retry_count}/{max_retries})")
+                            
+                            if retry_count < max_retries:
+                                logger.warning(f"[{plan.trace_id}] Retry triggered (Attempt {retry_count+1}/{max_retries})")
+                                # Add error context for next attempt
+                                plan.agent_spec.context['instructions'] = (
+                                    f"PREVIOUS ATTEMPT FAILED WITH ERROR: {error_msg}\n\n"
+                                    f"Previous output: {output}\n\n"
+                                    "Please analyze the error and try a different approach. "
+                                    "If the error is about missing tools or imports, use the tools that are available. "
+                                    "If you cannot complete the task, explain why clearly."
+                                )
+                                continue  # Retry immediately
+                            else:
+                                # Max retries reached
+                                logger.error(f"[{plan.trace_id}] Max retries reached. Agent failed permanently.")
+                                success = False
+                                break
+                        
+                        # Agent execution succeeded - now verify the output
+                        output = agent_result.get('output', '')
+                        success = False
+                        
+                        # 1. Check for File Creation
+                        potential_files = re.findall(r'[\w\-\.]+\.[a-zA-Z]{2,4}', output)
+                        verified_files = []
+                        
+                        for fname in potential_files:
+                            for path in WORKSPACE_ROOT.rglob(fname):
+                                if path.is_file():
+                                    verified_files.append(path)
+                        
+                        if verified_files:
+                            success = True
+                            links_msg = "\n\n**Verified Output Files:**\n"
+                            for vf in verified_files:
+                                relative_path = vf.relative_to(WORKSPACE_ROOT)
+                                try:
+                                    domain = relative_path.parts[0]
+                                    filename = relative_path.name
+                                    links_msg += f"- [{filename}](/api/workspace/files/{domain}/{filename})\n"
+                                except IndexError:
+                                    links_msg += f"- {filename}\n"
+                            
+                            agent_result['output'] = output + links_msg
+                            break  # Success - exit retry loop
+                            
+                        # 2. Check for Execution Output (Code)
+                        elif "EXECUTION OUTPUT" in output and "Code execution failed" not in output:
+                            success = True
+                            break  # Success - exit retry loop
+                        
+                        # 3. Simple text success legacy fallback
+                        elif "created and saved" in output.lower() and "successfully" in output.lower():
+                            success = True
+                            break  # Success - exit retry loop
+                        
+                        # 4. No success indicators found
+                        else:
+                            logger.warning(f"[{plan.trace_id}] Verification Failed: No files created or code executed.")
+                            retry_count += 1
+                            
+                            if retry_count < max_retries:
+                                logger.warning(f"[{plan.trace_id}] Retry triggered (Attempt {retry_count+1}/{max_retries})")
+                                plan.agent_spec.context['instructions'] = (
+                                    f"PREVIOUS ATTEMPT DID NOT PRODUCE VERIFIABLE OUTPUT.\n\n"
+                                    f"Previous output: {output}\n\n"
+                                    "Please ensure you either:\n"
+                                    "1. Create and save a file to the workspace\n"
+                                    "2. Execute code that produces clear output\n"
+                                    "3. Provide a clear success message\n"
+                                    "If you cannot complete the task, explain why clearly."
+                                )
+                            else:
+                                logger.error(f"[{plan.trace_id}] Max retries reached. Verification failed.")
+                                success = False
+                                break
                     
                     agents_spawned.append(agent_result.get('agent_name', 'unknown'))
                     response_parts.append(f"✓ Spawned agent: {agent_result.get('agent_name')}")
