@@ -103,9 +103,11 @@ class PackageInstallerWorker:
                         logger.info(f"✓ Installed: {package_name}")
                     else:
                         logger.error(f"✗ Failed to install: {package_name}")
+                        self._broadcast_event(package_name, "package_failed", error="Installation failed")
                         
                 except Exception as e:
                     logger.error(f"Error installing {package_name}: {e}")
+                    self._broadcast_event(package_name, "package_failed", error=str(e))
             
             return installed
             
@@ -113,12 +115,14 @@ class PackageInstallerWorker:
             logger.error(f"Error checking for approved packages: {e}")
             return []
     
-    def _broadcast_installation(self, packages: List[str]):
+    def _broadcast_event(self, package_name: str, event_type: str, error: str = None):
         """
-        Broadcast package installation to WebSocket clients.
+        Broadcast package event to WebSocket clients.
         
         Args:
-            packages: List of installed package names
+            package_name: Name of the package
+            event_type: 'package_installed' or 'package_failed'
+            error: Optional error message
         """
         try:
             # Import here to avoid circular dependency
@@ -128,21 +132,22 @@ class PackageInstallerWorker:
             if not main_event_loop:
                 return
 
-            for package in packages:
-                message = {
-                    'type': 'package_installed',
-                    'package': package,
-                    'timestamp': time.time()
-                }
-                asyncio.run_coroutine_threadsafe(
-                    manager.broadcast(message, "chat"), # Broadcast to chat/main channel or logs?
-                    main_event_loop
-                )
-                # Also try logging it so it shows up in logs
-                # logger.info(...) already done in caller
+            message = {
+                'type': event_type,
+                'package': package_name,
+                'timestamp': time.time()
+            }
+            if error:
+                message['error'] = error
+
+            # Broadcast to chat/main channel so app.js picks it up
+            asyncio.run_coroutine_threadsafe(
+                manager.broadcast(message, "chat"), 
+                main_event_loop
+            )
                 
         except Exception as e:
-            logger.warning(f"Could not broadcast installation: {e}")
+            logger.warning(f"Could not broadcast event {event_type}: {e}")
     
     def is_alive(self) -> bool:
         """Check if worker thread is alive."""

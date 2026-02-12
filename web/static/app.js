@@ -323,6 +323,13 @@ function handleChatMessage(event) {
             status: data.status,
             trace_id: data.trace_id
         });
+    } else if (data.type === 'package_installed') {
+        console.log('Package installed:', data.package);
+        loadAllPackages();
+    } else if (data.type === 'package_failed') {
+        console.warn('Package failed:', data.package, data.error);
+        loadAllPackages();
+        // Maybe show a toast in the future
     }
 }
 

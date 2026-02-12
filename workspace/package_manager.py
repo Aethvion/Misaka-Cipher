@@ -244,26 +244,39 @@ class PackageManager:
         logger.info(f"Installing package: {package_name}...")
         
         try:
-            subprocess.check_call(
+            # Use run instead of check_call to capture output without deadlock risk
+            result = subprocess.run(
                 [sys.executable, "-m", "pip", "install", "--no-input", package_name],
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False  # We check returncode manually
             )
             
-            # Mark as installed
-            version = request.metadata.get('version', 'unknown') if request.metadata else 'unknown'
-            self.installed[package_name] = version
-            request.status = PackageStatus.INSTALLED.value
-            request.installed_at = datetime.now().isoformat()
+            if result.returncode == 0:
+                # Mark as installed
+                version = request.metadata.get('version', 'unknown') if request.metadata else 'unknown'
+                self.installed[package_name] = version
+                request.status = PackageStatus.INSTALLED.value
+                request.installed_at = datetime.now().isoformat()
+                
+                self._save_state()
+                logger.info(f"✓ Package installed successfully: {package_name} v{version}")
+                logger.debug(f"Pip output: {result.stdout}")
+                return True
+            else:
+                # Failure
+                error_msg = result.stderr or result.stdout or "Unknown error"
+                logger.error(f"✗ Package installation failed: {package_name}")
+                logger.error(f"Exit Code: {result.returncode}")
+                logger.error(f"Error Output: {error_msg}")
+                
+                request.status = PackageStatus.FAILED.value
+                self._save_state()
+                return False
             
-            # NOTE: We DO NOT delete from requests anymore, to preserve metadata and usage stats
-            
-            self._save_state()
-            logger.info(f"✓ Package installed successfully: {package_name} v{version}")
-            return True
-            
-        except subprocess.CalledProcessError as e:
-            logger.error(f"✗ Package installation failed: {package_name} - {e}")
+        except Exception as e:
+            logger.error(f"✗ Package installation exception: {package_name} - {e}")
             request.status = PackageStatus.FAILED.value
             self._save_state()
             return False
