@@ -37,6 +37,10 @@ class PackageRequest:
     requested_at: str
     status: str = PackageStatus.PENDING.value
     metadata: Optional[Dict] = None  # PackageInfo as dict
+    approved_at: Optional[str] = None
+    installed_at: Optional[str] = None
+    usage_count: int = 0
+    last_used_at: Optional[str] = None
 
 
 class PackageManager:
@@ -66,6 +70,28 @@ class PackageManager:
         self._load_state()
         logger.info(f"Package Manager initialized (workspace: {workspace_root})")
     
+    def register_usage(self, package_name: str) -> None:
+        """
+        Register usage of a package (increment counter).
+        
+        Args:
+            package_name: Name of the package used
+        """
+        if package_name in self.requests:
+            req = self.requests[package_name]
+            req.usage_count += 1
+            req.last_used_at = datetime.now().isoformat()
+            self._save_state()
+            
+    def get_all_package_info(self) -> List[Dict]:
+        """
+        Get info for all tracked packages (pending, installed, approved, etc).
+        
+        Returns:
+            List of dicts ready for UI serialization
+        """
+        return [asdict(req) for req in self.requests.values()]
+
     def is_available(self, package_name: str) -> bool:
         """
         Check if a package is available (installed or approved).
@@ -229,8 +255,7 @@ class PackageManager:
             request.status = PackageStatus.INSTALLED.value
             request.installed_at = datetime.now().isoformat()
             
-            # Remove from requests
-            del self.requests[package_name]
+            # NOTE: We DO NOT delete from requests anymore, to preserve metadata and usage stats
             
             self._save_state()
             logger.info(f"✓ Package installed successfully: {package_name} v{version}")

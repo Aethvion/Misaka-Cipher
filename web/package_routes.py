@@ -13,6 +13,20 @@ logger = get_logger("web.package_routes")
 router = APIRouter(prefix="/api/packages", tags=["packages"])
 
 
+@router.get("/all")
+async def get_all_packages():
+    """Get all packages (pending, approved, installed, denied)."""
+    from workspace.package_manager import get_package_manager
+    
+    try:
+        manager = get_package_manager()
+        packages = manager.get_all_package_info()
+        return {"packages": packages}
+    except Exception as e:
+        logger.error(f"Error fetching all packages: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/pending")
 async def get_pending_packages():
     """Get all pending package requests with metadata."""

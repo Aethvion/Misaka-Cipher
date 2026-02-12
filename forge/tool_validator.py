@@ -22,10 +22,13 @@ class ValidationResult:
     success: bool
     errors: List[str]
     warnings: List[str] = None
+    detected_imports: List[str] = None
     
     def __post_init__(self):
         if self.warnings is None:
             self.warnings = []
+        if self.detected_imports is None:
+            self.detected_imports = []
 
 
 class ToolValidator:
@@ -56,6 +59,7 @@ class ToolValidator:
         """
         errors = []
         warnings = []
+        detected_imports = []
         
         # Step 1: Syntax validation
         syntax_valid, syntax_errors = self._validate_syntax(code)
@@ -65,10 +69,11 @@ class ToolValidator:
             return ValidationResult(success=False, errors=errors, warnings=warnings)
         
         # Step 2: Import validation
-        import_valid, import_errors = self._validate_imports(code)
+        import_valid, import_errors, imports_found = self._validate_imports(code)
         if not import_valid:
             # Imports failing is a warning, not fatal
             warnings.extend(import_errors)
+        detected_imports.extend(imports_found)
         
         # Step 3: Function signature validation
         sig_valid, sig_errors = self._validate_signature(code, spec)
@@ -76,7 +81,12 @@ class ToolValidator:
             errors.extend(sig_errors)
         
         success = len(errors) == 0
-        return ValidationResult(success=success, errors=errors, warnings=warnings)
+        return ValidationResult(
+            success=success, 
+            errors=errors, 
+            warnings=warnings,
+            detected_imports=detected_imports
+        )
     
     def _validate_syntax(self, code: str) -> Tuple[bool, List[str]]:
         """
@@ -97,7 +107,7 @@ class ToolValidator:
             logger.error(f"Syntax validation failed: {error_msg}")
             return False, [error_msg]
     
-    def _validate_imports(self, code: str) -> Tuple[bool, List[str]]:
+    def _validate_imports(self, code: str) -> Tuple[bool, List[str], List[str]]:
         """
         Validate that all imports are available.
         
@@ -105,20 +115,22 @@ class ToolValidator:
         but not during validation (e.g., missing dev dependencies).
         
         Returns:
-            (is_valid, errors)
+            (is_valid, errors, detected_imports)
         """
         errors = []
+        detected_imports = []
         
         try:
             tree = ast.parse(code)
         except:
             # Syntax error, already caught in _validate_syntax
-            return True, []
+            return True, [], []
         
         # Extract all imports
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
+                    detected_imports.append(alias.name.split('.')[0])
                     if not self._check_import(alias.name):
                         errors.append(f"Import not available: {alias.name}")
                         # Request the package via PackageManager
@@ -126,17 +138,23 @@ class ToolValidator:
             
             elif isinstance(node, ast.ImportFrom):
                 module = node.module or ''
-                if module and not self._check_import(module):
-                    errors.append(f"Import not available: {module}")
-                    # Request the package via PackageManager
-                    self._request_missing_package(module, "tool validation")
+                if module:
+                    base_module = module.split('.')[0]
+                    detected_imports.append(base_module)
+                    if not self._check_import(module):
+                        errors.append(f"Import not available: {module}")
+                        # Request the package via PackageManager
+                        self._request_missing_package(module, "tool validation")
+        
+        # Remove duplicates
+        detected_imports = list(set(detected_imports))
         
         # Warnings only, not fatal
         is_valid = True
         if errors:
             logger.warning(f"Import validation found missing modules: {errors}")
         
-        return is_valid, errors
+        return is_valid, errors, detected_imports
     
     def _request_missing_package(self, package_name: str, context: str) -> None:
         """

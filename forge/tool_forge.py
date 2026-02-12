@@ -135,6 +135,17 @@ class ToolForge:
             
             logger.info(f"[{trace_id}] Tool validation passed")
             
+            # Register package usage
+            if validation.detected_imports:
+                try:
+                    from workspace.package_manager import get_package_manager
+                    pm = get_package_manager()
+                    for pkg in validation.detected_imports:
+                        pm.register_usage(pkg)
+                    logger.info(f"[{trace_id}] Registered usage for packages: {validation.detected_imports}")
+                except Exception as e:
+                    logger.warning(f"[{trace_id}] Failed to register package usage: {e}")
+            
             # 5. Save to file
             file_path = self.tools_dir / spec.file_name
             with open(file_path, 'w') as f:
@@ -326,6 +337,12 @@ REQUIREMENTS:
 8. Add helpful comments for complex logic
 9. Handle edge cases and errors gracefully
 
+CRITICAL - RETURN VALUE REQUIREMENT:
+- The function MUST return a value of type {spec.return_type}
+- If you define helper functions, you MUST call them and return their result
+- NEVER leave the function without an explicit return statement
+- Example: If you define `def helper(): ...`, you MUST end with `return helper(args)`
+
 IMPORTANT: Do NOT include the function definition line (def {spec.name}...) - only the body.
 If you need imports, put them at the very top as separate lines.
 
@@ -335,11 +352,16 @@ Example format:
 import requests
 import json
 
-# Function body
+# Helper function (if needed)
+def helper_function(data):
+    # Process data
+    return processed_result
+
+# Main implementation
 try:
     # Actual implementation here
-    result = do_something()
-    return result
+    result = helper_function(some_data)
+    return result  # CRITICAL: Always return!
 except Exception as e:
     logger.error(f"Error: {{e}}")
     return {{"error": str(e)}}

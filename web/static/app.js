@@ -510,232 +510,228 @@ function formatTime(timestamp) {
 
 // ===== Package Management =====
 
+let allPackages = [];
+let packageSort = { column: 'updated', direction: 'desc' };
+
 async function loadPackages() {
-    await loadPendingPackages();
-    await loadInstalledPackages();
-    await loadDeniedPackages();
+    await loadAllPackages();
 }
 
-async function loadPendingPackages() {
+async function loadAllPackages() {
     try {
-        const response = await fetch('/api/packages/pending');
+        const response = await fetch('/api/packages/all');
         const data = await response.json();
 
-        const container = document.getElementById('pending-packages-list');
-        const countBadge = document.getElementById('pending-count');
+        allPackages = data.packages || [];
+        renderPackagesTable();
 
-        if (!data.pending || data.pending.length === 0) {
-            container.innerHTML = '<p class="placeholder-text">No pending package requests</p>';
-            countBadge.textContent = '0';
-            return;
-        }
+        // Setup event listeners if not already set (checked via flag or just overwrite)
+        setupPackageListeners();
 
-        countBadge.textContent = data.pending.length;
-        container.innerHTML = data.pending.map(pkg => renderPackageCard(pkg)).join('');
+    } catch (error) {
+        console.error('Error loading packages:', error);
+        document.getElementById('packages-table-body').innerHTML =
+            '<tr><td colspan="6" class="placeholder-text error">Error loading packages</td></tr>';
+    }
+}
 
-        // Attach event listeners to buttons
-        container.querySelectorAll('.approve-btn').forEach(btn => {
-            btn.addEventListener('click', () => approvePackage(btn.dataset.package));
+function setupPackageListeners() {
+    // Search
+    const searchInput = document.getElementById('package-search');
+    // Remove old listeners to avoid duplicates
+    const newSearch = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newSearch, searchInput);
+    newSearch.addEventListener('input', renderPackagesTable);
+
+    // Filter
+    const filterSelect = document.getElementById('package-status-filter');
+    const newFilter = filterSelect.cloneNode(true);
+    filterSelect.parentNode.replaceChild(newFilter, filterSelect);
+    newFilter.addEventListener('change', renderPackagesTable);
+
+    // Refresh
+    const refreshBtn = document.getElementById('refresh-packages');
+    const newRefresh = refreshBtn.cloneNode(true);
+    refreshBtn.parentNode.replaceChild(newRefresh, refreshBtn);
+    newRefresh.addEventListener('click', loadAllPackages);
+
+    // Sorting HEADERS
+    document.querySelectorAll('#packages-table th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const column = th.dataset.sort;
+            if (packageSort.column === column) {
+                packageSort.direction = packageSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                packageSort.column = column;
+                packageSort.direction = 'asc'; // Default to asc for new column, except maybe usage?
+                if (column === 'usage' || column === 'updated' || column === 'safety') {
+                    packageSort.direction = 'desc'; // These make more sense desc by default
+                }
+            }
+            renderPackagesTable();
         });
-        container.querySelectorAll('.deny-btn').forEach(btn => {
-            btn.addEventListener('click', () => denyPackage(btn.dataset.package));
-        });
-
-    } catch (error) {
-        console.error('Error loading pending packages:', error);
-    }
+    });
 }
 
-async function loadInstalledPackages() {
-    try {
-        const response = await fetch('/api/packages/installed');
-        const data = await response.json();
+function renderPackagesTable() {
+    const tbody = document.getElementById('packages-table-body');
+    const search = document.getElementById('package-search').value.toLowerCase();
+    const filter = document.getElementById('package-status-filter').value;
 
-        const container = document.getElementById('installed-packages-list');
-        const countBadge = document.getElementById('installed-count');
+    // 1. Filter
+    let filtered = allPackages.filter(pkg => {
+        // Status Filter
+        if (filter !== 'all' && pkg.status !== filter) return false;
 
-        if (!data.installed || data.installed.length === 0) {
-            container.innerHTML = '<p class="placeholder-text">No packages installed via this system</p>';
-            countBadge.textContent = '0';
-            return;
+        // Search Filter
+        if (search) {
+            const term = search.toLowerCase();
+            return (
+                pkg.package_name.toLowerCase().includes(term) ||
+                (pkg.reason && pkg.reason.toLowerCase().includes(term)) ||
+                (pkg.metadata && pkg.metadata.description && pkg.metadata.description.toLowerCase().includes(term))
+            );
+        }
+        return true;
+    });
+
+    // 2. Sort
+    filtered.sort((a, b) => {
+        let valA, valB;
+
+        switch (packageSort.column) {
+            case 'name':
+                valA = a.package_name.toLowerCase();
+                valB = b.package_name.toLowerCase();
+                break;
+            case 'status':
+                valA = a.status;
+                valB = b.status;
+                break;
+            case 'usage':
+                valA = a.usage_count || 0;
+                valB = b.usage_count || 0;
+                break;
+            case 'safety':
+                valA = (a.metadata?.safety_score) || 0;
+                valB = (b.metadata?.safety_score) || 0;
+                break;
+            case 'updated':
+                // Use most recent relevant date
+                valA = new Date(a.last_used_at || a.installed_at || a.approved_at || a.requested_at || 0).getTime();
+                valB = new Date(b.last_used_at || b.installed_at || b.approved_at || b.requested_at || 0).getTime();
+                break;
+            default:
+                return 0;
         }
 
-        countBadge.textContent = data.installed.length;
-        container.innerHTML = data.installed.map(pkg => `
-            <div class="package-card installed">
-                <div class="package-header">
-                    <h3>📦 ${pkg.name}</h3>
-                    <span class="package-version">v${pkg.version}</span>
-                </div>
-            </div>
-        `).join('');
+        if (valA < valB) return packageSort.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return packageSort.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
 
-    } catch (error) {
-        console.error('Error loading installed packages:', error);
-    }
-}
-
-async function loadDeniedPackages() {
-    try {
-        const response = await fetch('/api/packages/denied');
-        const data = await response.json();
-
-        const container = document.getElementById('denied-packages-list');
-        const countBadge = document.getElementById('denied-count');
-
-        if (!data.denied || data.denied.length === 0) {
-            container.innerHTML = '<p class="placeholder-text">No denied packages</p>';
-            countBadge.textContent = '0';
-            return;
-        }
-
-        countBadge.textContent = data.denied.length;
-        container.innerHTML = data.denied.map(pkg => `
-            <div class="package-card denied">
-                <div class="package-header">
-                    <h3>📦 ${pkg}</h3>
-                    <span class="denied-label">DENIED</span>
-                </div>
-            </div>
-        `).join('');
-
-    } catch (error) {
-        console.error('Error loading denied packages:', error);
-    }
-}
-
-function renderPackageCard(pkg) {
-    const meta = pkg.metadata || {};
-    const safetyLevel = meta.safety_level || 'UNKNOWN';
-    const safetyScore = meta.safety_score || 0;
-    const safetyColor = {
-        'HIGH': '#10b981',
-        'MEDIUM': '#f59e0b',
-        'LOW': '#f97316',
-        'UNKNOWN': '#ef4444'
-    }[safetyLevel];
-
-    const safetyEmoji = {
-        'HIGH': '🟢',
-        'MEDIUM': '🟡',
-        'LOW': '🟠',
-        'UNKNOWN': '🔴'
-    }[safetyLevel];
-
-    const barWidth = (safetyScore / 100) * 100;
-
-    return `
-        <div class="package-card pending">
-            <div class="package-header">
-                <h3>📦 ${pkg.name}</h3>
-            </div>
-            
-            <div class="safety-rating" style="border-color: ${safetyColor}">
-                <div class="safety-bar-container">
-                    <div class="safety-bar" style="width: ${barWidth}%; background-color: ${safetyColor}"></div>
-                </div>
-                <div class="safety-label">
-                    Safety Rating: ${Math.round(safetyScore)}/100 (${safetyLevel}) ${safetyEmoji}
-                </div>
-            </div>
-            
-            <div class="package-info">
-                <div class="info-row">
-                    <span class="info-label">Version:</span>
-                    <span>${meta.version || 'unknown'}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Downloads:</span>
-                    <span>${formatNumber(meta.downloads_last_month || 0)}/month</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Last Update:</span>
-                    <span>${meta.last_release ? formatDate(meta.last_release) : 'unknown'}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Total Releases:</span>
-                    <span>${meta.total_releases || 0}</span>
-                </div>
-            </div>
-            
-            <div class="package-request-info">
-                <div class="info-row">
-                    <span class="info-label">Requested by:</span>
-                    <span class="code">${pkg.requested_by}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Reason:</span>
-                    <span>${pkg.reason}</span>
-                </div>
-            </div>
-            
-            ${meta.dependencies && meta.dependencies.length > 0 ? `
-                <div class="package-dependencies">
-                    <span class="info-label">Dependencies (${meta.dependencies.length}):</span>
-                    <div class="dependencies-list">${meta.dependencies.slice(0, 5).join(', ')}${meta.dependencies.length > 5 ? '...' : ''}</div>
-                </div>
-            ` : ''}
-            
-            ${meta.safety_reasons && meta.safety_reasons.length > 0 ? `
-                <div class="safety-factors">
-                    <span class="info-label">Safety Factors:</span>
-                    <ul class="safety-reasons">
-                        ${meta.safety_reasons.map(reason => `<li>${reason}</li>`).join('')}
-                    </ul>
-                </div>
-            ` : ''}
-            
-            <div class="package-actions">
-                <button class="approve-btn" data-package="${pkg.name}">✓ Approve & Install</button>
-                <button class="deny-btn" data-package="${pkg.name}">✗ Deny</button>
-            </div>
-        </div>
-    `;
-}
-
-async function approvePackage(packageName) {
-    if (!confirm(`Install package "${packageName}"? This will run pip install.`)) {
+    // 3. Render
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="placeholder-text">No packages match your criteria</td></tr>';
         return;
     }
 
-    try {
-        const response = await fetch(`/api/packages/approve/${packageName}`, {
-            method: 'POST'
-        });
-        const data = await response.json();
+    tbody.innerHTML = filtered.map(pkg => {
+        const meta = pkg.metadata || {};
+        const safeLevel = meta.safety_level || 'UNKNOWN';
+        let safeColor = 'var(--text-secondary)';
+        if (safeLevel === 'HIGH') safeColor = '#10b981';
+        if (safeLevel === 'MEDIUM') safeColor = '#f59e0b';
+        if (safeLevel === 'LOW') safeColor = '#ef4444';
 
+        let actionsHtml = '';
+        if (pkg.status === 'pending') {
+            actionsHtml = `
+                <button class="icon-btn approve-btn" data-pkg="${pkg.package_name}" title="Approve">✓</button>
+                <button class="icon-btn deny-btn" data-pkg="${pkg.package_name}" title="Deny">✗</button>
+            `;
+        } else if (pkg.status === 'installed') {
+            actionsHtml = `<span class="dim-text">Installed</span>`;
+        } else if (pkg.status === 'approved') {
+            actionsHtml = `<span class="dim-text">Installing...</span>`;
+        } else if (pkg.status === 'denied') {
+            actionsHtml = `<span class="dim-text">Denied</span>`;
+        }
+
+        return `
+            <tr class="package-row ${pkg.status}">
+                <td>
+                    <div class="pkg-name">${pkg.package_name}</div>
+                    <div class="pkg-desc">${meta.description || pkg.reason || ''}</div>
+                </td>
+                <td><span class="status-badge ${pkg.status}">${pkg.status}</span></td>
+                <td>
+                    <div class="usage-count">${pkg.usage_count || 0} calls</div>
+                    <div class="last-used">${pkg.last_used_at ? formatDate(pkg.last_used_at) : 'Never'}</div>
+                </td>
+                <td>
+                    <div class="safety-score" style="color: ${safeColor}">
+                        ${Math.round(meta.safety_score || 0)}%
+                    </div>
+                </td>
+                <td>${formatDate(pkg.installed_at || pkg.requested_at)}</td>
+                <td>${actionsHtml}</td>
+            </tr>
+        `;
+    }).join('');
+
+    // Attach action listeners
+    tbody.querySelectorAll('.approve-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            approvePackage(btn.dataset.pkg);
+        });
+    });
+    tbody.querySelectorAll('.deny-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            denyPackage(btn.dataset.pkg);
+        });
+    });
+}
+
+async function approvePackage(packageName) {
+    if (!confirm(`Install package "${packageName}"?`)) return;
+
+    try {
+        const response = await fetch(`/api/packages/approve/${packageName}`, { method: 'POST' });
+        const data = await response.json();
         if (data.success) {
-            alert(`✓ Package "${packageName}" installed successfully!`);
-            await loadPackages(); // Refresh all package lists
+            // Optimistic update
+            const pkg = allPackages.find(p => p.package_name === packageName);
+            if (pkg) pkg.status = 'approved';
+            renderPackagesTable();
+            // Reload to be sure
+            loadAllPackages();
         } else {
-            alert(`✗ Failed to install "${packageName}": ${data.message}`);
+            alert(`Failed: ${data.message}`);
         }
     } catch (error) {
-        console.error('Error approving package:', error);
-        alert(`Error approving package: ${error.message}`);
+        console.error('Error approving:', error);
     }
 }
 
 async function denyPackage(packageName) {
-    if (!confirm(`Deny package "${packageName}"? This will prevent it from being requested again.`)) {
-        return;
-    }
+    if (!confirm(`Deny package "${packageName}"?`)) return;
 
     try {
-        const response = await fetch(`/api/packages/deny/${packageName}`, {
-            method: 'POST'
-        });
+        const response = await fetch(`/api/packages/deny/${packageName}`, { method: 'POST' });
         const data = await response.json();
-
         if (data.success) {
-            alert(`Package "${packageName}" denied.`);
-            await loadPackages(); // Refresh all package lists
+            const pkg = allPackages.find(p => p.package_name === packageName);
+            if (pkg) pkg.status = 'denied';
+            renderPackagesTable();
+            loadAllPackages();
         } else {
-            alert(`Failed to deny "${packageName}": ${data.message}`);
+            alert(`Failed: ${data.message}`);
         }
     } catch (error) {
-        console.error('Error denying package:', error);
-        alert(`Error denying package: ${error.message}`);
+        console.error('Error denying:', error);
     }
 }
 
