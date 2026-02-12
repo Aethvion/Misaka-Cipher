@@ -160,13 +160,15 @@ class PackageManager:
     
     def approve_package(self, package_name: str) -> bool:
         """
-        Approve a package request and attempt installation.
+        Approve a package request (marks as approved, doesn't install immediately).
+        
+        Installation will be handled by background worker.
         
         Args:
             package_name: Name of the package to approve
             
         Returns:
-            True if installation succeeded, False otherwise
+            True if approved successfully
         """
         if package_name not in self.requests:
             logger.error(f"No request found for package: {package_name}")
@@ -174,11 +176,46 @@ class PackageManager:
         
         request = self.requests[package_name]
         request.status = PackageStatus.APPROVED.value
+        request.approved_at = datetime.now().isoformat()
         self._save_state()
         
-        logger.info(f"Package approved: {package_name}, attempting installation...")
+        logger.info(f"Package approved: {package_name} (installation will be handled by background worker)")
+        return True
+    
+    def get_approved_packages(self) -> List[str]:
+        """
+        Get list of approved packages that haven't been installed yet.
         
-        # Attempt installation
+        Returns:
+            List of package names
+        """
+        return [
+            name for name, req in self.requests.items()
+            if req.status == PackageStatus.APPROVED.value
+        ]
+    
+    def install_package(self, package_name: str) -> bool:
+        """
+        Install a package (called by background worker).
+        
+        Args:
+            package_name: Name of the package to install
+            
+        Returns:
+            True if installation succeeded
+        """
+        if package_name not in self.requests:
+            logger.error(f"No request found for package: {package_name}")
+            return False
+        
+        request = self.requests[package_name]
+        
+        if request.status != PackageStatus.APPROVED.value:
+            logger.warning(f"Package {package_name} is not approved (status: {request.status})")
+            return False
+        
+        logger.info(f"Installing package: {package_name}...")
+        
         try:
             subprocess.check_call(
                 [sys.executable, "-m", "pip", "install", package_name],
@@ -190,6 +227,7 @@ class PackageManager:
             version = request.metadata.get('version', 'unknown') if request.metadata else 'unknown'
             self.installed[package_name] = version
             request.status = PackageStatus.INSTALLED.value
+            request.installed_at = datetime.now().isoformat()
             
             # Remove from requests
             del self.requests[package_name]

@@ -202,6 +202,12 @@ async def startup_event():
         orchestrator.set_step_callback(broadcast_step_callback)
         logger.info("✓ Master Orchestrator initialized (with step broadcasting)")
         
+        # Start background workers
+        from workers.package_installer import get_installer_worker
+        installer_worker = get_installer_worker()
+        installer_worker.start()
+        logger.info("✓ Package Installer Worker started")
+        
         logger.info("Misaka Cipher Web Server ready!")
         
     except Exception as e:
