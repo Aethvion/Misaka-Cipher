@@ -50,9 +50,27 @@
 
     <!-- Main Content Area -->
     <main class="main-container">
-        <!-- Chat Tab (3-column layout) -->
+        <!-- Chat Tab (4-column layout with threads) -->
         <div class="main-tab-panel active" id="chat-panel">
-            <div class="three-column-layout">
+            <div class="four-column-layout">
+                <!-- Far Left: Thread List -->
+                <div class="column threads-column">
+                    <div class="column-header">
+                        <h2>Threads</h2>
+                        <button id="new-thread-button" class="new-thread-button" title="New Thread">+</button>
+                    </div>
+                    <div class="threads-list" id="threads-list">
+                        <!-- Thread items will be added here -->
+                        <div class="thread-item active" data-thread-id="default">
+                            <div class="thread-title">Main Thread</div>
+                            <div class="thread-meta">
+                                <span class="thread-task-count">0 tasks</span>
+                                <span class="thread-status">idle</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Left: System Logs -->
                 <div class="column logs-column">
                     <div class="column-header">
@@ -66,7 +84,7 @@
                 <!-- Center: Chat Interface -->
                 <div class="column chat-column">
                     <div class="column-header">
-                        <h2>Main Chat</h2>
+                        <h2 id="active-thread-title">Main Thread</h2>
                         <div class="voice-button" id="voice-button" title="Voice Input">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                                 <path
@@ -210,6 +228,7 @@
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/marked@latest/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="/static/threads.js?v=1"></script>
     <script src="/static/app.js?v=2"></script>
 </body>
 

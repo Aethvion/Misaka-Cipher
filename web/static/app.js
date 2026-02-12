@@ -137,6 +137,11 @@ async function loadInitialData() {
     await loadTools();
     await loadPackages();
 
+    // Initialize thread management (from threads.js)
+    if (typeof initThreadManagement === 'function') {
+        initThreadManagement();
+    }
+
     // Refresh status every 5 seconds
     setInterval(loadSystemStatus, 5000);
 
