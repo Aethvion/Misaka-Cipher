@@ -445,6 +445,15 @@ class MasterOrchestrator:
             # Combine responses
             final_response = "\n\n".join(response_parts)
             
+            # Additional check for empty or whitespace-only response
+            if not final_response.strip():
+                if agents_spawned:
+                     final_response = f"**Agent Execution Completed**\n\nAgent `{agents_spawned[-1]}` completed the task but provided no text output. Please check the workspace for any generated files."
+                elif tools_forged:
+                     final_response = f"**Tool Forge Completed**\n\nTool `{tools_forged[-1]}` was successfully created."
+                else:
+                     final_response = "Task execution completed, but no output was generated."
+            
             return ExecutionResult(
                 trace_id=plan.trace_id,
                 success=True,

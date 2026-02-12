@@ -100,19 +100,25 @@ class IntentAnalyzer:
 User Message: "{user_message}"
 
 Classify the intent into one of these categories:
-- CHAT: General conversation, greetings, casual questions
+- CHAT: General conversation, creative writing (stories, poems), brainstorming, simple explanations.
 - QUERY: Information retrieval (status, list tools, search memory, "what tools do I have?")
 - ANALYZE: Data analysis requests (analyze stock, review code, generate insights)
 - CREATE: Tool creation requests (create tool, forge capability, build function)
 - EXECUTE: Direct task execution (summarize text, calculate something, perform action)
 - SYSTEM: System control (show status, check health, restart)
 
+IMPORTANT RULES:
+1. Prefer CHAT for tasks that can be answered with pure text generation (stories, summaries, simple code snippets).
+2. ONLY use tools (ANALYZE/EXECUTE/CREATE) if the request requires external data, complex computation, file I/O, or specific system changes.
+3. If the user says "no tool" or "don't use tool", classify as CHAT or EXECUTE without tool requirements.
+4. Do NOT create tools for one-off creative tasks like writing a story.
+
 Extract parameters if applicable:
 - domain: Which domain? (Finance, Data, Code, Security, System, etc.)
 - action: What action? (Analyze, Generate, Review, Calculate, etc.)
 - object: What object? (Stock, Dataset, Code, Report, etc.)
 - requires_tool: Does this need a specific tool? (true/false)
-- tool_name: If requires_tool, what tool? (Finance_Fetch_Market, etc.)
+- tool_name: If requires_tool, what tool? (Finance_Fetch_Market, etc.)  If "no tool" requested, must be null.
 - requires_agent: Does this need to spawn an agent? (true/false)
 
 Respond ONLY with JSON in this exact format:
