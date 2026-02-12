@@ -143,3 +143,7 @@ def save_file(content: Any, filename: str, domain: str = "General") -> Dict[str,
 def read_file(filename: str, domain: str = "General") -> str:
     """Backward compatibility alias for data_read_file."""
     return data_read_file(filename, domain)
+
+def file_save(content: Any, filename: str, domain: str = "General") -> Dict[str, Any]:
+    """Backward compatibility alias for data_save_file."""
+    return data_save_file(content, filename, domain)

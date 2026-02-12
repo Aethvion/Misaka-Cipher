@@ -109,12 +109,24 @@ class GenericAgent(BaseAgent):
             self.log(f"Received response (length: {len(response)} chars)")
             
             # Check for code execution
-            execution_output = None
             # Check for code execution
             execution_output = self._execute_code(response)
             if execution_output:
                 self.log("Detected code block, executing...")
-                response += f"\n\n--- EXECUTION OUTPUT ---\n{execution_output}"
+                
+                # SUPPRESS FULL OUTPUT FROM USER RESPONSE - Add only result summary or error
+                
+                # Look for file creation messages
+                file_match = re.search(r"(?:saved|created|wrote).*?to.*?(C:[\\/][^\n\r]+)", execution_output, re.IGNORECASE)
+                if file_match:
+                    file_path = file_match.group(1).strip().rstrip('.')
+                    response += f"\n\n**✅ RESULT:** File successfully created at: `{file_path}`"
+                elif "unsupported format string" in execution_output:
+                     response += f"\n\n**❌ ERROR:** Code execution failed with formatting error. (Fixed in tool)"
+                     response += f"\n\n--- DEBUG OUTPUT ---\n{execution_output}" # Only show output on error
+                elif "Traceback" in execution_output or "Error:" in execution_output:
+                     response += f"\n\n**❌ ERROR:** Code execution failed."
+                     response += f"\n\n--- DEBUG OUTPUT ---\n{execution_output}" # Only show output on error
             
             # Legacy check for string match removed, logic moved to _execute_code
             found_code = execution_output is not None

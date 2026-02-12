@@ -323,22 +323,30 @@ class MasterOrchestrator:
                         
                         # 1. Check for File Creation
                         potential_files = re.findall(r'[\w\-\.]+\.[a-zA-Z]{2,4}', output)
-                        verified_files = []
+                        verified_files = set() # Use set to avoid duplicates
                         
                         for fname in potential_files:
-                            for path in WORKSPACE_ROOT.rglob(fname):
+                            # Limit search to workspace to avoid scanning entire system if misconfigured
+                            found = list(WORKSPACE_ROOT.rglob(fname))
+                            for path in found:
                                 if path.is_file():
-                                    verified_files.append(path)
+                                    verified_files.add(path)
                         
                         if verified_files:
                             success = True
                             links_msg = "\n\n**Verified Output Files:**\n"
-                            for vf in verified_files:
+                            # Sort for consistent output
+                            for vf in sorted(list(verified_files)):
                                 relative_path = vf.relative_to(WORKSPACE_ROOT)
                                 try:
                                     domain = relative_path.parts[0]
-                                    filename = relative_path.name
-                                    links_msg += f"- [{filename}](/api/workspace/files/{domain}/{filename})\n"
+                                    # Handle case where file is in root of workspace
+                                    if relative_path.name == domain:
+                                        filename = relative_path.name
+                                        links_msg += f"- [{filename}](/api/workspace/files/{filename})\n"
+                                    else:
+                                        filename = relative_path.name
+                                        links_msg += f"- [{filename}](/api/workspace/files/{domain}/{filename})\n"
                                 except IndexError:
                                     links_msg += f"- {filename}\n"
                             
