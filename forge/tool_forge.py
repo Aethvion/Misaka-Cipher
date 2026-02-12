@@ -277,6 +277,25 @@ Be precise. Choose the most appropriate domain and action from the allowed lists
         Returns:
             Python implementation code (function body)
         """
+        # Query available packages from PackageManager
+        try:
+            from workspace.package_manager import get_package_manager
+            package_manager = get_package_manager()
+            installed_packages = package_manager.get_installed_packages()
+            available_packages = list(installed_packages.keys())
+            
+            # Add standard library packages that are always available
+            standard_libs = ['json', 'pathlib', 'datetime', 're', 'os', 'sys', 'typing', 
+                           'dataclasses', 'collections', 'itertools', 'functools']
+            available_packages.extend(standard_libs)
+            
+            packages_info = f"\n\nAVAILABLE PACKAGES (you can import these):\n{', '.join(available_packages)}\n"
+            logger.info(f"[{trace_id}] Available packages: {len(available_packages)} total")
+            
+        except Exception as e:
+            logger.warning(f"[{trace_id}] Could not query PackageManager: {e}")
+            packages_info = "\n\nNOTE: Use only standard library packages (json, pathlib, etc.)\n"
+        
         # Build detailed prompt for code generation
         params_desc = "\n".join([
             f"  - {p.name} ({p.type}): {p.description}"
@@ -295,15 +314,17 @@ Parameters:
 {params_desc if params_desc else "  (none)"}
 
 Return Type: {spec.return_type}
-
+{packages_info}
 REQUIREMENTS:
 1. Write ONLY the function body code (the implementation inside the function)
 2. Use proper Python syntax with error handling
 3. Include necessary imports at the top if needed (requests, json, pathlib, etc.)
-4. Return the correct type: {spec.return_type}
-5. Make it production-ready, not a placeholder
-6. Add helpful comments for complex logic
-7. Handle edge cases and errors gracefully
+4. ONLY import packages from the AVAILABLE PACKAGES list above
+5. If you need a package not in the list, use a simpler alternative or standard library
+6. Return the correct type: {spec.return_type}
+7. Make it production-ready, not a placeholder
+8. Add helpful comments for complex logic
+9. Handle edge cases and errors gracefully
 
 IMPORTANT: Do NOT include the function definition line (def {spec.name}...) - only the body.
 If you need imports, put them at the very top as separate lines.

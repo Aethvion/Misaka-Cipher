@@ -121,11 +121,15 @@ class ToolValidator:
                 for alias in node.names:
                     if not self._check_import(alias.name):
                         errors.append(f"Import not available: {alias.name}")
+                        # Request the package via PackageManager
+                        self._request_missing_package(alias.name, "tool validation")
             
             elif isinstance(node, ast.ImportFrom):
                 module = node.module or ''
                 if module and not self._check_import(module):
                     errors.append(f"Import not available: {module}")
+                    # Request the package via PackageManager
+                    self._request_missing_package(module, "tool validation")
         
         # Warnings only, not fatal
         is_valid = True
@@ -133,6 +137,33 @@ class ToolValidator:
             logger.warning(f"Import validation found missing modules: {errors}")
         
         return is_valid, errors
+    
+    def _request_missing_package(self, package_name: str, context: str) -> None:
+        """
+        Request a missing package via PackageManager.
+        
+        Args:
+            package_name: Name of the missing package
+            context: Context where the package is needed
+        """
+        try:
+            from workspace.package_manager import get_package_manager
+            package_manager = get_package_manager()
+            
+            # Request the package
+            requested = package_manager.request_package(
+                package_name=package_name,
+                reason=f"Required for {context}",
+                requested_by="ToolForge"
+            )
+            
+            if requested:
+                logger.info(f"Package request created: {package_name}")
+            else:
+                logger.debug(f"Package {package_name} already requested or denied")
+                
+        except Exception as e:
+            logger.warning(f"Failed to request package {package_name}: {e}")
     
     def _check_import(self, module_name: str) -> bool:
         """Check if a module can be imported."""
