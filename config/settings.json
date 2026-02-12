@@ -1,0 +1,25 @@
+{
+    "retry": {
+        "max_attempts": 3,
+        "enable_validation": true,
+        "model_tiers": {
+            "attempt_1": "google_ai",
+            "attempt_2": "google_ai",
+            "attempt_3": "google_ai"
+        }
+    },
+    "providers": {
+        "default": "google_ai",
+        "fallback_order": [
+            "google_ai",
+            "openai",
+            "local"
+        ]
+    },
+    "output_validation": {
+        "check_file_content": true,
+        "check_file_location": true,
+        "min_file_size": 10,
+        "min_content_length": 50
+    }
+}

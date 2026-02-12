@@ -3,26 +3,47 @@ Misaka Cipher - Standard File Operations
 """
 
 import os
+import json
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Any, Dict
+from datetime import datetime
 
 # Define workspace root
 WORKSPACE_ROOT = Path("C:/Aethvion/MisakaCipher/WorkFolder")
 
-def data_save_file(filename: str, content: Union[str, bytes], domain: str = "general", encoding: str = "utf-8") -> str:
+def data_save_file(content: Any, filename: str, domain: str = "General") -> Dict[str, Any]:
     """
     Save content to a file in the workspace.
     
     Args:
+        content: Content to write (string, dict, list, or bytes)
         filename: Name of the file (e.g., report.txt)
-        content: String content or bytes to write
-        domain: Domain subdirectory (default: general)
-        encoding: File encoding (default: utf-8)
+        domain: Domain subdirectory (default: General)
         
     Returns:
-        Absolute path to the saved file
+        Dict with file metadata: {path, size, created_at, success}
     """
     try:
+        # VALIDATION: Detect if content is a file path (common error)
+        if isinstance(content, str):
+            # Check if it looks like a file path
+            is_path = (
+                content.startswith('C:\\') or 
+                content.startswith('/') or
+                content.startswith('./') or
+                'WorkFolder' in content or
+                (len(content) < 200 and ('\\' in content or '/' in content))
+            )
+            
+            if is_path:
+                raise ValueError(
+                    f"❌ VALIDATION ERROR: Attempted to save a file path as content!\n"
+                    f"Content: {content}\n\n"
+                    f"This is likely a bug in the tool implementation. "
+                    f"The tool should return actual data (analysis, report, etc.), "
+                    f"not a file path string."
+                )
+        
         # Sanitize inputs
         clean_domain = "".join(c for c in domain if c.isalnum() or c in ('_', '-'))
         clean_filename = "".join(c for c in filename if c.isalnum() or c in ('_', '-', '.'))
@@ -33,19 +54,50 @@ def data_save_file(filename: str, content: Union[str, bytes], domain: str = "gen
         
         file_path = file_dir / clean_filename
         
+        # Convert content to appropriate format
+        if isinstance(content, (dict, list)):
+            # JSON serialization for dicts/lists
+            final_content = json.dumps(content, indent=2)
+            mode = 'w'
+            encoding = 'utf-8'
+        elif isinstance(content, bytes):
+            # Binary content
+            final_content = content
+            mode = 'wb'
+            encoding = None
+        else:
+            # String content
+            final_content = str(content)
+            mode = 'w'
+            encoding = 'utf-8'
+        
         # Write file
-        mode = 'w' if isinstance(content, str) else 'wb'
-        final_encoding = encoding if isinstance(content, str) else None
+        with open(file_path, mode, encoding=encoding) as f:
+            f.write(final_content)
         
-        with open(file_path, mode, encoding=final_encoding) as f:
-            f.write(content)
-            
-        return str(file_path)
+        # Get file stats
+        file_stats = file_path.stat()
         
+        return {
+            "success": True,
+            "path": str(file_path),
+            "size": file_stats.st_size,
+            "created_at": datetime.now().isoformat(),
+            "domain": clean_domain,
+            "filename": clean_filename
+        }
+        
+    except ValueError as e:
+        # Validation errors - re-raise to agent
+        raise e
     except Exception as e:
-        return f"Error saving file: {str(e)}"
+        return {
+            "success": False,
+            "error": f"Error saving file: {str(e)}",
+            "path": None
+        }
 
-def data_read_file(filename: str, domain: str = "general") -> str:
+def data_read_file(filename: str, domain: str = "General") -> str:
     """
     Read content from a file in the workspace.
     
