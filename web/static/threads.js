@@ -108,8 +108,6 @@ function switchThread(threadId) {
     // Render messages for this thread
     renderThreadMessages();
 
-    // Try to load thread history from server (will gracefully handle 404)
-    loadThreadMessages(threadId);
 }
 
 // Render messages for current thread
@@ -195,9 +193,9 @@ async function loadThreadMessages(threadId) {
     try {
         const response = await fetch(`/api/tasks/thread/${threadId}`);
 
-        // Handle 404 for local-only threads
+        // Handle 404 for local-only threads (expected and normal)
         if (response.status === 404) {
-            console.log(`Thread ${threadId} not found on server (local-only thread)`);
+            // Silently return - local threads don't exist on backend
             return;
         }
 
