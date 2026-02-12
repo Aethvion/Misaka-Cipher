@@ -21,6 +21,7 @@ from forge import ToolForge
 from orchestrator import MasterOrchestrator
 from utils import get_logger
 from web.package_routes import router as package_router
+from web.task_routes import router as task_router
 
 logger = get_logger(__name__)
 
@@ -42,6 +43,9 @@ app.add_middleware(
 
 # Include package management routes
 app.include_router(package_router)
+
+# Include task queue routes
+app.include_router(task_router)
 
 # Global instances (initialized on startup)
 orchestrator: Optional[MasterOrchestrator] = None
@@ -207,6 +211,12 @@ async def startup_event():
         installer_worker = get_installer_worker()
         installer_worker.start()
         logger.info("✓ Package Installer Worker started")
+        
+        # Initialize and start task queue manager
+        from orchestrator.task_queue import get_task_queue_manager
+        task_manager = get_task_queue_manager(orchestrator, max_workers=4)
+        await task_manager.start()
+        logger.info("✓ Task Queue Manager started (4 workers)")
         
         logger.info("Misaka Cipher Web Server ready!")
         
