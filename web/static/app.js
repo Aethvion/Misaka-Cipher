@@ -349,12 +349,34 @@ function addMessage(sender, content, metadata = {}) {
             <div class="message-content">${marked.parse(content)}</div>
         `;
 
+        // Fix for messages containing HTML (like <details>) that marked might escape or break
+        // If content contains specific HTML tags we want to preserve, we might need to bypass marked or configure it
+        if (content.includes('<details>')) {
+            // For error messages with details, we trust the HTML from backend but still want markdown for the summary/intro
+            // Split by <details> to parse the top part as markdown
+            const parts = content.split('<details>');
+            if (parts.length > 0) {
+                const markdownPart = marked.parse(parts[0]);
+                const detailsPart = '<details>' + parts.slice(1).join('<details>');
+                html = `
+                    <div class="message-header">
+                        <span class="message-sender">Misaka</span>
+                        ${metadata.trace_id ? `<span class="trace-id">${metadata.trace_id}</span>` : ''}
+                    </div>
+                    <div class="message-content">
+                        ${markdownPart}
+                        ${detailsPart}
+                    </div>
+                `;
+            }
+        }
+
         if (metadata.actions && metadata.actions.length > 0) {
-            html += `<div class="action-pills">`;
+            html += `< div class="action-pills" > `;
             metadata.actions.forEach(action => {
-                html += `<span class="action-pill">${action}</span>`;
+                html += `< span class="action-pill" > ${action}</span > `;
             });
-            html += `</div>`;
+            html += `</div > `;
         }
     } else if (sender === 'agent_step') {
         const title = metadata.title || 'Agent Action';
@@ -362,8 +384,9 @@ function addMessage(sender, content, metadata = {}) {
         const status = metadata.status || 'completed';
         const isError = status === 'failed';
 
+        // Use marked.parse for content but ensure it doesn't wrap everything in <p> if it's short
         html = `
-            <details class="agent-step-details" ${isError ? 'open' : ''}>
+                    < details class="agent-step-details" ${isError ? 'open' : ''}>
                 <summary class="agent-step-summary ${isError ? 'error' : ''}">
                     <span class="step-icon">${isError ? '⚠️' : '🤖'}</span>
                     <span class="step-title">${title}</span>
@@ -372,17 +395,17 @@ function addMessage(sender, content, metadata = {}) {
                 <div class="step-content">
                     ${marked.parse(content)}
                 </div>
-            </details>
-        `;
+            </details >
+                    `;
     } else if (sender === 'user') {
         html = `
-            <div class="message-header">
-                <span class="message-sender">You</span>
-            </div>
-            <div class="message-content">${content}</div>
-        `;
+                    < div class="message-header" >
+                        <span class="message-sender">You</span>
+            </div >
+                    <div class="message-content">${content}</div>
+                `;
     } else {
-        html = `<div class="message-content">${content}</div>`;
+        html = `< div class="message-content" > ${content}</div > `;
     }
 
     messageDiv.innerHTML = html;
@@ -431,7 +454,7 @@ function handleLogMessage(event) {
         // Remove timestamps as requested
         const source = log.source ? `${log.source}: ` : '';
 
-        logLine.innerHTML = `<span class="${levelClass}">[${level}]</span> <span class="log-source">${source}</span><span class="log-msg">${msg}</span>`;
+        logLine.innerHTML = `< span class="${levelClass}" > [${level}]</span > <span class="log-source">${source}</span><span class="log-msg">${msg}</span>`;
 
         container.appendChild(logLine);
 
@@ -465,18 +488,18 @@ function handleAgentsUpdate(event) {
     }
 
     agentsList.innerHTML = agents.map(agent => `
-        <div class="agent-card">
+                    < div class="agent-card" >
             <div class="agent-name">${agent.name}</div>
             <div class="agent-status">${agent.status}</div>
             <div class="agent-trace">${agent.trace_id}</div>
-        </div>
-    `).join('');
+        </div >
+                    `).join('');
 }
 
 // ===== File Operations =====
 
 function downloadFile(domain, filename) {
-    window.location.href = `/api/workspace/files/${domain}/${filename}`;
+    window.location.href = `/ api / workspace / files / ${domain}/${filename}`;
 }
 
 // ===== Utility Functions =====

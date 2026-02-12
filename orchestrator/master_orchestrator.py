@@ -238,7 +238,7 @@ class MasterOrchestrator:
                         
                     tool_result = self.call_forge(plan.forge_description, plan.trace_id)
                     tools_forged.append(tool_result.get('tool_name', 'unknown'))
-                    response_parts.append(f"✓ Forged tool: {tool_result.get('tool_name')}")
+                    # REMOVED: response_parts.append(f"✓ Forged tool: {tool_result.get('tool_name')}")
                     actions_taken.append("forge_tool")
                     
                     # if self.step_callback:
@@ -261,24 +261,8 @@ class MasterOrchestrator:
                     while retry_count < max_retries and not success:
                         if retry_count > 0:
                             pass
-                            # if self.step_callback:
-                            #     self.step_callback({
-                            #         "type": "agent_step",
-                            #         "title": f"Retrying Agent (Attempt {retry_count+1}/{max_retries})",
-                            #         "content": f"Previous attempt failed. Retrying agent execution...",
-                            #         "trace_id": plan.trace_id,
-                            #         "status": "running"
-                            #     })
                         else:
                             pass
-                            # if self.step_callback:
-                            #     self.step_callback({
-                            #         "type": "agent_step",
-                            #         "title": "Spawning Agent",
-                            #         "content": f"Spawning agent **{plan.agent_spec.name}** to execute task...",
-                            #         "trace_id": plan.trace_id,
-                            #         "status": "running"
-                            #     })
                         
                         # Add previous error to context if retrying
                         if retry_count > 0 and agent_result:
@@ -386,12 +370,13 @@ class MasterOrchestrator:
                     
                     
                     agents_spawned.append(agent_result.get('agent_name', 'unknown'))
-                    response_parts.append(f"✓ Spawned agent: {agent_result.get('agent_name')}")
+                    # REMOVED: response_parts.append(f"✓ Spawned agent: {agent_result.get('agent_name')}")
                     
                     # Format response based on success/failure
                     if success:
                         # Success - show the output
-                        response_parts.append(f"\n**Result:**\n{agent_result.get('output', 'No output')}")
+                        # REMOVED: response_parts.append(f"\n**Result:**\n{agent_result.get('output', 'No output')}")
+                        response_parts.append(agent_result.get('output', 'No output'))
                     else:
                         # Failure - show concise error summary
                         error_msg = agent_result.get('error', 'Unknown error')

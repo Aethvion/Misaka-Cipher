@@ -120,7 +120,8 @@ class GenericAgent(BaseAgent):
                 file_match = re.search(r"(?:saved|created|wrote).*?to.*?(C:[\\/][^\n\r]+)", execution_output, re.IGNORECASE)
                 if file_match:
                     file_path = file_match.group(1).strip().rstrip('.')
-                    response += f"\n\n**✅ RESULT:** File successfully created at: `{file_path}`"
+                    # Overwrite response to be clean (no emojis, no code block)
+                    response = f"File successfully created at: `{file_path}`"
                 elif "unsupported format string" in execution_output:
                      response += f"\n\n**❌ ERROR:** Code execution failed with formatting error. (Fixed in tool)"
                      response += f"\n\n--- DEBUG OUTPUT ---\n{execution_output}" # Only show output on error
