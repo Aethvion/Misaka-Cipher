@@ -282,7 +282,7 @@ async function searchMemory() {
 
 // ===== Chat Functions =====
 
-function sendMessage() {
+function sendMessageOld() {
     const input = document.getElementById('chat-input');
     const message = input.value.trim();
 
@@ -756,3 +756,4 @@ function formatDate(isoString) {
     if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
     return `${Math.floor(diffDays / 365)} years ago`;
 }
+
