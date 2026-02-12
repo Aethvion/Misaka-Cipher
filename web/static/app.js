@@ -89,6 +89,23 @@ function initializeUI() {
     document.getElementById('forge-tool-button').addEventListener('click', () => {
         alert('Tool forging via UI coming soon! For now, use the chat: "Create a tool to..."');
     });
+
+    // Package tab switching
+    document.querySelectorAll('.package-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.dataset.packagetab;
+
+            // Update tab buttons
+            document.querySelectorAll('.package-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.packagetab === tabName);
+            });
+
+            // Update tab panels
+            document.querySelectorAll('.package-tab-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.id === `${tabName}-packages`);
+            });
+        });
+    });
 }
 
 function switchMainTab(tabName) {
@@ -118,9 +135,13 @@ function switchMainTab(tabName) {
 async function loadInitialData() {
     await loadSystemStatus();
     await loadTools();
+    await loadPackages();
 
     // Refresh status every 5 seconds
     setInterval(loadSystemStatus, 5000);
+
+    // Refresh packages every 10 seconds
+    setInterval(loadPackages, 10000);
 }
 
 async function loadSystemStatus() {
@@ -480,4 +501,253 @@ function formatDate(dateString) {
 function formatTime(timestamp) {
     const date = new Date(timestamp);
     return date.toTimeString().split(' ')[0];
+}
+
+// ===== Package Management =====
+
+async function loadPackages() {
+    await loadPendingPackages();
+    await loadInstalledPackages();
+    await loadDeniedPackages();
+}
+
+async function loadPendingPackages() {
+    try {
+        const response = await fetch('/api/packages/pending');
+        const data = await response.json();
+
+        const container = document.getElementById('pending-packages-list');
+        const countBadge = document.getElementById('pending-count');
+
+        if (!data.pending || data.pending.length === 0) {
+            container.innerHTML = '<p class="placeholder-text">No pending package requests</p>';
+            countBadge.textContent = '0';
+            return;
+        }
+
+        countBadge.textContent = data.pending.length;
+        container.innerHTML = data.pending.map(pkg => renderPackageCard(pkg)).join('');
+
+        // Attach event listeners to buttons
+        container.querySelectorAll('.approve-btn').forEach(btn => {
+            btn.addEventListener('click', () => approvePackage(btn.dataset.package));
+        });
+        container.querySelectorAll('.deny-btn').forEach(btn => {
+            btn.addEventListener('click', () => denyPackage(btn.dataset.package));
+        });
+
+    } catch (error) {
+        console.error('Error loading pending packages:', error);
+    }
+}
+
+async function loadInstalledPackages() {
+    try {
+        const response = await fetch('/api/packages/installed');
+        const data = await response.json();
+
+        const container = document.getElementById('installed-packages-list');
+        const countBadge = document.getElementById('installed-count');
+
+        if (!data.installed || data.installed.length === 0) {
+            container.innerHTML = '<p class="placeholder-text">No packages installed via this system</p>';
+            countBadge.textContent = '0';
+            return;
+        }
+
+        countBadge.textContent = data.installed.length;
+        container.innerHTML = data.installed.map(pkg => `
+            <div class="package-card installed">
+                <div class="package-header">
+                    <h3>📦 ${pkg.name}</h3>
+                    <span class="package-version">v${pkg.version}</span>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading installed packages:', error);
+    }
+}
+
+async function loadDeniedPackages() {
+    try {
+        const response = await fetch('/api/packages/denied');
+        const data = await response.json();
+
+        const container = document.getElementById('denied-packages-list');
+        const countBadge = document.getElementById('denied-count');
+
+        if (!data.denied || data.denied.length === 0) {
+            container.innerHTML = '<p class="placeholder-text">No denied packages</p>';
+            countBadge.textContent = '0';
+            return;
+        }
+
+        countBadge.textContent = data.denied.length;
+        container.innerHTML = data.denied.map(pkg => `
+            <div class="package-card denied">
+                <div class="package-header">
+                    <h3>📦 ${pkg}</h3>
+                    <span class="denied-label">DENIED</span>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading denied packages:', error);
+    }
+}
+
+function renderPackageCard(pkg) {
+    const meta = pkg.metadata || {};
+    const safetyLevel = meta.safety_level || 'UNKNOWN';
+    const safetyScore = meta.safety_score || 0;
+    const safetyColor = {
+        'HIGH': '#10b981',
+        'MEDIUM': '#f59e0b',
+        'LOW': '#f97316',
+        'UNKNOWN': '#ef4444'
+    }[safetyLevel];
+
+    const safetyEmoji = {
+        'HIGH': '🟢',
+        'MEDIUM': '🟡',
+        'LOW': '🟠',
+        'UNKNOWN': '🔴'
+    }[safetyLevel];
+
+    const barWidth = (safetyScore / 100) * 100;
+
+    return `
+        <div class="package-card pending">
+            <div class="package-header">
+                <h3>📦 ${pkg.name}</h3>
+            </div>
+            
+            <div class="safety-rating" style="border-color: ${safetyColor}">
+                <div class="safety-bar-container">
+                    <div class="safety-bar" style="width: ${barWidth}%; background-color: ${safetyColor}"></div>
+                </div>
+                <div class="safety-label">
+                    Safety Rating: ${Math.round(safetyScore)}/100 (${safetyLevel}) ${safetyEmoji}
+                </div>
+            </div>
+            
+            <div class="package-info">
+                <div class="info-row">
+                    <span class="info-label">Version:</span>
+                    <span>${meta.version || 'unknown'}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Downloads:</span>
+                    <span>${formatNumber(meta.downloads_last_month || 0)}/month</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last Update:</span>
+                    <span>${meta.last_release ? formatDate(meta.last_release) : 'unknown'}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Total Releases:</span>
+                    <span>${meta.total_releases || 0}</span>
+                </div>
+            </div>
+            
+            <div class="package-request-info">
+                <div class="info-row">
+                    <span class="info-label">Requested by:</span>
+                    <span class="code">${pkg.requested_by}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Reason:</span>
+                    <span>${pkg.reason}</span>
+                </div>
+            </div>
+            
+            ${meta.dependencies && meta.dependencies.length > 0 ? `
+                <div class="package-dependencies">
+                    <span class="info-label">Dependencies (${meta.dependencies.length}):</span>
+                    <div class="dependencies-list">${meta.dependencies.slice(0, 5).join(', ')}${meta.dependencies.length > 5 ? '...' : ''}</div>
+                </div>
+            ` : ''}
+            
+            ${meta.safety_reasons && meta.safety_reasons.length > 0 ? `
+                <div class="safety-factors">
+                    <span class="info-label">Safety Factors:</span>
+                    <ul class="safety-reasons">
+                        ${meta.safety_reasons.map(reason => `<li>${reason}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
+            
+            <div class="package-actions">
+                <button class="approve-btn" data-package="${pkg.name}">✓ Approve & Install</button>
+                <button class="deny-btn" data-package="${pkg.name}">✗ Deny</button>
+            </div>
+        </div>
+    `;
+}
+
+async function approvePackage(packageName) {
+    if (!confirm(`Install package "${packageName}"? This will run pip install.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/packages/approve/${packageName}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            alert(`✓ Package "${packageName}" installed successfully!`);
+            await loadPackages(); // Refresh all package lists
+        } else {
+            alert(`✗ Failed to install "${packageName}": ${data.message}`);
+        }
+    } catch (error) {
+        console.error('Error approving package:', error);
+        alert(`Error approving package: ${error.message}`);
+    }
+}
+
+async function denyPackage(packageName) {
+    if (!confirm(`Deny package "${packageName}"? This will prevent it from being requested again.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/packages/deny/${packageName}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            alert(`Package "${packageName}" denied.`);
+            await loadPackages(); // Refresh all package lists
+        } else {
+            alert(`Failed to deny "${packageName}": ${data.message}`);
+        }
+    } catch (error) {
+        console.error('Error denying package:', error);
+        alert(`Error denying package: ${error.message}`);
+    }
+}
+
+function formatNumber(num) {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+}
+
+function formatDate(isoString) {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'today';
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 30) return `${diffDays} days ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+    return `${Math.floor(diffDays / 365)} years ago`;
 }

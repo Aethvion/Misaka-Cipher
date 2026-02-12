@@ -27,6 +27,7 @@
                 <button class="main-tab active" data-maintab="chat">Chat</button>
                 <button class="main-tab" data-maintab="files">Files</button>
                 <button class="main-tab" data-maintab="tools">Tools</button>
+                <button class="main-tab" data-maintab="packages">Packages</button>
                 <button class="main-tab" data-maintab="memory">Memory</button>
             </div>
         </div>
@@ -143,6 +144,44 @@
             </div>
             <div class="tools-grid" id="tools-grid">
                 <p class="placeholder-text">Loading tools...</p>
+            </div>
+        </div>
+
+        <!-- Packages Tab -->
+        <div class="main-tab-panel" id="packages-panel">
+            <div class="panel-header">
+                <h2>Package Management</h2>
+            </div>
+
+            <!-- Package Sub-tabs -->
+            <div class="package-tabs">
+                <button class="package-tab active" data-packagetab="pending">Pending <span id="pending-count"
+                        class="count-badge">0</span></button>
+                <button class="package-tab" data-packagetab="installed">Installed <span id="installed-count"
+                        class="count-badge">0</span></button>
+                <button class="package-tab" data-packagetab="denied">Denied <span id="denied-count"
+                        class="count-badge">0</span></button>
+            </div>
+
+            <!-- Pending Packages -->
+            <div class="package-tab-panel active" id="pending-packages">
+                <div id="pending-packages-list" class="packages-list">
+                    <p class="placeholder-text">No pending package requests</p>
+                </div>
+            </div>
+
+            <!-- Installed Packages -->
+            <div class="package-tab-panel" id="installed-packages">
+                <div id="installed-packages-list" class="packages-list">
+                    <p class="placeholder-text">Loading installed packages...</p>
+                </div>
+            </div>
+
+            <!-- Denied Packages -->
+            <div class="package-tab-panel" id="denied-packages">
+                <div id="denied-packages-list" class="packages-list">
+                    <p class="placeholder-text">No denied packages</p>
+                </div>
             </div>
         </div>
 
