@@ -20,6 +20,7 @@ from factory import AgentFactory
 from forge import ToolForge
 from orchestrator import MasterOrchestrator
 from utils import get_logger
+from web.package_routes import router as package_router
 
 logger = get_logger(__name__)
 
@@ -38,6 +39,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include package management routes
+app.include_router(package_router)
 
 # Global instances (initialized on startup)
 orchestrator: Optional[MasterOrchestrator] = None
