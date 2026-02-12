@@ -123,3 +123,23 @@ def data_read_file(filename: str, domain: str = "General") -> str:
             
     except Exception as e:
         return f"Error reading file: {str(e)}"
+
+
+# ===== BACKWARD COMPATIBILITY ALIASES =====
+# Old function names that agents may still reference
+
+def file_save_string(content: str, filename: str, domain: str = "General") -> Dict[str, Any]:
+    """Backward compatibility alias for data_save_file."""
+    return data_save_file(content, filename, domain)
+
+def file_read_string(filename: str, domain: str = "General") -> str:
+    """Backward compatibility alias for data_read_file."""
+    return data_read_file(filename, domain)
+
+def save_file(content: Any, filename: str, domain: str = "General") -> Dict[str, Any]:
+    """Backward compatibility alias for data_save_file."""
+    return data_save_file(content, filename, domain)
+
+def read_file(filename: str, domain: str = "General") -> str:
+    """Backward compatibility alias for data_read_file."""
+    return data_read_file(filename, domain)
