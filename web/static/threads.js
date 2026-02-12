@@ -5,6 +5,15 @@ let threads = {};
 
 // Initialize thread management
 function initThreadManagement() {
+    // Initialize with default thread
+    threads['default'] = {
+        id: 'default',
+        title: 'Main Thread',
+        task_ids: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
+
     // Load threads from API
     loadThreads();
 
@@ -22,6 +31,9 @@ function initThreadManagement() {
 
     // Periodically refresh thread status
     setInterval(refreshThreadStatus, 3000);
+
+    // Render initial thread list
+    renderThreadList();
 }
 
 // Load threads from API
@@ -30,7 +42,7 @@ async function loadThreads() {
         const response = await fetch('/api/tasks/threads');
         const data = await response.json();
 
-        threads = {};
+        // Merge with existing threads (don't overwrite local-only threads like 'default')
         data.threads.forEach(thread => {
             threads[thread.id] = thread;
         });
@@ -87,6 +99,21 @@ function switchThread(threadId) {
 async function loadThreadMessages(threadId) {
     try {
         const response = await fetch(`/api/tasks/thread/${threadId}`);
+
+        // Handle 404 for local-only threads
+        if (response.status === 404) {
+            console.log(`Thread ${threadId} not found on server (local-only thread)`);
+
+            // Clear current messages
+            const chatMessages = document.getElementById('chat-messages');
+            chatMessages.innerHTML = '';
+
+            // Add system message
+            const thread = threads[threadId];
+            addMessage('system', `Switched to thread: ${thread ? thread.title : threadId}`);
+            return;
+        }
+
         const data = await response.json();
 
         // Clear current messages
@@ -117,6 +144,12 @@ async function loadThreadMessages(threadId) {
 
     } catch (error) {
         console.error('Failed to load thread messages:', error);
+
+        // Clear current messages and show error
+        const chatMessages = document.getElementById('chat-messages');
+        chatMessages.innerHTML = '';
+        const thread = threads[threadId];
+        addMessage('system', `Switched to thread: ${thread ? thread.title : threadId}`);
     }
 }
 
