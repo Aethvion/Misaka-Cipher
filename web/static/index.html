@@ -162,18 +162,22 @@
         <div class="main-tab-panel" id="packages-panel">
             <div class="panel-header">
                 <h2>Package Management</h2>
-                <div class="package-controls" style="display: flex; gap: 10px;">
-                    <input type="text" id="package-search" class="search-input" placeholder="Search packages..."
-                        style="min-width: 200px;">
+                <div class="panel-controls">
+                    <input type="text" id="package-search" placeholder="Search packages..." class="search-input">
                     <select id="package-status-filter" class="filter-select">
                         <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
                         <option value="installed">Installed</option>
                         <option value="approved">Approved</option>
-                        <option value="pending">Pending</option>
                         <option value="denied">Denied</option>
                         <option value="failed">Failed</option>
                     </select>
-                    <button id="refresh-packages" class="refresh-button">🔄 Refresh</button>
+                    <button id="sync-packages-btn" class="action-btn secondary" title="Sync with installed packages">
+                        <i class="fas fa-sync"></i> Sync
+                    </button>
+                    <button id="refresh-packages-btn" class="action-btn secondary" title="Refresh list">
+                        <i class="fas fa-redo"></i>
+                    </button>
                 </div>
             </div>
 

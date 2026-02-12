@@ -550,10 +550,18 @@ function setupPackageListeners() {
     newFilter.addEventListener('change', renderPackagesTable);
 
     // Refresh
-    const refreshBtn = document.getElementById('refresh-packages');
+    const refreshBtn = document.getElementById('refresh-packages-btn');
     const newRefresh = refreshBtn.cloneNode(true);
     refreshBtn.parentNode.replaceChild(newRefresh, refreshBtn);
     newRefresh.addEventListener('click', loadAllPackages);
+
+    // Sync
+    const syncBtn = document.getElementById('sync-packages-btn');
+    if (syncBtn) {
+        const newSync = syncBtn.cloneNode(true);
+        syncBtn.parentNode.replaceChild(newSync, syncBtn);
+        newSync.addEventListener('click', syncPackages);
+    }
 
     // Sorting HEADERS
     document.querySelectorAll('#packages-table th.sortable').forEach(th => {
@@ -644,6 +652,8 @@ function renderPackagesTable() {
         if (safeLevel === 'MEDIUM') safeColor = '#f59e0b';
         if (safeLevel === 'LOW') safeColor = '#ef4444';
 
+        const detailsId = `details-${pkg.package_name.replace(/[^a-zA-Z0-9]/g, '-')}`;
+
         let actionsHtml = '';
         if (pkg.status === 'pending') {
             actionsHtml = `
@@ -651,18 +661,32 @@ function renderPackagesTable() {
                 <button class="icon-btn deny-btn" data-pkg="${pkg.package_name}" title="Deny">✗</button>
             `;
         } else if (pkg.status === 'installed') {
-            actionsHtml = `<span class="dim-text">Installed</span>`;
+            actionsHtml = `<span class="dim-text">Active</span>`;
         } else if (pkg.status === 'approved') {
             actionsHtml = `<span class="dim-text">Installing...</span>`;
         } else if (pkg.status === 'denied') {
             actionsHtml = `<span class="dim-text">Denied</span>`;
+        } else if (pkg.status === 'failed') {
+            actionsHtml = `<span class="error-text">Failed</span>`;
+        } else if (pkg.status === 'uninstalled') {
+            actionsHtml = `<span class="dim-text">Uninstalled</span>`;
         }
 
-        return `
-            <tr class="package-row ${pkg.status}">
+        // Expanded actions
+        let expandedActions = '';
+        if (pkg.status === 'installed' || pkg.status === 'failed' || pkg.status === 'approved') {
+            expandedActions += `<button class="action-btn small danger uninstall-btn" data-pkg="${pkg.package_name}">Uninstall</button>`;
+        }
+        if (pkg.status === 'failed' || pkg.status === 'uninstalled' || pkg.status === 'denied') {
+            expandedActions += `<button class="action-btn small primary retry-btn" data-pkg="${pkg.package_name}">Retry / Install</button>`;
+        }
+
+        const mainRow = `
+            <tr class="package-row ${pkg.status}" onclick="togglePackageDetails('${detailsId}')">
                 <td>
-                    <div class="pkg-name">${pkg.package_name}</div>
-                    <div class="pkg-desc">${meta.description || pkg.reason || ''}</div>
+                    <div class="pkg-name">
+                        <span class="expand-icon">▶</span> ${pkg.package_name}
+                    </div>
                 </td>
                 <td><span class="status-badge ${pkg.status}">${pkg.status}</span></td>
                 <td>
@@ -675,12 +699,48 @@ function renderPackagesTable() {
                     </div>
                 </td>
                 <td>${formatDate(pkg.installed_at || pkg.requested_at)}</td>
-                <td>${actionsHtml}</td>
+                <td onclick="event.stopPropagation()">${actionsHtml}</td>
             </tr>
         `;
+
+        const detailsRow = `
+            <tr id="${detailsId}" class="package-details-row" style="display: none;">
+                <td colspan="6">
+                    <div class="details-content">
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <span class="label">Version:</span>
+                                <span class="value">${meta.version || 'Unknown'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Author:</span>
+                                <span class="value">${meta.author || 'Unknown'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Downloads:</span>
+                                <span class="value">${meta.downloads_last_month ? formatNumber(meta.downloads_last_month) + '/mo' : 'N/A'}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Last Release:</span>
+                                <span class="value">${meta.last_release ? formatDate(meta.last_release) : 'Unknown'}</span>
+                            </div>
+                             <div class="detail-item" style="grid-column: span 2;">
+                                <span class="label">Description:</span>
+                                <span class="value">${meta.description || pkg.reason || 'No description'}</span>
+                            </div>
+                        </div>
+                        <div class="detail-actions">
+                            ${expandedActions}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+
+        return mainRow + detailsRow;
     }).join('');
 
-    // Attach action listeners
+    // Attach row action listeners
     tbody.querySelectorAll('.approve-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -693,6 +753,98 @@ function renderPackagesTable() {
             denyPackage(btn.dataset.pkg);
         });
     });
+
+    // Attach details action listeners
+    tbody.querySelectorAll('.uninstall-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            uninstallPackage(btn.dataset.pkg);
+        });
+    });
+    tbody.querySelectorAll('.retry-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            retryPackage(btn.dataset.pkg);
+        });
+    });
+}
+
+function togglePackageDetails(rowId) {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+
+    // Toggle display
+    if (row.style.display === 'none') {
+        row.style.display = 'table-row';
+        // Rotate icon in previous sibling
+        const prev = row.previousElementSibling;
+        const icon = prev.querySelector('.expand-icon');
+        if (icon) icon.style.transform = 'rotate(90deg)';
+    } else {
+        row.style.display = 'none';
+        const prev = row.previousElementSibling;
+        const icon = prev.querySelector('.expand-icon');
+        if (icon) icon.style.transform = 'rotate(0deg)';
+    }
+}
+
+async function syncPackages() {
+    const btn = document.getElementById('sync-packages-btn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spin fa-sync"></i> Syncing...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch('/api/packages/sync', { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            // Show toast/notification?
+            console.log(data.message);
+            loadAllPackages();
+        } else {
+            alert('Sync failed: ' + data.message);
+        }
+    } catch (e) {
+        console.error('Sync error:', e);
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+async function uninstallPackage(packageName) {
+    if (!confirm(`Are you sure you want to uninstall "${packageName}"? This calls 'pip uninstall'.`)) return;
+
+    try {
+        const response = await fetch(`/api/packages/uninstall/${packageName}`, { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            loadAllPackages();
+        } else {
+            alert('Uninstall failed: ' + data.message);
+        }
+    } catch (e) {
+        console.error('Uninstall error:', e);
+    }
+}
+
+async function retryPackage(packageName) {
+    if (!confirm(`Retry installation of "${packageName}"?`)) return;
+
+    try {
+        const response = await fetch(`/api/packages/retry/${packageName}`, { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            loadAllPackages();
+        } else {
+            alert('Retry failed: ' + data.message);
+        }
+    } catch (e) {
+        console.error('Retry error:', e);
+    }
 }
 
 async function approvePackage(packageName) {
@@ -742,6 +894,7 @@ function formatNumber(num) {
 }
 
 function formatDate(isoString) {
+    if (!isoString) return 'Never';
     const date = new Date(isoString);
     const now = new Date();
     const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));

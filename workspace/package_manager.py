@@ -25,6 +25,7 @@ class PackageStatus(Enum):
     DENIED = "denied"
     INSTALLED = "installed"
     FAILED = "failed"
+    UNINSTALLED = "uninstalled"
 
 
 @dataclass
@@ -359,6 +360,123 @@ class PackageManager:
             
         except Exception as e:
             logger.error(f"Failed to save packages.json: {e}")
+
+    def sync_installed_packages(self) -> int:
+        """
+        Sync with locally installed pip packages.
+        
+        Returns:
+            Number of new packages found
+        """
+        logger.info("Syncing installed packages...")
+        try:
+            # Get list of installed packages
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "list", "--format=json"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=True
+            )
+            
+            installed_list = json.loads(result.stdout)
+            count = 0
+            
+            for pkg in installed_list:
+                name = pkg['name']
+                version = pkg['version']
+                
+                # Update installed version cache
+                self.installed[name] = version
+                
+                # If we don't have a record, create one
+                if name not in self.requests:
+                    # Create generic request record for existing package
+                    req = PackageRequest(
+                        package_name=name,
+                        requested_by="System Sync",
+                        reason="Pre-existing package",
+                        requested_at=datetime.now().isoformat(),
+                        status=PackageStatus.INSTALLED.value,
+                        installed_at=datetime.now().isoformat(),
+                        metadata={
+                            'name': name,
+                            'version': version,
+                            'description': "Discovered via system sync"
+                        }
+                    )
+                    self.requests[name] = req
+                    count += 1
+            
+            if count > 0:
+                self._save_state()
+                logger.info(f"Sync complete. Found {count} new packages.")
+            else:
+                logger.info("Sync complete. No new packages.")
+                
+            return count
+            
+        except Exception as e:
+            logger.error(f"Failed to sync packages: {e}")
+            return 0
+
+    def uninstall_package(self, package_name: str) -> bool:
+        """
+        Uninstall a package.
+        
+        Args:
+            package_name: Name of package to uninstall
+            
+        Returns:
+            True if successful
+        """
+        logger.info(f"Uninstalling package: {package_name}...")
+        
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "uninstall", "-y", package_name],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            
+            # Update status
+            if package_name in self.requests:
+                self.requests[package_name].status = PackageStatus.UNINSTALLED.value
+                self._save_state()
+            
+            # Remove from installed cache
+            if package_name in self.installed:
+                del self.installed[package_name]
+                
+            logger.info(f"Package uninstalled: {package_name}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to uninstall {package_name}: {e}")
+            return False
+
+    def retry_package(self, package_name: str) -> bool:
+        """
+        Retry installing a failed or uninstalled package.
+        
+        Args:
+            package_name: Name of package
+            
+        Returns:
+            True if queued for retry
+        """
+        if package_name not in self.requests:
+            return False
+            
+        req = self.requests[package_name]
+        
+        # Reset status to APPROVED so worker picks it up
+        req.status = PackageStatus.APPROVED.value
+        req.approved_at = datetime.now().isoformat()
+        self._save_state()
+        
+        logger.info(f"Package queued for retry: {package_name}")
+        return True
 
 
 # Singleton instance

@@ -162,3 +162,55 @@ async def get_package_info(package_name: str):
     except Exception as e:
         logger.error(f"Error fetching package info for {package_name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sync")
+async def sync_packages():
+    """Sync installed packages with package manager."""
+    from workspace.package_manager import get_package_manager
+    
+    try:
+        manager = get_package_manager()
+        count = manager.sync_installed_packages()
+        return {"success": True, "count": count, "message": f"Synced {count} new packages"}
+    except Exception as e:
+        logger.error(f"Error syncing packages: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/uninstall/{package_name}")
+async def uninstall_package(package_name: str):
+    """Uninstall a package."""
+    from workspace.package_manager import get_package_manager
+    
+    try:
+        manager = get_package_manager()
+        success = manager.uninstall_package(package_name)
+        
+        if success:
+            return {"success": True, "message": f"Package {package_name} uninstalled"}
+        else:
+            return {"success": False, "message": f"Failed to uninstall {package_name}"}
+            
+    except Exception as e:
+        logger.error(f"Error uninstalling package {package_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/retry/{package_name}")
+async def retry_package(package_name: str):
+    """Retry a failed or uninstalled package."""
+    from workspace.package_manager import get_package_manager
+    
+    try:
+        manager = get_package_manager()
+        success = manager.retry_package(package_name)
+        
+        if success:
+            return {"success": True, "message": f"Package {package_name} queued for retry"}
+        else:
+            return {"success": False, "message": f"Failed to queue {package_name} for retry"}
+            
+    except Exception as e:
+        logger.error(f"Error retrying package {package_name}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
