@@ -299,6 +299,21 @@ function sendMessageOld() {
     input.value = '';
 }
 
+// Configure Marked options
+if (typeof marked !== 'undefined') {
+    marked.setOptions({
+        gfm: true,
+        breaks: true,
+        headerIds: false,
+        mangle: false,
+        sanitize: false // We trust backend content
+    });
+} else {
+    console.error('CRITICAL: Marked library not loaded!');
+}
+
+
+
 function handleChatMessage(event) {
     const data = JSON.parse(event.data);
 
@@ -317,6 +332,7 @@ function handleChatMessage(event) {
             loadFiles();
         }
     } else if (data.type === 'agent_step') {
+
         addMessage('agent_step', data.content, {
             title: data.title,
             agent_name: data.agent_name,
@@ -349,8 +365,7 @@ function addMessage(sender, content, metadata = {}) {
             <div class="message-content">${marked.parse(content)}</div>
         `;
 
-        // Fix for messages containing HTML (like <details>) that marked might escape or break
-        // If content contains specific HTML tags we want to preserve, we might need to bypass marked or configure it
+        // Handle details/summary if present (custom logic)
         if (content.includes('<details>')) {
             // For error messages with details, we trust the HTML from backend but still want markdown for the summary/intro
             // Split by <details> to parse the top part as markdown
@@ -372,11 +387,11 @@ function addMessage(sender, content, metadata = {}) {
         }
 
         if (metadata.actions && metadata.actions.length > 0) {
-            html += `< div class="action-pills" > `;
+            html += `<div class="action-pills">`;
             metadata.actions.forEach(action => {
-                html += `< span class="action-pill" > ${action}</span > `;
+                html += `<span class="action-pill">${action}</span>`;
             });
-            html += `</div > `;
+            html += `</div>`;
         }
     } else if (sender === 'agent_step') {
         const title = metadata.title || 'Agent Action';

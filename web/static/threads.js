@@ -144,7 +144,13 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
     if (role === 'user') {
         messageContent = `<strong>You:</strong> ${content}`;
     } else if (role === 'assistant') {
-        messageContent = `<strong>Misaka:</strong> ${content}`;
+        const parsedContent = (typeof marked !== 'undefined' && typeof marked.parse === 'function')
+            ? marked.parse(content)
+            : content;
+
+        // Wrap in a div to ensure block styles work correctly after the strong tag
+        messageContent = `<strong>Misaka:</strong> <div style="display:inline-block; width:100%;">${parsedContent}</div>`;
+
 
         // Add expandable task details if available
         if (taskData) {
