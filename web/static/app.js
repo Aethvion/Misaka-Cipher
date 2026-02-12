@@ -133,6 +133,7 @@ function switchMainTab(tabName) {
 // ===== Data Loading =====
 
 async function loadInitialData() {
+    await loadPreferences(); // Load prefs FIRST
     await loadSystemStatus();
     await loadTools();
     await loadPackages();
@@ -525,8 +526,11 @@ async function loadAllPackages() {
         allPackages = data.packages || [];
         renderPackagesTable();
 
-        // Setup event listeners if not already set (checked via flag or just overwrite)
-        setupPackageListeners();
+        // Initial setup only if not done
+        if (!window.packageListenersSetup) {
+            setupPackageListeners();
+            window.packageListenersSetup = true;
+        }
 
     } catch (error) {
         console.error('Error loading packages:', error);
@@ -538,29 +542,26 @@ async function loadAllPackages() {
 function setupPackageListeners() {
     // Search
     const searchInput = document.getElementById('package-search');
-    // Remove old listeners to avoid duplicates
-    const newSearch = searchInput.cloneNode(true);
-    searchInput.parentNode.replaceChild(newSearch, searchInput);
-    newSearch.addEventListener('input', renderPackagesTable);
+    searchInput.addEventListener('input', renderPackagesTable);
 
     // Filter
     const filterSelect = document.getElementById('package-status-filter');
-    const newFilter = filterSelect.cloneNode(true);
-    filterSelect.parentNode.replaceChild(newFilter, filterSelect);
-    newFilter.addEventListener('change', renderPackagesTable);
+    filterSelect.addEventListener('change', renderPackagesTable);
+
+    // System Package Toggle
+    const systemToggle = document.getElementById('hide-system-packages');
+    if (systemToggle) {
+        systemToggle.addEventListener('change', renderPackagesTable);
+    }
 
     // Refresh
     const refreshBtn = document.getElementById('refresh-packages-btn');
-    const newRefresh = refreshBtn.cloneNode(true);
-    refreshBtn.parentNode.replaceChild(newRefresh, refreshBtn);
-    newRefresh.addEventListener('click', loadAllPackages);
+    refreshBtn.addEventListener('click', loadAllPackages);
 
     // Sync
     const syncBtn = document.getElementById('sync-packages-btn');
     if (syncBtn) {
-        const newSync = syncBtn.cloneNode(true);
-        syncBtn.parentNode.replaceChild(newSync, syncBtn);
-        newSync.addEventListener('click', syncPackages);
+        syncBtn.addEventListener('click', syncPackages);
     }
 
     // Sorting HEADERS
@@ -585,11 +586,15 @@ function renderPackagesTable() {
     const tbody = document.getElementById('packages-table-body');
     const search = document.getElementById('package-search').value.toLowerCase();
     const filter = document.getElementById('package-status-filter').value;
+    const hideSystem = document.getElementById('hide-system-packages')?.checked || false;
 
     // 1. Filter
     let filtered = allPackages.filter(pkg => {
         // Status Filter
         if (filter !== 'all' && pkg.status !== filter) return false;
+
+        // System Package Filter
+        if (hideSystem && pkg.requested_by === 'System Sync') return false;
 
         // Search Filter
         if (search) {
@@ -637,6 +642,11 @@ function renderPackagesTable() {
         if (valA > valB) return packageSort.direction === 'asc' ? 1 : -1;
         return 0;
     });
+
+    // Capture currently open details
+    const openDetails = Array.from(document.querySelectorAll('.package-details-row'))
+        .filter(row => row.style.display !== 'none')
+        .map(row => row.id);
 
     // 3. Render
     if (filtered.length === 0) {
@@ -739,6 +749,19 @@ function renderPackagesTable() {
 
         return mainRow + detailsRow;
     }).join('');
+
+    // Restore open details
+    openDetails.forEach(id => {
+        const row = document.getElementById(id);
+        if (row) {
+            row.style.display = 'table-row';
+            const prev = row.previousElementSibling;
+            if (prev) {
+                const icon = prev.querySelector('.expand-icon');
+                if (icon) icon.style.transform = 'rotate(90deg)';
+            }
+        }
+    });
 
     // Attach row action listeners
     tbody.querySelectorAll('.approve-btn').forEach(btn => {
@@ -905,4 +928,166 @@ function formatDate(isoString) {
     if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
     return `${Math.floor(diffDays / 365)} years ago`;
 }
+
+
+// ===== Preferences Management =====
+
+const prefs = {
+    data: {},
+
+    async load() {
+        try {
+            const response = await fetch('/api/preferences');
+            this.data = await response.json();
+            console.log('Loaded preferences:', this.data);
+            return this.data;
+        } catch (error) {
+            console.error('Failed to load preferences:', error);
+            return {};
+        }
+    },
+
+    get(key, defaultValue) {
+        // Support specific nested keys we care about
+        if (key === 'package_sort.column') return this.data.package_sort?.column || defaultValue;
+        if (key === 'package_sort.direction') return this.data.package_sort?.direction || defaultValue;
+        if (key === 'package_filters.status') return this.data.package_filters?.status || defaultValue;
+        if (key === 'package_filters.hide_system') return this.data.package_filters?.hide_system || defaultValue;
+        if (key === 'package_filters.search') return this.data.package_filters?.search || defaultValue;
+
+        return this.data[key] || defaultValue;
+    },
+
+    async set(key, value) {
+        // Update local cache immediately
+        if (key.includes('.')) {
+            const parts = key.split('.');
+            if (!this.data[parts[0]]) this.data[parts[0]] = {};
+            this.data[parts[0]][parts[1]] = value;
+        } else {
+            this.data[key] = value;
+        }
+
+        // Save to server
+        try {
+            await fetch(`/api/preferences/${key}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key, value })
+            });
+        } catch (error) {
+            console.error(`Failed to save preference ${key}:`, error);
+        }
+    }
+};
+
+async function loadPreferences() {
+    await prefs.load();
+
+    // Apply Active Tab
+    const activeTab = prefs.get('active_tab');
+    if (activeTab && activeTab !== currentMainTab) {
+        switchMainTab(activeTab, false); // false = don't save (avoid redundant save)
+    }
+
+    // Apply Package Filters (stored in variables for renderPackagesTable to use)
+    if (allPackages.length > 0) {
+        // If packages loaded before prefs (unlikely due to await), re-render
+        renderPackagesTable();
+    }
+}
+
+async function savePreference(key, value) {
+    await prefs.set(key, value);
+}
+
+// Hook into existing functions to save state
+
+const originalSwitchMainTab = switchMainTab;
+switchMainTab = function (tabName, save = true) {
+    originalSwitchMainTab(tabName);
+    if (save) savePreference('active_tab', tabName);
+};
+
+function applyPackagePreferencesToUI() {
+    const statusFilter = document.getElementById('package-status-filter');
+    if (statusFilter) {
+        statusFilter.value = prefs.get('package_filters.status', 'all');
+    }
+
+    const hideSystem = document.getElementById('hide-system-packages');
+    if (hideSystem) {
+        hideSystem.checked = prefs.get('package_filters.hide_system', false);
+    }
+
+    const searchInput = document.getElementById('package-search');
+    if (searchInput) {
+        searchInput.value = prefs.get('package_filters.search', '');
+    }
+
+    packageSort.column = prefs.get('package_sort.column', 'updated');
+    packageSort.direction = prefs.get('package_sort.direction', 'desc');
+}
+
+// Updates to setupPackageListeners to attach save logic
+const originalSetupPackageListeners = setupPackageListeners;
+setupPackageListeners = function () {
+    originalSetupPackageListeners();
+
+    // Attach save logic to elements
+    const statusFilter = document.getElementById('package-status-filter');
+    statusFilter.addEventListener('change', (e) => savePreference('package_filters.status', e.target.value));
+
+    const hideSystem = document.getElementById('hide-system-packages');
+    if (hideSystem) {
+        hideSystem.addEventListener('change', (e) => savePreference('package_filters.hide_system', e.target.checked));
+    }
+
+    const searchInput = document.getElementById('package-search');
+    searchInput.addEventListener('input', (e) => savePreference('package_filters.search', e.target.value)); // Debounce?
+
+    // Sort logic is handled in valid sort click
+};
+
+// Override sort click to save
+// We can't easily override the inner function closure of setupPackageListeners without replacing it totally.
+// So we'll inject the apply logic into renderPackagesTable or loadAllPackages.
+
+const originalRenderPackagesTable = renderPackagesTable;
+renderPackagesTable = function () {
+    // Before first render or if needed, sync UI variables from DOM which might have been set by Apply
+    // But wait, render uses DOM values.
+
+    // Let's modify loadAllPackages to Apply prefs to UI before first render
+    originalRenderPackagesTable();
+}
+
+// Modify loadAllPackages to apply prefs
+const originalLoadAllPackages = loadAllPackages;
+loadAllPackages = async function () {
+    try {
+        const response = await fetch('/api/packages/all');
+        const data = await response.json();
+
+        allPackages = data.packages || [];
+
+        // CHECKPOINT: Apply prefs to UI inputs before rendering
+        if (!window.packagePrefsApplied) {
+            applyPackagePreferencesToUI();
+            window.packagePrefsApplied = true;
+        }
+
+        originalRenderPackagesTable();
+
+        if (!window.packageListenersSetup) {
+            setupPackageListeners();
+            window.packageListenersSetup = true;
+        }
+
+    } catch (error) {
+        console.error('Error loading packages:', error);
+        document.getElementById('packages-table-body').innerHTML =
+            '<tr><td colspan="6" class="placeholder-text error">Error loading packages</td></tr>';
+    }
+};
 

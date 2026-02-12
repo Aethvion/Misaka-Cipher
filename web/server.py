@@ -237,6 +237,48 @@ if static_dir.exists():
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
+# Preferences API
+class PreferenceUpdate(BaseModel):
+    key: str
+    value: Any
+
+@app.get("/api/preferences")
+async def get_preferences():
+    """Get all user preferences."""
+    try:
+        from workspace.preferences_manager import get_preferences_manager
+        prefs = get_preferences_manager()
+        return prefs.get_all()
+    except Exception as e:
+        logger.error(f"Failed to get preferences: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/preferences")
+async def update_preferences(updates: Dict[str, Any]):
+    """Update multiple preferences."""
+    try:
+        from workspace.preferences_manager import get_preferences_manager
+        prefs = get_preferences_manager()
+        prefs.update(updates)
+        return {"status": "success", "preferences": prefs.get_all()}
+    except Exception as e:
+        logger.error(f"Failed to update preferences: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/preferences/{key}")
+async def set_preference(key: str, update: PreferenceUpdate):
+    """Set a specific preference key."""
+    try:
+        from workspace.preferences_manager import get_preferences_manager
+        prefs = get_preferences_manager()
+        # Verify key matches body (though body is authoritative here)
+        prefs.set(update.key, update.value)
+        return {"status": "success", "key": key, "value": update.value}
+    except Exception as e:
+        logger.error(f"Failed to set preference {key}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Routes
 @app.get("/", response_class=HTMLResponse)
 async def root():

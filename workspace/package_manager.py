@@ -245,7 +245,7 @@ class PackageManager:
         
         try:
             subprocess.check_call(
-                [sys.executable, "-m", "pip", "install", package_name],
+                [sys.executable, "-m", "pip", "install", "--no-input", package_name],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
             )

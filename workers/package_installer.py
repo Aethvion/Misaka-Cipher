@@ -122,14 +122,24 @@ class PackageInstallerWorker:
         """
         try:
             # Import here to avoid circular dependency
-            from web.server import broadcast_message
+            import asyncio
+            from web.server import manager, main_event_loop
             
+            if not main_event_loop:
+                return
+
             for package in packages:
-                broadcast_message({
+                message = {
                     'type': 'package_installed',
                     'package': package,
                     'timestamp': time.time()
-                })
+                }
+                asyncio.run_coroutine_threadsafe(
+                    manager.broadcast(message, "chat"), # Broadcast to chat/main channel or logs?
+                    main_event_loop
+                )
+                # Also try logging it so it shows up in logs
+                # logger.info(...) already done in caller
                 
         except Exception as e:
             logger.warning(f"Could not broadcast installation: {e}")

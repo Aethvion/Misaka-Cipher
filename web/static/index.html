@@ -172,6 +172,11 @@
                         <option value="denied">Denied</option>
                         <option value="failed">Failed</option>
                     </select>
+                    <div class="toggle-control"
+                        style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                        <input type="checkbox" id="hide-system-packages">
+                        <label for="hide-system-packages">Hide System Pkgs</label>
+                    </div>
                     <button id="sync-packages-btn" class="action-btn secondary" title="Sync with installed packages">
                         <i class="fas fa-sync"></i> Sync
                     </button>
