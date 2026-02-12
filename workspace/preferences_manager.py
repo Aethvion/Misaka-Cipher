@@ -24,7 +24,9 @@ class PreferencesManager:
             workspace_root: Root directory for workspace files
         """
         self.workspace_root = workspace_root
-        self.prefs_file = workspace_root / "user_preferences.json"
+        # Use location of this file (workspace module) for config
+        self.config_root = Path(__file__).parent
+        self.prefs_file = self.config_root / "user_preferences.json"
         self.preferences: Dict[str, Any] = {}
         self._load_prefs()
         
@@ -63,7 +65,7 @@ class PreferencesManager:
         """Save preferences to file."""
         try:
             # Ensure workspace directory exists
-            self.workspace_root.mkdir(parents=True, exist_ok=True)
+            self.config_root.mkdir(parents=True, exist_ok=True)
             
             with open(self.prefs_file, 'w') as f:
                 json.dump(self.preferences, f, indent=2)

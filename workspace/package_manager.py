@@ -60,7 +60,9 @@ class PackageManager:
             workspace_root: Root directory for workspace files
         """
         self.workspace_root = workspace_root
-        self.packages_file = workspace_root / "packages.json"
+        # Use location of this file (workspace module) for config
+        self.config_root = Path(__file__).parent
+        self.packages_file = self.config_root / "packages.json"
         self.intelligence = get_package_intelligence()
         
         # Load existing state
@@ -356,8 +358,8 @@ class PackageManager:
     def _save_state(self) -> None:
         """Save state to packages.json."""
         try:
-            # Ensure workspace directory exists
-            self.workspace_root.mkdir(parents=True, exist_ok=True)
+            # Ensure module directory exists
+            self.config_root.mkdir(parents=True, exist_ok=True)
             
             data = {
                 'requests': [asdict(req) for req in self.requests.values()],

@@ -1040,6 +1040,33 @@ async function loadPreferences() {
         // If packages loaded before prefs (unlikely due to await), re-render
         renderPackagesTable();
     }
+
+    // Apply Settings UI
+    const strictMode = document.getElementById('setting-strict-mode');
+    if (strictMode) strictMode.checked = prefs.get('validation.strict_mode', false);
+
+    const agentsPanel = document.getElementById('setting-agents-panel');
+    if (agentsPanel) {
+        const showAgents = prefs.get('ui_toggles.agents_panel', true);
+        agentsPanel.checked = showAgents;
+        toggleAgentsPanel(showAgents);
+    }
+
+    const hideSystem = document.getElementById('setting-hide-system-pkgs');
+    if (hideSystem) hideSystem.checked = prefs.get('package_filters.hide_system', false);
+}
+
+function toggleAgentsPanel(show) {
+    const agentsColumn = document.querySelector('.agents-column');
+    const chatLayout = document.querySelector('.four-column-layout');
+
+    if (show) {
+        if (agentsColumn) agentsColumn.style.display = 'flex';
+        if (chatLayout) chatLayout.style.gridTemplateColumns = '15% 20% 45% 20%';
+    } else {
+        if (agentsColumn) agentsColumn.style.display = 'none';
+        if (chatLayout) chatLayout.style.gridTemplateColumns = '15% 20% 65% 0'; // Expand chat
+    }
 }
 
 async function savePreference(key, value) {
@@ -1060,9 +1087,15 @@ function applyPackagePreferencesToUI() {
         statusFilter.value = prefs.get('package_filters.status', 'all');
     }
 
-    const hideSystem = document.getElementById('hide-system-packages');
-    if (hideSystem) {
-        hideSystem.checked = prefs.get('package_filters.hide_system', false);
+    const hideSystemPkg = document.getElementById('hide-system-packages'); // Main tab toggle
+    if (hideSystemPkg) {
+        hideSystemPkg.checked = prefs.get('package_filters.hide_system', false);
+    }
+
+    // Also sync the settings tab toggle if it exists
+    const settingHideSystem = document.getElementById('setting-hide-system-pkgs');
+    if (settingHideSystem) {
+        settingHideSystem.checked = prefs.get('package_filters.hide_system', false);
     }
 
     const searchInput = document.getElementById('package-search');
@@ -1085,13 +1118,49 @@ setupPackageListeners = function () {
 
     const hideSystem = document.getElementById('hide-system-packages');
     if (hideSystem) {
-        hideSystem.addEventListener('change', (e) => savePreference('package_filters.hide_system', e.target.checked));
+        hideSystem.addEventListener('change', (e) => {
+            savePreference('package_filters.hide_system', e.target.checked);
+            // Sync settings toggle
+            const settingToggle = document.getElementById('setting-hide-system-pkgs');
+            if (settingToggle) settingToggle.checked = e.target.checked;
+        });
     }
 
     const searchInput = document.getElementById('package-search');
-    searchInput.addEventListener('input', (e) => savePreference('package_filters.search', e.target.value)); // Debounce?
+    searchInput.addEventListener('input', (e) => savePreference('package_filters.search', e.target.value));
 
-    // Sort logic is handled in valid sort click
+    // Settings Tab Listeners
+    const strictMode = document.getElementById('setting-strict-mode');
+    if (strictMode) {
+        strictMode.addEventListener('change', (e) => savePreference('validation.strict_mode', e.target.checked));
+    }
+
+    const agentsPanel = document.getElementById('setting-agents-panel');
+    if (agentsPanel) {
+        agentsPanel.addEventListener('change', (e) => {
+            const checked = e.target.checked;
+            savePreference('ui_toggles.agents_panel', checked);
+            toggleAgentsPanel(checked);
+        });
+    }
+
+    const settingHideSystem = document.getElementById('setting-hide-system-pkgs');
+    if (settingHideSystem) {
+        settingHideSystem.addEventListener('change', (e) => {
+            const checked = e.target.checked;
+            savePreference('package_filters.hide_system', checked);
+            // Sync main toggle
+            const mainToggle = document.getElementById('hide-system-packages');
+            if (mainToggle) {
+                mainToggle.checked = checked;
+                // Trigger change to update table
+                mainToggle.dispatchEvent(new Event('change'));
+            } else {
+                // If main toggle not present (e.g. looking at settings tab), manually trigger reload
+                renderPackagesTable();
+            }
+        });
+    }
 };
 
 // Override sort click to save

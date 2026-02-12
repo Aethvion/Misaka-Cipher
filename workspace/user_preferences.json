@@ -1,0 +1,16 @@
+{
+  "active_tab": "tools",
+  "package_filters": {
+    "status": "all",
+    "hide_system": true,
+    "search": ""
+  },
+  "package_sort": {
+    "column": "updated",
+    "direction": "desc"
+  },
+  "ui_toggles": {
+    "agents_panel": true
+  },
+  "theme": "dark"
+}
