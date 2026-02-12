@@ -72,11 +72,31 @@ class EpisodicMemoryStore:
             )
             logger.info(f"Created new ChromaDB collection: {collection_name}")
         
-        # Initialize embedding model
+        # Initialize embedding model with timeout handling
         model_name = self.config.get('embedding_model', 'all-MiniLM-L6-v2')
         logger.info(f"Loading embedding model: {model_name}...")
-        self.embedding_model = SentenceTransformer(model_name)
-        logger.info(f"Embedding model loaded (dim: {self.embedding_model.get_sentence_embedding_dimension()})")
+        
+        try:
+            # Try to load with increased timeout
+            import os
+            os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = '60'  # 60 second timeout
+            
+            self.embedding_model = SentenceTransformer(model_name)
+            logger.info(f"Embedding model loaded (dim: {self.embedding_model.get_sentence_embedding_dimension()})")
+            
+        except Exception as e:
+            logger.warning(f"Failed to load embedding model from HuggingFace: {e}")
+            logger.info("Attempting to use local cache or fallback...")
+            
+            try:
+                # Try with local_files_only flag
+                self.embedding_model = SentenceTransformer(model_name, local_files_only=True)
+                logger.info("Loaded embedding model from local cache")
+            except:
+                logger.error("Could not load embedding model. Memory system will be limited.")
+                # Create a dummy embedding model that returns zeros
+                # This allows the system to start even without embeddings
+                self.embedding_model = None
         
         # Configuration
         self.max_memories = self.config.get('max_memories', 10000)
@@ -103,7 +123,13 @@ class EpisodicMemoryStore:
         try:
             # Generate embedding
             text = f"{memory.summary} {memory.content}"
-            embedding = self.embedding_model.encode(text).tolist()
+            
+            # Handle case where embedding model failed to load
+            if self.embedding_model is None:
+                logger.warning("Embedding model not available, using zero vector")
+                embedding = [0.0] * 384  # Default dimension for all-MiniLM-L6-v2
+            else:
+                embedding = self.embedding_model.encode(text).tolist()
             
             # Flatten metadata (ChromaDB doesn't accept lists)
             flattened_metadata = self._flatten_metadata({
