@@ -122,9 +122,13 @@ function switchThread(threadId) {
         document.getElementById('active-thread-title').textContent = thread.title;
     }
 
-    // Render messages for this thread
+    // Render messages for this thread (initially empty)
     renderThreadMessages();
 
+    // Fetch messages from server
+    if (threadId !== 'default' || (threads['default'] && threads['default'].task_ids.length > 0)) {
+        loadThreadMessages(threadId);
+    }
 }
 
 // Render messages for current thread
@@ -161,9 +165,17 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
     if (role === 'user') {
         messageContent = `<strong>You:</strong> ${content}`;
     } else if (role === 'assistant') {
-        const parsedContent = (typeof marked !== 'undefined' && typeof marked.parse === 'function')
-            ? marked.parse(content)
-            : content;
+        let parsedContent = content;
+        try {
+            if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+                parsedContent = marked.parse(content);
+            } else {
+                console.warn("Marked library not loaded, using raw text");
+            }
+        } catch (e) {
+            console.error("Markdown parsing failed:", e);
+            parsedContent = content; // Fallback to raw text
+        }
 
         // Wrap in a div to ensure block styles work correctly after the strong tag
         messageContent = `<strong>Misaka:</strong> <div style="display:inline-block; width:100%;">${parsedContent}</div>`;
@@ -205,9 +217,13 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
         timestamp: new Date().toISOString()
     });
 
-    // If this is the current thread, render it
-    if (threadId === currentThreadId) {
-        renderThreadMessages();
+    try {
+        // If this is the current thread, render it
+        if (threadId === currentThreadId) {
+            renderThreadMessages();
+        }
+    } catch (e) {
+        console.error("Error rendering messages:", e);
     }
 }
 
