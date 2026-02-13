@@ -164,18 +164,30 @@ class ToolRegistry:
         with self._lock:
             return name in self._tools
     
-    def unregister(self, name: str) -> bool:
+    def unregister(self, name: str, delete_file: bool = False) -> bool:
         """
         Unregister a tool.
         
         Args:
             name: Tool name
+            delete_file: If True, also delete the tool's python file
             
         Returns:
             True if tool was unregistered
         """
         with self._lock:
             if name in self._tools:
+                if delete_file:
+                    file_path = self._tools[name].get('file_path')
+                    if file_path:
+                        try:
+                            Path(file_path).unlink()
+                            logger.info(f"Deleted tool file: {file_path}")
+                        except FileNotFoundError:
+                            logger.warning(f"Tool file not found for deletion: {file_path}")
+                        except Exception as e:
+                            logger.error(f"Failed to delete tool file {file_path}: {e}")
+
                 del self._tools[name]
                 self._save_registry()
                 logger.info(f"Unregistered tool: {name}")
