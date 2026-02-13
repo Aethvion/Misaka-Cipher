@@ -287,7 +287,6 @@ class TaskQueueManager:
                  self.threads[thread_id].title = thread_title
         
         self.threads[thread_id].task_ids.append(task.id)
-        self.threads[thread_id].task_ids.append(task.id)
         self.threads[thread_id].updated_at = datetime.now()
         
         # Propagate thread mode to task metadata (for worker/orchestrator to see)

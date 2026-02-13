@@ -154,6 +154,21 @@ async def set_thread_mode(thread_id: str, request: ThreadModeRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/debug/persistence")
+async def debug_persistence():
+    """Debug endpoint to inspect loaded tasks and threads."""
+    try:
+        task_manager = get_task_queue_manager()
+        return {
+            "threads_count": len(task_manager.threads),
+            "tasks_count": len(task_manager.tasks),
+            "thread_ids": list(task_manager.threads.keys()),
+            "task_ids": list(task_manager.tasks.keys()),
+            "threads_raw": [t.to_dict() for t in task_manager.threads.values()]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 class ThreadCreateRequest(BaseModel):
     thread_id: str
