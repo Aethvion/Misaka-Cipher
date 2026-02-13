@@ -55,6 +55,9 @@ async function loadThreads() {
             if (!threads[thread.id]) {
                 threads[thread.id] = thread;
                 threadMessages[thread.id] = []; // Initialize message storage
+            } else {
+                // Update existing thread data (e.g. mode)
+                threads[thread.id].mode = thread.mode;
             }
         });
 
@@ -238,25 +241,103 @@ async function loadThreadMessages(threadId) {
 function renderThreadList() {
     const threadsList = document.getElementById('threads-list');
     threadsList.innerHTML = '';
+    const template = document.getElementById('thread-item-template');
 
     Object.values(threads).forEach(thread => {
         const taskCount = thread.task_ids ? thread.task_ids.length : 0;
-        const status = getThreadStatus(thread);
 
-        const threadItem = document.createElement('div');
-        threadItem.className = `thread-item ${thread.id === currentThreadId ? 'active' : ''}`;
+        // Clone template
+        const clone = template.content.cloneNode(true);
+        const threadItem = clone.querySelector('.thread-item');
+
+        // Set ID and Active State
         threadItem.dataset.threadId = thread.id;
+        if (thread.id === currentThreadId) threadItem.classList.add('active');
 
-        threadItem.innerHTML = `
-            <div class="thread-title">${thread.title}</div>
-            <div class="thread-meta">
-                <span class="thread-task-count">${taskCount} task${taskCount !== 1 ? 's' : ''}</span>
-                <span class="thread-status ${status}">${status}</span>
-            </div>
-        `;
+        // Populate Data
+        clone.querySelector('.thread-title').textContent = thread.title;
 
-        threadsList.appendChild(threadItem);
+        // Date/Meta
+        const date = new Date(thread.updated_at || thread.created_at).toLocaleDateString();
+        clone.querySelector('.thread-date').textContent = date;
+
+        // Mode Badge
+        const modeBadge = clone.querySelector('.thread-mode-badge');
+        const modeBtn = clone.querySelector('.mode-btn');
+
+        if (thread.mode === 'chat_only') {
+            modeBadge.style.display = 'inline-block';
+            modeBtn.classList.add('active');
+            modeBtn.title = "Switch to Auto Mode";
+        } else {
+            modeBadge.style.display = 'none';
+            modeBtn.classList.remove('active');
+            modeBtn.title = "Switch to Chat Only Mode";
+        }
+
+        // Event Listeners for Actions
+        clone.querySelector('.delete-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete thread "${thread.title}"?`)) {
+                deleteThread(thread.id);
+            }
+        });
+
+        clone.querySelector('.mode-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const newMode = thread.mode === 'chat_only' ? 'auto' : 'chat_only';
+            toggleThreadMode(thread.id, newMode);
+        });
+
+        threadsList.appendChild(clone);
     });
+}
+
+// Delete a thread
+async function deleteThread(threadId) {
+    // Optimistic UI update
+    const threadEl = document.querySelector(`.thread-item[data-thread-id="${threadId}"]`);
+    if (threadEl) threadEl.remove();
+
+    // If deleted current thread, switch to default
+    if (currentThreadId === threadId) {
+        switchThread('default');
+    }
+
+    delete threads[threadId];
+    delete threadMessages[threadId];
+
+    try {
+        await fetch(`/api/tasks/thread/${threadId}`, { method: 'DELETE' });
+    } catch (error) {
+        console.error('Failed to delete thread:', error);
+        alert('Failed to delete thread on server');
+        loadThreads(); // Revert on failure
+    }
+}
+
+// Toggle thread mode
+async function toggleThreadMode(threadId, mode) {
+    // Optimistic update
+    if (threads[threadId]) {
+        threads[threadId].mode = mode;
+        renderThreadList();
+    }
+
+    try {
+        await fetch(`/api/tasks/thread/${threadId}/mode`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode: mode })
+        });
+    } catch (error) {
+        console.error('Failed to update thread mode:', error);
+        // Revert
+        if (threads[threadId]) {
+            threads[threadId].mode = mode === 'chat_only' ? 'auto' : 'chat_only';
+            renderThreadList();
+        }
+    }
 }
 
 // Get thread status based on tasks

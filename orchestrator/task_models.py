@@ -75,6 +75,8 @@ class ChatThread:
     updated_at: datetime = field(default_factory=datetime.now)
     task_ids: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    mode: str = "auto"  # "auto" or "chat_only"
+    is_deleted: bool = False
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -84,7 +86,9 @@ class ChatThread:
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
             'task_ids': self.task_ids,
-            'metadata': self.metadata
+            'metadata': self.metadata,
+            'mode': self.mode,
+            'is_deleted': self.is_deleted
         }
 
 

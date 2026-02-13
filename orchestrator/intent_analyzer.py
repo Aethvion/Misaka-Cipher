@@ -60,17 +60,27 @@ class IntentAnalyzer:
         self.nexus = nexus
         logger.info("Intent Analyzer initialized")
     
-    def analyze(self, user_message: str, trace_id: str = None) -> IntentAnalysis:
+    def analyze(self, user_message: str, trace_id: str = None, force_chat: bool = False) -> IntentAnalysis:
         """
         Analyze user message to determine intent.
         
         Args:
             user_message: User's input message
             trace_id: Optional trace ID for context
+            force_chat: If True, bypass analysis and force CHAT intent
             
         Returns:
             IntentAnalysis with classified intent and parameters
         """
+        if force_chat:
+            logger.info(f"[{trace_id}] Force CHAT intent requested")
+            return IntentAnalysis(
+                intent_type=IntentType.CHAT,
+                confidence=1.0,
+                prompt=user_message,
+                parameters={}
+            )
+            
         logger.info(f"Analyzing intent for message: {user_message[:50]}...")
         
         # Build analysis prompt

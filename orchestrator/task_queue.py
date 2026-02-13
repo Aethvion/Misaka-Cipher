@@ -6,7 +6,10 @@ Manages async task execution with worker pool
 import asyncio
 from typing import Dict, List, Optional
 from datetime import datetime
+import json
+from pathlib import Path
 from utils import get_logger, generate_trace_id
+from tools.standard.file_ops import WORKSPACE_ROOT
 from .task_models import Task, TaskStatus, ChatThread
 
 logger = get_logger(__name__)
@@ -19,7 +22,7 @@ class TaskWorker:
     Each worker runs independently and can execute tasks in parallel.
     """
     
-    def __init__(self, worker_id: str, queue: asyncio.Queue, tasks: Dict[str, Task], orchestrator):
+    def __init__(self, worker_id: str, queue: asyncio.Queue, tasks: Dict[str, Task], orchestrator, save_callback=None):
         """
         Initialize task worker.
         
@@ -28,11 +31,13 @@ class TaskWorker:
             queue: Shared task queue
             tasks: Shared tasks dictionary
             orchestrator: MasterOrchestrator instance
+            save_callback: Function to call to persist task state
         """
         self.worker_id = worker_id
         self.queue = queue
         self.tasks = tasks
         self.orchestrator = orchestrator
+        self.save_callback = save_callback
         self.running = False
         self.current_task: Optional[Task] = None
         logger.info(f"Worker {worker_id} initialized")
@@ -55,13 +60,34 @@ class TaskWorker:
                 task.started_at = datetime.now()
                 task.worker_id = self.worker_id
                 
+                # Save task state (started)
+                # We need to access the manager to save, but worker only has orchestrator
+                # So we'll access it via the shared tasks dict which is owned by manager,
+                # but better yet, let's add a save callback or reference.
+                # For now, let's assume we can't save from here easily without a ref.
+                # Actually, the queue manager pass 'self' as well? No.
+                # Let's check init: __init__(self, worker_id: str, queue: asyncio.Queue, tasks: Dict[str, Task], orchestrator)
+                # We can't reach _save_task easily.
+                # Let's Modify TaskWorker init to accept manager or save_callback.
+                # For now, I'll update the worker logic in a separate step or just skip intermediate saving? 
+                # No, intermediate saving is good for crash recovery.
+                # I'll stick to updating the queue manager to save when it can, but worker does the work.
+                # Wait, I can pass a callback to the worker.
+                # Let's do that in a minute.
+                
+                # Actually, I can just update the code to pass the callback.
+                if hasattr(self, 'save_callback') and self.save_callback:
+                    self.save_callback(task)
+                
                 try:
                     # Execute task via orchestrator in executor (it's synchronous)
                     loop = asyncio.get_event_loop()
+                    mode = task.metadata.get('mode', 'auto')
+                    
+                    # Use lambda to pass mode argument since run_in_executor only takes args for the callable
                     result = await loop.run_in_executor(
                         None,  # Use default executor
-                        self.orchestrator.process_message,
-                        task.prompt
+                        lambda: self.orchestrator.process_message(task.prompt, mode=mode)
                     )
                     
                     # Convert ExecutionResult to dict
@@ -86,6 +112,10 @@ class TaskWorker:
                         f"in {task.duration:.2f}s"
                     )
                     
+                    # Save task state (completed)
+                    if self.save_callback:
+                        self.save_callback(task)
+                    
                 except Exception as e:
                     # Task failed
                     task.status = TaskStatus.FAILED
@@ -95,6 +125,10 @@ class TaskWorker:
                     logger.error(
                         f"Worker {self.worker_id} failed task {task.id}: {e}"
                     )
+                    
+                    # Save task state (failed)
+                    if self.save_callback:
+                        self.save_callback(task)
                 
                 finally:
                     self.current_task = None
@@ -137,11 +171,24 @@ class TaskQueueManager:
         """
         self.orchestrator = orchestrator
         self.max_workers = max_workers
+        self.max_workers = max_workers
         self.queue: asyncio.Queue = asyncio.Queue()
         self.tasks: Dict[str, Task] = {}
         self.threads: Dict[str, ChatThread] = {}
         self.workers: List[TaskWorker] = []
         self.running = False
+        
+        # Persistence setup
+        # Use a hidden folder in memory for threads to avoid cluttering workspace
+        self.threads_dir = Path(__file__).parent.parent / "memory" / "storage" / "threads"
+        self.threads_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.tasks_dir = Path(__file__).parent.parent / "memory" / "storage" / "tasks"
+        self.tasks_dir.mkdir(parents=True, exist_ok=True)
+        
+        self._load_threads()
+        self._load_tasks()
+        
         logger.info(f"Task Queue Manager initialized (max_workers: {max_workers})")
     
     async def start(self):
@@ -158,7 +205,8 @@ class TaskQueueManager:
                 worker_id=f"worker-{i}",
                 queue=self.queue,
                 tasks=self.tasks,
-                orchestrator=self.orchestrator
+                orchestrator=self.orchestrator,
+                save_callback=self._save_task
             )
             self.workers.append(worker)
             
@@ -211,12 +259,22 @@ class TaskQueueManager:
             )
         
         self.threads[thread_id].task_ids.append(task.id)
+        self.threads[thread_id].task_ids.append(task.id)
         self.threads[thread_id].updated_at = datetime.now()
+        
+        # Propagate thread mode to task metadata (for worker/orchestrator to see)
+        task.metadata['mode'] = self.threads[thread_id].mode
+        
+        # Save thread state
+        self._save_thread(thread_id)
+        
+        # Save task state
+        self._save_task(task)
         
         # Add to queue
         await self.queue.put(task)
         
-        logger.info(f"Task {task.id} submitted to queue (thread: {thread_id})")
+        logger.info(f"Task {task.id} submitted to queue (thread: {thread_id}, mode: {task.metadata['mode']})")
         
         return task.id
     
@@ -266,6 +324,179 @@ class TaskQueueManager:
             },
             'queue_size': self.queue.qsize()
         }
+
+        return True
+                
+    def delete_thread(self, thread_id: str) -> bool:
+        """
+        Delete a thread, its persistence file, AND all associated tasks.
+        
+        Args:
+            thread_id: Thread ID to delete
+            
+        Returns:
+            True if deleted, False if not found
+        """
+        if thread_id not in self.threads:
+            return False
+            
+        # Get thread to find tasks
+        thread = self.threads[thread_id]
+        task_ids = thread.task_ids.copy()
+        
+        # Mark as deleted in memory (optional, but good for safety)
+        thread.is_deleted = True
+        
+        # Remove from memory
+        del self.threads[thread_id]
+        
+        # Delete thread file
+        thread_file = self.threads_dir / f"{thread_id}.json"
+        if thread_file.exists():
+            try:
+                thread_file.unlink()
+                logger.info(f"Deleted thread file: {thread_file}")
+            except Exception as e:
+                logger.error(f"Failed to delete thread file {thread_file}: {e}")
+
+        # Delete associated tasks
+        for tid in task_ids:
+            # Remove from memory
+            if tid in self.tasks:
+                del self.tasks[tid]
+            
+            # Delete task file
+            task_file = self.tasks_dir / f"{tid}.json"
+            if task_file.exists():
+                try:
+                    task_file.unlink()
+                    logger.debug(f"Deleted task file: {task_file}")
+                except Exception as e:
+                    logger.error(f"Failed to delete task file {task_file}: {e}")
+                
+        return True
+
+    def set_thread_mode(self, thread_id: str, mode: str) -> bool:
+        """
+        Set thread mode (auto/chat_only).
+        
+        Args:
+            thread_id: Thread ID
+            mode: New mode
+            
+        Returns:
+            True if updated
+        """
+        if thread_id not in self.threads:
+            return False
+            
+        if mode not in ["auto", "chat_only"]:
+            return False
+            
+        self.threads[thread_id].mode = mode
+        self.threads[thread_id].updated_at = datetime.now()
+        self._save_thread(thread_id)
+        
+        logger.info(f"Set thread {thread_id} mode to {mode}")
+        return True
+
+    def _load_threads(self):
+        """Load threads from disk."""
+        try:
+            count = 0
+            for file_path in self.threads_dir.glob("*.json"):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                        
+                    # Reconstruct ChatThread
+                    thread = ChatThread(
+                        id=data['id'],
+                        title=data.get('title', 'Untitled'),
+                        created_at=datetime.fromisoformat(data['created_at']),
+                        updated_at=datetime.fromisoformat(data['updated_at']),
+                        task_ids=data.get('task_ids', []),
+                        metadata=data.get('metadata', {}),
+                        mode=data.get('mode', 'auto'),
+                        is_deleted=data.get('is_deleted', False)
+                    )
+                    
+                    if not thread.is_deleted:
+                        self.threads[thread.id] = thread
+                        count += 1
+                        
+                except Exception as e:
+                    logger.error(f"Failed to load thread from {file_path}: {e}")
+            
+            logger.info(f"Loaded {count} threads from disk")
+            
+        except Exception as e:
+            logger.error(f"Error loading threads: {e}")
+
+    def _save_thread(self, thread_id: str):
+        """Save thread state to disk."""
+        if thread_id not in self.threads:
+            return
+            
+        try:
+            thread = self.threads[thread_id]
+            file_path = self.threads_dir / f"{thread.id}.json"
+            
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(thread.to_dict(), f, indent=2)
+                
+        except Exception as e:
+            logger.error(f"Failed to save thread {thread_id}: {e}")
+
+    def _save_task(self, task: Task):
+        """Save task state to disk."""
+        try:
+            file_path = self.tasks_dir / f"{task.id}.json"
+            
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(task.to_dict(), f, indent=2)
+                
+        except Exception as e:
+            logger.error(f"Failed to save task {task.id}: {e}")
+
+    def _load_tasks(self):
+        """Load tasks from disk."""
+        try:
+            count = 0
+            for file_path in self.tasks_dir.glob("*.json"):
+                try:
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    
+                    # Reconstruct Task
+                    # Note: We need to convert string timestamps back to datetime
+                    # Use a helper if possible, or manual parse
+                    
+                    # Basic reconstruction
+                    task = Task(
+                        id=data['id'],
+                        thread_id=data['thread_id'],
+                        prompt=data['prompt'],
+                        status=TaskStatus(data['status']),
+                        created_at=datetime.fromisoformat(data['created_at']),
+                        started_at=datetime.fromisoformat(data['started_at']) if data.get('started_at') else None,
+                        completed_at=datetime.fromisoformat(data['completed_at']) if data.get('completed_at') else None,
+                        error=data.get('error'),
+                        result=data.get('result'),
+                        metadata=data.get('metadata', {}),
+                        worker_id=data.get('worker_id')
+                    )
+                    
+                    self.tasks[task.id] = task
+                    count += 1
+                        
+                except Exception as e:
+                    logger.error(f"Failed to load task from {file_path}: {e}")
+            
+            logger.info(f"Loaded {count} tasks from disk")
+            
+        except Exception as e:
+            logger.error(f"Error loading tasks: {e}")
 
 
 # Singleton instance

@@ -57,13 +57,43 @@
                 <!-- Far Left: Thread List -->
                 <div class="column threads-column">
                     <div class="column-header">
-                        <h2>Threads</h2>
                         <button id="new-thread-button" class="new-thread-button" title="New Thread">+</button>
                     </div>
                     <div class="threads-list" id="threads-list">
-                        <!-- Thread items will be dynamically added here by JavaScript -->
+                        <!-- Threads will be populated here -->
                     </div>
                 </div>
+                <!-- Column closed here naturally if we remove the inner div -->
+                <!-- The structure is:
+                     <div class="four-column-layout">
+                       <div class="column threads-column">...</div>
+                       <template>...</template>
+                       <div class="column logs-column">...</div>
+                       ...
+                     </div>
+                -->
+                <!-- So we delete line 66 only -->
+                <template id="thread-item-template">
+                    <div class="thread-item">
+                        <div class="thread-info">
+                            <div class="thread-title"></div>
+                            <div class="thread-meta">
+                                <span class="thread-date"></span>
+                                <span class="thread-mode-badge"
+                                    style="display:none; font-size:0.7em; padding:2px 6px; border-radius:4px; background:var(--primary); color:var(--bg-primary);">CHAT
+                                    ONLY</span>
+                            </div>
+                        </div>
+                        <div class="thread-actions">
+                            <button class="thread-action-btn mode-btn" title="Toggle Chat Only Mode">
+                                <span class="icon">🤖</span>
+                            </button>
+                            <button class="thread-action-btn delete-btn" title="Delete Thread">
+                                <span class="icon">🗑️</span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
 
                 <!-- Left: System Logs -->
                 <div class="column logs-column">
@@ -234,59 +264,59 @@
                 <p class="placeholder-text">Search your knowledge base...</p>
             </div>
         </div>
-    </main>
 
-    <!-- Settings Tab -->
-    <div class="main-tab-panel" id="settings-panel">
-        <div class="panel-header" style="padding: 1.5rem; border-bottom: 1px solid var(--border);">
-            <h2>System Settings</h2>
-        </div>
-        <div class="settings-container">
-            <div class="setting-group">
-                <h3>Validation & Context</h3>
+        <!-- Settings Tab -->
+        <div class="main-tab-panel" id="settings-panel">
+            <div class="panel-header" style="padding: 1.5rem; border-bottom: 1px solid var(--border);">
+                <h2>System Settings</h2>
+            </div>
+            <div class="settings-container">
+                <div class="setting-group">
+                    <h3>Validation & Context</h3>
 
-                <div class="setting-item">
-                    <label class="switch">
-                        <input type="checkbox" id="setting-strict-mode">
-                        <span class="slider round"></span>
-                    </label>
-                    <div class="setting-label">
-                        <strong>Strict Domain Validation</strong>
-                        <span>
-                            Enforce Aethvion naming conventions (Domain_Action_Object) and restrict usage to approved
-                            domains only.
-                            Disable this to allow creating agents with custom domains (e.g. Story_Write_Plot).
-                        </span>
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="setting-strict-mode">
+                            <span class="slider round"></span>
+                        </label>
+                        <div class="setting-label">
+                            <strong>Strict Domain Validation</strong>
+                            <span>
+                                Enforce Aethvion naming conventions (Domain_Action_Object) and restrict usage to
+                                approved
+                                domains only.
+                                Disable this to allow creating agents with custom domains (e.g. Story_Write_Plot).
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="setting-agents-panel" checked>
+                            <span class="slider round"></span>
+                        </label>
+                        <div class="setting-label">
+                            <strong>Show Active Agents Panel</strong>
+                            <span>Toggle visibility of the right-side agents column in Chat view.</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="setting-item">
-                    <label class="switch">
-                        <input type="checkbox" id="setting-agents-panel" checked>
-                        <span class="slider round"></span>
-                    </label>
-                    <div class="setting-label">
-                        <strong>Show Active Agents Panel</strong>
-                        <span>Toggle visibility of the right-side agents column in Chat view.</span>
+                <div class="setting-group">
+                    <h3>Package Management</h3>
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="setting-hide-system-pkgs">
+                            <span class="slider round"></span>
+                        </label>
+                        <div class="setting-label">
+                            <strong>Hide System Packages</strong>
+                            <span>Filter out internal system packages from the packages list view.</span>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <div class="setting-group">
-                <h3>Package Management</h3>
-                <div class="setting-item">
-                    <label class="switch">
-                        <input type="checkbox" id="setting-hide-system-pkgs">
-                        <span class="slider round"></span>
-                    </label>
-                    <div class="setting-label">
-                        <strong>Hide System Packages</strong>
-                        <span>Filter out internal system packages from the packages list view.</span>
-                    </div>
-                </div>
-            </div>
         </div>
-    </div>
     </main>
 
     <!-- Scripts -->

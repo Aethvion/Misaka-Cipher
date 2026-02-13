@@ -111,3 +111,43 @@ async def list_threads():
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class ThreadModeRequest(BaseModel):
+    mode: str  # "auto" or "chat_only"
+
+
+@router.delete("/thread/{thread_id}")
+async def delete_thread(thread_id: str):
+    """Delete a thread."""
+    try:
+        task_manager = get_task_queue_manager()
+        success = task_manager.delete_thread(thread_id)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
+            
+        return {"status": "success", "message": f"Thread {thread_id} deleted"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/thread/{thread_id}/mode")
+async def set_thread_mode(thread_id: str, request: ThreadModeRequest):
+    """Set thread execution mode."""
+    try:
+        task_manager = get_task_queue_manager()
+        success = task_manager.set_thread_mode(thread_id, request.mode)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found or invalid mode")
+            
+        return {"status": "success", "mode": request.mode}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

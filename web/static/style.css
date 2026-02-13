@@ -221,6 +221,9 @@ body {
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .thread-item:hover {
@@ -232,6 +235,65 @@ body {
     background: var(--bg-tertiary);
     border-color: var(--primary);
     box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+}
+
+.thread-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.thread-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.thread-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.thread-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: 0.5rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.thread-item:hover .thread-actions {
+    opacity: 1;
+}
+
+.thread-action-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    opacity: 0.7;
+    transition: all 0.2s;
+}
+
+.thread-action-btn:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.thread-action-btn.delete-btn:hover {
+    background: rgba(255, 68, 68, 0.2);
+}
+
+.thread-action-btn.mode-btn.active {
+    background: rgba(0, 217, 255, 0.2);
+    border: 1px solid var(--primary);
 }
 
 .thread-title {

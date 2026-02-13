@@ -95,12 +95,13 @@ class MasterOrchestrator:
         """Set callback for real-time step monitoring."""
         self.step_callback = callback
     
-    def process_message(self, user_message: str) -> ExecutionResult:
+    def process_message(self, user_message: str, mode: str = "auto") -> ExecutionResult:
         """
         Process user message end-to-end.
         
         Args:
             user_message: User's input message
+            mode: Execution mode ("auto" or "chat_only")
             
         Returns:
             ExecutionResult with complete execution details
@@ -113,7 +114,8 @@ class MasterOrchestrator:
         
         try:
             # Step 1: Analyze intent
-            intent = self.intent_analyzer.analyze(user_message, trace_id)
+            force_chat = (mode == "chat_only")
+            intent = self.intent_analyzer.analyze(user_message, trace_id, force_chat=force_chat)
             logger.info(f"[{trace_id}] Intent: {intent.intent_type.value} (confidence: {intent.confidence:.2f})")
             
             # Step 2: Create action plan
