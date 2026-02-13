@@ -1694,8 +1694,8 @@
       },
       "approved_at": null,
       "installed_at": "2026-02-12T15:50:52.313218",
-      "usage_count": 0,
-      "last_used_at": null
+      "usage_count": 3,
+      "last_used_at": "2026-02-13T13:39:08.631938"
     },
     {
       "package_name": "oauthlib",
@@ -1774,8 +1774,8 @@
       },
       "approved_at": null,
       "installed_at": "2026-02-12T15:50:52.313218",
-      "usage_count": 1,
-      "last_used_at": "2026-02-13T00:32:01.704915"
+      "usage_count": 2,
+      "last_used_at": "2026-02-13T13:36:51.858886"
     },
     {
       "package_name": "opencv-python",
@@ -3692,5 +3692,5 @@
     "yfinance": "1.1.0"
   },
   "denied": [],
-  "last_updated": "2026-02-13T12:35:49.130831"
+  "last_updated": "2026-02-13T13:39:08.634444"
 }
