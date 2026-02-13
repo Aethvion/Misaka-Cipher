@@ -227,13 +227,37 @@ class TaskQueueManager:
         
         logger.info("Task Queue Manager stopped")
     
-    async def submit_task(self, prompt: str, thread_id: str = "default") -> str:
+    def create_thread(self, thread_id: str, title: str = None) -> bool:
+        """
+        Explicitly create a new thread.
+        
+        Args:
+            thread_id: Thread ID
+            title: Thread title
+            
+        Returns:
+            True if created, False if already exists
+        """
+        if thread_id in self.threads:
+            return False
+            
+        self.threads[thread_id] = ChatThread(
+            id=thread_id,
+            title=title if title else f"Thread {thread_id}",
+            created_at=datetime.now()
+        )
+        self._save_thread(thread_id)
+        logger.info(f"Created new thread: {thread_id} ({title})")
+        return True
+
+    async def submit_task(self, prompt: str, thread_id: str = "default", thread_title: str = None) -> str:
         """
         Submit a task to the queue.
         
         Args:
             prompt: User prompt/message
             thread_id: Chat thread ID
+            thread_title: Optional title for the thread
             
         Returns:
             Task ID
@@ -254,9 +278,13 @@ class TaskQueueManager:
         if thread_id not in self.threads:
             self.threads[thread_id] = ChatThread(
                 id=thread_id,
-                title=f"Thread {thread_id}",
+                title=thread_title if thread_title else f"Thread {thread_id}",
                 created_at=datetime.now()
             )
+        else:
+            # Update title if provided and meaningful (not just default)
+            if thread_title and thread_title != f"Thread {thread_id}":
+                 self.threads[thread_id].title = thread_title
         
         self.threads[thread_id].task_ids.append(task.id)
         self.threads[thread_id].task_ids.append(task.id)

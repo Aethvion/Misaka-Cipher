@@ -15,6 +15,7 @@ class TaskSubmitRequest(BaseModel):
     """Request to submit a new task."""
     prompt: str
     thread_id: Optional[str] = "default"
+    thread_title: Optional[str] = None
 
 
 class TaskResponse(BaseModel):
@@ -35,7 +36,8 @@ async def submit_task(request: TaskSubmitRequest):
         task_manager = get_task_queue_manager()
         task_id = await task_manager.submit_task(
             prompt=request.prompt,
-            thread_id=request.thread_id
+            thread_id=request.thread_id,
+            thread_title=request.thread_title
         )
         
         return TaskResponse(
@@ -149,5 +151,26 @@ async def set_thread_mode(thread_id: str, request: ThreadModeRequest):
         
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ThreadCreateRequest(BaseModel):
+    thread_id: str
+    title: Optional[str] = None
+
+
+@router.post("/thread/create")
+async def create_thread(request: ThreadCreateRequest):
+    """Explicitly create a new thread."""
+    try:
+        task_manager = get_task_queue_manager()
+        success = task_manager.create_thread(request.thread_id, request.title)
+        
+        if not success:
+            return {"status": "exists", "message": f"Thread {request.thread_id} already exists"}
+            
+        return {"status": "success", "message": f"Thread {request.thread_id} created"}
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

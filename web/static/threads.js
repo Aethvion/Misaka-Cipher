@@ -87,6 +87,20 @@ async function createNewThread() {
     // Initialize message storage for new thread
     threadMessages[threadId] = [];
 
+    // Create thread on backend immediately so Mode toggles work
+    try {
+        await fetch('/api/tasks/thread/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                thread_id: threadId,
+                title: title
+            })
+        });
+    } catch (e) {
+        console.error("Failed to create thread on backend:", e);
+    }
+
     renderThreadList();
     switchThread(threadId);
 }
@@ -209,6 +223,7 @@ async function loadThreadMessages(threadId) {
         }
 
         const data = await response.json();
+        console.log(`Loaded messages for ${threadId}:`, data); // Debug logging
 
         // Clear existing messages for this thread
         threadMessages[threadId] = [];
@@ -409,7 +424,8 @@ async function sendMessage() {
             },
             body: JSON.stringify({
                 prompt: message,
-                thread_id: messageThreadId
+                thread_id: messageThreadId,
+                thread_title: threads[messageThreadId]?.title // Send title to ensure backend has it
             })
         });
 
