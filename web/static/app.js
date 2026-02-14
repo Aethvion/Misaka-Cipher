@@ -217,8 +217,28 @@ async function loadFiles() {
 
 let allTools = [];
 let toolSort = { column: 'name', direction: 'asc' };
+let showSystemTools = false; // Default
 
 async function loadTools() {
+    // Load preference first
+    try {
+        const prefResponse = await fetch('/api/preferences/get?key=show_system_tools');
+        if (prefResponse.ok) {
+            const prefData = await prefResponse.json();
+            // Assuming API returns {value: true/false} or similar
+            // If API doesn't exist yet, we stick to default
+            if (prefData && prefData.value !== undefined) {
+                showSystemTools = prefData.value;
+            }
+        }
+    } catch (e) {
+        console.log("Could not load preferences, using default");
+    }
+
+    // Set checkbox state
+    const checkbox = document.getElementById('show-system-tools');
+    if (checkbox) checkbox.checked = showSystemTools;
+
     await loadAllTools();
 }
 
@@ -274,6 +294,29 @@ function setupToolListeners() {
     const filterSelect = document.getElementById('tool-domain-filter');
     filterSelect.addEventListener('change', renderToolsTable);
 
+    // System Tools Toggle
+    const systemToggle = document.getElementById('show-system-tools');
+    if (systemToggle) {
+        systemToggle.addEventListener('change', async (e) => {
+            showSystemTools = e.target.checked;
+            renderToolsTable();
+
+            // Save preference
+            try {
+                await fetch('/api/preferences/set', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        key: 'show_system_tools',
+                        value: showSystemTools
+                    })
+                });
+            } catch (err) {
+                console.error("Failed to save preference:", err);
+            }
+        });
+    }
+
     // Refresh
     const refreshBtn = document.getElementById('refresh-tools-btn');
     refreshBtn.addEventListener('click', loadAllTools);
@@ -303,6 +346,9 @@ function renderToolsTable() {
 
     // 1. Filter
     let filtered = allTools.filter(tool => {
+        // System Tool Filter
+        if (!showSystemTools && tool.is_system) return false;
+
         // Domain Filter
         if (domainFilter && tool.domain !== domainFilter) return false;
 
@@ -368,7 +414,10 @@ function renderToolsTable() {
                 <td>${tool.description || 'No description'}</td>
                 <td>${formatDate(tool.created_at || new Date())}</td>
                 <td onclick="event.stopPropagation()">
-                    <button class="action-btn small danger delete-tool-btn" data-tool="${tool.name}" onclick="deleteTool('${tool.name}')">Delete</button>
+                    ${tool.is_system
+                ? '<span class="status-badge" style="background:var(--accent-secondary); opacity:0.8; cursor:default;">System</span>'
+                : `<button class="action-btn small danger delete-tool-btn" data-tool="${tool.name}" onclick="deleteTool('${tool.name}')">Delete</button>`
+            }
                 </td>
             </tr>
         `;

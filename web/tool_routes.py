@@ -19,6 +19,12 @@ async def list_tools():
     try:
         registry = get_tool_registry()
         tools = registry.list_tools()
+        
+        # Helper to check if system tool
+        def is_system_tool(path_str):
+            if not path_str: return False
+            return "tools\\standard" in path_str or "tools/standard" in path_str
+
         return {
             "count": len(tools),
             "tools": [
@@ -29,7 +35,8 @@ async def list_tools():
                     "parameters": t.get('parameters', {}),
                     "created_at": t.get('created_at'),
                     "file_path": t.get('file_path'),
-                    "usage_count": t.get('usage_count', 0)
+                    "usage_count": t.get('usage_count', 0),
+                    "is_system": is_system_tool(t.get('file_path'))
                 }
                 for t in tools
             ]
@@ -48,6 +55,11 @@ async def delete_tool(tool_name: str):
         if not registry.tool_exists(tool_name):
             raise HTTPException(status_code=404, detail=f"Tool {tool_name} not found")
             
+        tool_info = registry.get_tool(tool_name)
+        file_path = tool_info.get('file_path', '')
+        if "tools\\standard" in file_path or "tools/standard" in file_path:
+            raise HTTPException(status_code=403, detail=f"Cannot delete system tool: {tool_name}")
+
         success = registry.unregister(tool_name, delete_file=True)
         
         if success:

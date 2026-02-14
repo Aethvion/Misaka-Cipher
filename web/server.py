@@ -257,6 +257,18 @@ async def get_preferences():
         logger.error(f"Failed to get preferences: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/preferences/get")
+async def get_preference_value(key: str):
+    """Get a specific preference value."""
+    try:
+        from workspace.preferences_manager import get_preferences_manager
+        prefs = get_preferences_manager()
+        value = prefs.get(key)
+        return {"key": key, "value": value}
+    except Exception as e:
+        logger.error(f"Failed to get preference {key}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/preferences")
 async def update_preferences(updates: Dict[str, Any]):
     """Update multiple preferences."""

@@ -12,5 +12,6 @@
   "ui_toggles": {
     "agents_panel": true
   },
-  "theme": "dark"
+  "theme": "dark",
+  "show_system_tools": true
 }
