@@ -182,10 +182,42 @@
         <div class="main-tab-panel" id="tools-panel">
             <div class="panel-header">
                 <h2>Tool Registry</h2>
-                <button id="forge-tool-button" class="forge-button">+ Forge New Tool</button>
+                <div class="panel-controls">
+                    <input type="text" id="tool-search" placeholder="Search tools..." class="search-input">
+                    <select id="tool-domain-filter" class="filter-select">
+                        <option value="">All Domains</option>
+                        <!-- Domains will be populated by JS -->
+                    </select>
+                    <button id="refresh-tools-btn" class="action-btn secondary" title="Refresh list">
+                        <i class="fas fa-redo"></i> Refresh
+                    </button>
+                    <button id="forge-tool-button" class="forge-button">+ Forge New Tool</button>
+                </div>
             </div>
-            <div class="tools-grid" id="tools-grid">
-                <p class="placeholder-text">Loading tools...</p>
+
+            <div class="tools-table-container" style="overflow-x: auto;">
+                <table class="data-table" id="tools-table"
+                    style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+                    <thead>
+                        <tr style="text-align: left; border-bottom: 2px solid var(--border);">
+                            <th class="sortable" data-sort="name" style="padding: 10px; cursor: pointer;">Tool Name ↕
+                            </th>
+                            <th class="sortable" data-sort="domain" style="padding: 10px; cursor: pointer;">Domain ↕
+                            </th>
+                            <th style="padding: 10px;">Description</th>
+                            <th class="sortable" data-sort="created" style="padding: 10px; cursor: pointer;">Created ↕
+                            </th>
+                            <th style="padding: 10px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tools-table-body">
+                        <!-- Rows injected by JS -->
+                        <tr>
+                            <td colspan="5" class="placeholder-text" style="text-align: center; padding: 20px;">Loading
+                                tools...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 

@@ -22,6 +22,7 @@ from orchestrator import MasterOrchestrator
 from utils import get_logger
 from web.package_routes import router as package_router
 from web.task_routes import router as task_router
+from web.tool_routes import router as tool_router
 
 logger = get_logger(__name__)
 
@@ -46,6 +47,9 @@ app.include_router(package_router)
 
 # Include task queue routes
 app.include_router(task_router)
+
+# Include tool registry routes
+app.include_router(tool_router)
 
 # Global instances (initialized on startup)
 orchestrator: Optional[MasterOrchestrator] = None
@@ -447,27 +451,6 @@ async def search_memory(request: MemorySearchRequest):
     except Exception as e:
         logger.error(f"Memory search error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/tools/list")
-async def list_tools():
-    """List all registered tools."""
-    if not forge:
-        raise HTTPException(status_code=503, detail="Forge not initialized")
-    
-    tools = forge.registry.list_tools()
-    return {
-        "count": len(tools),
-        "tools": [
-            {
-                "name": t.get('name', 'unknown'),
-                "domain": t.get('domain', 'unknown'),
-                "description": t.get('description', ''),
-                "parameters": t.get('parameters', {})
-            }
-            for t in tools
-        ]
-    }
 
 
 @app.get("/api/workspace/files")

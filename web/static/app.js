@@ -213,35 +213,222 @@ async function loadFiles() {
     }
 }
 
+// ===== Tool Registry Management =====
+
+let allTools = [];
+let toolSort = { column: 'name', direction: 'asc' };
+
 async function loadTools() {
+    await loadAllTools();
+}
+
+async function loadAllTools() {
     try {
         const response = await fetch('/api/tools/list');
         const data = await response.json();
 
-        const grid = document.getElementById('tools-grid');
+        allTools = data.tools || [];
+        populateToolDomains();
+        renderToolsTable();
 
-        if (data.count === 0) {
-            grid.innerHTML = '<p class="placeholder-text">No tools yet. The Forge will create them as needed!</p>';
-            return;
+        // Initial setup only if not done
+        if (!window.toolListenersSetup) {
+            setupToolListeners();
+            window.toolListenersSetup = true;
         }
 
-        grid.innerHTML = data.tools.map(tool => `
-            <div class="tool-card">
-                <div class="tool-header">
-                    <div class="tool-name">${tool.name}</div>
-                    <div class="tool-domain">${tool.domain}</div>
-                </div>
-                <div class="tool-description">${tool.description || 'No description'}</div>
-                <div class="tool-params">
-                    Parameters: ${Object.keys(tool.parameters || {}).length || 0}
-                </div>
-            </div>
-        `).join('');
-
     } catch (error) {
-        console.error('Tools load error:', error);
+        console.error('Error loading tools:', error);
+        document.getElementById('tools-table-body').innerHTML =
+            '<tr><td colspan="5" class="placeholder-text error">Error loading tools</td></tr>';
     }
 }
+
+function populateToolDomains() {
+    const domains = new Set(allTools.map(t => t.domain).filter(d => d));
+    const select = document.getElementById('tool-domain-filter');
+    const currentValue = select.value;
+
+    // Keep "All Domains" option
+    select.innerHTML = '<option value="">All Domains</option>';
+
+    Array.from(domains).sort().forEach(domain => {
+        const option = document.createElement('option');
+        option.value = domain;
+        option.textContent = domain;
+        select.appendChild(option);
+    });
+
+    // Restore selection if possible
+    if (domains.has(currentValue)) {
+        select.value = currentValue;
+    }
+}
+
+function setupToolListeners() {
+    // Search
+    const searchInput = document.getElementById('tool-search');
+    searchInput.addEventListener('input', renderToolsTable);
+
+    // Filter
+    const filterSelect = document.getElementById('tool-domain-filter');
+    filterSelect.addEventListener('change', renderToolsTable);
+
+    // Refresh
+    const refreshBtn = document.getElementById('refresh-tools-btn');
+    refreshBtn.addEventListener('click', loadAllTools);
+
+    // Sorting HEADERS
+    document.querySelectorAll('#tools-table th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const column = th.dataset.sort;
+            if (toolSort.column === column) {
+                toolSort.direction = toolSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                toolSort.column = column;
+                toolSort.direction = 'asc';
+                if (column === 'created') {
+                    toolSort.direction = 'desc';
+                }
+            }
+            renderToolsTable();
+        });
+    });
+}
+
+function renderToolsTable() {
+    const tbody = document.getElementById('tools-table-body');
+    const search = document.getElementById('tool-search').value.toLowerCase();
+    const domainFilter = document.getElementById('tool-domain-filter').value;
+
+    // 1. Filter
+    let filtered = allTools.filter(tool => {
+        // Domain Filter
+        if (domainFilter && tool.domain !== domainFilter) return false;
+
+        // Search Filter
+        if (search) {
+            const term = search.toLowerCase();
+            return (
+                tool.name.toLowerCase().includes(term) ||
+                (tool.description && tool.description.toLowerCase().includes(term))
+            );
+        }
+        return true;
+    });
+
+    // 2. Sort
+    filtered.sort((a, b) => {
+        let valA, valB;
+
+        switch (toolSort.column) {
+            case 'name':
+                valA = a.name.toLowerCase();
+                valB = b.name.toLowerCase();
+                break;
+            case 'domain':
+                valA = (a.domain || '').toLowerCase();
+                valB = (b.domain || '').toLowerCase();
+                break;
+            case 'created':
+                valA = new Date(a.created_at || 0).getTime();
+                valB = new Date(b.created_at || 0).getTime();
+                break;
+            default:
+                return 0;
+        }
+
+        if (valA < valB) return toolSort.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return toolSort.direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    // 3. Render
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="placeholder-text">No tools match your criteria</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(tool => {
+        const detailsId = `tool-details-${tool.name.replace(/[^a-zA-Z0-9]/g, '-')}`;
+
+        const mainRow = `
+            <tr class="package-row" onclick="toggleToolDetails('${detailsId}')">
+                <td>
+                    <div class="pkg-name">
+                        <span class="expand-icon">▶</span> ${tool.name}
+                    </div>
+                </td>
+                <td><span class="status-badge installed">${tool.domain}</span></td>
+                <td>${tool.description || 'No description'}</td>
+                <td>${formatDate(tool.created_at || new Date())}</td>
+                <td onclick="event.stopPropagation()">
+                    <button class="action-btn small danger delete-tool-btn" data-tool="${tool.name}" onclick="deleteTool('${tool.name}')">Delete</button>
+                </td>
+            </tr>
+        `;
+
+        const detailsRow = `
+            <tr id="${detailsId}" class="package-details-row" style="display: none;">
+                <td colspan="5">
+                    <div class="details-content">
+                        <div class="detail-grid">
+                            <div class="detail-item">
+                                <span class="label">Parameters:</span>
+                                <span class="value code-block">${JSON.stringify(tool.parameters, null, 2)}</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">File Path:</span>
+                                <span class="value">${tool.file_path || 'Unknown'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return mainRow + detailsRow;
+    }).join('');
+}
+
+function toggleToolDetails(id) {
+    const row = document.getElementById(id);
+    if (!row) return;
+
+    const isHidden = row.style.display === 'none';
+    row.style.display = isHidden ? 'table-row' : 'none';
+
+    // Toggle icon
+    const prevRow = row.previousElementSibling;
+    const icon = prevRow.querySelector('.expand-icon');
+    if (icon) {
+        icon.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+    }
+}
+
+async function deleteTool(toolName) {
+    if (!confirm(`Are you sure you want to delete tool "${toolName}"? This cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/tools/${toolName}`, {
+            method: 'DELETE'
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            // Show success toast (basic)
+            console.log(result.message);
+            loadAllTools(); // Reload list
+        } else {
+            alert('Failed to delete tool: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error deleting tool:', error);
+        alert('Error deleting tool: ' + error.message);
+    }
+}
+
 
 async function searchMemory() {
     const query = document.getElementById('memory-search').value;
