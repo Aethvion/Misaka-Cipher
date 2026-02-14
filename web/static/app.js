@@ -12,7 +12,10 @@ let currentMainTab = 'chat';
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     initializeWebSockets();
-    initializeUI();
+    const refreshMemory = document.getElementById('refresh-memory-btn');
+    if (refreshMemory) refreshMemory.addEventListener('click', loadMemoryData);
+
+    // Initial load
     loadInitialData();
 });
 
@@ -135,8 +138,9 @@ function switchMainTab(tabName) {
 async function loadInitialData() {
     await loadPreferences(); // Load prefs FIRST
     await loadSystemStatus();
-    await loadTools();
-    await loadPackages();
+    await loadTools();        // Background
+    loadPackages();     // Background
+    loadMemoryData();   // Background
 
     // Initialize thread management (from threads.js)
     if (typeof initThreadManagement === 'function') {
@@ -337,6 +341,94 @@ function setupToolListeners() {
             renderToolsTable();
         });
     });
+}
+
+// ===== Memory Management =====
+
+async function loadMemoryData() {
+    try {
+        const response = await fetch('/api/memory/overview');
+        if (!response.ok) throw new Error("Failed to load memory overview");
+
+        const data = await response.json();
+
+        renderPermanentMemory(data.permanent);
+        renderThreadMemory(data.threads);
+
+    } catch (error) {
+        console.error("Memory load error:", error);
+        document.getElementById('thread-memory-container').innerHTML =
+            `<p class="error-text">Failed to load memory data: ${error.message}</p>`;
+    }
+}
+
+function renderPermanentMemory(insights) {
+    const tbody = document.getElementById('permanent-memory-body');
+    if (!insights || insights.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="placeholder-text" style="text-align:center; padding:15px;">No permanent insights yet.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = insights.map(i => `
+        <tr>
+            <td style="font-family: monospace; color: var(--text-secondary);">${i.id}</td>
+            <td>${i.summary}</td>
+            <td>${formatDate(i.created_at)}</td>
+        </tr>
+    `).join('');
+}
+
+function renderThreadMemory(threads) {
+    const container = document.getElementById('thread-memory-container');
+
+    if (!threads || threads.length === 0) {
+        container.innerHTML = '<p class="placeholder-text">No thread memories found.</p>';
+        return;
+    }
+
+    container.innerHTML = threads.map(thread => {
+        // Build rows for this thread
+        const rows = thread.memories && thread.memories.length > 0
+            ? thread.memories.map(mem => `
+                <tr>
+                    <td><span class="status-badge" style="font-size:0.8em">${mem.event_type}</span></td>
+                    <td>${mem.summary}</td>
+                    <td style="font-family:var(--font-mono); font-size:0.85em; color:var(--text-secondary);">${mem.content ? mem.content.substring(0, 50) + (mem.content.length > 50 ? '...' : '') : '-'}</td>
+                    <td>${formatDate(mem.timestamp)}</td>
+                </tr>
+            `).join('')
+            : '<tr><td colspan="4" class="placeholder-text" style="text-align:center; padding:10px;">No memories for this thread.</td></tr>';
+
+        return `
+            <div class="thread-memory-card" style="margin-bottom: 2rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                <div class="thread-header" style="padding: 1rem; background: rgba(0,0,0,0.2); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h4 style="margin: 0; color: var(--primary);">${thread.title}</h4>
+                        <span style="font-size: 0.8em; color: var(--text-secondary); font-family: var(--font-mono);">${thread.id}</span>
+                    </div>
+                    <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                        ${thread.memory_count} memories
+                    </div>
+                </div>
+                
+                <div class="table-responsive" style="overflow-x: auto;">
+                    <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9em;">
+                                <th style="padding: 10px; width: 100px;">Event</th>
+                                <th style="padding: 10px;">Summary</th>
+                                <th style="padding: 10px;">Content Snippet</th>
+                                <th style="padding: 10px; width: 150px;">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
 function renderToolsTable() {

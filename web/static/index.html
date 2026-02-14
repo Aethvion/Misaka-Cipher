@@ -285,21 +285,41 @@
         <!-- Memory Tab -->
         <div class="main-tab-panel" id="memory-panel">
             <div class="panel-header">
-                <h2>Episodic Memory Search</h2>
+                <h2>System Memory</h2>
+                <div class="panel-controls">
+                    <button id="refresh-memory-btn" class="action-btn secondary" title="Refresh memory">
+                        <i class="fas fa-redo"></i> Refresh
+                    </button>
+                </div>
             </div>
-            <div class="search-bar">
-                <input type="text" id="memory-search" class="search-input" placeholder="Search episodic memory..." />
-                <select id="memory-domain-filter" class="filter-select">
-                    <option value="">All Domains</option>
-                    <option value="Finance">Finance</option>
-                    <option value="System">System</option>
-                    <option value="Data">Data</option>
-                    <option value="Code">Code</option>
-                </select>
-                <button id="memory-search-button" class="search-button">Search</button>
+
+            <!-- Permanent Memory Section -->
+            <div class="memory-section" style="margin-bottom: 2rem;">
+                <h3 style="margin-left: 1rem; color: var(--accent);">Permanent Memory (Core Insights)</h3>
+                <div class="tools-table-container" style="overflow-x: auto;">
+                    <table class="data-table" id="permanent-memory-table"
+                        style="width: 100%; border-collapse: collapse; margin-top: 0.5rem;">
+                        <thead>
+                            <tr style="text-align: left; border-bottom: 2px solid var(--border);">
+                                <th style="padding: 10px;">Insight ID</th>
+                                <th style="padding: 10px;">Summary</th>
+                                <th style="padding: 10px;">Created</th>
+                            </tr>
+                        </thead>
+                        <tbody id="permanent-memory-body">
+                            <!-- Rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <div class="memory-results" id="memory-results">
-                <p class="placeholder-text">Search your knowledge base...</p>
+
+            <!-- Thread Memory Section -->
+            <div class="memory-section">
+                <h3 style="margin-left: 1rem; color: var(--accent);">Thread Memory</h3>
+                <div id="thread-memory-container">
+                    <!-- Dynamic thread tables injected here -->
+                    <p class="placeholder-text">Loading thread memories...</p>
+                </div>
             </div>
         </div>
 
