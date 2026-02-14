@@ -28,7 +28,8 @@ async def list_tools():
                     "description": t.get('description', ''),
                     "parameters": t.get('parameters', {}),
                     "created_at": t.get('created_at'),
-                    "file_path": t.get('file_path')
+                    "file_path": t.get('file_path'),
+                    "usage_count": t.get('usage_count', 0)
                 }
                 for t in tools
             ]

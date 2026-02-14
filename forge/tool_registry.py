@@ -86,6 +86,8 @@ class ToolRegistry:
             # Add registration metadata
             tool_info['registered_at'] = datetime.now().isoformat()
             tool_info['version'] = tool_info.get('version', '1.0.0')
+            if 'usage_count' not in tool_info:
+                tool_info['usage_count'] = 0
             
             self._tools[tool_name] = tool_info
             self._save_registry()
@@ -193,6 +195,26 @@ class ToolRegistry:
                 logger.info(f"Unregistered tool: {name}")
                 return True
             return False
+
+    def increment_usage(self, name: str) -> int:
+        """
+        Increment usage count for a tool.
+        
+        Args:
+            name: Tool name
+            
+        Returns:
+            New usage count
+        """
+        with self._lock:
+            if name in self._tools:
+                tool = self._tools[name]
+                count = tool.get('usage_count', 0) + 1
+                tool['usage_count'] = count
+                tool['last_used_at'] = datetime.now().isoformat()
+                self._save_registry()
+                return count
+            return 0
 
 
 # Global registry instance

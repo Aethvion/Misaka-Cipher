@@ -334,6 +334,10 @@ function renderToolsTable() {
                 valA = new Date(a.created_at || 0).getTime();
                 valB = new Date(b.created_at || 0).getTime();
                 break;
+            case 'usage':
+                valA = a.usage_count || 0;
+                valB = b.usage_count || 0;
+                break;
             default:
                 return 0;
         }
@@ -360,6 +364,7 @@ function renderToolsTable() {
                     </div>
                 </td>
                 <td><span class="status-badge installed">${tool.domain}</span></td>
+                <td>${tool.usage_count || 0}</td>
                 <td>${tool.description || 'No description'}</td>
                 <td>${formatDate(tool.created_at || new Date())}</td>
                 <td onclick="event.stopPropagation()">

@@ -199,6 +199,21 @@ class GenericAgent(BaseAgent):
         available_tools = self.context.get('available_tools')
         self.log(f"DEBUG: Found {len(available_tools) if available_tools else 0} tools")
         
+        # Helper to create tracking wrapper
+        def create_tracking_wrapper(tool_name, tool_func):
+            def wrapper(*args, **kwargs):
+                try:
+                    # Increment usage
+                    from forge import get_tool_registry
+                    registry = get_tool_registry()
+                    registry.increment_usage(tool_name)
+                except Exception as e:
+                    print(f"DEBUG: Failed to track usage for {tool_name}: {e}")
+                
+                # Call original
+                return tool_func(*args, **kwargs)
+            return wrapper
+
         if available_tools:
             for tool in available_tools:
                 try:
@@ -217,8 +232,10 @@ class GenericAgent(BaseAgent):
                             
                             # If tool key class/func matches name, import it directly
                             if hasattr(module, tool_name):
-                                exec_globals[tool_name] = getattr(module, tool_name)
-                                self.log(f"DEBUG: ✓ Injected function/class {tool_name}")
+                                original_func = getattr(module, tool_name)
+                                # Wrap execution
+                                exec_globals[tool_name] = create_tracking_wrapper(tool_name, original_func)
+                                self.log(f"DEBUG: ✓ Injected function/class {tool_name} (tracked)")
                             else:
                                 # Start searching for snake_case equivalent or just the module
                                 exec_globals[tool_name] = module
