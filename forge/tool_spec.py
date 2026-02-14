@@ -67,6 +67,7 @@ class ToolSpec:
     # Metadata
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     trace_id: Optional[str] = None
+    reasoning: str = ""
     
     def __post_init__(self):
         """Validate and normalize tool specification."""
@@ -100,7 +101,8 @@ class ToolSpec:
             'implementation_hints': self.implementation_hints,
             'imports': self.imports,
             'created_at': self.created_at,
-            'trace_id': self.trace_id
+            'trace_id': self.trace_id,
+            'reasoning': self.reasoning
         }
     
     def __str__(self) -> str:

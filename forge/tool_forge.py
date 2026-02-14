@@ -201,14 +201,26 @@ class ToolForge:
 
 Tool Request: {description}
 
+CRITICAL RULES FOR INTELLIGENT TOOL DESIGN:
+1.  **AI vs Tool**: The AI (you) provides INTELIGENCE/CONTENT. The Tool provides CAPABILITY/ACTION.
+    -   BAD: `Generate_EldenRing_Lore` (The tool shouldn't know about Elden Ring).
+    -   GOOD: `System_Write_File(content: str)` (The AI generates the lore, the tool saves it).
+2.  **General vs Specific**: 
+    -   If the user asks for "write X to a file", create a GENERIC file writing tool, not a specific one.
+    -   If the user asks for "fetch weather", create a SPECIFIC `Weather_Get_Forecast` tool (because the AI cannot guess the weather).
+3.  **Reuse**: If a standard tool (like `System_Write_File`, `System_Read_File`) likely exists or is implied, suggest a name that aligns with standard utilities.
+
 Extract:
-1. Domain - Choose from: {', '.join(ALLOWED_DOMAINS)}
-2. Action - Choose from: {', '.join(ALLOWED_ACTIONS)}
-3. Object - What the tool operates on (PascalCase, e.g., "StockPrice", "UserData")
-4. Description - Clear one-line description
-5. Parameters - List of parameters needed (name, type, description, required)
-6. Return Type - What the tool returns (str, int, dict, list, bool, etc.)
-7. Implementation Type - "function" or "class"
+1.  Domain - Choose from: {', '.join(ALLOWED_DOMAINS)}
+2.  Action - Choose from: {', '.join(ALLOWED_ACTIONS)}
+3.  Object - What the tool operates on (PascalCase, e.g., "StockPrice", "File").
+    -   If writing a file, Object should be "File" or "TextFile", NOT "EldenRingLore".
+4.  Description - Clear one-line description.
+5.  Parameters - List of parameters.
+    -   **CRITICAL**: If the tool writes/processes content, it MUST have a `content` parameter. NEVER hardcode content in the tool.
+6.  Return Type - What the tool returns.
+7.  Implementation Type - "function" or "class".
+8.  Reasoning - Explain WHY you chose this design. Explicitly state: "This tool is [General/Specific] because..."
 
 Return ONLY valid JSON in this exact format:
 {{
@@ -220,10 +232,10 @@ Return ONLY valid JSON in this exact format:
     {{"name": "...", "type": "str", "description": "...", "required": true}}
   ],
   "return_type": "str",
-  "implementation_type": "function"
+  "implementation_type": "function",
+  "reasoning": "..."
 }}
-
-Be precise. Choose the most appropriate domain and action from the allowed lists."""
+"""
         
         logger.debug(f"[{trace_id}] Sending analysis prompt to Nexus Core")
         
@@ -266,6 +278,7 @@ Be precise. Choose the most appropriate domain and action from the allowed lists
                 return_type=data.get('return_type', 'Any'),
                 implementation_type=data.get('implementation_type', 'function')
             )
+            spec.reasoning = data.get('reasoning', '')
             
             return spec
             
