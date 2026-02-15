@@ -1462,9 +1462,6 @@ async function loadPreferences() {
     if (agentsPanel) {
         const hideAgents = prefs.get('ui_toggles.hide_agents_panel', false);
         agentsPanel.checked = hideAgents;
-        toggleAgentsPanel(!hideAgents); // Toggle takes "show" state... wait, let's rename function or invert
-        // Original toggleAgentsPanel takes "show" (true/false)
-        // So if hideAgents is true, show is false.
     }
 
     const hideSystem = document.getElementById('setting-hide-system-pkgs');
@@ -1473,32 +1470,43 @@ async function loadPreferences() {
     const hideLogs = document.getElementById('setting-hide-system-logs');
     if (hideLogs) {
         const shouldHide = prefs.get('ui_toggles.hide_system_logs', false);
-        console.log('Applying hide_system_logs pref:', shouldHide, 'from', prefs.data.ui_toggles);
         hideLogs.checked = shouldHide;
-        toggleSystemLogs(shouldHide);
     }
+
+    // updateChatLayout handles all visibility and grid sizing
+    updateChatLayout();
 }
 
-function toggleAgentsPanel(show) {
-    const agentsColumn = document.querySelector('.agents-column');
-    const chatLayout = document.querySelector('.four-column-layout');
+function updateChatLayout() {
+    const layout = document.querySelector('.four-column-layout');
+    if (!layout) return;
 
-    if (show) {
-        if (agentsColumn) agentsColumn.style.display = 'flex';
-        if (chatLayout) chatLayout.style.gridTemplateColumns = '15% 20% 45% 20%';
-    } else {
-        if (agentsColumn) agentsColumn.style.display = 'none';
-        if (chatLayout) chatLayout.style.gridTemplateColumns = '15% 20% 65% 0'; // Expand chat
-    }
+    const logsCol = document.querySelector('.logs-column');
+    const agentsCol = document.querySelector('.agents-column');
+
+    const hideLogs = prefs.get('ui_toggles.hide_system_logs', false);
+    const hideAgents = prefs.get('ui_toggles.hide_agents_panel', false);
+
+    // Visibility
+    if (logsCol) logsCol.style.display = hideLogs ? 'none' : 'flex';
+    if (agentsCol) agentsCol.style.display = hideAgents ? 'none' : 'flex';
+
+    // Grid Template
+    // Default: 15% (Threads) | 20% (Logs) | 45% (Chat) | 20% (Agents)
+    // We maintain Threads at 15%.
+    // If visible, Logs is 20%. Agents is 20%.
+    // Chat takes remainder (1fr).
+
+    let template = '15% '; // Threads
+    if (!hideLogs) template += '20% '; // Logs
+    template += '1fr '; // Chat
+    if (!hideAgents) template += '20%'; // Agents
+
+    layout.style.gridTemplateColumns = template;
 }
 
-function toggleSystemLogs(hide) {
-    const container = document.getElementById('logs-container');
-    if (container) {
-        if (hide) container.classList.add('hide-system-logs');
-        else container.classList.remove('hide-system-logs');
-    }
-}
+// Deprecated: toggleAgentsPanel
+// Deprecated: toggleSystemLogs
 
 async function savePreference(key, value) {
     await prefs.set(key, value);
@@ -1571,7 +1579,7 @@ setupPackageListeners = function () {
         agentsPanel.addEventListener('change', (e) => {
             const hide = e.target.checked;
             savePreference('ui_toggles.hide_agents_panel', hide);
-            toggleAgentsPanel(!hide); // Call original function with show=false if hiding
+            updateChatLayout();
         });
     }
 
@@ -1598,7 +1606,7 @@ setupPackageListeners = function () {
         hideLogs.addEventListener('change', (e) => {
             const checked = e.target.checked;
             savePreference('ui_toggles.hide_system_logs', checked);
-            toggleSystemLogs(checked);
+            updateChatLayout();
         });
     }
 };

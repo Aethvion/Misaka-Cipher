@@ -758,8 +758,9 @@ body {
 }
 
 /* Hide system logs when parent has class */
+/* Hide system logs when parent has class */
 .logs-container.hide-system-logs .log-system {
-    display: none;
+    display: none !important;
 }
 
 /* Memory Panel */
