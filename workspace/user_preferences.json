@@ -13,5 +13,5 @@
     "agents_panel": true
   },
   "theme": "dark",
-  "show_system_tools": true
+  "show_system_tools": false
 }

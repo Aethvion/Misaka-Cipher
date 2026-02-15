@@ -392,15 +392,45 @@ function renderThreadMemory(threads) {
     container.innerHTML = threads.map(thread => {
         // Build rows for this thread
         const rows = thread.memories && thread.memories.length > 0
-            ? thread.memories.map(mem => `
-                <tr>
-                    <td><span class="status-badge" style="font-size:0.8em">${mem.event_type}</span></td>
-                    <td>${mem.summary}</td>
-                    <td style="font-family:var(--font-mono); font-size:0.85em; color:var(--text-secondary);">${mem.content ? mem.content.substring(0, 50) + (mem.content.length > 50 ? '...' : '') : '-'}</td>
-                    <td>${formatDate(mem.timestamp)}</td>
-                </tr>
-            `).join('')
-            : '<tr><td colspan="4" class="placeholder-text" style="text-align:center; padding:10px;">No memories for this thread.</td></tr>';
+            ? thread.memories.map(mem => {
+                // Format timestamp (Specific Date + Time)
+                const dateObj = new Date(mem.timestamp);
+                const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString();
+
+                // Details HTML (Raw Task Data)
+                let detailsRow = '';
+                if (mem.details) {
+                    const jsonStr = JSON.stringify(mem.details, null, 2);
+                    const detailsId = `mem-details-${mem.memory_id.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                    detailsRow = `
+                        <tr id="${detailsId}" class="memory-details-row" style="display:none; background: rgba(0,0,0,0.1);">
+                            <td colspan="5">
+                                <div class="memory-details-content" style="padding: 10px;">
+                                    <strong style="display:block; margin-bottom:5px; color:var(--accent-primary);">Raw Task Data:</strong>
+                                    <pre style="background:rgba(0,0,0,0.3); padding:10px; border-radius:4px; max-height:300px; overflow:auto; font-size:0.8em;">${jsonStr}</pre>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                // Main Row
+                // Allow clicking row to toggle details if details exist
+                const onclickAttr = mem.details ? `onclick="toggleMemoryDetails(this, '${mem.memory_id.replace(/[^a-zA-Z0-9]/g, '-')}')" style="cursor:pointer;"` : '';
+                const expandIcon = mem.details ? '<span class="expand-icon">▶</span> ' : '';
+
+                return `
+                    <tr ${onclickAttr} class="memory-row">
+                        <td style="font-family:var(--font-mono); font-size:0.8em; color:var(--text-secondary); width: 140px;">${mem.memory_id}</td>
+                        <td><span class="status-badge" style="font-size:0.8em">${mem.event_type}</span></td>
+                        <td>${expandIcon}${mem.summary}</td>
+                        <td style="font-family:var(--font-mono); font-size:0.85em; color:var(--text-secondary);">${mem.content ? mem.content.substring(0, 50) + (mem.content.length > 50 ? '...' : '') : '-'}</td>
+                        <td style="font-size:0.85em; white-space:nowrap;">${dateStr}</td>
+                    </tr>
+                    ${detailsRow}
+                `;
+            }).join('')
+            : '<tr><td colspan="5" class="placeholder-text" style="text-align:center; padding:10px;">No memories for this thread.</td></tr>';
 
         return `
             <div class="thread-memory-card" style="margin-bottom: 2rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
@@ -418,10 +448,11 @@ function renderThreadMemory(threads) {
                     <table class="data-table" style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9em;">
+                                <th style="padding: 10px; width: 140px;">ID</th>
                                 <th style="padding: 10px; width: 100px;">Event</th>
                                 <th style="padding: 10px;">Summary</th>
                                 <th style="padding: 10px;">Content Snippet</th>
-                                <th style="padding: 10px; width: 150px;">Time</th>
+                                <th style="padding: 10px; width: 160px;">Time</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -432,6 +463,22 @@ function renderThreadMemory(threads) {
             </div>
         `;
     }).join('');
+}
+
+function toggleMemoryDetails(row, id) {
+    const detailsRow = document.getElementById(`mem-details-${id}`);
+    if (detailsRow) {
+        const isHidden = detailsRow.style.display === 'none';
+        detailsRow.style.display = isHidden ? 'table-row' : 'none';
+
+        // Toggle icon rotation
+        const icon = row.querySelector('.expand-icon');
+        if (icon) {
+            icon.style.transform = isHidden ? 'rotate(90deg)' : 'rotate(0deg)';
+            icon.style.display = 'inline-block';
+            icon.style.transition = 'transform 0.2s';
+        }
+    }
 }
 
 function renderToolsTable() {
