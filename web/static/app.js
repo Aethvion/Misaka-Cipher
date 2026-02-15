@@ -784,7 +784,7 @@ function addMessage(sender, content, metadata = {}) {
 
         // Use marked.parse for content but ensure it doesn't wrap everything in <p> if it's short
         html = `
-                    < details class="agent-step-details" ${isError ? 'open' : ''}>
+                    <details class="agent-step-details" ${isError ? 'open' : ''}>
                 <summary class="agent-step-summary ${isError ? 'error' : ''}">
                     <span class="step-icon">${isError ? '⚠️' : '🤖'}</span>
                     <span class="step-title">${title}</span>
@@ -793,17 +793,17 @@ function addMessage(sender, content, metadata = {}) {
                 <div class="step-content">
                     ${marked.parse(content)}
                 </div>
-            </details >
+            </details>
                     `;
     } else if (sender === 'user') {
         html = `
-                    < div class="message-header" >
+                    <div class="message-header">
                         <span class="message-sender">You</span>
-            </div >
+            </div>
                     <div class="message-content">${content}</div>
                 `;
     } else {
-        html = `< div class="message-content" > ${content}</div > `;
+        html = `<div class="message-content">${content}</div>`;
     }
 
     messageDiv.innerHTML = html;
@@ -852,7 +852,7 @@ function handleLogMessage(event) {
         // Remove timestamps as requested
         const source = log.source ? `${log.source}: ` : '';
 
-        logLine.innerHTML = `< span class="${levelClass}" > [${level}]</span > <span class="log-source">${source}</span><span class="log-msg">${msg}</span>`;
+        logLine.innerHTML = `<span class="${levelClass}">[${level}]</span> <span class="log-source">${source}</span><span class="log-msg">${msg}</span>`;
 
         container.appendChild(logLine);
 
@@ -886,18 +886,18 @@ function handleAgentsUpdate(event) {
     }
 
     agentsList.innerHTML = agents.map(agent => `
-                    < div class="agent-card" >
+                    <div class="agent-card">
             <div class="agent-name">${agent.name}</div>
             <div class="agent-status">${agent.status}</div>
             <div class="agent-trace">${agent.trace_id}</div>
-        </div >
+        </div>
                     `).join('');
 }
 
 // ===== File Operations =====
 
 function downloadFile(domain, filename) {
-    window.location.href = `/ api / workspace / files / ${domain}/${filename}`;
+    window.location.href = `/api/workspace/files/${domain}/${filename}`;
 }
 
 // ===== Utility Functions =====

@@ -735,14 +735,17 @@ body {
 
 .log-info {
     color: #88c0d0;
+    font-weight: 600;
 }
 
 .log-warning {
     color: #ebcb8b;
+    font-weight: 600;
 }
 
 .log-error {
     color: #bf616a;
+    font-weight: 600;
 }
 
 .log-source {
