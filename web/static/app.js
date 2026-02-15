@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshMemory = document.getElementById('refresh-memory-btn');
     if (refreshMemory) refreshMemory.addEventListener('click', loadMemoryData);
 
+    // Initialize UI listeners (TABS, INPUTS, ETC)
+    initializeUI();
+
     // Initial load
     loadInitialData();
 });
@@ -77,11 +80,11 @@ function initializeUI() {
         }
     });
 
-    // Memory search
-    document.getElementById('memory-search-button').addEventListener('click', searchMemory);
-    document.getElementById('memory-search').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') searchMemory();
-    });
+    // Memory search (removed in favor of overview)
+    // document.getElementById('memory-search-button').addEventListener('click', searchMemory);
+    // document.getElementById('memory-search').addEventListener('keypress', (e) => {
+    //     if (e.key === 'Enter') searchMemory();
+    // });
 
     // Files filters
     document.getElementById('domain-filter').addEventListener('change', loadFiles);
