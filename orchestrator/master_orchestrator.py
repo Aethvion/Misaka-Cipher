@@ -137,17 +137,23 @@ class MasterOrchestrator:
             
             # --- MEMORY STORAGE ---
             try:
-                # Create summary (using intent + prompt)
+                logger.info(f"[{trace_id}] Starting memory creation...")
+                
+                # Default summary
                 summary_text = f"[{intent.intent_type.value}] {intent.prompt}"
                 if len(summary_text) > 200:
                     summary_text = summary_text[:197] + "..."
+                
+                # Debug logging inputs
+                logger.info(f"[{trace_id}] Intent Type: {intent.intent_type}")
+                logger.info(f"[{trace_id}] Domain: {intent.domain}")
                 
                 # Create episodic memory
                 memory = EpisodicMemory(
                     memory_id=generate_memory_id(),
                     trace_id=trace_id,
                     timestamp=datetime.now().isoformat(),
-                    event_type=intent.intent_type.value,
+                    event_type=intent.intent_type.value if hasattr(intent.intent_type, 'value') else str(intent.intent_type),
                     domain=intent.domain or "General",
                     summary=summary_text,
                     content=f"User: {user_message}\n\nAssistant:\n{result.response}",
@@ -160,11 +166,17 @@ class MasterOrchestrator:
                 )
                 
                 # Store in vector DB
-                self.episodic_memory.store(memory)
-                logger.info(f"[{trace_id}] Stored episodic memory: {memory.memory_id}")
+                logger.info(f"[{trace_id}] Attempting to store memory: {memory.memory_id}")
+                success = self.episodic_memory.store(memory)
+                if success:
+                    logger.info(f"[{trace_id}] SUCCESSFULLY stored episodic memory: {memory.memory_id}")
+                else:
+                    logger.error(f"[{trace_id}] EpisodicMemoryStore.store returned False")
                 
             except Exception as mem_err:
                 logger.error(f"[{trace_id}] Failed to store memory: {mem_err}")
+                import traceback
+                logger.error(traceback.format_exc())
             # ----------------------
             
             logger.info(f"[{trace_id}] Execution completed in {execution_time:.2f}s")

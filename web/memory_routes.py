@@ -55,6 +55,9 @@ async def get_memory_overview():
             # Get all thread JSON files
             thread_files = sorted(threads_dir.glob("thread-*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
             
+            # Path to tasks directory
+            tasks_dir = workspace / "memory" / "storage" / "tasks"
+
             for thread_file in thread_files:
                 try:
                     with open(thread_file, 'r') as f:
@@ -65,12 +68,54 @@ async def get_memory_overview():
                     
                     logger.info(f"Loading thread {thread_data.get('id')} with tasks: {task_ids}")
                     
-                    # Fetch memories for each task_id (trace_id)
+                    # Fetch data for each task
                     for task_id in task_ids:
+                        task_found = False
+                        
+                        # 1. Try to load from Task JSON (Primary Source)
+                        task_path = tasks_dir / f"{task_id}.json"
+                        if task_path.exists():
+                            try:
+                                with open(task_path, 'r', encoding='utf-8') as tf:
+                                    task_data = json.load(tf)
+                                    
+                                # Create memory entry from Task Data
+                                result = task_data.get('result', {}) or {}
+                                summary = f"Task: {task_data.get('prompt', '')[:50]}..."
+                                if result.get('tools_forged'):
+                                    summary = f"Forged: {', '.join(result['tools_forged'])}"
+                                elif result.get('agents_spawned'):
+                                    summary = f"Spawned: {', '.join(result['agents_spawned'])}"
+                                
+                                memory_entry = {
+                                    "memory_id": task_data.get('id'),
+                                    "trace_id": task_data.get('id'),
+                                    "event_type": "task_execution",
+                                    "summary": summary,
+                                    "content": f"Prompt: {task_data.get('prompt')}\n\nResponse: {result.get('response', '')}",
+                                    "timestamp": task_data.get('created_at', ''),
+                                    "domain": "Task", # Could extract from metadata if available
+                                    "details": task_data # Include full JSON as requested
+                                }
+                                thread_memories.append(memory_entry)
+                                task_found = True
+                            except Exception as te:
+                                logger.error(f"Failed to load task file {task_path}: {te}")
+
+                        # 2. If not found or if we want semantic info, check Episodic Store (Secondary/Fallback)
+                        # We query this regardless to see if there are *additional* related memories (like sub-steps),
+                        # but we dedup based on trace_id if we already loaded the main task.
                         memories = episodic.get_by_trace_id(task_id)
-                        if not memories:
-                             logger.warning(f"No memories found for task {task_id}")
+                        
+                        if not task_found and not memories:
+                             logger.warning(f"No data found for task {task_id}")
+                        
                         for mem in memories:
+                            # Avoid duplicates if we already loaded this task from file
+                            # (unless it's a distinct memory event for the same trace)
+                            if task_found and mem.event_type == 'task_execution': 
+                                continue
+                                
                             thread_memories.append({
                                 "memory_id": mem.memory_id,
                                 "trace_id": mem.trace_id,
@@ -82,7 +127,7 @@ async def get_memory_overview():
                             })
                             
                     # Sort memories by timestamp
-                    thread_memories.sort(key=lambda x: x['timestamp'], reverse=True)
+                    thread_memories.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
                     
                     threads_memory.append({
                         "id": thread_data.get('id'),

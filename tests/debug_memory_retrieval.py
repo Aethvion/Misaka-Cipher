@@ -28,25 +28,20 @@ def debug_memory():
         print("!! DB is empty !!")
         return
 
-    # Check specific trace IDs
-    trace_ids = [
-        "MCTR-20260215101544-7Z0GB0WH", # From default.json
-        "MCTR-20260213133506-OX4DH3LJ"  # From thread-1
-    ]
+    # List recent IDs to see format
+    print("\n--- Listing LAST 20 IDs in DB ---")
+    count = store.collection.count()
+    limit = min(20, count)
+    results = store.collection.get(limit=limit, include=['metadatas', 'documents']) # offset handling is not great in chroma get without ids, let's just dump first N or query by timestamp?
+    # Actually Chroma `get` returns first N by insertion order usually if no filter. 
+    # But let's dump what we can.
     
-    for tid in trace_ids:
-        print(f"\nQuerying Trace ID: {tid}")
-        memories = store.get_by_trace_id(tid)
-        print(f"Found {len(memories)} memories")
-        for m in memories:
-            print(f" - [{m.event_type}] {m.summary[:50]}...")
-
-    # List all IDs to see format
-    print("\n--- Listing first 5 IDs in DB ---")
-    results = store.collection.get(limit=5)
-    for i, mid in enumerate(results['ids']):
-        meta = results['metadatas'][i]
-        print(f"ID: {mid} | Trace: {meta.get('trace_id')} | Event: {meta.get('event_type')}")
+    # Just dump everything if small, or first 50.
+    all_res = store.collection.get(limit=50)
+    for i, mid in enumerate(all_res['ids']):
+        meta = all_res['metadatas'][i]
+        print(f"ID: {mid} | Trace: {meta.get('trace_id')} | Thread: {meta.get('thread_id', 'N/A')} | Event: {meta.get('event_type')}")
+        print(f"   Summary: {meta.get('summary', 'No summary')[:100]}")
 
 if __name__ == "__main__":
     debug_memory()
