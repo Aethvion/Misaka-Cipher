@@ -87,7 +87,7 @@ class TaskWorker:
                     # Use lambda to pass mode argument since run_in_executor only takes args for the callable
                     result = await loop.run_in_executor(
                         None,  # Use default executor
-                        lambda: self.orchestrator.process_message(task.prompt, mode=mode)
+                        lambda: self.orchestrator.process_message(task.prompt, mode=mode, trace_id=task.id)
                     )
                     
                     # Convert ExecutionResult to dict

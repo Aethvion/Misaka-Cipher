@@ -5,18 +5,13 @@ let threads = {};
 let threadMessages = {}; // Store messages per thread
 
 // Initialize thread management
+// Initialize thread management
 function initThreadManagement() {
-    // Initialize with default thread
-    threads['default'] = {
-        id: 'default',
-        title: 'Main Thread',
-        task_ids: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-    };
+    // Start with no selected thread
+    currentThreadId = null;
 
-    // Initialize message storage for default thread
-    threadMessages['default'] = [];
+    // Disable input initially
+    toggleChatInput(false);
 
     // Load threads from API
     loadThreads();
@@ -35,13 +30,6 @@ function initThreadManagement() {
 
     // Periodically refresh thread status
     setInterval(refreshThreadStatus, 3000);
-
-    // Render initial thread list
-    renderThreadList();
-
-    // Show initial welcome message
-    addMessageToThread('default', 'system', 'Misaka Cipher Nexus Portal initialized. Ask me anything - I\'ll autonomously coordinate agents, forge tools, and query your knowledge base.');
-    renderThreadMessages();
 }
 
 // Load threads from API
@@ -111,6 +99,9 @@ function switchThread(threadId) {
 
     currentThreadId = threadId;
 
+    // Enable input when thread is selected
+    toggleChatInput(true);
+
     // Update active thread in UI
     document.querySelectorAll('.thread-item').forEach(item => {
         item.classList.toggle('active', item.dataset.threadId === threadId);
@@ -126,8 +117,23 @@ function switchThread(threadId) {
     renderThreadMessages();
 
     // Fetch messages from server
-    if (threadId !== 'default' || (threads['default'] && threads['default'].task_ids.length > 0)) {
-        loadThreadMessages(threadId);
+    loadThreadMessages(threadId);
+}
+
+function toggleChatInput(enabled) {
+    const input = document.getElementById('chat-input');
+    const btn = document.getElementById('send-button');
+
+    if (input && btn) {
+        input.disabled = !enabled;
+        btn.disabled = !enabled;
+
+        if (!enabled) {
+            input.placeholder = "Select or create a thread to start...";
+        } else {
+            input.placeholder = "Enter your command...";
+            input.focus();
+        }
     }
 }
 

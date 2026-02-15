@@ -63,9 +63,13 @@ async def get_memory_overview():
                     task_ids = thread_data.get('task_ids', [])
                     thread_memories = []
                     
+                    logger.info(f"Loading thread {thread_data.get('id')} with tasks: {task_ids}")
+                    
                     # Fetch memories for each task_id (trace_id)
                     for task_id in task_ids:
                         memories = episodic.get_by_trace_id(task_id)
+                        if not memories:
+                             logger.warning(f"No memories found for task {task_id}")
                         for mem in memories:
                             thread_memories.append({
                                 "memory_id": mem.memory_id,

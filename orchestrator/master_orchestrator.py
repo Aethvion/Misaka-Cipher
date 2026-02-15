@@ -16,6 +16,7 @@ from nexus_core import NexusCore, Request, Response
 from factory import AgentFactory, AgentSpec
 from forge import ToolForge
 from memory import get_episodic_memory, get_knowledge_graph
+from memory.memory_spec import EpisodicMemory, generate_memory_id
 from utils import get_logger, generate_trace_id
 
 from .intent_analyzer import IntentAnalyzer, IntentAnalysis, IntentType
@@ -95,19 +96,21 @@ class MasterOrchestrator:
         """Set callback for real-time step monitoring."""
         self.step_callback = callback
     
-    def process_message(self, user_message: str, mode: str = "auto") -> ExecutionResult:
+    def process_message(self, user_message: str, mode: str = "auto", trace_id: Optional[str] = None) -> ExecutionResult:
         """
         Process user message end-to-end.
         
         Args:
             user_message: User's input message
             mode: Execution mode ("auto" or "chat_only")
+            trace_id: Optional trace ID (if provided by caller)
             
         Returns:
             ExecutionResult with complete execution details
         """
         start_time = datetime.now()
-        trace_id = generate_trace_id()
+        if not trace_id:
+            trace_id = generate_trace_id()
         self.current_trace_id = trace_id
         
         logger.info(f"[{trace_id}] Processing message: {user_message[:50]}...")
@@ -131,6 +134,38 @@ class MasterOrchestrator:
             
             # Store result
             self.execution_history.append(result)
+            
+            # --- MEMORY STORAGE ---
+            try:
+                # Create summary (using intent + prompt)
+                summary_text = f"[{intent.intent_type.value}] {intent.prompt}"
+                if len(summary_text) > 200:
+                    summary_text = summary_text[:197] + "..."
+                
+                # Create episodic memory
+                memory = EpisodicMemory(
+                    memory_id=generate_memory_id(),
+                    trace_id=trace_id,
+                    timestamp=datetime.now().isoformat(),
+                    event_type=intent.intent_type.value,
+                    domain=intent.domain or "General",
+                    summary=summary_text,
+                    content=f"User: {user_message}\n\nAssistant:\n{result.response}",
+                    metadata={
+                        'success': result.success,
+                        'execution_time': execution_time,
+                        'tools_forged': result.tools_forged,
+                        'agents_spawned': result.agents_spawned
+                    }
+                )
+                
+                # Store in vector DB
+                self.episodic_memory.store(memory)
+                logger.info(f"[{trace_id}] Stored episodic memory: {memory.memory_id}")
+                
+            except Exception as mem_err:
+                logger.error(f"[{trace_id}] Failed to store memory: {mem_err}")
+            # ----------------------
             
             logger.info(f"[{trace_id}] Execution completed in {execution_time:.2f}s")
             return result
