@@ -757,6 +757,11 @@ body {
     color: #d8dee9;
 }
 
+/* Hide system logs when parent has class */
+.logs-container.hide-system-logs .log-system {
+    display: none;
+}
+
 /* Memory Panel */
 #memory-panel {
     padding: 1.5rem;

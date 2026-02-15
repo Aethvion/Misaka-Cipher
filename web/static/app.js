@@ -243,10 +243,24 @@ async function loadTools() {
     }
 
     // Set checkbox state
-    const checkbox = document.getElementById('show-system-tools');
-    if (checkbox) checkbox.checked = showSystemTools;
+    const checkbox = document.getElementById('hide-system-tools');
+    if (checkbox) checkbox.checked = !showSystemTools; // Default false (show all), so check if hiding
 
-    await loadAllTools();
+    // Actually, let's flip the variable to be 'hideSystemTools' to match standard
+    // Refactoring variable to match new preference key
+    const shouldHide = await getHideToolsPref();
+    if (checkbox) checkbox.checked = shouldHide;
+}
+
+async function getHideToolsPref() {
+    try {
+        const prefResponse = await fetch('/api/preferences/get?key=tool_filters.hide_system');
+        if (prefResponse.ok) {
+            const prefData = await prefResponse.json();
+            return prefData.value === true;
+        }
+    } catch (e) { }
+    return false; // Default show all
 }
 
 async function loadAllTools() {
@@ -301,21 +315,23 @@ function setupToolListeners() {
     const filterSelect = document.getElementById('tool-domain-filter');
     filterSelect.addEventListener('change', renderToolsTable);
 
-    // System Tools Toggle
-    const systemToggle = document.getElementById('show-system-tools');
+    // System Tools Toggle (Hide)
+    const systemToggle = document.getElementById('hide-system-tools');
     if (systemToggle) {
         systemToggle.addEventListener('change', async (e) => {
-            showSystemTools = e.target.checked;
-            renderToolsTable();
-
+            const hide = e.target.checked;
             // Save preference
             try {
+                // Update local var (we need to filter in renderToolsTable)
+                // Let's pass the state or re-read it
+                renderToolsTable();
+
                 await fetch('/api/preferences/set', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        key: 'show_system_tools',
-                        value: showSystemTools
+                        key: 'tool_filters.hide_system',
+                        value: hide
                     })
                 });
             } catch (err) {
@@ -485,11 +501,12 @@ function renderToolsTable() {
     const tbody = document.getElementById('tools-table-body');
     const search = document.getElementById('tool-search').value.toLowerCase();
     const domainFilter = document.getElementById('tool-domain-filter').value;
+    const hideSystem = document.getElementById('hide-system-tools')?.checked || false;
 
     // 1. Filter
     let filtered = allTools.filter(tool => {
         // System Tool Filter
-        if (!showSystemTools && tool.is_system) return false;
+        if (hideSystem && tool.is_system) return false;
 
         // Domain Filter
         if (domainFilter && tool.domain !== domainFilter) return false;
@@ -537,7 +554,7 @@ function renderToolsTable() {
 
     // 3. Render
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="placeholder-text">No tools match your criteria</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="placeholder-text">No tools match your criteria</td></tr>';
         return;
     }
 
@@ -566,7 +583,7 @@ function renderToolsTable() {
 
         const detailsRow = `
             <tr id="${detailsId}" class="package-details-row" style="display: none;">
-                <td colspan="5">
+                <td colspan="6">
                     <div class="details-content">
                         <div class="detail-grid">
                             <div class="detail-item">
@@ -851,6 +868,15 @@ function handleLogMessage(event) {
         // Format: [LEVEL] Source: Message
         // Remove timestamps as requested
         const source = log.source ? `${log.source}: ` : '';
+
+        // Identify system logs
+        const isSystem = ['uvicorn', 'uvicorn.access', 'uvicorn.error', 'watchfiles', 'multipart', 'asyncio'].includes(log.source) ||
+            msg.includes('WebSocket') ||
+            source.includes('watchfiles');
+
+        if (isSystem) {
+            logLine.classList.add('log-system');
+        }
 
         logLine.innerHTML = `<span class="${levelClass}">[${level}]</span> <span class="log-source">${source}</span><span class="log-msg">${msg}</span>`;
 
@@ -1376,14 +1402,18 @@ const prefs = {
     },
 
     get(key, defaultValue) {
-        // Support specific nested keys we care about
-        if (key === 'package_sort.column') return this.data.package_sort?.column || defaultValue;
-        if (key === 'package_sort.direction') return this.data.package_sort?.direction || defaultValue;
-        if (key === 'package_filters.status') return this.data.package_filters?.status || defaultValue;
-        if (key === 'package_filters.hide_system') return this.data.package_filters?.hide_system || defaultValue;
-        if (key === 'package_filters.search') return this.data.package_filters?.search || defaultValue;
+        // Generic dot notation support
+        if (key.includes('.')) {
+            const parts = key.split('.');
+            let current = this.data;
+            for (const part of parts) {
+                if (current === undefined || current === null) return defaultValue;
+                current = current[part];
+            }
+            return current !== undefined ? current : defaultValue;
+        }
 
-        return this.data[key] || defaultValue;
+        return this.data[key] !== undefined ? this.data[key] : defaultValue;
     },
 
     async set(key, value) {
@@ -1428,15 +1458,25 @@ async function loadPreferences() {
     const strictMode = document.getElementById('setting-strict-mode');
     if (strictMode) strictMode.checked = prefs.get('validation.strict_mode', false);
 
-    const agentsPanel = document.getElementById('setting-agents-panel');
+    const agentsPanel = document.getElementById('setting-hide-agents-panel');
     if (agentsPanel) {
-        const showAgents = prefs.get('ui_toggles.agents_panel', true);
-        agentsPanel.checked = showAgents;
-        toggleAgentsPanel(showAgents);
+        const hideAgents = prefs.get('ui_toggles.hide_agents_panel', false);
+        agentsPanel.checked = hideAgents;
+        toggleAgentsPanel(!hideAgents); // Toggle takes "show" state... wait, let's rename function or invert
+        // Original toggleAgentsPanel takes "show" (true/false)
+        // So if hideAgents is true, show is false.
     }
 
     const hideSystem = document.getElementById('setting-hide-system-pkgs');
     if (hideSystem) hideSystem.checked = prefs.get('package_filters.hide_system', false);
+
+    const hideLogs = document.getElementById('setting-hide-system-logs');
+    if (hideLogs) {
+        const shouldHide = prefs.get('ui_toggles.hide_system_logs', false);
+        console.log('Applying hide_system_logs pref:', shouldHide, 'from', prefs.data.ui_toggles);
+        hideLogs.checked = shouldHide;
+        toggleSystemLogs(shouldHide);
+    }
 }
 
 function toggleAgentsPanel(show) {
@@ -1449,6 +1489,14 @@ function toggleAgentsPanel(show) {
     } else {
         if (agentsColumn) agentsColumn.style.display = 'none';
         if (chatLayout) chatLayout.style.gridTemplateColumns = '15% 20% 65% 0'; // Expand chat
+    }
+}
+
+function toggleSystemLogs(hide) {
+    const container = document.getElementById('logs-container');
+    if (container) {
+        if (hide) container.classList.add('hide-system-logs');
+        else container.classList.remove('hide-system-logs');
     }
 }
 
@@ -1518,12 +1566,12 @@ setupPackageListeners = function () {
         strictMode.addEventListener('change', (e) => savePreference('validation.strict_mode', e.target.checked));
     }
 
-    const agentsPanel = document.getElementById('setting-agents-panel');
+    const agentsPanel = document.getElementById('setting-hide-agents-panel');
     if (agentsPanel) {
         agentsPanel.addEventListener('change', (e) => {
-            const checked = e.target.checked;
-            savePreference('ui_toggles.agents_panel', checked);
-            toggleAgentsPanel(checked);
+            const hide = e.target.checked;
+            savePreference('ui_toggles.hide_agents_panel', hide);
+            toggleAgentsPanel(!hide); // Call original function with show=false if hiding
         });
     }
 
@@ -1542,6 +1590,15 @@ setupPackageListeners = function () {
                 // If main toggle not present (e.g. looking at settings tab), manually trigger reload
                 renderPackagesTable();
             }
+        });
+    }
+
+    const hideLogs = document.getElementById('setting-hide-system-logs');
+    if (hideLogs) {
+        hideLogs.addEventListener('change', (e) => {
+            const checked = e.target.checked;
+            savePreference('ui_toggles.hide_system_logs', checked);
+            toggleSystemLogs(checked);
         });
     }
 };

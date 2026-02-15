@@ -40,12 +40,16 @@ class PreferencesManager:
                     "hide_system": False,
                     "search": ""
                 },
+                "tool_filters": {
+                    "hide_system": False
+                },
                 "package_sort": {
                     "column": "updated",
                     "direction": "desc"
                 },
                 "ui_toggles": {
-                    "agents_panel": True
+                    "hide_agents_panel": False,
+                    "hide_system_logs": False
                 },
                 "theme": "dark"
             }
@@ -79,6 +83,15 @@ class PreferencesManager:
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get a specific preference value."""
+        if '.' in key:
+            parts = key.split('.')
+            target = self.preferences
+            for part in parts:
+                if isinstance(target, dict) and part in target:
+                    target = target[part]
+                else:
+                    return default
+            return target
         return self.preferences.get(key, default)
 
     def set(self, key: str, value: Any) -> None:

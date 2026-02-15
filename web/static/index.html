@@ -189,8 +189,8 @@
                         <!-- Domains will be populated by JS -->
                     </select>
                     <div class="toggle-control" style="display: flex; align-items: center; margin-right: 1rem;">
-                        <input type="checkbox" id="show-system-tools" style="margin-right: 0.5rem;">
-                        <label for="show-system-tools" style="font-size: 0.9rem; cursor: pointer;">Show System
+                        <input type="checkbox" id="hide-system-tools" style="margin-right: 0.5rem;">
+                        <label for="hide-system-tools" style="font-size: 0.9rem; cursor: pointer;">Hide System
                             Tools</label>
                     </div>
                     <button id="refresh-tools-btn" class="action-btn secondary" title="Refresh list">
@@ -350,11 +350,11 @@
 
                     <div class="setting-item">
                         <label class="switch">
-                            <input type="checkbox" id="setting-agents-panel" checked>
+                            <input type="checkbox" id="setting-hide-agents-panel">
                             <span class="slider round"></span>
                         </label>
                         <div class="setting-label">
-                            <strong>Show Active Agents Panel</strong>
+                            <strong>Hide Active Agents Panel</strong>
                             <span>Toggle visibility of the right-side agents column in Chat view.</span>
                         </div>
                     </div>
@@ -373,7 +373,23 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="setting-group">
+                    <h3>Logging</h3>
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="setting-hide-system-logs">
+                            <span class="slider round"></span>
+                        </label>
+                        <div class="setting-label">
+                            <strong>Hide System Logs</strong>
+                            <span>Filter out verbose system logs (e.g. Uvicorn, WebSocket) from the System Logs
+                                panel.</span>
+                        </div>
+                    </div>
+                </div>
             </div>
+        </div>
         </div>
     </main>
 

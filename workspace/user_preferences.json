@@ -10,7 +10,9 @@
     "direction": "desc"
   },
   "ui_toggles": {
-    "agents_panel": true
+    "agents_panel": false,
+    "hide_system_logs": true,
+    "hide_agents_panel": true
   },
   "theme": "dark",
   "show_system_tools": false
