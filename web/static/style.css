@@ -1461,3 +1461,170 @@ input:checked+.slider:before {
 .btn-primary:active {
     transform: translateY(0);
 }
+
+/* ===== Usage Dashboard ===== */
+.usage-dashboard {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
+}
+
+.usage-stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+.usage-stat-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.usage-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+}
+
+.usage-stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: 'Fira Code', monospace;
+    color: var(--primary);
+    margin-bottom: 0.3rem;
+}
+
+.usage-stat-card .stat-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.usage-charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.usage-chart-container {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+}
+
+.usage-chart-container h3 {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.usage-chart-container canvas {
+    max-height: 280px;
+}
+
+.usage-tables-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 1rem;
+}
+
+.usage-table-container {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+    overflow-x: auto;
+}
+
+.usage-table-container h3 {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.usage-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.usage-table thead th {
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+}
+
+.usage-table tbody td {
+    padding: 0.5rem 0.8rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.usage-table tbody tr:hover {
+    background: rgba(0, 217, 255, 0.04);
+}
+
+.usage-table .provider-badge {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-family: 'Fira Code', monospace;
+}
+
+.provider-badge.google_ai {
+    color: #4285F4;
+    border: 1px solid rgba(66, 133, 244, 0.3);
+}
+
+.provider-badge.openai {
+    color: #10A37F;
+    border: 1px solid rgba(16, 163, 127, 0.3);
+}
+
+.provider-badge.grok {
+    color: #FF6600;
+    border: 1px solid rgba(255, 102, 0, 0.3);
+}
+
+.provider-badge.local {
+    color: var(--warning);
+    border: 1px solid rgba(255, 170, 0, 0.3);
+}
+
+@media (max-width: 900px) {
+    .usage-stat-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .usage-charts-row {
+        grid-template-columns: 1fr;
+    }
+
+    .usage-tables-row {
+        grid-template-columns: 1fr;
+    }
+}

@@ -163,6 +163,23 @@ class ProviderManager:
                 # Check if successful
                 if response.success:
                     logger.info(f"[{trace_id}] Request successful with provider: {provider_name}")
+                    
+                    # Log usage
+                    try:
+                        from workspace.usage_tracker import get_usage_tracker
+                        tracker = get_usage_tracker()
+                        tracker.log_api_call(
+                            provider=response.provider,
+                            model=response.model,
+                            prompt=prompt,
+                            response_content=response.content,
+                            trace_id=trace_id,
+                            success=True,
+                            metadata=response.metadata or {}
+                        )
+                    except Exception as usage_err:
+                        logger.debug(f"[{trace_id}] Usage tracking failed (non-critical): {usage_err}")
+                    
                     return response
                 
                 last_error = response.error

@@ -135,6 +135,8 @@ function switchMainTab(tabName) {
         loadTools();
     } else if (tabName === 'settings') {
         loadProviderSettings();
+    } else if (tabName === 'usage') {
+        loadUsageDashboard();
     }
 }
 
@@ -1799,3 +1801,205 @@ async function saveProviderSettings() {
         }
     }
 }
+
+// ===== Usage Dashboard =====
+
+let _providerChart = null;
+let _timelineChart = null;
+
+async function loadUsageDashboard() {
+    try {
+        const [summaryRes, historyRes, hourlyRes] = await Promise.all([
+            fetch('/api/usage/summary'),
+            fetch('/api/usage/history?limit=50'),
+            fetch('/api/usage/hourly?hours=24')
+        ]);
+
+        const summary = await summaryRes.json();
+        const history = await historyRes.json();
+        const hourly = await hourlyRes.json();
+
+        updateUsageStatCards(summary);
+        renderProviderChart(summary);
+        renderTimelineChart(hourly);
+        renderRecentCallsTable(history.entries || []);
+
+        // Also load tool usage
+        try {
+            const toolsRes = await fetch('/api/usage/tools');
+            const toolsData = await toolsRes.json();
+            renderToolUsageTable(toolsData.tools || []);
+        } catch (e) {
+            console.warn('Tool usage not available:', e);
+        }
+
+    } catch (error) {
+        console.error('Error loading usage dashboard:', error);
+    }
+}
+
+function formatNumber(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return n.toString();
+}
+
+function updateUsageStatCards(summary) {
+    document.getElementById('usage-total-calls').textContent = formatNumber(summary.total_calls || 0);
+    document.getElementById('usage-total-tokens').textContent = formatNumber(summary.total_tokens || 0);
+    document.getElementById('usage-total-cost').textContent = '$' + (summary.total_cost || 0).toFixed(4);
+    document.getElementById('usage-success-rate').textContent = (summary.success_rate || 0).toFixed(1) + '%';
+}
+
+function renderProviderChart(summary) {
+    const ctx = document.getElementById('chart-provider-calls');
+    if (!ctx || typeof Chart === 'undefined') return;
+
+    if (_providerChart) _providerChart.destroy();
+
+    const providers = summary.by_provider || {};
+    const labels = Object.keys(providers);
+    const data = labels.map(k => providers[k].calls);
+
+    const colorMap = {
+        'google_ai': '#4285F4',
+        'openai': '#10A37F',
+        'grok': '#FF6600',
+        'local': '#FFAA00'
+    };
+    const colors = labels.map(l => colorMap[l] || '#888888');
+
+    _providerChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors,
+                borderColor: '#0a0e1a',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: { color: '#a0a0a0', font: { size: 12 } }
+                }
+            }
+        }
+    });
+}
+
+function renderTimelineChart(hourlyData) {
+    const ctx = document.getElementById('chart-tokens-timeline');
+    if (!ctx || typeof Chart === 'undefined') return;
+
+    if (_timelineChart) _timelineChart.destroy();
+
+    const hours = hourlyData.hours || [];
+    const labels = hours.map(h => {
+        const parts = h.hour.split('T');
+        return parts[1] ? parts[1] + ':00' : h.hour;
+    });
+    const tokenData = hours.map(h => h.tokens);
+    const callData = hours.map(h => h.calls);
+
+    _timelineChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Tokens',
+                    data: tokenData,
+                    borderColor: '#00d9ff',
+                    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Calls',
+                    data: callData,
+                    borderColor: '#ff00ff',
+                    backgroundColor: 'rgba(255, 0, 255, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    labels: { color: '#a0a0a0', font: { size: 12 } }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#a0a0a0', maxTicksLimit: 12 },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y: {
+                    type: 'linear',
+                    position: 'left',
+                    title: { display: true, text: 'Tokens', color: '#00d9ff' },
+                    ticks: { color: '#a0a0a0' },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y1: {
+                    type: 'linear',
+                    position: 'right',
+                    title: { display: true, text: 'Calls', color: '#ff00ff' },
+                    ticks: { color: '#a0a0a0' },
+                    grid: { drawOnChartArea: false }
+                }
+            }
+        }
+    });
+}
+
+function renderRecentCallsTable(entries) {
+    const tbody = document.getElementById('usage-recent-tbody');
+    if (!tbody) return;
+
+    if (!entries.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="placeholder-text">No API calls recorded yet</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = entries.slice(0, 25).map(e => {
+        const time = new Date(e.timestamp).toLocaleTimeString();
+        const provider = e.provider || 'unknown';
+        return `<tr>
+            <td style="font-family: 'Fira Code', monospace; font-size: 0.8rem;">${time}</td>
+            <td><span class="provider-badge ${provider}">${provider}</span></td>
+            <td style="font-family: 'Fira Code', monospace; font-size: 0.8rem;">${e.model || '?'}</td>
+            <td>${formatNumber(e.total_tokens || 0)}${e.tokens_estimated ? ' ~' : ''}</td>
+            <td>$${(e.estimated_cost || 0).toFixed(6)}</td>
+        </tr>`;
+    }).join('');
+}
+
+function renderToolUsageTable(tools) {
+    const tbody = document.getElementById('usage-tools-tbody');
+    if (!tbody) return;
+
+    if (!tools.length) {
+        tbody.innerHTML = '<tr><td colspan="3" class="placeholder-text">No tools registered</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = tools.map(t => `<tr>
+        <td style="font-family: 'Fira Code', monospace; font-size: 0.8rem;">${t.name}</td>
+        <td>${t.domain || ''}</td>
+        <td>${t.usage_count || 0}</td>
+    </tr>`).join('');
+}
+

@@ -79,7 +79,12 @@ class GoogleAIProvider(BaseProvider):
                             'probability': rating.probability.name
                         }
                         for rating in response.candidates[0].safety_ratings
-                    ] if response.candidates else []
+                    ] if response.candidates else [],
+                    'usage': {
+                        'prompt_token_count': getattr(response.usage_metadata, 'prompt_token_count', None),
+                        'candidates_token_count': getattr(response.usage_metadata, 'candidates_token_count', None),
+                        'total_tokens': getattr(response.usage_metadata, 'total_token_count', None)
+                    } if hasattr(response, 'usage_metadata') and response.usage_metadata else {}
                 }
             )
             
