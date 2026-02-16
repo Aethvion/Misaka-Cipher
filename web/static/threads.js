@@ -2,7 +2,8 @@
 
 let currentThreadId = 'default';
 let threads = {};
-let threadMessages = {}; // Store messages per thread
+let threadMessages = {};
+let isSettingsPanelOpen = false; // Store messages per thread
 
 // Initialize thread management
 // Initialize thread management
@@ -100,13 +101,28 @@ function switchThread(threadId) {
     if (currentThreadId === threadId) return;
 
     currentThreadId = threadId;
+    isSettingsPanelOpen = false; // Reset settings state for new thread
 
     // Enable input when thread is selected
     toggleChatInput(true);
 
-    // Update active thread in UI
+    // Update active thread in UI INSTANTLY
     document.querySelectorAll('.thread-item').forEach(item => {
-        item.classList.toggle('active', item.dataset.threadId === threadId);
+        const isActive = item.dataset.threadId === threadId;
+        item.classList.toggle('active', isActive);
+        
+        // Handle settings toggle visibility immediately
+        const settingsToggle = item.querySelector('.thread-settings-toggle');
+        if (settingsToggle) {
+            settingsToggle.style.display = isActive ? 'block' : 'none';
+            settingsToggle.classList.remove('open'); // Ensure updated toggle is closed
+        }
+        
+        // Close any open panels
+        const settingsPanel = item.querySelector('.thread-settings-panel');
+        if (settingsPanel) {
+            settingsPanel.style.display = 'none';
+        }
     });
 
     // Update chat header
@@ -291,7 +307,8 @@ function renderThreadList() {
 
         // Set ID and Active State
         threadItem.dataset.threadId = thread.id;
-        if (thread.id === currentThreadId) threadItem.classList.add('active');
+        const isActive = (thread.id === currentThreadId);
+        if (isActive) threadItem.classList.add('active');
 
         // Populate Data
         clone.querySelector('.thread-title').textContent = thread.title;
@@ -302,50 +319,76 @@ function renderThreadList() {
 
         // Mode Badge
         const modeBadge = clone.querySelector('.thread-mode-badge');
-        
         if (thread.mode === 'chat_only') {
             modeBadge.style.display = 'inline-block';
         } else {
             modeBadge.style.display = 'none';
         }
 
-        // --- Settings Logic (Always visible for active thread via CSS) ---
+        // --- Settings Logic (Collapsible Terminal Foldout) ---
+        const settingsToggle = clone.querySelector('.thread-settings-toggle');
         const settingsPanel = clone.querySelector('.thread-settings-panel');
+        
+        // Only show toggle if active
+        if (isActive) {
+            settingsToggle.style.display = 'block';
+        }
+
+        // Toggle Click Handler
+        settingsToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = settingsPanel.style.display === 'block';
+            if (isOpen) {
+                settingsPanel.style.display = 'none';
+                settingsToggle.classList.remove('open');
+                if (isActive) isSettingsPanelOpen = false;
+            } else {
+                settingsPanel.style.display = 'block';
+                settingsToggle.classList.add('open');
+                if (isActive) isSettingsPanelOpen = true;
+            }
+        });
+        
+        // Restore State (Persistence across re-renders)
+        if (isActive && isSettingsPanelOpen) {
+            settingsPanel.style.display = 'block';
+            settingsToggle.classList.add('open');
+        } else {
+            // Default closed
+            settingsPanel.style.display = 'none';
+            if (settingsToggle) settingsToggle.classList.remove('open');
+        }
+
+        // Initialize Settings Inputs
         const contextRadios = clone.querySelectorAll('input[name="contextMode"]');
         const windowInput = clone.querySelector('.context-window-input');
         const chatOnlyToggle = clone.querySelector('.chat-only-toggle');
 
-        // Assign unique names to radios so they don't conflict across threads
+        // Context Mode
         contextRadios.forEach(radio => {
             radio.name = `contextMode-${thread.id}`;
-            // Set checked state
             const currentMode = (thread.settings && thread.settings.context_mode) || 'smart';
             if (radio.value === currentMode) radio.checked = true;
-            
-            // Auto-save on change
             radio.addEventListener('change', () => saveThreadSettings(thread.id));
         });
 
-        // Set window input value
+        // Window Size
         windowInput.value = (thread.settings && thread.settings.context_window) || 5;
-        // Auto-save on change
         windowInput.addEventListener('change', () => saveThreadSettings(thread.id));
 
-        // Set Chat Only Toggle state
+        // Chat Only Checkbox
         if (chatOnlyToggle) {
             chatOnlyToggle.checked = (thread.mode === 'chat_only');
-            
-            // Bind Toggle Listener
             chatOnlyToggle.addEventListener('change', (e) => {
                 const newMode = e.target.checked ? 'chat_only' : 'auto';
                 toggleThreadMode(thread.id, newMode);
             });
         }
 
-        // Prevent thread switch when clicking inside settings panel
+        // Prevent thread switch clicks inside panel
         settingsPanel.addEventListener('click', (e) => e.stopPropagation());
 
-        // Actions
+        // Delete Action
         clone.querySelector('.delete-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             if (confirm(`Delete thread "${thread.title}"?`)) {

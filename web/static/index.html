@@ -89,32 +89,35 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="thread-settings-panel">
-                            <div class="setting-group compact">
-                                <label>Context Mode</label>
-                                <div class="radio-group horizontal">
-                                    <label><input type="radio" name="contextMode" value="none"> None</label>
-                                    <label><input type="radio" name="contextMode" value="smart"> Smart</label>
-                                    <label><input type="radio" name="contextMode" value="full"> Full</label>
+
+                        <!-- Settings Toggle -->
+                        <div class="thread-settings-toggle" style="display:none;">
+                            <span class="toggle-icon">▶</span> <span
+                                style="font-size:0.85em; opacity:0.8;">SETTINGS</span>
+                        </div>
+
+                        <!-- Compact Terminal Settings Panel -->
+                        <div class="thread-settings-panel compact-terminal" style="display:none;">
+                            <div class="terminal-row">
+                                <span class="term-label">CTX:</span>
+                                <div class="term-options radio-group">
+                                    <label class="term-option"><input type="radio" name="contextMode"
+                                            value="none">none</label>
+                                    <label class="term-option"><input type="radio" name="contextMode"
+                                            value="smart">smart</label>
+                                    <label class="term-option"><input type="radio" name="contextMode"
+                                            value="full">full</label>
                                 </div>
                             </div>
-                            <div class="setting-group compact context-window-group">
-                                <label>Window</label>
-                                <input type="number" class="context-window-input" min="1" max="50" value="5">
-                            </div>
-                            <div class="setting-group compact">
-                                <label>Chat Only</label>
-                                <label class="switch">
-                                    <input type="checkbox" class="chat-only-toggle">
-                                    <span class="slider round"></span>
+                            <div class="terminal-row" style="margin-top:4px;">
+                                <span class="term-label">WIN:</span>
+                                <input type="number" class="term-input context-window-input" min="1" max="50" value="5">
+                                <span class="term-sep">|</span>
+                                <label class="term-check">
+                                    <input type="checkbox" class="chat-only-toggle"> ChatOnly
                                 </label>
-                            </div>
-                            <div class="setting-group"
-                                style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px;">
-                                <button class="thread-action-btn delete-btn" title="Delete Thread"
-                                    style="width: 100%; justify-content: center; color: var(--error); border: 1px solid var(--error); border-radius: 4px; padding: 5px; background: rgba(255, 0, 0, 0.05);">
-                                    <span class="icon">🗑️</span> Delete Thread
-                                </button>
+                                <span class="term-sep" style="flex:1; text-align:right;"></span>
+                                <button class="term-btn delete-btn" title="Delete Thread">DEL</button>
                             </div>
                         </div>
                     </div>
