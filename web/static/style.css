@@ -621,7 +621,7 @@ body {
 }
 
 /* Files Panel */
-#files-panel {
+#files-panel .files-grid {
     padding: 1.5rem;
 }
 
@@ -629,14 +629,31 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
+    padding: 1.5rem;
     border-bottom: 1px solid var(--border);
 }
 
 .panel-header h2 {
     font-size: 1.5rem;
     color: var(--primary);
+    margin: 0;
+}
+
+/* Consistent content padding for table panels */
+.tools-table-container,
+.packages-table-container {
+    padding: 0 1.5rem 1.5rem;
+}
+
+/* Memory thread scroll */
+#thread-memory-container {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 0 1rem;
+}
+
+.memory-section {
+    padding: 0 0.5rem;
 }
 
 .file-filters {
