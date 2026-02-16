@@ -339,6 +339,20 @@ Parameters:
 
 Return Type: {spec.return_type}
 {packages_info}
+
+ENVIRONMENT & API KEYS:
+The following API keys are available in the environment. You MUST use them via `os.environ.get("KEY_NAME")` if the tool requires external APIs.
+- GOOGLE_AI_API_KEY (Google Gemini)
+- OPENAI_API_KEY (OpenAI GPT/DALL-E)
+- GROK_API_KEY (xAI Grok)
+- SEARCH_API_KEY (Search capabilities)
+
+IMPORTANT:
+- NEVER use "api.example.com" or placeholder URLs.
+- If you need to generate images, use OpenAI (DALL-E) or another supported provider using these keys.
+- If you need to search, use the SEARCH_API_KEY.
+- Check if the key exists before using it.
+
 REQUIREMENTS:
 1. Write ONLY the function body code (the implementation inside the function)
 2. Use proper Python syntax with error handling
