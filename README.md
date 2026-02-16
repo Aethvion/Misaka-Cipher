@@ -50,28 +50,3 @@ The system uses a multi-tiered memory architecture persisted via **ChromaDB** an
 * **Pre-Flight Scanning:** Regex-based `ContentScanner` checks prompts for PII/Credentials before they leave the system.
 * **Routing:** `RequestRouter` manages traffic flow. 
 * **Local Fallback:** (Roadmap) Planned integration with Ollama/vLLM for fully offline sensitive processing.
-
-## 7. Technical Stack & Requirements
-* **Language:** Python 3.10+
-* **Vector Database:** ChromaDB
-* **Graph Engine:** NetworkX
-* **Persistence:** JSON (No SQLite dependency)
-* **Web Framework:** Flask + Socket.IO
-
-## 8. Directory Structure
-```
-MisakaCipher/
-├── cli.py              # Command-line interface entry point
-├── nexus_core.py       # Main orchestration logic
-├── config/             # YAML configuration files
-├── factory/            # Agent spawning logic
-├── forge/              # Tool generation engine
-├── memory/             # Episodic (Chroma) & Graph (NetworkX) systems
-├── web/                # Web dashboard
-│   ├── static/         # Frontend assets (JS/CSS)
-│   └── templates/      # HTML templates
-├── tools/              # Tool registry
-│   ├── generated/      # AI-created tools
-│   └── standard/       # Core tools
-└── workspace/          # User files and output artifacts
-```
