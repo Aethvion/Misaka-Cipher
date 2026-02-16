@@ -19,35 +19,37 @@
 </head>
 
 <body>
-    <!-- Header with Tabs and Status -->
+    <!-- Header -->
     <header class="header">
-        <div class="header-left">
+        <div class="header-top">
             <h1 class="logo">MISAKA CIPHER</h1>
+            <div class="header-right">
+                <div class="compact-status" id="compact-status">
+                    <span title="Nexus Core">Nexus: <strong id="nexus-status">--</strong></span>
+                    <span class="status-divider">|</span>
+                    <span title="Active Agents">Agents: <strong id="agents-count">0</strong></span>
+                    <span class="status-divider">|</span>
+                    <span title="Registered Tools">Tools: <strong id="tools-count">--</strong></span>
+                    <span class="status-divider">|</span>
+                    <span title="Output Files">Files: <strong id="files-count">--</strong></span>
+                </div>
+                <div class="status-indicator" id="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
+            </div>
+        </div>
+        <nav class="header-nav">
             <div class="main-tabs">
-                <button class="main-tab active" data-maintab="chat">Chat</button>
-                <button class="main-tab" data-maintab="files">Files</button>
-                <button class="main-tab" data-maintab="tools">Tools</button>
-                <button class="main-tab" data-maintab="packages">Packages</button>
-                <button class="main-tab" data-maintab="memory">Memory</button>
-                <button class="main-tab" data-maintab="usage">Usage</button>
-                <button class="main-tab" data-maintab="settings">Settings</button>
+                <button class="main-tab active" data-maintab="chat"><span class="tab-icon">💬</span>Chat</button>
+                <button class="main-tab" data-maintab="files"><span class="tab-icon">📁</span>Files</button>
+                <button class="main-tab" data-maintab="tools"><span class="tab-icon">🔧</span>Tools</button>
+                <button class="main-tab" data-maintab="packages"><span class="tab-icon">📦</span>Packages</button>
+                <button class="main-tab" data-maintab="memory"><span class="tab-icon">🧠</span>Memory</button>
+                <button class="main-tab" data-maintab="usage"><span class="tab-icon">📊</span>Usage</button>
+                <button class="main-tab" data-maintab="settings"><span class="tab-icon">⚙️</span>Settings</button>
             </div>
-        </div>
-        <div class="header-right">
-            <div class="compact-status" id="compact-status">
-                <span title="Nexus Core">Nexus: <strong id="nexus-status">--</strong></span>
-                <span class="status-divider">|</span>
-                <span title="Active Agents">Agents: <strong id="agents-count">0</strong></span>
-                <span class="status-divider">|</span>
-                <span title="Registered Tools">Tools: <strong id="tools-count">--</strong></span>
-                <span class="status-divider">|</span>
-                <span title="Output Files">Files: <strong id="files-count">--</strong></span>
-            </div>
-            <div class="status-indicator" id="status-indicator">
-                <span class="status-dot"></span>
-                <span class="status-text">Connecting...</span>
-            </div>
-        </div>
+        </nav>
     </header>
 
     <!-- Main Content Area -->
