@@ -585,7 +585,10 @@ async def websocket_logs(websocket: WebSocket):
         while True:
             # Keep connection alive with periodic heartbeat
             await asyncio.sleep(10)
-            await websocket.send_json({"type": "heartbeat", "timestamp": datetime.now().isoformat()})
+            try:
+                await websocket.send_json({"type": "heartbeat", "timestamp": datetime.now().isoformat()})
+            except (RuntimeError, WebSocketDisconnect):
+                break
     
     except WebSocketDisconnect:
         manager.disconnect(websocket, "logs")

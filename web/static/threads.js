@@ -19,8 +19,7 @@ function initThreadManagement() {
     // Set up event listeners
     document.getElementById('new-thread-button').addEventListener('click', createNewThread);
 
-    // Set up settings modal
-    setupSettingsModal();
+
 
     // Set up thread list click delegation
     document.getElementById('threads-list').addEventListener('click', (e) => {
@@ -315,7 +314,31 @@ function renderThreadList() {
             modeBtn.title = "Switch to Chat Only Mode";
         }
 
-        // Event Listeners for Actions
+        // --- Settings Logic (Always visible for active thread via CSS) ---
+        const settingsPanel = clone.querySelector('.thread-settings-panel');
+        const contextRadios = clone.querySelectorAll('input[name="contextMode"]');
+        const windowInput = clone.querySelector('.context-window-input');
+
+        // Assign unique names to radios so they don't conflict across threads
+        contextRadios.forEach(radio => {
+            radio.name = `contextMode-${thread.id}`;
+            // Set checked state
+            const currentMode = (thread.settings && thread.settings.context_mode) || 'smart';
+            if (radio.value === currentMode) radio.checked = true;
+
+            // Auto-save on change
+            radio.addEventListener('change', () => saveThreadSettings(thread.id));
+        });
+
+        // Set window input value
+        windowInput.value = (thread.settings && thread.settings.context_window) || 5;
+        // Auto-save on change
+        windowInput.addEventListener('change', () => saveThreadSettings(thread.id));
+
+        // Prevent thread switch when clicking inside settings panel
+        settingsPanel.addEventListener('click', (e) => e.stopPropagation());
+
+        // Actions
         clone.querySelector('.delete-btn').addEventListener('click', (e) => {
             e.stopPropagation();
             if (confirm(`Delete thread "${thread.title}"?`)) {
@@ -527,112 +550,38 @@ function updateMessageInThread(threadId, taskId, content) {
     }
 }
 
-function setupSettingsModal() {
-    const modal = document.getElementById('settings-modal');
-    const btn = document.getElementById('thread-settings-btn');
-    const closeSpan = document.querySelector('.close-modal');
-    const saveBtn = document.getElementById('save-settings-btn');
-    const contextModeRadios = document.getElementsByName('contextMode');
-    const contextWindowGroup = document.getElementById('context-window-group');
-    const contextWindowInput = document.getElementById('context-window-input');
+// Save thread settings (auto-save)
+async function saveThreadSettings(threadId) {
+    const threadItem = document.querySelector(`.thread-item[data-thread-id="${threadId}"]`);
+    if (!threadItem) return;
 
-    if (!btn || !modal) return;
-
-    // Open Modal
-    btn.onclick = async function () {
-        if (!currentThreadId) {
-            alert("No thread selected");
-            return;
-        }
-
-        // Load current settings
-        try {
-            const response = await fetch(`/api/tasks/thread/${currentThreadId}`);
-            const data = await response.json();
-            const settings = data.thread.settings || { context_mode: 'smart', context_window: 5 };
-
-            // Apply to UI
-            for (const radio of contextModeRadios) {
-                if (radio.value === (settings.context_mode || 'none')) {
-                    radio.checked = true;
-                }
-            }
-            contextWindowInput.value = settings.context_window || 5;
-
-            // Toggle visibility
-            toggleContextWindowVisibility();
-
-            modal.style.display = "block";
-        } catch (e) {
-            console.error("Error loading settings:", e);
-            alert("Failed to load settings");
+    // Find radio group by name
+    const radioGroup = threadItem.querySelectorAll(`input[name="contextMode-${threadId}"]`);
+    let contextMode = 'smart'; // default
+    for (const radio of radioGroup) {
+        if (radio.checked) {
+            contextMode = radio.value;
+            break;
         }
     }
 
-    // Close Modal
-    closeSpan.onclick = function () {
-        modal.style.display = "none";
+    const contextWindow = parseInt(threadItem.querySelector('.context-window-input').value);
+
+    // Update local state
+    if (threads[threadId]) {
+        threads[threadId].settings = { context_mode: contextMode, context_window: contextWindow };
     }
 
-    window.onclick = function (event) {
-        if (event.target == modal) {
-            modal.style.display = "none";
-        }
-    }
-
-    // Toggle context window input visibility based on mode
-    function toggleContextWindowVisibility() {
-        let selectedMode = 'none';
-        for (const radio of contextModeRadios) {
-            if (radio.checked) {
-                selectedMode = radio.value;
-                break;
-            }
-        }
-
-        if (selectedMode === 'none') {
-            contextWindowGroup.style.display = 'none';
-        } else {
-            contextWindowGroup.style.display = 'block';
-        }
-    }
-
-    // Attach listener to radios
-    for (const radio of contextModeRadios) {
-        radio.addEventListener('change', toggleContextWindowVisibility);
-    }
-
-    // Save Settings
-    saveBtn.onclick = async function () {
-        let selectedMode = 'none';
-        for (const radio of contextModeRadios) {
-            if (radio.checked) {
-                selectedMode = radio.value;
-                break;
-            }
-        }
-
-        const settings = {
-            context_mode: selectedMode,
-            context_window: parseInt(contextWindowInput.value)
-        };
-
-        try {
-            const response = await fetch(`/api/tasks/thread/${currentThreadId}/settings`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ settings })
-            });
-
-            if (response.ok) {
-                modal.style.display = "none";
-                alert("Settings saved!");
-            } else {
-                alert("Failed to save settings");
-            }
-        } catch (e) {
-            console.error("Error saving settings:", e);
-            alert("Error saving settings");
-        }
+    try {
+        await fetch(`/api/tasks/thread/${threadId}/settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ settings: threads[threadId].settings })
+        });
+        // Silent success
+    } catch (e) {
+        console.error("Failed to save thread settings:", e);
     }
 }
+
+
