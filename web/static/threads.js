@@ -302,22 +302,18 @@ function renderThreadList() {
 
         // Mode Badge
         const modeBadge = clone.querySelector('.thread-mode-badge');
-        const modeBtn = clone.querySelector('.mode-btn');
-
+        
         if (thread.mode === 'chat_only') {
             modeBadge.style.display = 'inline-block';
-            modeBtn.classList.add('active');
-            modeBtn.title = "Switch to Auto Mode";
         } else {
             modeBadge.style.display = 'none';
-            modeBtn.classList.remove('active');
-            modeBtn.title = "Switch to Chat Only Mode";
         }
 
         // --- Settings Logic (Always visible for active thread via CSS) ---
         const settingsPanel = clone.querySelector('.thread-settings-panel');
         const contextRadios = clone.querySelectorAll('input[name="contextMode"]');
         const windowInput = clone.querySelector('.context-window-input');
+        const chatOnlyToggle = clone.querySelector('.chat-only-toggle');
 
         // Assign unique names to radios so they don't conflict across threads
         contextRadios.forEach(radio => {
@@ -325,7 +321,7 @@ function renderThreadList() {
             // Set checked state
             const currentMode = (thread.settings && thread.settings.context_mode) || 'smart';
             if (radio.value === currentMode) radio.checked = true;
-
+            
             // Auto-save on change
             radio.addEventListener('change', () => saveThreadSettings(thread.id));
         });
@@ -334,6 +330,17 @@ function renderThreadList() {
         windowInput.value = (thread.settings && thread.settings.context_window) || 5;
         // Auto-save on change
         windowInput.addEventListener('change', () => saveThreadSettings(thread.id));
+
+        // Set Chat Only Toggle state
+        if (chatOnlyToggle) {
+            chatOnlyToggle.checked = (thread.mode === 'chat_only');
+            
+            // Bind Toggle Listener
+            chatOnlyToggle.addEventListener('change', (e) => {
+                const newMode = e.target.checked ? 'chat_only' : 'auto';
+                toggleThreadMode(thread.id, newMode);
+            });
+        }
 
         // Prevent thread switch when clicking inside settings panel
         settingsPanel.addEventListener('click', (e) => e.stopPropagation());
@@ -346,15 +353,10 @@ function renderThreadList() {
             }
         });
 
-        clone.querySelector('.mode-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            const newMode = thread.mode === 'chat_only' ? 'auto' : 'chat_only';
-            toggleThreadMode(thread.id, newMode);
-        });
-
         threadsList.appendChild(clone);
     });
 }
+
 
 // Delete a thread
 async function deleteThread(threadId) {

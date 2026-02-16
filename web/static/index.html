@@ -88,14 +88,6 @@
                                         ONLY</span>
                                 </div>
                             </div>
-                            <div class="thread-actions">
-                                <button class="thread-action-btn mode-btn" title="Toggle Chat Only Mode">
-                                    <span class="icon">🤖</span>
-                                </button>
-                                <button class="thread-action-btn delete-btn" title="Delete Thread">
-                                    <span class="icon">🗑️</span>
-                                </button>
-                            </div>
                         </div>
                         <div class="thread-settings-panel">
                             <div class="setting-group compact">
@@ -109,6 +101,20 @@
                             <div class="setting-group compact context-window-group">
                                 <label>Window</label>
                                 <input type="number" class="context-window-input" min="1" max="50" value="5">
+                            </div>
+                            <div class="setting-group compact">
+                                <label>Chat Only</label>
+                                <label class="switch">
+                                    <input type="checkbox" class="chat-only-toggle">
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                            <div class="setting-group"
+                                style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px;">
+                                <button class="thread-action-btn delete-btn" title="Delete Thread"
+                                    style="width: 100%; justify-content: center; color: var(--error); border: 1px solid var(--error); border-radius: 4px; padding: 5px; background: rgba(255, 0, 0, 0.05);">
+                                    <span class="icon">🗑️</span> Delete Thread
+                                </button>
                             </div>
                         </div>
                     </div>
