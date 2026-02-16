@@ -4,6 +4,7 @@ Core tool generation engine
 """
 
 import json
+import importlib
 from pathlib import Path
 from typing import Optional, Dict, Any
 
@@ -51,7 +52,80 @@ class ToolForge:
         self.tools_dir = Path(tools_dir)
         self.tools_dir.mkdir(parents=True, exist_ok=True)
         
+        # Load Model Registry
+        self.model_registry = self._load_model_registry()
+        
         logger.info(f"Tool Forge initialized (tools_dir: {self.tools_dir})")
+    
+    def _load_model_registry(self) -> Dict[str, Any]:
+        """Load the model registry from config/model_registry.json."""
+        try:
+            registry_path = Path(__file__).parent.parent / "config" / "model_registry.json"
+            if registry_path.exists():
+                with open(registry_path, 'r') as f:
+                    registry = json.load(f)
+                logger.info(f"Model Registry loaded: {len(registry.get('providers', {}))} providers")
+                return registry
+            else:
+                logger.warning("Model Registry not found, using empty registry")
+                return {"providers": {}, "routing_strategy": {}}
+        except Exception as e:
+            logger.error(f"Failed to load Model Registry: {e}")
+            return {"providers": {}, "routing_strategy": {}}
+    
+    def _build_provider_context(self) -> str:
+        """Build the ENVIRONMENT & API KEYS section from model_registry.json."""
+        providers = self.model_registry.get("providers", {})
+        if not providers:
+            return (
+                "ENVIRONMENT & API KEYS:\n"
+                "No provider registry found. Use os.environ.get() for any API keys.\n"
+                "NEVER use placeholder URLs like 'api.example.com'.\n"
+            )
+        
+        lines = ["ENVIRONMENT & API KEYS (from Model Registry):"]
+        active_keys = []
+        forbidden_keys = []
+        
+        for name, config in providers.items():
+            key_env = config.get("api_key_env", "UNKNOWN")
+            if config.get("active", False):
+                active_keys.append(f"  - {key_env} ({name}, priority {config.get('priority', '?')})")
+            else:
+                forbidden_keys.append(f"  - {key_env} ({name}) — DISABLED, do NOT use")
+        
+        if active_keys:
+            lines.append("ACTIVE providers (use these via `os.environ.get()`):")
+            lines.extend(active_keys)
+        
+        if forbidden_keys:
+            lines.append("FORBIDDEN providers (do NOT use):")
+            lines.extend(forbidden_keys)
+        
+        lines.append("")
+        lines.append("IMPORTANT:")
+        lines.append("- NEVER use 'api.example.com' or placeholder URLs.")
+        lines.append("- Always check if the key exists before using it.")
+        lines.append("- If multiple providers are active, prefer the highest priority one.")
+        
+        return "\n".join(lines)
+    
+    def _build_patch_context(self, existing_code: str = None) -> str:
+        """Build the PATCH PROTOCOL section if existing code was found."""
+        if not existing_code:
+            return ""
+        
+        return (
+            "PATCH PROTOCOL — EXISTING CODE DETECTED:\n"
+            "A previous version of this tool already exists. You MUST:\n"
+            "1. PRESERVE all existing provider support (do not remove working code).\n"
+            "2. EXTEND by adding new functionality as additional branches or helpers.\n"
+            "3. If the existing code supports Provider X, keep it. Add Provider Y alongside.\n"
+            "\n"
+            "--- EXISTING IMPLEMENTATION ---\n"
+            f"{existing_code[:2000]}\n"
+            "--- END EXISTING ---\n"
+        )
     
     def generate_tool(
         self,
@@ -89,8 +163,18 @@ class ToolForge:
             
             logger.info(f"[{trace_id}] Tool spec generated: {spec.name}")
             
-            # 2. Generate implementation (NEW - real code via Nexus)
-            implementation_code = self.generate_implementation(spec, trace_id)
+            # PATCH PROTOCOL: Check if tool already exists
+            existing_code = None
+            existing_path = self.tools_dir / spec.file_name
+            if existing_path.exists():
+                try:
+                    existing_code = existing_path.read_text()
+                    logger.info(f"[{trace_id}] Patch Protocol: Existing tool found ({len(existing_code)} chars). Will extend, not overwrite.")
+                except Exception as read_err:
+                    logger.warning(f"[{trace_id}] Patch Protocol: Could not read existing tool: {read_err}")
+            
+            # 2. Generate implementation (real code via Nexus, with existing context)
+            implementation_code = self.generate_implementation(spec, trace_id, existing_code=existing_code)
             spec.implementation_hints['code'] = implementation_code
             
             logger.info(f"[{trace_id}] Implementation code generated ({len(implementation_code)} chars)")
@@ -152,6 +236,27 @@ class ToolForge:
                 f.write(code)
             
             logger.info(f"[{trace_id}] Tool saved: {file_path}")
+            
+            # PHASE C: Test Import Verification
+            module_name = spec.file_name.replace('.py', '')
+            try:
+                # Invalidate cached module if it was previously imported
+                full_module = f"tools.generated.{module_name}"
+                if full_module in importlib.sys.modules:
+                    del importlib.sys.modules[full_module]
+                
+                spec_module = importlib.import_module(full_module)
+                tool_func = getattr(spec_module, spec.name, None)
+                
+                if tool_func is None:
+                    logger.warning(f"[{trace_id}] Phase C: Tool importable but function '{spec.name}' not found as attribute")
+                else:
+                    logger.info(f"[{trace_id}] Phase C PASSED: Tool '{spec.name}' is importable and callable")
+                    
+            except Exception as import_error:
+                logger.warning(f"[{trace_id}] Phase C FAILED: Import test error: {import_error}")
+                # Don't block registration - tool may still work when loaded differently
+                # But log it clearly for debugging
             
             # 6. Register
             tool_info = {
@@ -287,7 +392,7 @@ Return ONLY valid JSON in this exact format:
             logger.error(f"[{trace_id}] Response content: {response.content[:500]}")
             raise ValueError(f"Failed to parse tool specification: {str(e)}")
     
-    def generate_implementation(self, spec: ToolSpec, trace_id: str) -> str:
+    def generate_implementation(self, spec: ToolSpec, trace_id: str, existing_code: str = None) -> str:
         """
         Generate actual implementation code using Nexus Core.
         
@@ -297,6 +402,7 @@ Return ONLY valid JSON in this exact format:
         Args:
             spec: Tool specification with parameters and description
             trace_id: Trace ID for logging
+            existing_code: Existing tool code to preserve (Patch Protocol)
             
         Returns:
             Python implementation code (function body)
@@ -340,19 +446,8 @@ Parameters:
 Return Type: {spec.return_type}
 {packages_info}
 
-ENVIRONMENT & API KEYS:
-The following API keys are available in the environment. You MUST use them via `os.environ.get("KEY_NAME")` if the tool requires external APIs.
-- GOOGLE_AI_API_KEY (Google Gemini)
-- OPENAI_API_KEY (OpenAI GPT/DALL-E)
-- GROK_API_KEY (xAI Grok)
-- SEARCH_API_KEY (Search capabilities)
-
-IMPORTANT:
-- NEVER use "api.example.com" or placeholder URLs.
-- If you need to generate images, use OpenAI (DALL-E) or another supported provider using these keys.
-- If you need to search, use the SEARCH_API_KEY.
-- Check if the key exists before using it.
-
+{self._build_provider_context()}
+{self._build_patch_context(existing_code)}
 REQUIREMENTS:
 1. Write ONLY the function body code (the implementation inside the function)
 2. Use proper Python syntax with error handling

@@ -1,0 +1,38 @@
+{
+    "providers": {
+        "google_ai": {
+            "active": true,
+            "api_key_env": "GOOGLE_AI_API_KEY",
+            "models": {
+                "flash": "gemini-2.0-flash",
+                "pro": "gemini-1.5-pro-latest"
+            },
+            "priority": 1,
+            "retries_per_step": 5
+        },
+        "openai": {
+            "active": true,
+            "api_key_env": "OPENAI_API_KEY",
+            "models": {
+                "default": "gpt-4o",
+                "mini": "gpt-4o-mini"
+            },
+            "priority": 2,
+            "retries_per_step": 3
+        },
+        "grok": {
+            "active": true,
+            "api_key_env": "GROK_API_KEY",
+            "models": {
+                "default": "grok-2"
+            },
+            "priority": 3,
+            "retries_per_step": 3
+        }
+    },
+    "routing_strategy": {
+        "verification": "flash",
+        "generation": "flash",
+        "complex_architecture": "pro"
+    }
+}
