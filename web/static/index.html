@@ -388,6 +388,21 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="setting-group">
+                    <h3>Provider Settings</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                        Configure AI providers, priorities, and retry budgets per step. Saved to
+                        <code>model_registry.json</code>.
+                    </p>
+                    <div id="provider-cards-container" class="provider-cards-grid">
+                        <div class="loading-placeholder">Loading providers...</div>
+                    </div>
+                    <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                        <button id="save-provider-settings" class="btn-primary">Save Provider Settings</button>
+                        <span id="provider-save-status" style="color: var(--accent); font-size: 0.85rem;"></span>
+                    </div>
+                </div>
             </div>
         </div>
         </div>

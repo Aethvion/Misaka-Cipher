@@ -3,36 +3,123 @@
         "google_ai": {
             "active": true,
             "api_key_env": "GOOGLE_AI_API_KEY",
-            "models": {
-                "flash": "gemini-2.0-flash",
-                "pro": "gemini-1.5-pro-latest"
-            },
             "priority": 1,
-            "retries_per_step": 5
+            "retries_per_step": 5,
+            "models": {
+                "flash": {
+                    "id": "gemini-2.0-flash",
+                    "capabilities": [
+                        "chat",
+                        "analysis",
+                        "code_generation",
+                        "verification"
+                    ],
+                    "tier": "fast",
+                    "cost_per_1k_tokens": 0.0,
+                    "notes": "Free tier. Use for verification, simple logic, and routine chat."
+                },
+                "pro": {
+                    "id": "gemini-1.5-pro-latest",
+                    "capabilities": [
+                        "chat",
+                        "analysis",
+                        "code_generation",
+                        "complex_reasoning"
+                    ],
+                    "tier": "premium",
+                    "cost_per_1k_tokens": 0.00125,
+                    "notes": "Use for complex architecture and high-stakes tool creation."
+                },
+                "imagen": {
+                    "id": "imagen-3.0-generate-002",
+                    "capabilities": [
+                        "image_generation"
+                    ],
+                    "tier": "specialized",
+                    "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict",
+                    "notes": "Google Imagen 3 for image generation via Gemini API."
+                }
+            }
         },
         "openai": {
-            "active": true,
+            "active": false,
             "api_key_env": "OPENAI_API_KEY",
+            "priority": 99,
+            "retries_per_step": 0,
             "models": {
-                "default": "gpt-4o",
-                "mini": "gpt-4o-mini"
-            },
-            "priority": 2,
-            "retries_per_step": 3
+                "default": {
+                    "id": "gpt-4o",
+                    "capabilities": [
+                        "chat",
+                        "analysis",
+                        "code_generation"
+                    ],
+                    "tier": "premium",
+                    "cost_per_1k_tokens": 0.005,
+                    "notes": "High-performance model."
+                },
+                "mini": {
+                    "id": "gpt-4o-mini",
+                    "capabilities": [
+                        "chat",
+                        "analysis"
+                    ],
+                    "tier": "fast",
+                    "cost_per_1k_tokens": 0.00015,
+                    "notes": "Lightweight model for simple tasks."
+                },
+                "dalle": {
+                    "id": "dall-e-3",
+                    "capabilities": [
+                        "image_generation"
+                    ],
+                    "tier": "specialized",
+                    "endpoint": "https://api.openai.com/v1/images/generations",
+                    "notes": "DALL-E 3 for image generation."
+                }
+            }
         },
         "grok": {
-            "active": true,
+            "active": false,
             "api_key_env": "GROK_API_KEY",
-            "models": {
-                "default": "grok-2"
-            },
             "priority": 3,
-            "retries_per_step": 3
+            "retries_per_step": 0,
+            "models": {
+                "default": {
+                    "id": "grok-2",
+                    "capabilities": [
+                        "chat",
+                        "analysis"
+                    ],
+                    "tier": "premium",
+                    "cost_per_1k_tokens": 0.005,
+                    "notes": "xAI Grok-2."
+                }
+            }
+        },
+        "local": {
+            "active": false,
+            "api_key_env": "",
+            "priority": 2,
+            "retries_per_step": 20,
+            "models": {
+                "default": {
+                    "id": "llama3",
+                    "capabilities": [
+                        "chat"
+                    ],
+                    "tier": "local",
+                    "cost_per_1k_tokens": 0.0,
+                    "notes": "Ollama/vLLM — unlimited retries, no token cost. Roadmap."
+                }
+            }
         }
     },
     "routing_strategy": {
         "verification": "flash",
         "generation": "flash",
-        "complex_architecture": "pro"
+        "complex_architecture": "pro",
+        "image_generation": "imagen",
+        "simple_chat": "flash"
     }
 }

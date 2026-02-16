@@ -127,6 +127,21 @@ class ToolForge:
             "--- END EXISTING ---\n"
         )
     
+    def _get_max_retries(self) -> int:
+        """Get max retries per step from the highest-priority active provider."""
+        providers = self.model_registry.get("providers", {})
+        active = [
+            (name, cfg) for name, cfg in providers.items()
+            if cfg.get("active", False)
+        ]
+        if not active:
+            return 3  # Fallback
+        # Sort by priority (lower = higher priority)
+        active.sort(key=lambda x: x[1].get("priority", 99))
+        retries = active[0][1].get("retries_per_step", 3)
+        logger.info(f"Max retries per step: {retries} (from provider '{active[0][0]}')") 
+        return retries
+    
     def generate_tool(
         self,
         description: str,
@@ -198,7 +213,8 @@ class ToolForge:
                         broken_code=implementation_code,
                         error=error_msg,
                         spec=spec,
-                        trace_id=trace_id
+                        trace_id=trace_id,
+                        max_attempts=self._get_max_retries()
                     )
                     
                     # Update spec with fixed code

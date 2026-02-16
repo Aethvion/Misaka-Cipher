@@ -133,6 +133,8 @@ function switchMainTab(tabName) {
         loadFiles();
     } else if (tabName === 'tools') {
         loadTools();
+    } else if (tabName === 'settings') {
+        loadProviderSettings();
     }
 }
 
@@ -1656,3 +1658,144 @@ loadAllPackages = async function () {
     }
 };
 
+// ===== Provider Settings =====
+
+let _registryData = null;
+
+async function loadProviderSettings() {
+    try {
+        const response = await fetch('/api/registry');
+        if (!response.ok) throw new Error('Failed to load registry');
+        _registryData = await response.json();
+        renderProviderCards(_registryData);
+    } catch (error) {
+        console.error('Error loading provider settings:', error);
+        const container = document.getElementById('provider-cards-container');
+        if (container) container.innerHTML = '<div class="loading-placeholder">Error loading providers</div>';
+    }
+}
+
+function renderProviderCards(registry) {
+    const container = document.getElementById('provider-cards-container');
+    if (!container) return;
+
+    const providers = registry.providers || {};
+    if (Object.keys(providers).length === 0) {
+        container.innerHTML = '<div class="loading-placeholder">No providers configured</div>';
+        return;
+    }
+
+    container.innerHTML = '';
+
+    for (const [name, config] of Object.entries(providers)) {
+        const isActive = config.active;
+        const card = document.createElement('div');
+        card.className = `provider-card ${isActive ? 'active' : 'inactive'}`;
+        card.dataset.provider = name;
+
+        // Build model tags
+        const models = config.models || {};
+        let modelTags = '';
+        for (const [modelKey, modelInfo] of Object.entries(models)) {
+            const modelId = typeof modelInfo === 'string' ? modelInfo : modelInfo.id;
+            const capabilities = typeof modelInfo === 'object' ? (modelInfo.capabilities || []) : [];
+            const isSpecialized = capabilities.includes('image_generation');
+            modelTags += `<span class="model-tag ${isSpecialized ? 'specialized' : ''}" title="${capabilities.join(', ')}">${modelKey}: ${modelId}</span>`;
+        }
+
+        card.innerHTML = `
+            <div class="provider-card-header">
+                <h4><span class="provider-status-dot ${isActive ? 'active' : 'inactive'}"></span>${name}</h4>
+                <label class="switch">
+                    <input type="checkbox" class="provider-active-toggle" data-provider="${name}" ${isActive ? 'checked' : ''}>
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div class="provider-card-field">
+                <label>Priority</label>
+                <input type="number" class="provider-priority" data-provider="${name}" value="${config.priority || 99}" min="1" max="99">
+            </div>
+            <div class="provider-card-field">
+                <label>Retries / Step</label>
+                <input type="number" class="provider-retries" data-provider="${name}" value="${config.retries_per_step || 0}" min="0" max="50">
+            </div>
+            <div class="provider-card-field">
+                <label>API Key Env</label>
+                <span style="font-family: 'Fira Code', monospace; font-size: 0.8rem; color: var(--primary);">${config.api_key_env || '(none)'}</span>
+            </div>
+            <div class="provider-card-models">
+                <h5>Models</h5>
+                ${modelTags || '<span style="color: var(--text-secondary); font-size: 0.8rem;">No models</span>'}
+            </div>
+        `;
+
+        container.appendChild(card);
+    }
+
+    // Active toggle listeners
+    container.querySelectorAll('.provider-active-toggle').forEach(toggle => {
+        toggle.addEventListener('change', (e) => {
+            const card = e.target.closest('.provider-card');
+            const dot = card.querySelector('.provider-status-dot');
+            if (e.target.checked) {
+                card.classList.replace('inactive', 'active');
+                dot.classList.replace('inactive', 'active');
+            } else {
+                card.classList.replace('active', 'inactive');
+                dot.classList.replace('active', 'inactive');
+            }
+        });
+    });
+
+    // Save button listener
+    const saveBtn = document.getElementById('save-provider-settings');
+    if (saveBtn) {
+        saveBtn.onclick = saveProviderSettings;
+    }
+}
+
+async function saveProviderSettings() {
+    if (!_registryData) return;
+
+    const statusEl = document.getElementById('provider-save-status');
+
+    try {
+        // Collect values from UI
+        const cards = document.querySelectorAll('.provider-card');
+        cards.forEach(card => {
+            const name = card.dataset.provider;
+            if (!_registryData.providers[name]) return;
+
+            const activeToggle = card.querySelector('.provider-active-toggle');
+            const priorityInput = card.querySelector('.provider-priority');
+            const retriesInput = card.querySelector('.provider-retries');
+
+            _registryData.providers[name].active = activeToggle?.checked ?? false;
+            _registryData.providers[name].priority = parseInt(priorityInput?.value) || 99;
+            _registryData.providers[name].retries_per_step = parseInt(retriesInput?.value) || 0;
+        });
+
+        // POST to API
+        const response = await fetch('/api/registry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(_registryData)
+        });
+
+        if (!response.ok) throw new Error('Failed to save');
+
+        if (statusEl) {
+            statusEl.textContent = '\u2713 Saved';
+            statusEl.style.color = 'var(--success)';
+            setTimeout(() => { statusEl.textContent = ''; }, 3000);
+        }
+
+        console.log('Provider settings saved');
+    } catch (error) {
+        console.error('Error saving provider settings:', error);
+        if (statusEl) {
+            statusEl.textContent = '\u2717 Save failed';
+            statusEl.style.color = 'var(--error)';
+        }
+    }
+}

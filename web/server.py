@@ -24,6 +24,7 @@ from web.package_routes import router as package_router
 from web.task_routes import router as task_router
 from web.tool_routes import router as tool_router
 from web.memory_routes import router as memory_router
+from web.registry_routes import router as registry_router
 
 logger = get_logger(__name__)
 
@@ -54,6 +55,9 @@ app.include_router(tool_router)
 
 # Include memory routes
 app.include_router(memory_router)
+
+# Include registry routes
+app.include_router(registry_router)
 
 # Global instances (initialized on startup)
 orchestrator: Optional[MasterOrchestrator] = None
