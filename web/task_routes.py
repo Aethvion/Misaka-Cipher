@@ -18,6 +18,11 @@ class TaskSubmitRequest(BaseModel):
     thread_title: Optional[str] = None
 
 
+class ThreadSettingsRequest(BaseModel):
+    """Request to update thread settings."""
+    settings: Dict[str, Any]
+
+
 class TaskResponse(BaseModel):
     """Task response."""
     task_id: str
@@ -138,16 +143,42 @@ async def delete_thread(thread_id: str):
 
 
 @router.post("/thread/{thread_id}/mode")
-async def set_thread_mode(thread_id: str, request: ThreadModeRequest):
-    """Set thread execution mode."""
+async def update_thread_mode(thread_id: str, request: Dict[str, str]):
+    """Update thread mode."""
+    try:
+        mode = request.get('mode')
+        if not mode or mode not in ['auto', 'chat_only']:
+            raise HTTPException(status_code=400, detail="Invalid mode")
+            
+        task_manager = get_task_queue_manager()
+        thread = task_manager.get_thread(thread_id)
+        
+        if not thread:
+            raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
+            
+        thread.mode = mode
+        thread.updated_at = datetime.now()
+        task_manager._save_thread(thread_id)
+        
+        return {"status": "success", "mode": mode}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/thread/{thread_id}/settings")
+async def update_thread_settings(thread_id: str, request: ThreadSettingsRequest):
+    """Update thread settings."""
     try:
         task_manager = get_task_queue_manager()
-        success = task_manager.set_thread_mode(thread_id, request.mode)
+        success = task_manager.update_thread_settings(thread_id, request.settings)
         
         if not success:
-            raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found or invalid mode")
+            raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
             
-        return {"status": "success", "mode": request.mode}
+        return {"status": "success", "settings": request.settings}
         
     except HTTPException:
         raise

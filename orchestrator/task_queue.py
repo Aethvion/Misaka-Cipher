@@ -4,7 +4,7 @@ Manages async task execution with worker pool
 """
 
 import asyncio
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 import json
 from pathlib import Path
@@ -22,7 +22,7 @@ class TaskWorker:
     Each worker runs independently and can execute tasks in parallel.
     """
     
-    def __init__(self, worker_id: str, queue: asyncio.Queue, tasks: Dict[str, Task], orchestrator, save_callback=None):
+    def __init__(self, worker_id: str, queue: asyncio.Queue, tasks: Dict[str, Task], threads: Dict[str, ChatThread], orchestrator, save_callback=None):
         """
         Initialize task worker.
         
@@ -30,12 +30,14 @@ class TaskWorker:
             worker_id: Unique worker identifier
             queue: Shared task queue
             tasks: Shared tasks dictionary
+            threads: Shared threads dictionary
             orchestrator: MasterOrchestrator instance
             save_callback: Function to call to persist task state
         """
         self.worker_id = worker_id
         self.queue = queue
         self.tasks = tasks
+        self.threads = threads
         self.orchestrator = orchestrator
         self.save_callback = save_callback
         self.running = False
@@ -83,11 +85,48 @@ class TaskWorker:
                     # Execute task via orchestrator in executor (it's synchronous)
                     loop = asyncio.get_event_loop()
                     mode = task.metadata.get('mode', 'auto')
+                    # Retrieve thread settings
+                    thread = self.threads.get(task.thread_id)
+                    context_prompt = task.prompt
                     
+                    if thread and hasattr(thread, 'settings'):
+                        settings = thread.settings
+                        context_mode = settings.get('context_mode', 'none')
+                        context_window = int(settings.get('context_window', 5))
+                        
+                        if context_mode in ['full', 'smart'] and thread.task_ids:
+                            # Fetch previous tasks
+                            history_tasks = []
+                            # Get task IDs excluding current one triggers infinite loop? No, current task is not in thread.task_ids yet?
+                            # Wait, submit_task appends to thread.task_ids BEFORE queueing.
+                            # So we should exclude the current task ID.
+                            previous_ids = [tid for tid in thread.task_ids if tid != task.id]
+                            
+                            if context_mode == 'smart':
+                                previous_ids = previous_ids[-context_window:]
+                            
+                            for tid in previous_ids:
+                                if tid in self.tasks:
+                                    t = self.tasks[tid]
+                                    if t.status == TaskStatus.COMPLETED and t.result:
+                                        role = "user"
+                                        content = t.prompt
+                                        # Approximate history format
+                                        history_tasks.append(f"User: {content}")
+                                        if t.result.get('response'):
+                                            # Truncate response if too long? For now, keep it.
+                                            resp = t.result.get('response')
+                                            history_tasks.append(f"Assistant: {resp}")
+                            
+                            if history_tasks:
+                                history_str = "\n".join(history_tasks)
+                                context_prompt = f"Chat History:\n{history_str}\n\nCurrent Message:\n{task.prompt}"
+                                logger.info(f"[{task.id}] Injected context ({len(history_tasks)//2} turns)")
+
                     # Use lambda to pass mode argument since run_in_executor only takes args for the callable
                     result = await loop.run_in_executor(
                         None,  # Use default executor
-                        lambda: self.orchestrator.process_message(task.prompt, mode=mode, trace_id=task.id)
+                        lambda: self.orchestrator.process_message(context_prompt, mode=mode, trace_id=task.id)
                     )
                     
                     # Convert ExecutionResult to dict
@@ -205,6 +244,7 @@ class TaskQueueManager:
                 worker_id=f"worker-{i}",
                 queue=self.queue,
                 tasks=self.tasks,
+                threads=self.threads,
                 orchestrator=self.orchestrator,
                 save_callback=self._save_task
             )
@@ -248,6 +288,31 @@ class TaskQueueManager:
         )
         self._save_thread(thread_id)
         logger.info(f"Created new thread: {thread_id} ({title})")
+        return True
+
+    def update_thread_settings(self, thread_id: str, settings: Dict[str, Any]) -> bool:
+        """
+        Update settings for a thread.
+        
+        Args:
+            thread_id: Thread ID
+            settings: New settings dictionary
+            
+        Returns:
+            True if updated, False if thread not found
+        """
+        if thread_id not in self.threads:
+            return False
+            
+        # Update settings
+        if not hasattr(self.threads[thread_id], 'settings'):
+            self.threads[thread_id].settings = {}
+            
+        self.threads[thread_id].settings.update(settings)
+        self.threads[thread_id].updated_at = datetime.now()
+        
+        self._save_thread(thread_id)
+        logger.info(f"Updated settings for thread {thread_id}: {settings}")
         return True
 
     async def submit_task(self, prompt: str, thread_id: str = "default", thread_title: str = None) -> str:

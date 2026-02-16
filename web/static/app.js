@@ -467,10 +467,10 @@ function renderThreadMemory(threads) {
                     </div>
                 </div>
                 
-                <div class="table-responsive" style="overflow-x: auto;">
+                <div class="memory-table-wrapper">
                     <table class="data-table" style="width: 100%; border-collapse: collapse;">
                         <thead>
-                            <tr style="text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9em;">
+                            <tr style="text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9em; position: sticky; top: 0; background: var(--bg-secondary); z-index: 1;">
                                 <th style="padding: 10px; width: 140px;">ID</th>
                                 <th style="padding: 10px; width: 100px;">Event</th>
                                 <th style="padding: 10px;">Summary</th>

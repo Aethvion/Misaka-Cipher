@@ -647,9 +647,16 @@ body {
 
 /* Memory thread scroll */
 #thread-memory-container {
-    max-height: 60vh;
-    overflow-y: auto;
     padding: 0 1rem;
+    /* max-height removed for per-thread scrolling */
+    padding-bottom: 2rem;
+}
+
+.memory-table-wrapper {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border-top: 1px solid var(--border);
 }
 
 .memory-section {
@@ -1699,4 +1706,64 @@ input:checked+.slider:before {
     .usage-tables-row {
         grid-template-columns: 1fr;
     }
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background-color: var(--bg-secondary);
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid var(--border);
+    width: 500px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.close-modal {
+    color: var(--text-secondary);
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-modal:hover,
+.close-modal:focus {
+    color: var(--text-primary);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.setting-group {
+    margin-bottom: 1.5rem;
+}
+
+.setting-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.radio-group label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.radio-group input {
+    margin-right: 0.5rem;
 }
