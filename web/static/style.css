@@ -1914,14 +1914,68 @@ input:checked+.slider:before {
     transform: rotate(90deg);
 }
 
-.thread-settings-panel.compact-terminal {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 8px;
+
+/* Vertical Stack Settings */
+.thread-settings-panel.terminal-stack {
+    display: none;
     margin-top: 4px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    animation: none !important;
+}
+
+.thread-settings-panel.terminal-stack.open {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    animation: none !important;
+}
+
+.term-stack-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     font-size: 0.85em;
+    color: var(--text-secondary);
+}
+
+.term-select {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-family: inherit;
+    font-size: inherit;
+    width: 80px;
+    cursor: pointer;
+}
+
+.term-select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.term-select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.term-btn.delete-btn {
+    width: 100%;
+    text-align: center;
+    margin-top: 4px;
+    padding: 4px 0;
+    opacity: 0.7;
+    border: 1px solid var(--error);
+    color: var(--error);
+}
+
+.term-btn.delete-btn:hover {
+    opacity: 1;
+    background: rgba(255, 0, 0, 0.1);
 }
 
 .terminal-row {
@@ -2012,4 +2066,13 @@ input:checked+.slider:before {
 .term-btn:hover {
     background: var(--error);
     color: #000;
+}
+
+/* Fix visibility specificity */
+.thread-item.active .thread-settings-panel.terminal-stack {
+    display: none;
+}
+
+.thread-item.active .thread-settings-panel.terminal-stack.open {
+    display: flex;
 }

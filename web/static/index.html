@@ -91,33 +91,43 @@
                         </div>
 
                         <!-- Settings Toggle -->
-                        <div class="thread-settings-toggle" style="display:none;">
+                        <div class="thread-settings-toggle" style="display:none; margin-top:4px;">
                             <span class="toggle-icon">▶</span> <span
                                 style="font-size:0.85em; opacity:0.8;">SETTINGS</span>
                         </div>
 
-                        <!-- Compact Terminal Settings Panel -->
-                        <div class="thread-settings-panel compact-terminal" style="display:none;">
-                            <div class="terminal-row">
-                                <span class="term-label">CTX:</span>
-                                <div class="term-options radio-group">
-                                    <label class="term-option"><input type="radio" name="contextMode"
-                                            value="none">none</label>
-                                    <label class="term-option"><input type="radio" name="contextMode"
-                                            value="smart">smart</label>
-                                    <label class="term-option"><input type="radio" name="contextMode"
-                                            value="full">full</label>
+                        <!-- Vertical Stack Settings Panel -->
+                        <div class="thread-settings-panel terminal-stack">
+                            <!-- Context Mode -->
+                            <div class="term-stack-item">
+                                <label title="Context Mode: How much history to include">CTX:</label>
+                                <select class="term-select" name="contextMode">
+                                    <option value="none">None</option>
+                                    <option value="smart">Smart</option>
+                                    <option value="full">Full</option>
+                                </select>
+                            </div>
+
+                            <!-- Window -->
+                            <div class="term-stack-item">
+                                <label title="Context Window: Number of message pairs to remember">WIN:</label>
+                                <div style="display:flex; align-items:center; gap:4px;">
+                                    <input type="number" class="term-input context-window-input" min="1" max="50"
+                                        value="5" style="width:40px; text-align:center;">
                                 </div>
                             </div>
-                            <div class="terminal-row" style="margin-top:4px;">
-                                <span class="term-label">WIN:</span>
-                                <input type="number" class="term-input context-window-input" min="1" max="50" value="5">
-                                <span class="term-sep">|</span>
+
+                            <!-- Chat Only -->
+                            <div class="term-stack-item">
+                                <label title="Chat Only Mode: Disable tools/automations">CHAT:</label>
                                 <label class="term-check">
-                                    <input type="checkbox" class="chat-only-toggle"> ChatOnly
+                                    <input type="checkbox" class="chat-only-toggle"> Only
                                 </label>
-                                <span class="term-sep" style="flex:1; text-align:right;"></span>
-                                <button class="term-btn delete-btn" title="Delete Thread">DEL</button>
+                            </div>
+
+                            <!-- Delete -->
+                            <div class="term-stack-item" style="margin-top:4px;">
+                                <button class="term-btn delete-btn" title="Delete Thread">DELETE THREAD</button>
                             </div>
                         </div>
                     </div>

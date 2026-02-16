@@ -11,5 +11,31 @@
     "trace_id": "MCTR-20260216144907-V1S8YU7Q",
     "success": true,
     "tokens_estimated": false
+  },
+  {
+    "timestamp": "2026-02-16T16:37:17.265663Z",
+    "provider": "google_ai",
+    "model": "gemini-2.0-flash",
+    "prompt_tokens": 28,
+    "completion_tokens": 12,
+    "total_tokens": 40,
+    "estimated_cost": 0.0,
+    "operation": "chat",
+    "trace_id": "MCTR-20260216173716-SB5HMWQ0",
+    "success": true,
+    "tokens_estimated": false
+  },
+  {
+    "timestamp": "2026-02-16T16:37:29.775537Z",
+    "provider": "google_ai",
+    "model": "gemini-2.0-flash",
+    "prompt_tokens": 64,
+    "completion_tokens": 9,
+    "total_tokens": 73,
+    "estimated_cost": 0.0,
+    "operation": "chat",
+    "trace_id": "MCTR-20260216173729-ZKWSB5A9",
+    "success": true,
+    "tokens_estimated": false
   }
 ]

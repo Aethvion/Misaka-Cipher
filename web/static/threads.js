@@ -325,25 +325,30 @@ function renderThreadList() {
             modeBadge.style.display = 'none';
         }
 
-        // --- Settings Logic (Collapsible Terminal Foldout) ---
+        // --- Settings Logic (Vertical Stack Foldout) ---
         const settingsToggle = clone.querySelector('.thread-settings-toggle');
         const settingsPanel = clone.querySelector('.thread-settings-panel');
         
+        // Ensure inline style doesn't block class-based toggling
+        settingsPanel.style.display = ''; 
+
         // Only show toggle if active
         if (isActive) {
-            settingsToggle.style.display = 'block';
+            settingsToggle.style.display = 'block'; // Flex defined in CSS usually, but block works with flex container
+            settingsToggle.style.display = 'flex';
         }
 
         // Toggle Click Handler
         settingsToggle.addEventListener('click', (e) => {
             e.stopPropagation();
-            const isOpen = settingsPanel.style.display === 'block';
+            // Check based on class since display might vary (flex/block)
+            const isOpen = settingsToggle.classList.contains('open');
             if (isOpen) {
-                settingsPanel.style.display = 'none';
+                settingsPanel.classList.remove('open');
                 settingsToggle.classList.remove('open');
                 if (isActive) isSettingsPanelOpen = false;
             } else {
-                settingsPanel.style.display = 'block';
+                settingsPanel.classList.add('open');
                 settingsToggle.classList.add('open');
                 if (isActive) isSettingsPanelOpen = true;
             }
@@ -351,30 +356,34 @@ function renderThreadList() {
         
         // Restore State (Persistence across re-renders)
         if (isActive && isSettingsPanelOpen) {
-            settingsPanel.style.display = 'block';
+            settingsPanel.classList.add('open');
             settingsToggle.classList.add('open');
         } else {
-            // Default closed
-            settingsPanel.style.display = 'none';
+            settingsPanel.classList.remove('open');
             if (settingsToggle) settingsToggle.classList.remove('open');
         }
 
         // Initialize Settings Inputs
-        const contextRadios = clone.querySelectorAll('input[name="contextMode"]');
+        const contextSelect = clone.querySelector('select[name="contextMode"]');
         const windowInput = clone.querySelector('.context-window-input');
         const chatOnlyToggle = clone.querySelector('.chat-only-toggle');
 
-        // Context Mode
-        contextRadios.forEach(radio => {
-            radio.name = `contextMode-${thread.id}`;
-            const currentMode = (thread.settings && thread.settings.context_mode) || 'smart';
-            if (radio.value === currentMode) radio.checked = true;
-            radio.addEventListener('change', () => saveThreadSettings(thread.id));
-        });
+        // Context Mode (Dropdown)
+        if (contextSelect) {
+            contextSelect.value = (thread.settings && thread.settings.context_mode) || 'smart';
+            contextSelect.addEventListener('change', () => {
+                // Update local state temporarily for responsiveness
+                if (!thread.settings) thread.settings = {};
+                thread.settings.context_mode = contextSelect.value;
+                saveThreadSettings(thread.id)
+            });
+        }
 
         // Window Size
-        windowInput.value = (thread.settings && thread.settings.context_window) || 5;
-        windowInput.addEventListener('change', () => saveThreadSettings(thread.id));
+        if (windowInput) {
+            windowInput.value = (thread.settings && thread.settings.context_window) || 5;
+            windowInput.addEventListener('change', () => saveThreadSettings(thread.id));
+        }
 
         // Chat Only Checkbox
         if (chatOnlyToggle) {
@@ -600,17 +609,26 @@ async function saveThreadSettings(threadId) {
     const threadItem = document.querySelector(`.thread-item[data-thread-id="${threadId}"]`);
     if (!threadItem) return;
 
-    // Find radio group by name
-    const radioGroup = threadItem.querySelectorAll(`input[name="contextMode-${threadId}"]`);
-    let contextMode = 'smart'; // default
-    for (const radio of radioGroup) {
-        if (radio.checked) {
-            contextMode = radio.value;
-            break;
+    // Fixed: Read from select dropdown
+    const contextSelect = threadItem.querySelector(`select[name="contextMode"]`);
+    let contextMode = 'smart'; 
+    if (contextSelect) {
+        contextMode = contextSelect.value;
+    }
+    
+    // Fallback for radio if select not found (backward compatibility if template mismatch)
+    if (!contextSelect) {
+        const radioGroup = threadItem.querySelectorAll(`input[name="contextMode-${threadId}"]`);
+        for (const radio of radioGroup) {
+            if (radio.checked) {
+                contextMode = radio.value;
+                break;
+            }
         }
     }
 
-    const contextWindow = parseInt(threadItem.querySelector('.context-window-input').value);
+    const windowInput = threadItem.querySelector('.context-window-input');
+    const contextWindow = windowInput ? parseInt(windowInput.value) : 5;
 
     // Update local state
     if (threads[threadId]) {
@@ -628,5 +646,3 @@ async function saveThreadSettings(threadId) {
         console.error("Failed to save thread settings:", e);
     }
 }
-
-
