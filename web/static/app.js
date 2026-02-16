@@ -250,6 +250,9 @@ async function loadTools() {
     // Refactoring variable to match new preference key
     const shouldHide = await getHideToolsPref();
     if (checkbox) checkbox.checked = shouldHide;
+
+    // Load actual tools data
+    await loadAllTools();
 }
 
 async function getHideToolsPref() {

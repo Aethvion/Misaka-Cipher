@@ -15,5 +15,8 @@
     "hide_agents_panel": true
   },
   "theme": "dark",
-  "show_system_tools": false
+  "show_system_tools": false,
+  "tool_filters": {
+    "hide_system": true
+  }
 }
