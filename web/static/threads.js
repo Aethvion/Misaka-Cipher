@@ -1,7 +1,7 @@
 // ===== THREAD MANAGEMENT =====
 
-let currentThreadId = 'default';
-let threads = {};
+window.currentThreadId = 'default';
+window.threads = {};
 let threadMessages = {};
 let isSettingsPanelOpen = false; // Store messages per thread
 
@@ -71,6 +71,7 @@ async function createNewThread() {
         id: threadId,
         title: title,
         task_ids: [],
+        settings: { system_terminal_enabled: true },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
     };
@@ -110,14 +111,14 @@ function switchThread(threadId) {
     document.querySelectorAll('.thread-item').forEach(item => {
         const isActive = item.dataset.threadId === threadId;
         item.classList.toggle('active', isActive);
-        
+
         // Handle settings toggle visibility immediately
         const settingsToggle = item.querySelector('.thread-settings-toggle');
         if (settingsToggle) {
             settingsToggle.style.display = isActive ? 'block' : 'none';
             settingsToggle.classList.remove('open'); // Ensure updated toggle is closed
         }
-        
+
         // Close any open panels
         const settingsPanel = item.querySelector('.thread-settings-panel');
         if (settingsPanel) {
@@ -136,6 +137,11 @@ function switchThread(threadId) {
 
     // Fetch messages from server
     loadThreadMessages(threadId);
+
+    // Update terminal visibility
+    if (typeof updateTerminalVisibility === 'function') {
+        updateTerminalVisibility();
+    }
 }
 
 function toggleChatInput(enabled) {
@@ -328,9 +334,9 @@ function renderThreadList() {
         // --- Settings Logic (Vertical Stack Foldout) ---
         const settingsToggle = clone.querySelector('.thread-settings-toggle');
         const settingsPanel = clone.querySelector('.thread-settings-panel');
-        
+
         // Ensure inline style doesn't block class-based toggling
-        settingsPanel.style.display = ''; 
+        settingsPanel.style.display = '';
 
         // Only show toggle if active
         if (isActive) {
@@ -353,7 +359,7 @@ function renderThreadList() {
                 if (isActive) isSettingsPanelOpen = true;
             }
         });
-        
+
         // Restore State (Persistence across re-renders)
         if (isActive && isSettingsPanelOpen) {
             settingsPanel.classList.add('open');
@@ -391,6 +397,25 @@ function renderThreadList() {
             chatOnlyToggle.addEventListener('change', (e) => {
                 const newMode = e.target.checked ? 'chat_only' : 'auto';
                 toggleThreadMode(thread.id, newMode);
+            });
+        }
+
+        // Terminal Toggle
+        const terminalToggle = clone.querySelector('.terminal-toggle');
+        if (terminalToggle) {
+            // Default to true if not set
+            const isEnabled = (thread.settings && thread.settings.system_terminal_enabled !== false);
+            terminalToggle.checked = isEnabled;
+
+            terminalToggle.addEventListener('change', (e) => {
+                if (!thread.settings) thread.settings = {};
+                thread.settings.system_terminal_enabled = e.target.checked;
+                saveThreadSettings(thread.id);
+
+                // If active thread, update UI immediately
+                if (isActive && typeof updateTerminalVisibility === 'function') {
+                    updateTerminalVisibility();
+                }
             });
         }
 
@@ -611,11 +636,11 @@ async function saveThreadSettings(threadId) {
 
     // Fixed: Read from select dropdown
     const contextSelect = threadItem.querySelector(`select[name="contextMode"]`);
-    let contextMode = 'smart'; 
+    let contextMode = 'smart';
     if (contextSelect) {
         contextMode = contextSelect.value;
     }
-    
+
     // Fallback for radio if select not found (backward compatibility if template mismatch)
     if (!contextSelect) {
         const radioGroup = threadItem.querySelectorAll(`input[name="contextMode-${threadId}"]`);
@@ -630,9 +655,17 @@ async function saveThreadSettings(threadId) {
     const windowInput = threadItem.querySelector('.context-window-input');
     const contextWindow = windowInput ? parseInt(windowInput.value) : 5;
 
+    // Terminal Setting
+    const terminalToggle = threadItem.querySelector('.terminal-toggle');
+    const terminalEnabled = terminalToggle ? terminalToggle.checked : true;
+
     // Update local state
     if (threads[threadId]) {
-        threads[threadId].settings = { context_mode: contextMode, context_window: contextWindow };
+        threads[threadId].settings = {
+            context_mode: contextMode,
+            context_window: contextWindow,
+            system_terminal_enabled: terminalEnabled
+        };
     }
 
     try {

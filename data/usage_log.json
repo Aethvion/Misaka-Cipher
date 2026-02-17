@@ -570,5 +570,31 @@
     "trace_id": "MCTR-20260217110154-KWCKI7O6",
     "success": true,
     "tokens_estimated": false
+  },
+  {
+    "timestamp": "2026-02-17T10:08:08.711088Z",
+    "provider": "google_ai",
+    "model": "gemini-2.0-flash",
+    "prompt_tokens": 1,
+    "completion_tokens": 14,
+    "total_tokens": 15,
+    "estimated_cost": 0.0,
+    "operation": "chat",
+    "trace_id": "MCTR-20260217110808-PCTG494H",
+    "success": true,
+    "tokens_estimated": false
+  },
+  {
+    "timestamp": "2026-02-17T10:11:51.324637Z",
+    "provider": "google_ai",
+    "model": "gemini-2.0-flash",
+    "prompt_tokens": 1,
+    "completion_tokens": 117,
+    "total_tokens": 118,
+    "estimated_cost": 0.0,
+    "operation": "chat",
+    "trace_id": "MCTR-20260217111149-45ZREYN2",
+    "success": true,
+    "tokens_estimated": false
   }
 ]

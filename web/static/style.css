@@ -455,8 +455,8 @@ body {
 }
 
 .message {
-    padding: 1rem;
-    border-radius: 8px;
+    padding: 0.4rem;
+    border-radius: 5px;
     border: 1px solid var(--border);
     background: rgba(255, 255, 255, 0.02);
     backdrop-filter: blur(10px);

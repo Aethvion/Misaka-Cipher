@@ -26,9 +26,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== System Terminal =====
 
+// Expose to window for threads.js
+window.updateTerminalVisibility = function () {
+    const terminal = document.getElementById('system-terminal');
+    if (!terminal) return;
+
+    // Check current thread settings
+    const currentThreadId = window.currentThreadId || 'default'; // accessing variable from threads.js (global scope issue?)
+    // threads.js variables are not global by default unless script is simple or exposed.
+    // Actually, threads, currentThreadId are top level in threads.js, but threads.js is loaded as a script, so they SHOULD be global?
+    // Let's assume they are because previous code uses them. 
+    // Wait, threads.js defines `let currentThreadId`, which is block scoped to the script if type module? No, type is not module.
+    // It should be global.
+
+    // However, safer to look at threads object.
+    const thread = (window.threads && window.threads[window.currentThreadId]);
+
+    // Default to true
+    let enabled = true;
+    if (thread && thread.settings && thread.settings.system_terminal_enabled === false) {
+        enabled = false;
+    }
+
+    terminal.style.display = enabled ? 'flex' : 'none';
+};
+
 function updateSystemTerminal(message, title, agent, status) {
     const terminal = document.getElementById('terminal-content');
     if (!terminal) return;
+
+    // Even if hidden, we append logs so they are there when toggled ON.
 
     const line = document.createElement('div');
     line.className = 'terminal-line';
