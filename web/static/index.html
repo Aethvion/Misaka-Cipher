@@ -185,11 +185,42 @@
                         </div>
                     </div>
 
-                    <div class="chat-input-container">
+                    <div class="chat-interface-wrapper">
                         <textarea id="chat-input" class="chat-input" rows="1"
                             placeholder="Ask me anything... (e.g., 'Analyze TSLA stock outlook')"
                             autocomplete="off"></textarea>
-                        <button id="send-button" class="send-button">Send</button>
+
+                        <div class="input-controls">
+                            <div class="controls-left">
+                                <button class="icon-btn add-file-btn" title="Add File">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+
+                                <select id="model-select" class="control-select" title="Select Model">
+                                    <option value="auto">Model: Auto</option>
+                                    <option value="gemini-2.0-pro-exp-02-05">Gemini 2.0 Pro</option>
+                                    <option value="gemini-2.0-flash-thinking-exp-01-21">Gemini 2.0 Flash Thinking
+                                    </option>
+                                    <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                                </select>
+
+                                <select id="agent-select" class="control-select" title="Select Agent Profile">
+                                    <option value="auto">Agent: Auto</option>
+                                    <option value="researcher">Researcher</option>
+                                    <option value="coder">Coder</option>
+                                    <option value="creative">Creative</option>
+                                </select>
+                            </div>
+
+                            <div class="controls-right">
+                                <button id="voice-mode-toggle" class="icon-btn voice-btn" title="Voice Mode">
+                                    <i class="fas fa-microphone"></i>
+                                </button>
+                                <button id="send-button" class="send-button">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

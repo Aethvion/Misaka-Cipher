@@ -183,6 +183,35 @@ function initializeUI() {
         alert('Tool forging via UI coming soon! For now, use the chat: "Create a tool to..."');
     });
 
+    // Voice Mode Toggle
+    const voiceButton = document.getElementById('voice-mode-toggle');
+    if (voiceButton) {
+        voiceButton.addEventListener('click', () => {
+            voiceButton.classList.toggle('active');
+            const isActive = voiceButton.classList.contains('active');
+
+            if (isActive) {
+                // TODO: Implement actual voice recording logic
+                voiceButton.innerHTML = '<i class="fas fa-stop"></i>';
+                voiceButton.style.color = 'var(--accent)';
+                addMessage('system', 'Voice mode activated (Simulation)');
+            } else {
+                voiceButton.innerHTML = '<i class="fas fa-microphone"></i>';
+                voiceButton.style.color = '';
+                addMessage('system', 'Voice mode deactivated');
+            }
+        });
+    }
+
+    // Add File Button (Placeholder)
+    const addFileBtn = document.querySelector('.add-file-btn');
+    if (addFileBtn) {
+        addFileBtn.addEventListener('click', () => {
+            // TODO: Implement file upload dialog
+            alert('File upload coming soon!');
+        });
+    }
+
     // Package tab switching
     document.querySelectorAll('.package-tab').forEach(tab => {
         tab.addEventListener('click', () => {
