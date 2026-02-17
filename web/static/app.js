@@ -2025,32 +2025,32 @@ async function saveProviderSettings() {
 
 let _providerChart = null;
 let _timelineChart = null;
+let _costByModelChart = null;
+let _tokensByModelChart = null;
 
 async function loadUsageDashboard() {
     try {
-        const [summaryRes, historyRes, hourlyRes] = await Promise.all([
+        const [summaryRes, historyRes, hourlyRes, costModelRes, tokensModelRes] = await Promise.all([
             fetch('/api/usage/summary'),
             fetch('/api/usage/history?limit=50'),
-            fetch('/api/usage/hourly?hours=24')
+            fetch('/api/usage/hourly?hours=24'),
+            fetch('/api/usage/cost-by-model'),
+            fetch('/api/usage/tokens-by-model')
         ]);
 
         const summary = await summaryRes.json();
         const history = await historyRes.json();
         const hourly = await hourlyRes.json();
+        const costModel = await costModelRes.json();
+        const tokensModel = await tokensModelRes.json();
 
         updateUsageStatCards(summary);
         renderProviderChart(summary);
         renderTimelineChart(hourly);
+        renderCostByModelChart(costModel);
+        renderTokensByModelChart(tokensModel);
+        renderModelUsageTable(summary);
         renderRecentCallsTable(history.entries || []);
-
-        // Also load tool usage
-        try {
-            const toolsRes = await fetch('/api/usage/tools');
-            const toolsData = await toolsRes.json();
-            renderToolUsageTable(toolsData.tools || []);
-        } catch (e) {
-            console.warn('Tool usage not available:', e);
-        }
 
     } catch (error) {
         console.error('Error loading usage dashboard:', error);
@@ -2063,10 +2063,17 @@ function formatNumber(n) {
     return n.toString();
 }
 
+function formatCost(v) {
+    if (v >= 1) return '$' + v.toFixed(2);
+    if (v >= 0.01) return '$' + v.toFixed(4);
+    return '$' + v.toFixed(6);
+}
+
 function updateUsageStatCards(summary) {
     document.getElementById('usage-total-calls').textContent = formatNumber(summary.total_calls || 0);
     document.getElementById('usage-total-tokens').textContent = formatNumber(summary.total_tokens || 0);
-    document.getElementById('usage-total-cost').textContent = '$' + (summary.total_cost || 0).toFixed(4);
+    document.getElementById('usage-input-cost').textContent = formatCost(summary.total_input_cost || 0);
+    document.getElementById('usage-output-cost').textContent = formatCost(summary.total_output_cost || 0);
     document.getElementById('usage-success-rate').textContent = (summary.success_rate || 0).toFixed(1) + '%';
 }
 
@@ -2184,12 +2191,174 @@ function renderTimelineChart(hourlyData) {
     });
 }
 
+function renderCostByModelChart(costData) {
+    const ctx = document.getElementById('chart-cost-by-model');
+    if (!ctx || typeof Chart === 'undefined') return;
+
+    if (_costByModelChart) _costByModelChart.destroy();
+
+    const models = costData.models || [];
+    if (!models.length) return;
+
+    const labels = models.map(m => m.name);
+    const inputCosts = models.map(m => m.input_cost);
+    const outputCosts = models.map(m => m.output_cost);
+
+    _costByModelChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Input Cost',
+                    data: inputCosts,
+                    backgroundColor: 'rgba(0, 217, 255, 0.7)',
+                    borderColor: '#00d9ff',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Output Cost',
+                    data: outputCosts,
+                    backgroundColor: 'rgba(255, 0, 255, 0.7)',
+                    borderColor: '#ff00ff',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    labels: { color: '#a0a0a0', font: { size: 12 } }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return context.dataset.label + ': $' + context.raw.toFixed(6);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: false,
+                    title: { display: true, text: 'Cost ($)', color: '#a0a0a0' },
+                    ticks: { color: '#a0a0a0' },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y: {
+                    ticks: { color: '#a0a0a0', font: { family: "'Fira Code', monospace", size: 11 } },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
+        }
+    });
+}
+
+function renderTokensByModelChart(tokensData) {
+    const ctx = document.getElementById('chart-tokens-by-model');
+    if (!ctx || typeof Chart === 'undefined') return;
+
+    if (_tokensByModelChart) _tokensByModelChart.destroy();
+
+    const models = tokensData.models || [];
+    if (!models.length) return;
+
+    const labels = models.map(m => m.name);
+    const inputTokens = models.map(m => m.prompt_tokens);
+    const outputTokens = models.map(m => m.completion_tokens);
+
+    _tokensByModelChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Input Tokens',
+                    data: inputTokens,
+                    backgroundColor: 'rgba(0, 217, 255, 0.7)',
+                    borderColor: '#00d9ff',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Output Tokens',
+                    data: outputTokens,
+                    backgroundColor: 'rgba(255, 200, 0, 0.7)',
+                    borderColor: '#ffc800',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    labels: { color: '#a0a0a0', font: { size: 12 } }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return context.dataset.label + ': ' + formatNumber(context.raw);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: false,
+                    title: { display: true, text: 'Tokens', color: '#a0a0a0' },
+                    ticks: { color: '#a0a0a0' },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y: {
+                    ticks: { color: '#a0a0a0', font: { family: "'Fira Code', monospace", size: 11 } },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
+        }
+    });
+}
+
+function renderModelUsageTable(summary) {
+    const tbody = document.getElementById('usage-model-tbody');
+    if (!tbody) return;
+
+    const byModel = summary.by_model || {};
+    const models = Object.entries(byModel).map(([name, data]) => ({
+        name,
+        calls: data.calls || 0,
+        prompt_tokens: data.prompt_tokens || 0,
+        completion_tokens: data.completion_tokens || 0,
+        cost: data.cost || 0
+    }));
+
+    // Sort by calls descending
+    models.sort((a, b) => b.calls - a.calls);
+
+    if (!models.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="placeholder-text">No model usage data yet</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = models.map(m => `<tr>
+        <td style="font-family: 'Fira Code', monospace; font-size: 0.8rem;">${m.name}</td>
+        <td>${formatNumber(m.calls)}</td>
+        <td>${formatNumber(m.prompt_tokens)}</td>
+        <td>${formatNumber(m.completion_tokens)}</td>
+        <td>${formatCost(m.cost)}</td>
+    </tr>`).join('');
+}
+
 function renderRecentCallsTable(entries) {
     const tbody = document.getElementById('usage-recent-tbody');
     if (!tbody) return;
 
     if (!entries.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="placeholder-text">No API calls recorded yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="placeholder-text">No API calls recorded yet</td></tr>';
         return;
     }
 
@@ -2200,25 +2369,10 @@ function renderRecentCallsTable(entries) {
             <td style="font-family: 'Fira Code', monospace; font-size: 0.8rem;">${time}</td>
             <td><span class="provider-badge ${provider}">${provider}</span></td>
             <td style="font-family: 'Fira Code', monospace; font-size: 0.8rem;">${e.model || '?'}</td>
-            <td>${formatNumber(e.total_tokens || 0)}${e.tokens_estimated ? ' ~' : ''}</td>
-            <td>$${(e.estimated_cost || 0).toFixed(6)}</td>
+            <td>${formatNumber(e.prompt_tokens || 0)}${e.tokens_estimated ? ' ~' : ''}</td>
+            <td>${formatNumber(e.completion_tokens || 0)}${e.tokens_estimated ? ' ~' : ''}</td>
+            <td>${formatCost(e.input_cost || 0)}</td>
+            <td>${formatCost(e.output_cost || 0)}</td>
         </tr>`;
     }).join('');
 }
-
-function renderToolUsageTable(tools) {
-    const tbody = document.getElementById('usage-tools-tbody');
-    if (!tbody) return;
-
-    if (!tools.length) {
-        tbody.innerHTML = '<tr><td colspan="3" class="placeholder-text">No tools registered</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = tools.map(t => `<tr>
-        <td style="font-family: 'Fira Code', monospace; font-size: 0.8rem;">${t.name}</td>
-        <td>${t.domain || ''}</td>
-        <td>${t.usage_count || 0}</td>
-    </tr>`).join('');
-}
-

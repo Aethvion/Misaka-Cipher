@@ -62,8 +62,8 @@ class UsageTracker:
         except Exception as e:
             logger.error(f"Failed to save usage log: {e}")
 
-    def _load_model_costs(self) -> Dict[str, float]:
-        """Load per-model cost data from model_registry.json."""
+    def _load_model_costs(self) -> Dict[str, Dict[str, float]]:
+        """Load per-model input/output cost data from model_registry.json."""
         costs = {}
         try:
             registry_path = Path(__file__).parent.parent / "config" / "model_registry.json"
@@ -74,7 +74,19 @@ class UsageTracker:
                     for model_key, model_info in provider_cfg.get("models", {}).items():
                         if isinstance(model_info, dict):
                             model_id = model_info.get("id", model_key)
-                            costs[model_id] = model_info.get("cost_per_1k_tokens", 0.0)
+                            # New per-1M format
+                            input_cost = model_info.get("input_cost_per_1m_tokens", 0.0)
+                            output_cost = model_info.get("output_cost_per_1m_tokens", 0.0)
+                            # Backward compat: convert old per-1k to per-1M
+                            if input_cost == 0 and output_cost == 0:
+                                legacy = model_info.get("cost_per_1k_tokens", 0.0)
+                                if legacy:
+                                    input_cost = legacy * 1000
+                                    output_cost = legacy * 1000
+                            costs[model_id] = {
+                                "input": input_cost,
+                                "output": output_cost
+                            }
         except Exception as e:
             logger.warning(f"Could not load model costs: {e}")
         return costs
@@ -105,9 +117,11 @@ class UsageTracker:
         completion_tokens = usage_data.get("completion_tokens") or usage_data.get("candidates_token_count") or self.estimate_tokens(response_content)
         total_tokens = usage_data.get("total_tokens") or (prompt_tokens + completion_tokens)
 
-        # Estimate cost
-        cost_per_1k = self._model_costs.get(model, 0.0)
-        estimated_cost = (total_tokens / 1000.0) * cost_per_1k
+        # Estimate cost (per 1M tokens)
+        model_costs = self._model_costs.get(model, {"input": 0.0, "output": 0.0})
+        input_cost = (prompt_tokens / 1_000_000) * model_costs["input"]
+        output_cost = (completion_tokens / 1_000_000) * model_costs["output"]
+        estimated_cost = input_cost + output_cost
 
         entry = {
             "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -116,6 +130,8 @@ class UsageTracker:
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "total_tokens": total_tokens,
+            "input_cost": round(input_cost, 6),
+            "output_cost": round(output_cost, 6),
             "estimated_cost": round(estimated_cost, 6),
             "operation": operation,
             "trace_id": trace_id,
@@ -128,7 +144,7 @@ class UsageTracker:
 
         logger.debug(
             f"[{trace_id}] Usage logged: {provider}/{model} "
-            f"tokens={total_tokens} cost=${estimated_cost:.6f}"
+            f"tokens={total_tokens} in=${input_cost:.6f} out=${output_cost:.6f}"
         )
 
     def get_summary(self) -> Dict[str, Any]:
@@ -137,6 +153,8 @@ class UsageTracker:
             return {
                 "total_calls": 0,
                 "total_tokens": 0,
+                "total_input_cost": 0.0,
+                "total_output_cost": 0.0,
                 "total_cost": 0.0,
                 "by_provider": {},
                 "by_model": {},
@@ -144,35 +162,62 @@ class UsageTracker:
                 "since": None
             }
 
-        by_provider = defaultdict(lambda: {"calls": 0, "tokens": 0, "cost": 0.0})
-        by_model = defaultdict(lambda: {"calls": 0, "tokens": 0, "cost": 0.0})
+        by_provider = defaultdict(lambda: {"calls": 0, "tokens": 0, "input_cost": 0.0, "output_cost": 0.0, "cost": 0.0})
+        by_model = defaultdict(lambda: {
+            "calls": 0, "prompt_tokens": 0, "completion_tokens": 0,
+            "tokens": 0, "input_cost": 0.0, "output_cost": 0.0, "cost": 0.0
+        })
         total_tokens = 0
-        total_cost = 0.0
+        total_input_cost = 0.0
+        total_output_cost = 0.0
         successes = 0
 
         for entry in self._log:
             p = entry.get("provider", "unknown")
             m = entry.get("model", "unknown")
             t = entry.get("total_tokens", 0)
+            ic = entry.get("input_cost", 0.0)
+            oc = entry.get("output_cost", 0.0)
             c = entry.get("estimated_cost", 0.0)
+            pt = entry.get("prompt_tokens", 0)
+            ct = entry.get("completion_tokens", 0)
 
             by_provider[p]["calls"] += 1
             by_provider[p]["tokens"] += t
-            by_provider[p]["cost"] += round(c, 6)
+            by_provider[p]["input_cost"] += ic
+            by_provider[p]["output_cost"] += oc
+            by_provider[p]["cost"] += c
 
             by_model[m]["calls"] += 1
+            by_model[m]["prompt_tokens"] += pt
+            by_model[m]["completion_tokens"] += ct
             by_model[m]["tokens"] += t
-            by_model[m]["cost"] += round(c, 6)
+            by_model[m]["input_cost"] += ic
+            by_model[m]["output_cost"] += oc
+            by_model[m]["cost"] += c
 
             total_tokens += t
-            total_cost += c
+            total_input_cost += ic
+            total_output_cost += oc
             if entry.get("success", True):
                 successes += 1
+
+        # Round aggregated costs
+        for v in by_provider.values():
+            v["input_cost"] = round(v["input_cost"], 6)
+            v["output_cost"] = round(v["output_cost"], 6)
+            v["cost"] = round(v["cost"], 6)
+        for v in by_model.values():
+            v["input_cost"] = round(v["input_cost"], 6)
+            v["output_cost"] = round(v["output_cost"], 6)
+            v["cost"] = round(v["cost"], 6)
 
         return {
             "total_calls": len(self._log),
             "total_tokens": total_tokens,
-            "total_cost": round(total_cost, 6),
+            "total_input_cost": round(total_input_cost, 6),
+            "total_output_cost": round(total_output_cost, 6),
+            "total_cost": round(total_input_cost + total_output_cost, 6),
             "by_provider": dict(by_provider),
             "by_model": dict(by_model),
             "success_rate": round(successes / len(self._log) * 100, 1) if self._log else 0,
@@ -182,6 +227,34 @@ class UsageTracker:
     def get_history(self, limit: int = 100) -> List[Dict[str, Any]]:
         """Get recent usage entries (newest first)."""
         return list(reversed(self._log[-limit:]))
+
+    def get_cost_by_model(self) -> Dict[str, Any]:
+        """Get cost breakdown by model for chart data."""
+        summary = self.get_summary()
+        models = []
+        for model_name, data in summary.get("by_model", {}).items():
+            models.append({
+                "name": model_name,
+                "input_cost": data.get("input_cost", 0.0),
+                "output_cost": data.get("output_cost", 0.0),
+                "total_cost": data.get("cost", 0.0)
+            })
+        models.sort(key=lambda x: x["total_cost"], reverse=True)
+        return {"models": models}
+
+    def get_tokens_by_model(self) -> Dict[str, Any]:
+        """Get token breakdown by model for chart data."""
+        summary = self.get_summary()
+        models = []
+        for model_name, data in summary.get("by_model", {}).items():
+            models.append({
+                "name": model_name,
+                "prompt_tokens": data.get("prompt_tokens", 0),
+                "completion_tokens": data.get("completion_tokens", 0),
+                "total_tokens": data.get("tokens", 0)
+            })
+        models.sort(key=lambda x: x["total_tokens"], reverse=True)
+        return {"models": models}
 
     def get_hourly_breakdown(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Get token usage broken down by hour for chart data."""

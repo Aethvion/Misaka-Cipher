@@ -430,8 +430,12 @@
                         <div class="stat-label">Total Tokens</div>
                     </div>
                     <div class="usage-stat-card">
-                        <div class="stat-value" id="usage-total-cost">$0.00</div>
-                        <div class="stat-label">Estimated Cost</div>
+                        <div class="stat-value" id="usage-input-cost">$0.00</div>
+                        <div class="stat-label">Input Cost</div>
+                    </div>
+                    <div class="usage-stat-card">
+                        <div class="stat-value" id="usage-output-cost">$0.00</div>
+                        <div class="stat-label">Output Cost</div>
                     </div>
                     <div class="usage-stat-card">
                         <div class="stat-value" id="usage-success-rate">0%</div>
@@ -439,7 +443,7 @@
                     </div>
                 </div>
 
-                <!-- Charts Row -->
+                <!-- Charts Row 1 -->
                 <div class="usage-charts-row">
                     <div class="usage-chart-container">
                         <h3>API Calls by Provider</h3>
@@ -451,44 +455,60 @@
                     </div>
                 </div>
 
-                <!-- Tables Row -->
-                <div class="usage-tables-row">
-                    <div class="usage-table-container">
-                        <h3>Recent API Calls</h3>
-                        <table class="usage-table">
-                            <thead>
-                                <tr>
-                                    <th>Time</th>
-                                    <th>Provider</th>
-                                    <th>Model</th>
-                                    <th>Tokens</th>
-                                    <th>Cost</th>
-                                </tr>
-                            </thead>
-                            <tbody id="usage-recent-tbody">
-                                <tr>
-                                    <td colspan="5" class="placeholder-text">No data yet</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <!-- Charts Row 2 -->
+                <div class="usage-charts-row">
+                    <div class="usage-chart-container">
+                        <h3>Estimated Cost by Model</h3>
+                        <canvas id="chart-cost-by-model"></canvas>
                     </div>
-                    <div class="usage-table-container">
-                        <h3>Tool Usage</h3>
-                        <table class="usage-table">
-                            <thead>
-                                <tr>
-                                    <th>Tool</th>
-                                    <th>Domain</th>
-                                    <th>Uses</th>
-                                </tr>
-                            </thead>
-                            <tbody id="usage-tools-tbody">
-                                <tr>
-                                    <td colspan="3" class="placeholder-text">No data yet</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class="usage-chart-container">
+                        <h3>Tokens by Model</h3>
+                        <canvas id="chart-tokens-by-model"></canvas>
                     </div>
+                </div>
+
+                <!-- Model Usage Table (full width, above recent calls) -->
+                <div class="usage-table-full">
+                    <h3>Model Usage</h3>
+                    <table class="usage-table">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Calls</th>
+                                <th>Tokens Input</th>
+                                <th>Tokens Output</th>
+                                <th>Est. Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usage-model-tbody">
+                            <tr>
+                                <td colspan="5" class="placeholder-text">No data yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Recent API Calls Table (full width) -->
+                <div class="usage-table-full">
+                    <h3>Recent API Calls</h3>
+                    <table class="usage-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Provider</th>
+                                <th>Model</th>
+                                <th>In Tokens</th>
+                                <th>Out Tokens</th>
+                                <th>Input Cost</th>
+                                <th>Output Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usage-recent-tbody">
+                            <tr>
+                                <td colspan="7" class="placeholder-text">No data yet</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

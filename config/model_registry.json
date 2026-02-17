@@ -21,7 +21,8 @@
                         "verification"
                     ],
                     "tier": "fast",
-                    "cost_per_1k_tokens": 0,
+                    "input_cost_per_1m_tokens": 0.10,
+                    "output_cost_per_1m_tokens": 0.40,
                     "notes": "Free tier. Use for verification, simple logic, and routine chat."
                 },
                 "pro": {
@@ -33,7 +34,8 @@
                         "complex_reasoning"
                     ],
                     "tier": "premium",
-                    "cost_per_1k_tokens": 0.00125,
+                    "input_cost_per_1m_tokens": 1.25,
+                    "output_cost_per_1m_tokens": 5.00,
                     "notes": "Use for complex architecture and high-stakes tool creation."
                 },
                 "imagen": {
@@ -68,7 +70,8 @@
                         "analysis"
                     ],
                     "tier": "fast",
-                    "cost_per_1k_tokens": 0.00015,
+                    "input_cost_per_1m_tokens": 0.15,
+                    "output_cost_per_1m_tokens": 0.60,
                     "notes": "Lightweight model for simple tasks."
                 },
                 "default": {
@@ -79,7 +82,8 @@
                         "code_generation"
                     ],
                     "tier": "premium",
-                    "cost_per_1k_tokens": 0.005,
+                    "input_cost_per_1m_tokens": 2.50,
+                    "output_cost_per_1m_tokens": 10.00,
                     "notes": "High-performance model."
                 },
                 "dalle": {
@@ -114,7 +118,8 @@
                         "analysis"
                     ],
                     "tier": "premium",
-                    "cost_per_1k_tokens": 0.005,
+                    "input_cost_per_1m_tokens": 2.00,
+                    "output_cost_per_1m_tokens": 10.00,
                     "notes": "xAI Grok-2."
                 }
             },
@@ -139,7 +144,8 @@
                         "chat"
                     ],
                     "tier": "local",
-                    "cost_per_1k_tokens": 0,
+                    "input_cost_per_1m_tokens": 0,
+                    "output_cost_per_1m_tokens": 0,
                     "notes": "Ollama/vLLM - unlimited retries, no token cost. Roadmap."
                 }
             },

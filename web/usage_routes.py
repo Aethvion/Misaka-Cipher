@@ -49,6 +49,30 @@ async def get_hourly_breakdown(hours: int = 24):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/cost-by-model")
+async def get_cost_by_model():
+    """Get cost breakdown by model for chart data."""
+    try:
+        from workspace.usage_tracker import get_usage_tracker
+        tracker = get_usage_tracker()
+        return tracker.get_cost_by_model()
+    except Exception as e:
+        logger.error(f"Failed to get cost by model: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/tokens-by-model")
+async def get_tokens_by_model():
+    """Get token breakdown by model for chart data."""
+    try:
+        from workspace.usage_tracker import get_usage_tracker
+        tracker = get_usage_tracker()
+        return tracker.get_tokens_by_model()
+    except Exception as e:
+        logger.error(f"Failed to get tokens by model: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/tools")
 async def get_tool_usage():
     """Get tool usage statistics from the tool registry."""

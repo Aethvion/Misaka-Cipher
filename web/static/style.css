@@ -1639,7 +1639,7 @@ input:checked+.slider:before {
 
 .usage-stat-row {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 1rem;
 }
 
@@ -1664,7 +1664,7 @@ input:checked+.slider:before {
 }
 
 .usage-stat-card .stat-value {
-    font-size: 2rem;
+    font-size: 1.8rem;
     font-weight: 700;
     font-family: 'Fira Code', monospace;
     color: var(--primary);
@@ -1703,21 +1703,16 @@ input:checked+.slider:before {
     max-height: 280px;
 }
 
-.usage-tables-row {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr;
-    gap: 1rem;
-}
-
-.usage-table-container {
+.usage-table-full {
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 1.2rem;
     overflow-x: auto;
+    min-height: 300px;
 }
 
-.usage-table-container h3 {
+.usage-table-full h3 {
     font-size: 0.9rem;
     color: var(--text-secondary);
     margin-bottom: 1rem;
@@ -1786,10 +1781,6 @@ input:checked+.slider:before {
     }
 
     .usage-charts-row {
-        grid-template-columns: 1fr;
-    }
-
-    .usage-tables-row {
         grid-template-columns: 1fr;
     }
 }
