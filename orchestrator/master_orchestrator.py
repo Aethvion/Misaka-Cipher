@@ -303,6 +303,9 @@ class MasterOrchestrator:
                 elif action == "spawn_agent":
                     # Circuit Breaker / Retry Loop
                     max_retries = 3
+                    if self.nexus.provider_manager:
+                        max_retries = self.nexus.provider_manager.get_global_max_retries()
+                    
                     retry_count = 0
                     success = False
                     agent_result = None

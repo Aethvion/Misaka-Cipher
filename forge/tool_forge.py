@@ -83,14 +83,26 @@ class ToolForge:
                 "NEVER use placeholder URLs like 'api.example.com'.\n"
             )
         
-        lines = ["ENVIRONMENT & API KEYS (from Model Registry):"]
+        lines = ["ENVIRONMENT & API KEYS & MODELS (from Model Registry):"]
         active_keys = []
         forbidden_keys = []
         
         for name, config in providers.items():
             key_env = config.get("api_key_env", "UNKNOWN")
             if config.get("active", False):
-                active_keys.append(f"  - {key_env} ({name}, priority {config.get('priority', '?')})")
+                details = f"  - PROVIDER: {name.upper()}\n    Key Env: {key_env} (priority {config.get('priority', '?')})\n    Models:"
+                
+                # List models
+                models = config.get("models", {})
+                for model_key, model_data in models.items():
+                    capabilities = ", ".join(model_data.get("capabilities", []))
+                    details += f"\n      * {model_key}: {model_data.get('id')} [{capabilities}]"
+                    if "endpoint" in model_data:
+                        details += f" (Endpoint: {model_data['endpoint']})"
+                    if "notes" in model_data:
+                        details += f" - {model_data['notes']}"
+                
+                active_keys.append(details)
             else:
                 forbidden_keys.append(f"  - {key_env} ({name}) — DISABLED, do NOT use")
         
@@ -104,7 +116,8 @@ class ToolForge:
         
         lines.append("")
         lines.append("IMPORTANT:")
-        lines.append("- NEVER use 'api.example.com' or placeholder URLs.")
+        lines.append("- SELECT THE CORRECT MODEL for the task. Do NOT use a text model for image generation.")
+        lines.append("- Refer to the [capabilities] tag for each model.")
         lines.append("- Always check if the key exists before using it.")
         lines.append("- If multiple providers are active, prefer the highest priority one.")
         

@@ -4,6 +4,7 @@ Orchestrates multi-provider failover and routing
 """
 
 import yaml
+import json
 from pathlib import Path
 from typing import Dict, List, Optional
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig, ProviderStatus
@@ -56,7 +57,42 @@ class ProviderManager:
             data = yaml.safe_load(f)
             self.config = data.get('providers', {})
             self.failover_config = data.get('failover', {})
-    
+            
+        # Load Overrides from model_registry.json
+        self._load_registry_overrides()
+
+    def _load_registry_overrides(self):
+        """Load overrides from model_registry.json if present."""
+        # Find registry file
+        workspace = Path(__file__).parent.parent
+        registry_path = workspace / "config" / "model_registry.json"
+        
+        if not registry_path.exists():
+            return
+            
+        try:
+            with open(registry_path, 'r') as f:
+                registry = json.load(f)
+            
+            registry_providers = registry.get('providers', {})
+            
+            for name, reg_config in registry_providers.items():
+                if name in self.config:
+                    # Override settings if present in registry
+                    if 'active' in reg_config:
+                        self.config[name]['enabled'] = reg_config['active']
+                    
+                    if 'retries_per_step' in reg_config:
+                        self.config[name]['max_retries'] = reg_config['retries_per_step']
+                        
+                    if 'priority' in reg_config:
+                        self.config[name]['priority'] = reg_config['priority']
+                        
+                    logger.info(f"Loaded registry overrides for {name} (retries: {self.config[name].get('max_retries')})")
+                    
+        except Exception as e:
+            logger.error(f"Failed to load model registry overrides: {str(e)}")
+
     def _initialize_providers(self):
         """Initialize all enabled providers."""
         # Sort providers by priority
@@ -228,3 +264,14 @@ class ProviderManager:
             },
             'priority_order': self.priority_order
         }
+
+    def get_global_max_retries(self) -> int:
+        """Get the maximum retries from the highest priority active provider."""
+        if not self.priority_order:
+            return 3
+        
+        # Primary provider
+        primary_name = self.priority_order[0]
+        if primary_name in self.config:
+            return self.config[primary_name].get('max_retries', 3)
+        return 3

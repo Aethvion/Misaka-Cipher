@@ -15,7 +15,7 @@
                         "verification"
                     ],
                     "tier": "fast",
-                    "cost_per_1k_tokens": 0.0,
+                    "cost_per_1k_tokens": 0,
                     "notes": "Free tier. Use for verification, simple logic, and routine chat."
                 },
                 "pro": {
@@ -109,8 +109,8 @@
                         "chat"
                     ],
                     "tier": "local",
-                    "cost_per_1k_tokens": 0.0,
-                    "notes": "Ollama/vLLM — unlimited retries, no token cost. Roadmap."
+                    "cost_per_1k_tokens": 0,
+                    "notes": "Ollama/vLLM \u00e2\u20ac\u201d unlimited retries, no token cost. Roadmap."
                 }
             }
         }

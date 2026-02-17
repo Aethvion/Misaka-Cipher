@@ -3472,6 +3472,56 @@
       "installed_at": "2026-02-12T15:50:52.313218",
       "usage_count": 0,
       "last_used_at": null
+    },
+    {
+      "package_name": "google_generativeai",
+      "requested_by": "ToolForge",
+      "reason": "Required for tool validation",
+      "requested_at": "2026-02-17T08:41:10.206014",
+      "status": "pending",
+      "metadata": {
+        "name": "google_generativeai",
+        "version": "0.8.6",
+        "description": "Google Generative AI High level API client library and tools.",
+        "author": "Google LLC",
+        "downloads_last_month": 0,
+        "github_stars": 0,
+        "first_release": "2023-05-03T23:00:52.602677+00:00",
+        "last_release": "2025-12-16T17:53:58.610776+00:00",
+        "total_releases": 28,
+        "is_actively_maintained": true,
+        "dependencies": [
+          "google-ai-generativelanguage==0.6.15",
+          "google-api-core",
+          "google-api-python-client",
+          "google-auth>=2.15.0",
+          "protobuf",
+          "pydantic",
+          "tqdm",
+          "typing-extensions",
+          "absl-py",
+          "black",
+          "nose2",
+          "pandas",
+          "pytype",
+          "pyyaml",
+          "Pillow",
+          "ipython"
+        ],
+        "dependency_count": 16,
+        "safety_score": 60.0,
+        "safety_level": "MEDIUM",
+        "safety_reasons": [
+          "\u26a0 Moderately mature (2-5 years)",
+          "\u2139 Download stats unavailable",
+          "\u2713 Recently updated (< 6 months)",
+          "\u2713 Regular releases (20+)"
+        ]
+      },
+      "approved_at": null,
+      "installed_at": null,
+      "usage_count": 1,
+      "last_used_at": "2026-02-17T08:41:10.214216"
     }
   ],
   "installed": {
@@ -3692,5 +3742,5 @@
     "yfinance": "1.1.0"
   },
   "denied": [],
-  "last_updated": "2026-02-16T12:54:10.526321"
+  "last_updated": "2026-02-17T08:41:10.217253"
 }
