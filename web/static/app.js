@@ -2333,6 +2333,7 @@ function renderModelUsageTable(summary) {
         calls: data.calls || 0,
         prompt_tokens: data.prompt_tokens || 0,
         completion_tokens: data.completion_tokens || 0,
+        tokens: data.tokens || 0,
         cost: data.cost || 0
     }));
 
@@ -2340,7 +2341,7 @@ function renderModelUsageTable(summary) {
     models.sort((a, b) => b.calls - a.calls);
 
     if (!models.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="placeholder-text">No model usage data yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="placeholder-text">No model usage data yet</td></tr>';
         return;
     }
 
@@ -2349,6 +2350,7 @@ function renderModelUsageTable(summary) {
         <td>${formatNumber(m.calls)}</td>
         <td>${formatNumber(m.prompt_tokens)}</td>
         <td>${formatNumber(m.completion_tokens)}</td>
+        <td>${formatNumber(m.tokens)}</td>
         <td>${formatCost(m.cost)}</td>
     </tr>`).join('');
 }

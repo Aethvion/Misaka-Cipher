@@ -69,6 +69,13 @@ class GrokProvider(BaseProvider):
                 timeout=self.config.timeout
             )
             
+            # Log response details on error
+            if not response.ok:
+                logger.error(
+                    f"[{trace_id}] Grok API error {response.status_code}: "
+                    f"{response.text[:500]}"
+                )
+            
             response.raise_for_status()
             data = response.json()
             
@@ -86,6 +93,21 @@ class GrokProvider(BaseProvider):
                     'finish_reason': data['choices'][0].get('finish_reason'),
                     'usage': data.get('usage', {})
                 }
+            )
+            
+        except requests.HTTPError as e:
+            error_body = ""
+            if e.response is not None:
+                error_body = e.response.text[:500]
+            logger.error(f"[{trace_id}] Grok HTTP error: {e} | Body: {error_body}")
+            self.record_failure()
+            
+            return ProviderResponse(
+                content="",
+                model=active_model,
+                provider="grok",
+                trace_id=trace_id,
+                error=f"{str(e)} | {error_body}"
             )
             
         except Exception as e:

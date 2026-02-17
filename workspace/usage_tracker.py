@@ -147,6 +147,22 @@ class UsageTracker:
             f"tokens={total_tokens} in=${input_cost:.6f} out=${output_cost:.6f}"
         )
 
+    def _compute_entry_costs(self, entry: Dict[str, Any]) -> tuple:
+        """Compute input/output costs for an entry, recalculating from tokens if missing."""
+        ic = entry.get("input_cost", 0.0)
+        oc = entry.get("output_cost", 0.0)
+
+        # Recalculate if this is a legacy entry without separate costs
+        if "input_cost" not in entry:
+            m = entry.get("model", "unknown")
+            pt = entry.get("prompt_tokens", 0)
+            ct = entry.get("completion_tokens", 0)
+            model_costs = self._model_costs.get(m, {"input": 0.0, "output": 0.0})
+            ic = (pt / 1_000_000) * model_costs["input"]
+            oc = (ct / 1_000_000) * model_costs["output"]
+
+        return ic, oc, ic + oc
+
     def get_summary(self) -> Dict[str, Any]:
         """Get aggregated usage summary."""
         if not self._log:
@@ -176,11 +192,11 @@ class UsageTracker:
             p = entry.get("provider", "unknown")
             m = entry.get("model", "unknown")
             t = entry.get("total_tokens", 0)
-            ic = entry.get("input_cost", 0.0)
-            oc = entry.get("output_cost", 0.0)
-            c = entry.get("estimated_cost", 0.0)
             pt = entry.get("prompt_tokens", 0)
             ct = entry.get("completion_tokens", 0)
+
+            # Recalculate costs from tokens (handles legacy entries)
+            ic, oc, c = self._compute_entry_costs(entry)
 
             by_provider[p]["calls"] += 1
             by_provider[p]["tokens"] += t
@@ -225,8 +241,16 @@ class UsageTracker:
         }
 
     def get_history(self, limit: int = 100) -> List[Dict[str, Any]]:
-        """Get recent usage entries (newest first)."""
-        return list(reversed(self._log[-limit:]))
+        """Get recent usage entries (newest first), enriched with costs."""
+        entries = list(reversed(self._log[-limit:]))
+        # Enrich legacy entries that lack input/output cost
+        for entry in entries:
+            if "input_cost" not in entry:
+                ic, oc, c = self._compute_entry_costs(entry)
+                entry["input_cost"] = round(ic, 6)
+                entry["output_cost"] = round(oc, 6)
+                entry["estimated_cost"] = round(c, 6)
+        return entries
 
     def get_cost_by_model(self) -> Dict[str, Any]:
         """Get cost breakdown by model for chart data."""

@@ -34,14 +34,14 @@ providers:
     enabled: true
     priority: 3
     name: "xAI Grok"
-    # UPDATED: Current beta/high-tier string
-    model: "grok-2" 
+    # UPDATED: Current fast/affordable model
+    model: "grok-3-mini-fast" 
     api_key_env: "GROK_API_KEY"
     endpoint: "https://api.x.ai/v1"
     timeout: 30
     max_retries: 2
     fallback_models:
-      - "grok-beta"
+      - "grok-3-fast"
 
 # Failover Configuration
 failover:
