@@ -54,6 +54,18 @@ async function loadThreads() {
 
         renderThreadList();
 
+        // Auto-select first thread if none selected
+        if (!currentThreadId || currentThreadId === 'default') {
+            const threadKeys = Object.keys(threads);
+            if (threadKeys.length > 0) {
+                // Sort by date desc
+                const sorted = Object.values(threads).sort((a, b) =>
+                    new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+                );
+                switchThread(sorted[0].id);
+            }
+        }
+
     } catch (error) {
         console.error('Failed to load threads:', error);
     }
