@@ -77,6 +77,7 @@ class OpenAIProvider(BaseProvider):
                 provider="openai",
                 trace_id=trace_id,
                 metadata={
+                    'model': active_model,
                     'finish_reason': response.choices[0].finish_reason,
                     'usage': {
                         'prompt_tokens': response.usage.prompt_tokens,

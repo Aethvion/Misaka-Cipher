@@ -165,6 +165,8 @@ class ChatResponse(BaseModel):
     agents_spawned: List[str]
     execution_time: float
     success: bool
+    model_id: Optional[str] = None
+    usage: Optional[Dict[str, Any]] = None
 
 
 class MemorySearchRequest(BaseModel):
@@ -405,7 +407,9 @@ async def chat(message: ChatMessage):
                     tools_forged=result_dict.get('tools_forged', []),
                     agents_spawned=result_dict.get('agents_spawned', []),
                     execution_time=result_dict.get('execution_time', 0),
-                    success=result_dict.get('success', True)
+                    success=result_dict.get('success', True),
+                    model_id=result_dict.get('model_id'),
+                    usage=result_dict.get('usage')
                 )
                 
             elif task and task.status == "failed":

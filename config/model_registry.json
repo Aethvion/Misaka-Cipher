@@ -2,7 +2,7 @@
     "providers": {
         "google_ai": {
             "chat_config": {
-                "active": false,
+                "active": true,
                 "priority": 1
             },
             "agent_config": {
@@ -53,12 +53,12 @@
                     "description": "Google Imagen 3 for image generation via Gemini API."
                 }
             },
-            "active": false,
+            "active": true,
             "priority": 1
         },
         "openai": {
             "chat_config": {
-                "active": false,
+                "active": true,
                 "priority": 99
             },
             "agent_config": {
@@ -106,7 +106,7 @@
                     "description": "DALL-E 3 for image generation."
                 }
             },
-            "active": false,
+            "active": true,
             "priority": 99
         },
         "grok": {

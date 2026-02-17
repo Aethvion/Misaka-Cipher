@@ -191,12 +191,17 @@ class NexusCore:
                     logger.info(f"[{trace_id}] Request completed successfully")
                     self.trace_manager.end_trace(trace_id, status='completed')
                     
+                    # Ensure model is in metadata so Orchestrator can see it
+                    metadata = provider_response.metadata or {}
+                    if 'model' not in metadata and provider_response.model:
+                        metadata['model'] = provider_response.model
+                    
                     return Response(
                         content=provider_response.content,
                         trace_id=trace_id,
                         provider=provider_response.provider,
                         success=True,
-                        metadata=provider_response.metadata,
+                        metadata=metadata,
                         firewall_status="clean" if scan_result and scan_result.is_clean else "flagged",
                         routing_decision=routing_decision.value
                     )
