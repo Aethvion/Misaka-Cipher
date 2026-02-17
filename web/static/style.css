@@ -2143,3 +2143,142 @@ input:checked+.slider:before {
 .term-error {
     color: var(--error);
 }
+
+/* ===== Markdown Content Styling ===== */
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.message-content h1 {
+    font-size: 1.4rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.3rem;
+}
+
+.message-content h2 {
+    font-size: 1.2rem;
+}
+
+.message-content h3 {
+    font-size: 1.1rem;
+}
+
+.message-content h4 {
+    font-size: 1rem;
+}
+
+.message-content p {
+    margin-bottom: 0.8rem;
+}
+
+.message-content p:last-child {
+    margin-bottom: 0;
+}
+
+.message-content ul,
+.message-content ol {
+    margin-top: 0.5rem;
+    margin-bottom: 0.8rem;
+    padding-left: 1.5rem;
+}
+
+.message-content li {
+    margin-bottom: 0.25rem;
+}
+
+.message-content li:last-child {
+    margin-bottom: 0;
+}
+
+.message-content blockquote {
+    border-left: 3px solid var(--accent);
+    background: rgba(255, 255, 255, 0.05);
+    margin: 0.5rem 0;
+    padding: 0.5rem 1rem;
+    font-style: italic;
+    color: var(--text-secondary);
+}
+
+.message-content code {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9em;
+    color: var(--accent);
+}
+
+.message-content pre {
+    background: #0d1117;
+    padding: 0.8rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 0.8rem 0;
+    border: 1px solid var(--border);
+}
+
+.message-content pre code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    font-size: 0.85em;
+}
+
+/* Tables */
+.message-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.message-content th,
+.message-content td {
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.message-content th {
+    background: rgba(255, 255, 255, 0.05);
+    font-weight: 600;
+    color: var(--primary);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.message-content tr:last-child td {
+    border-bottom: none;
+}
+
+.message-content tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.message-content a {
+    color: var(--primary);
+    text-decoration: none;
+    border-bottom: 1px dotted var(--primary);
+}
+
+.message-content a:hover {
+    text-decoration: none;
+    border-bottom-style: solid;
+}
+
+.message-content hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+    opacity: 0.5;
+}
