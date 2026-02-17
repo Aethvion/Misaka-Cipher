@@ -1856,49 +1856,45 @@ function renderProviderCards(registry) {
         card.dataset.provider = name;
 
         // Build interactive model cards
+        // Build interactive model cards (Table Layout)
         const models = config.models || {};
+        const sortedModelKeys = Object.keys(models).sort();
         let modelCardsHtml = '';
-        for (const [modelKey, modelInfo] of Object.entries(models)) {
+
+        for (const modelKey of sortedModelKeys) {
+            const modelInfo = models[modelKey];
             const info = typeof modelInfo === 'object' ? modelInfo : { id: modelInfo };
             const caps = (info.capabilities || []).map(c =>
-                `<span class="cap-tag ${c === 'image_generation' ? 'cap-image' : ''}">${c}</span>`
+                `<span class="cap-tag ${c === 'image_generation' ? 'cap-image' : ''}" title="Click to remove">${c}</span>`
             ).join('');
             const inputCost = info.input_cost_per_1m_tokens ?? '';
             const outputCost = info.output_cost_per_1m_tokens ?? '';
             const desc = info.description || info.notes || '';
 
             modelCardsHtml += `
-                <div class="model-entry" data-model-key="${modelKey}">
-                    <div class="model-entry-header">
-                        <span class="model-entry-key">${modelKey}</span>
-                        <button class="model-delete-btn" data-provider="${name}" data-model-key="${modelKey}" title="Remove model">×</button>
-                    </div>
-                    <div class="model-entry-fields">
-                        <div class="model-field">
-                            <label>Model ID</label>
-                            <input type="text" class="model-id-input" value="${info.id || ''}" placeholder="e.g. gemini-2.0-flash">
+                <tr class="model-entry" data-model-key="${modelKey}">
+                    <td>
+                        <input type="text" class="model-input input-model-id model-id-input" value="${info.id || ''}" placeholder="model-id">
+                    </td>
+                    <td>
+                        <input type="number" class="model-input input-cost model-input-cost" value="${inputCost}" step="0.01" min="0" placeholder="0.00">
+                    </td>
+                    <td>
+                        <input type="number" class="model-input input-cost model-output-cost" value="${outputCost}" step="0.01" min="0" placeholder="0.00">
+                    </td>
+                    <td>
+                        <div class="caps-cell model-caps-container">
+                            ${caps}
+                            <input type="text" class="cap-input cap-add-input" placeholder="+ add">
                         </div>
-                        <div class="model-field model-field-half">
-                            <label>Input $/1M</label>
-                            <input type="number" class="model-input-cost" value="${inputCost}" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="model-field model-field-half">
-                            <label>Output $/1M</label>
-                            <input type="number" class="model-output-cost" value="${outputCost}" step="0.01" min="0" placeholder="0.00">
-                        </div>
-                        <div class="model-field">
-                            <label>Capabilities</label>
-                            <div class="model-caps-container">
-                                ${caps || '<span class="cap-placeholder">none</span>'}
-                                <input type="text" class="cap-add-input" placeholder="+ add" title="Type a capability and press Enter">
-                            </div>
-                        </div>
-                        <div class="model-field">
-                            <label>Description</label>
-                            <input type="text" class="model-desc-input" value="${desc}" placeholder="Short description…">
-                        </div>
-                    </div>
-                </div>
+                    </td>
+                    <td>
+                        <input type="text" class="model-input input-desc model-desc-input" value="${desc}" placeholder="Description...">
+                    </td>
+                    <td style="text-align: center;">
+                        <button class="btn-icon model-delete-btn" data-provider="${name}" data-model-key="${modelKey}" title="Remove model">×</button>
+                    </td>
+                </tr>
             `;
         }
 
@@ -1945,12 +1941,25 @@ function renderProviderCards(registry) {
             </div>
 
             <div class="provider-models-section">
-                <div class="provider-models-header">
-                    <h5>Models</h5>
-                    <button class="model-add-btn" data-provider="${name}" title="Add model">+ Add Model</button>
-                </div>
-                <div class="model-entries-container">
-                    ${modelCardsHtml || '<span class="no-models-msg">No models configured</span>'}
+                <div class="models-table-container">
+                    <table class="models-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 180px;">Model ID</th>
+                                <th style="width: 100px;">Input ($/1M)</th>
+                                <th style="width: 100px;">Output ($/1M)</th>
+                                <th style="width: 30%;">Capabilities</th>
+                                <th>Description</th>
+                                <th style="width: 50px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${modelCardsHtml || '<tr><td colspan="6" style="text-align: center; padding: 2rem; opacity: 0.5;">No models configured</td></tr>'}
+                        </tbody>
+                    </table>
+                    <div class="table-footer">
+                        <button class="model-add-btn" data-provider="${name}">+ Add Model</button>
+                    </div>
                 </div>
             </div>
         `;
