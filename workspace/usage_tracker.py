@@ -252,6 +252,48 @@ class UsageTracker:
                 entry["estimated_cost"] = round(c, 6)
         return entries
 
+    def get_usage_by_trace_id(self, trace_id: str) -> Dict[str, Any]:
+        """Get aggregated usage summary for all API calls with a given trace_id."""
+        calls = [e for e in self._log if e.get("trace_id") == trace_id]
+        if not calls:
+            return {}
+
+        models_used = {}
+        total_prompt = 0
+        total_completion = 0
+        total_input_cost = 0.0
+        total_output_cost = 0.0
+
+        for entry in calls:
+            ic, oc, c = self._compute_entry_costs(entry)
+            m = entry.get("model", "unknown")
+            pt = entry.get("prompt_tokens", 0)
+            ct = entry.get("completion_tokens", 0)
+
+            total_prompt += pt
+            total_completion += ct
+            total_input_cost += ic
+            total_output_cost += oc
+
+            if m not in models_used:
+                models_used[m] = {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "input_cost": 0.0, "output_cost": 0.0}
+            models_used[m]["calls"] += 1
+            models_used[m]["prompt_tokens"] += pt
+            models_used[m]["completion_tokens"] += ct
+            models_used[m]["input_cost"] += ic
+            models_used[m]["output_cost"] += oc
+
+        return {
+            "api_calls": len(calls),
+            "models_used": models_used,
+            "total_prompt_tokens": total_prompt,
+            "total_completion_tokens": total_completion,
+            "total_tokens": total_prompt + total_completion,
+            "total_input_cost": round(total_input_cost, 6),
+            "total_output_cost": round(total_output_cost, 6),
+            "total_cost": round(total_input_cost + total_output_cost, 6),
+        }
+
     def get_cost_by_model(self) -> Dict[str, Any]:
         """Get cost breakdown by model for chart data."""
         summary = self.get_summary()

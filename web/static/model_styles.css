@@ -1,0 +1,158 @@
+/* Model Management Styles */
+.provider-models-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.provider-models-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+}
+
+.model-add-btn {
+    background: none;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.model-add-btn:hover {
+    background: var(--primary);
+    color: var(--bg-primary);
+}
+
+.model-entries-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.model-entry {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.8rem;
+}
+
+.model-entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+}
+
+.model-entry-key {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.model-delete-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+.model-delete-btn:hover {
+    color: var(--error);
+    opacity: 1;
+}
+
+.model-entry-fields {
+    display: grid;
+    gap: 0.6rem;
+    grid-template-columns: 1fr 1fr;
+}
+
+.model-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.model-field-half {
+    grid-column: span 1;
+}
+
+.model-field label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.model-field input {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.3rem 0.6rem;
+    color: var(--text);
+    font-size: 0.85rem;
+    font-family: 'Fira Code', monospace;
+}
+
+.model-field input:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.model-caps-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.3rem;
+    min-height: 32px;
+}
+
+.cap-tag {
+    font-size: 0.7rem;
+    background: rgba(var(--primary-rgb), 0.15);
+    color: var(--primary);
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid rgba(var(--primary-rgb), 0.3);
+}
+
+.cap-tag:hover {
+    background: rgba(var(--error-rgb), 0.15);
+    color: var(--error);
+    border-color: rgba(var(--error-rgb), 0.3);
+}
+
+.cap-tag.cap-image {
+    background: rgba(200, 100, 255, 0.15);
+    color: #d080ff;
+    border-color: rgba(200, 100, 255, 0.3);
+}
+
+.cap-add-input {
+    background: none !important;
+    border: none !important;
+    padding: 0 !important;
+    font-size: 0.75rem !important;
+    min-width: 50px;
+    flex-grow: 1;
+}
+
+.cap-placeholder {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    opacity: 0.5;
+    align-self: center;
+}

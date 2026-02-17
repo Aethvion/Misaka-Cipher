@@ -254,17 +254,65 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
 
         // Add expandable task details if available
         if (taskData) {
+            const usage = taskData.result?.usage;
+            let usageHtml = '';
+
+            if (usage) {
+                // Models breakdown
+                let modelsList = '';
+                if (usage.models_used) {
+                    modelsList = Object.entries(usage.models_used).map(([m, data]) =>
+                        `<div>${m} (${data.calls} calls)</div>`
+                    ).join('');
+                }
+
+                usageHtml = `
+                    <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border);">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.8rem;">
+                            <div>
+                                <strong>Models Used:</strong>
+                                <div style="margin-top: 0.2rem; margin-bottom: 0.5rem; color: var(--text);">
+                                    ${modelsList || 'None'}
+                                </div>
+                            </div>
+                            <div>
+                                <strong>Tokens:</strong>
+                                <div style="color: var(--text);">Prompt: ${usage.total_prompt_tokens}</div>
+                                <div style="color: var(--text);">Output: ${usage.total_completion_tokens}</div>
+                                <div style="font-weight: 600; color: var(--text);">Total: ${usage.total_tokens}</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.8rem; border-top: 1px dashed var(--border); padding-top: 0.4rem;">
+                            <strong>Estimated Cost:</strong>
+                            <span style="float: right; font-family: 'Fira Code', monospace; color: var(--primary);">
+                                $${usage.total_cost.toFixed(6)}
+                            </span>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                                (In: $${usage.total_input_cost.toFixed(6)} | Out: $${usage.total_output_cost.toFixed(6)})
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
             messageContent += `
                 <div class="task-details" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
                     <details>
                         <summary style="cursor: pointer;">Task Details</summary>
                         <div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-primary); border-radius: 4px;">
-                            <div><strong>Task ID:</strong> ${taskData.id}</div>
-                            <div><strong>Worker:</strong> ${taskData.worker_id || 'N/A'}</div>
-                            <div><strong>Duration:</strong> ${taskData.result?.execution_time?.toFixed(2) || 'N/A'}s</div>
-                            <div><strong>Actions:</strong> ${taskData.result?.actions_taken?.join(', ') || 'N/A'}</div>
-                            ${taskData.result?.tools_forged?.length > 0 ? `<div><strong>Tools Forged:</strong> ${taskData.result.tools_forged.join(', ')}</div>` : ''}
-                            ${taskData.result?.agents_spawned?.length > 0 ? `<div><strong>Agents Spawned:</strong> ${taskData.result.agents_spawned.join(', ')}</div>` : ''}
+                            <div style="display: flex; justify-content: space-between;">
+                                <span><strong>ID:</strong> ${taskData.id.substring(0, 8)}...</span>
+                                <span><strong>Time:</strong> ${taskData.result?.execution_time?.toFixed(2) || '0.00'}s</span>
+                            </div>
+                            <div style="margin-top: 0.3rem;"><strong>Worker:</strong> ${taskData.worker_id || 'N/A'}</div>
+                            
+                            <!-- Standard Actions Info -->
+                            ${taskData.result?.actions_taken?.length > 0 ? `<div style="margin-top: 0.3rem;"><strong>Actions:</strong> ${taskData.result.actions_taken.join(', ')}</div>` : ''}
+                            ${taskData.result?.tools_forged?.length > 0 ? `<div style="margin-top: 0.3rem;"><strong>Tools:</strong> ${taskData.result.tools_forged.join(', ')}</div>` : ''}
+                            ${taskData.result?.agents_spawned?.length > 0 ? `<div style="margin-top: 0.3rem;"><strong>Agents:</strong> ${taskData.result.agents_spawned.join(', ')}</div>` : ''}
+                            
+                            <!-- Enhanced Usage Info -->
+                            ${usageHtml}
                         </div>
                     </details>
                 </div>

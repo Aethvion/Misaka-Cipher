@@ -270,6 +270,7 @@ async function loadInitialData() {
     await loadTools();        // Background
     loadPackages();     // Background
     loadMemoryData();   // Background
+    loadChatModels();   // Populate model dropdown on startup
 
     // Initialize thread management (from threads.js)
     if (typeof initThreadManagement === 'function') {
@@ -1806,50 +1807,30 @@ async function loadProviderSettings() {
     }
 }
 
-function populateModelDropdown(registry) {
+async function loadChatModels() {
     const select = document.getElementById('model-select');
-    if (!select || !registry || !registry.providers) return;
+    if (!select) return;
 
     const currentVal = select.value;
-    let html = '<option value="auto">Model: Auto</option>';
+    try {
+        const res = await fetch('/api/registry/models/chat');
+        if (!res.ok) throw new Error('Failed to load chat models');
+        const data = await res.json();
 
-    // Collect chat-only models
-    const allModels = [];
-    for (const [providerName, config] of Object.entries(registry.providers)) {
-        if (config.models) {
-            for (const [modelKey, modelInfo] of Object.entries(config.models)) {
-                let id = modelInfo;
-                let isImageModel = false;
-
-                if (typeof modelInfo === 'object') {
-                    id = modelInfo.id;
-                    // Skip image generation models
-                    if (modelInfo.capabilities && modelInfo.capabilities.includes('image_generation')) {
-                        isImageModel = true;
-                    }
-                }
-
-                if (isImageModel) continue;
-
-                // Display the exact model ID
-                allModels.push({ id: id, provider: providerName });
-            }
+        let html = '<option value="auto">Model: Auto</option>';
+        for (const m of data.models || []) {
+            const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
+                ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
+                : '';
+            html += `<option value="${m.id}" title="${m.description || ''}">${m.id}${costHint}</option>`;
         }
-    }
+        select.innerHTML = html;
 
-    // Sort by model ID
-    allModels.sort((a, b) => a.id.localeCompare(b.id));
-
-    // Add to dropdown — display the model ID directly
-    for (const model of allModels) {
-        html += `<option value="${model.id}">${model.id}</option>`;
-    }
-
-    select.innerHTML = html;
-
-    // Restore selection if still available
-    if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
-        select.value = currentVal;
+        if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
+            select.value = currentVal;
+        }
+    } catch (err) {
+        console.error('Error loading chat models:', err);
     }
 }
 
@@ -1866,25 +1847,59 @@ function renderProviderCards(registry) {
     container.innerHTML = '';
 
     for (const [name, config] of Object.entries(providers)) {
-        // Determine active states
         const chatConfig = config.chat_config || { active: config.active, priority: config.priority };
         const agentConfig = config.agent_config || { active: config.active, priority: config.priority };
-
-        // Use chat config as "main" active for visual if legacy, or just check if either is active
         const isMainActive = chatConfig.active || agentConfig.active;
 
         const card = document.createElement('div');
         card.className = `provider-card ${isMainActive ? 'active' : 'inactive'}`;
         card.dataset.provider = name;
 
-        // Build model tags
+        // Build interactive model cards
         const models = config.models || {};
-        let modelTags = '';
+        let modelCardsHtml = '';
         for (const [modelKey, modelInfo] of Object.entries(models)) {
-            const modelId = typeof modelInfo === 'string' ? modelInfo : modelInfo.id;
-            const capabilities = typeof modelInfo === 'object' ? (modelInfo.capabilities || []) : [];
-            const isSpecialized = capabilities.includes('image_generation');
-            modelTags += `<span class="model-tag ${isSpecialized ? 'specialized' : ''}" title="${capabilities.join(', ')}">${modelKey}</span>`;
+            const info = typeof modelInfo === 'object' ? modelInfo : { id: modelInfo };
+            const caps = (info.capabilities || []).map(c =>
+                `<span class="cap-tag ${c === 'image_generation' ? 'cap-image' : ''}">${c}</span>`
+            ).join('');
+            const inputCost = info.input_cost_per_1m_tokens ?? '';
+            const outputCost = info.output_cost_per_1m_tokens ?? '';
+            const desc = info.description || info.notes || '';
+
+            modelCardsHtml += `
+                <div class="model-entry" data-model-key="${modelKey}">
+                    <div class="model-entry-header">
+                        <span class="model-entry-key">${modelKey}</span>
+                        <button class="model-delete-btn" data-provider="${name}" data-model-key="${modelKey}" title="Remove model">×</button>
+                    </div>
+                    <div class="model-entry-fields">
+                        <div class="model-field">
+                            <label>Model ID</label>
+                            <input type="text" class="model-id-input" value="${info.id || ''}" placeholder="e.g. gemini-2.0-flash">
+                        </div>
+                        <div class="model-field model-field-half">
+                            <label>Input $/1M</label>
+                            <input type="number" class="model-input-cost" value="${inputCost}" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="model-field model-field-half">
+                            <label>Output $/1M</label>
+                            <input type="number" class="model-output-cost" value="${outputCost}" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="model-field">
+                            <label>Capabilities</label>
+                            <div class="model-caps-container">
+                                ${caps || '<span class="cap-placeholder">none</span>'}
+                                <input type="text" class="cap-add-input" placeholder="+ add" title="Type a capability and press Enter">
+                            </div>
+                        </div>
+                        <div class="model-field">
+                            <label>Description</label>
+                            <input type="text" class="model-desc-input" value="${desc}" placeholder="Short description…">
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         card.innerHTML = `
@@ -1928,26 +1943,31 @@ function renderProviderCards(registry) {
                 <label>API Key Env</label>
                 <span style="font-family: 'Fira Code', monospace; font-size: 0.8rem; color: var(--primary);">${config.api_key_env || '(none)'}</span>
             </div>
-            <div class="provider-card-models">
-                <h5>Models</h5>
-                ${modelTags || '<span style="color: var(--text-secondary); font-size: 0.8rem;">No models</span>'}
+
+            <div class="provider-models-section">
+                <div class="provider-models-header">
+                    <h5>Models</h5>
+                    <button class="model-add-btn" data-provider="${name}" title="Add model">+ Add Model</button>
+                </div>
+                <div class="model-entries-container">
+                    ${modelCardsHtml || '<span class="no-models-msg">No models configured</span>'}
+                </div>
             </div>
         `;
 
         container.appendChild(card);
     }
 
-    // Active toggle listeners (Visual update only, value collected on save)
+    // --- Event listeners ---
+
+    // Active toggle listeners
     container.querySelectorAll('.chat-active-toggle, .agent-active-toggle').forEach(toggle => {
         toggle.addEventListener('change', (e) => {
             const card = e.target.closest('.provider-card');
             const dot = card.querySelector('.provider-status-dot');
-
-            // Re-check if ANY are active
             const chatActive = card.querySelector('.chat-active-toggle').checked;
             const agentActive = card.querySelector('.agent-active-toggle').checked;
             const isActive = chatActive || agentActive;
-
             if (isActive) {
                 card.classList.replace('inactive', 'active');
                 dot.classList.replace('inactive', 'active');
@@ -1956,6 +1976,91 @@ function renderProviderCards(registry) {
                 dot.classList.replace('active', 'inactive');
             }
         });
+    });
+
+    // Delete model buttons
+    container.querySelectorAll('.model-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const provName = e.target.dataset.provider;
+            const modelKey = e.target.dataset.modelKey;
+            if (!confirm(`Remove model "${modelKey}" from ${provName}?`)) return;
+
+            try {
+                const res = await fetch(`/api/registry/provider/${provName}/models/${modelKey}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Delete failed');
+                // Refresh
+                await loadProviderSettings();
+                loadChatModels();
+            } catch (err) {
+                console.error('Failed to delete model:', err);
+                alert('Failed to delete model');
+            }
+        });
+    });
+
+    // Add model buttons
+    container.querySelectorAll('.model-add-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const provName = e.target.dataset.provider;
+            const key = prompt('Enter a short key for the model (e.g. "flash", "pro"):');
+            if (!key) return;
+
+            const modelId = prompt('Enter the model ID (e.g. "gemini-2.0-flash"):');
+            if (!modelId) return;
+
+            try {
+                const res = await fetch(`/api/registry/provider/${provName}/models`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        key: key.trim(),
+                        id: modelId.trim(),
+                        capabilities: ['chat'],
+                        input_cost_per_1m_tokens: 0,
+                        output_cost_per_1m_tokens: 0,
+                        description: ''
+                    })
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Add failed');
+                }
+                await loadProviderSettings();
+                loadChatModels();
+            } catch (err) {
+                console.error('Failed to add model:', err);
+                alert(`Failed to add model: ${err.message}`);
+            }
+        });
+    });
+
+    // Capability tag add (Enter key) and remove (click)
+    container.querySelectorAll('.cap-add-input').forEach(input => {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = input.value.trim();
+                if (!val) return;
+                const capContainer = input.closest('.model-caps-container');
+                const placeholder = capContainer.querySelector('.cap-placeholder');
+                if (placeholder) placeholder.remove();
+                const tag = document.createElement('span');
+                tag.className = `cap-tag${val === 'image_generation' ? ' cap-image' : ''}`;
+                tag.textContent = val;
+                tag.style.cursor = 'pointer';
+                tag.title = 'Click to remove';
+                tag.addEventListener('click', () => tag.remove());
+                capContainer.insertBefore(tag, input);
+                input.value = '';
+            }
+        });
+    });
+
+    // Make existing cap tags removable
+    container.querySelectorAll('.cap-tag').forEach(tag => {
+        tag.style.cursor = 'pointer';
+        tag.title = 'Click to remove';
+        tag.addEventListener('click', () => tag.remove());
     });
 
     // Save button listener
@@ -1994,6 +2099,40 @@ async function saveProviderSettings() {
             // Legacy/Compatibility fields (optional, but good for older consumers)
             _registryData.providers[name].active = chatActive;
             _registryData.providers[name].priority = chatPriority;
+
+            // Collect Model Updates
+            const modelEntries = card.querySelectorAll('.model-entry');
+            modelEntries.forEach(entry => {
+                const modelKey = entry.dataset.modelKey;
+                if (!_registryData.providers[name].models[modelKey]) return; // Should exist
+
+                const id = entry.querySelector('.model-id-input').value.trim();
+                const inputCost = parseFloat(entry.querySelector('.model-input-cost').value) || 0;
+                const outputCost = parseFloat(entry.querySelector('.model-output-cost').value) || 0;
+                const desc = entry.querySelector('.model-desc-input').value.trim();
+
+                // Collect capabilities
+                const caps = [];
+                entry.querySelectorAll('.cap-tag').forEach(tag => caps.push(tag.textContent));
+
+                // Update model object
+                // Handle case where model might be a simple string in original config (legacy)
+                if (typeof _registryData.providers[name].models[modelKey] === 'string') {
+                    _registryData.providers[name].models[modelKey] = {
+                        id: id || _registryData.providers[name].models[modelKey]
+                    };
+                }
+
+                const modelObj = _registryData.providers[name].models[modelKey];
+                modelObj.id = id;
+                modelObj.input_cost_per_1m_tokens = inputCost;
+                modelObj.output_cost_per_1m_tokens = outputCost;
+                modelObj.description = desc;
+                modelObj.capabilities = caps;
+
+                // Ensure legacy simple string ID is updated if it was just converted?
+                // Actually, best to strictly use object format now.
+            });
         });
 
         // POST to API
@@ -2013,8 +2152,8 @@ async function saveProviderSettings() {
 
         console.log('Provider settings saved');
 
-        // Refresh dropdown
-        populateModelDropdown(_registryData);
+        // Refresh chat model dropdown
+        loadChatModels();
 
     } catch (error) {
         console.error('Error saving provider settings:', error);

@@ -142,6 +142,16 @@ class TaskWorker:
                         'execution_time': result.execution_time,
                         'error': result.error
                     }
+
+                    # Attach usage data (models used, tokens, costs) from usage tracker
+                    try:
+                        from workspace.usage_tracker import get_usage_tracker
+                        tracker = get_usage_tracker()
+                        usage = tracker.get_usage_by_trace_id(task.id)
+                        if usage:
+                            result_dict['usage'] = usage
+                    except Exception as usage_err:
+                        logger.debug(f"[{task.id}] Usage tracking for task failed (non-critical): {usage_err}")
                     
                     # Update task with result
                     task.status = TaskStatus.COMPLETED
