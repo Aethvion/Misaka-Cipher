@@ -114,6 +114,15 @@ class MasterOrchestrator:
         self.current_trace_id = trace_id
         
         logger.info(f"[{trace_id}] Processing message: {user_message[:50]}...")
+
+        if self.step_callback:
+             self.step_callback({
+                 "type": "agent_step",
+                 "title": "Processing Message",
+                 "content": f"Received request: {user_message[:100]}...",
+                 "trace_id": trace_id,
+                 "status": "running"
+             })
         
         try:
             # Step 1: Analyze intent
@@ -121,6 +130,15 @@ class MasterOrchestrator:
             intent = self.intent_analyzer.analyze(user_message, trace_id, force_chat=force_chat)
             logger.info(f"[{trace_id}] Intent: {intent.intent_type.value} (confidence: {intent.confidence:.2f})")
             
+            if self.step_callback:
+                 self.step_callback({
+                     "type": "agent_step",
+                     "title": "Intent Analysis",
+                     "content": f"Identified intent: **{intent.intent_type.value}** ({int(intent.confidence * 100)}% confidence)\nPrompt: {intent.prompt}",
+                     "trace_id": trace_id,
+                     "status": "completed"
+                 })
+
             # Step 2: Create action plan
             plan = self.decide_action(intent, trace_id)
             logger.info(f"[{trace_id}] Action plan: {', '.join(plan.actions)}")
@@ -276,28 +294,31 @@ class MasterOrchestrator:
             # Execute actions in sequence
             for action in plan.actions:
                 if action == "forge_tool":
-                    # if self.step_callback:
-                    #     self.step_callback({
-                    #         "type": "agent_step",
-                    #         "title": "Forging Tool",
-                    #         "content": f"Analyzing requirements and forging tool for: {plan.forge_description}",
-                    #         "trace_id": plan.trace_id,
-                    #         "status": "running"
-                    #     })
+                    if self.step_callback:
+                        self.step_callback({
+                            "type": "agent_step",
+                            "title": "Forging Tool",
+                            "content": f"Forging tool based on description: *{plan.forge_description}*",
+                            "trace_id": plan.trace_id,
+                            "status": "running"
+                        })
                         
                     tool_result = self.call_forge(plan.forge_description, plan.trace_id)
                     tools_forged.append(tool_result.get('tool_name', 'unknown'))
                     # REMOVED: response_parts.append(f"✓ Forged tool: {tool_result.get('tool_name')}")
                     actions_taken.append("forge_tool")
                     
-                    # if self.step_callback:
-                    #     self.step_callback({
-                    #         "type": "agent_step",
-                    #         "title": "Tool Forged",
-                    #         "content": f"Successfully created tool: **{tool_result.get('tool_name')}**",
-                    #         "trace_id": plan.trace_id,
-                    #         "status": "completed"
-                    #     })
+                    if self.step_callback:
+                        status = "completed" if tool_result.get('success') else "failed"
+                        content = f"Successfully created tool: **{tool_result.get('tool_name')}**" if tool_result.get('success') else "Failed to forge tool."
+                        
+                        self.step_callback({
+                            "type": "agent_step",
+                            "title": "Tool Forged",
+                            "content": content,
+                            "trace_id": plan.trace_id,
+                            "status": status
+                        })
                 
                 
                 elif action == "spawn_agent":
@@ -312,9 +333,23 @@ class MasterOrchestrator:
                     
                     while retry_count < max_retries and not success:
                         if retry_count > 0:
-                            pass
+                            if self.step_callback:
+                                self.step_callback({
+                                    "type": "agent_step",
+                                    "title": f"Agent Retry ({retry_count}/{max_retries})",
+                                    "content": f"Agent **{plan.agent_spec.name}** encountered an issue. Retrying...",
+                                    "trace_id": plan.trace_id,
+                                    "status": "running"
+                                })
                         else:
-                            pass
+                            if self.step_callback:
+                                self.step_callback({
+                                    "type": "agent_step",
+                                    "title": "Spawning Agent",
+                                    "content": f"Deploying agent **{plan.agent_spec.name}** to execute task...",
+                                    "trace_id": plan.trace_id,
+                                    "status": "running"
+                                })
                         
                         # Add previous error to context if retrying
                         if retry_count > 0 and agent_result:
@@ -459,16 +494,20 @@ class MasterOrchestrator:
                     
                     actions_taken.append("spawn_agent")
                     
-                    # if self.step_callback:
-                    #     status = "completed" if success else "failed"
-                    #     self.step_callback({
-                    #         "type": "agent_step",
-                    #         "title": "Agent Execution",
-                    #         "agent_name": agent_result.get('agent_name'),
-                    #         "content": agent_result.get('output', 'No output'),
-                    #         "trace_id": plan.trace_id,
-                    #         "status": status
-                    #     })
+                    if self.step_callback:
+                        status = "completed" if success else "failed"
+                        content = f"Agent **{agent_result.get('agent_name')}** finished execution."
+                        if not success:
+                             content += f" Error: {agent_result.get('error', 'Unknown')}"
+
+                        self.step_callback({
+                            "type": "agent_step",
+                            "title": "Agent Execution",
+                            "agent_name": agent_result.get('agent_name'),
+                            "content": content,
+                            "trace_id": plan.trace_id,
+                            "status": status
+                        })
                 
                 elif action == "query_memory":
                     memory_results = self.query_memory(plan.memory_query, plan.trace_id)
@@ -477,14 +516,14 @@ class MasterOrchestrator:
                     response_parts.append(results_text)
                     actions_taken.append("query_memory")
                     
-                    # if self.step_callback:
-                    #     self.step_callback({
-                    #         "type": "agent_step",
-                    #         "title": "Memory Search",
-                    #         "content": results_text,
-                    #         "trace_id": plan.trace_id,
-                    #         "status": "completed"
-                    #     })
+                    if self.step_callback:
+                        self.step_callback({
+                            "type": "agent_step",
+                            "title": "Memory Search",
+                            "content": f"Searched memory for: *{plan.memory_query}*. Found {len(memory_results)} results.",
+                            "trace_id": plan.trace_id,
+                            "status": "completed"
+                        })
                 
                 elif action == "system_status":
                     response_parts.append(plan.direct_response)

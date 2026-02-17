@@ -802,7 +802,7 @@ function addMessage(sender, content, metadata = {}) {
         }
     } else if (sender === 'agent_step') {
         const title = metadata.title || 'Agent Action';
-        const agentName = metadata.agent_name || 'Agent';
+        const agentName = metadata.agent_name;
         const status = metadata.status || 'completed';
         const isError = status === 'failed';
 
@@ -812,7 +812,7 @@ function addMessage(sender, content, metadata = {}) {
                 <summary class="agent-step-summary ${isError ? 'error' : ''}">
                     <span class="step-icon">${isError ? '⚠️' : '🤖'}</span>
                     <span class="step-title">${title}</span>
-                    <span class="step-agent">${agentName}</span>
+                    ${agentName ? `<span class="step-agent">${agentName}</span>` : ''}
                 </summary>
                 <div class="step-content">
                     ${marked.parse(content)}

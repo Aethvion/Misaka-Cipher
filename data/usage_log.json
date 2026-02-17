@@ -375,5 +375,44 @@
     "trace_id": "MCTR-20260217091428-4SAAC30U",
     "success": true,
     "tokens_estimated": false
+  },
+  {
+    "timestamp": "2026-02-17T09:54:10.768313Z",
+    "provider": "google_ai",
+    "model": "gemini-2.0-flash",
+    "prompt_tokens": 518,
+    "completion_tokens": 99,
+    "total_tokens": 617,
+    "estimated_cost": 0.0,
+    "operation": "chat",
+    "trace_id": "MCTR-20260217105409-5ACZX0X0",
+    "success": true,
+    "tokens_estimated": false
+  },
+  {
+    "timestamp": "2026-02-17T09:54:12.257590Z",
+    "provider": "google_ai",
+    "model": "gemini-2.0-flash",
+    "prompt_tokens": 562,
+    "completion_tokens": 149,
+    "total_tokens": 711,
+    "estimated_cost": 0.0,
+    "operation": "chat",
+    "trace_id": "MCTR-20260217105410-1W5JK9U1",
+    "success": true,
+    "tokens_estimated": false
+  },
+  {
+    "timestamp": "2026-02-17T09:54:13.757501Z",
+    "provider": "google_ai",
+    "model": "gemini-2.0-flash",
+    "prompt_tokens": 1632,
+    "completion_tokens": 217,
+    "total_tokens": 1849,
+    "estimated_cost": 0.0,
+    "operation": "chat",
+    "trace_id": "MCTR-20260217105412-YQ2D0J1S",
+    "success": true,
+    "tokens_estimated": false
   }
 ]
