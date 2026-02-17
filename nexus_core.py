@@ -237,3 +237,11 @@ class NexusCore:
             'firewall': self.firewall.get_status(),
             'active_traces': len(self.trace_manager.get_active_traces())
         }
+
+    def reload_config(self):
+        """Reload configuration for all components."""
+        logger.info("Nexus Core reloading configuration...")
+        if self.provider_manager:
+            self.provider_manager.reload_config()
+        # TODO: Reload firewall if needed
+

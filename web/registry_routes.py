@@ -6,7 +6,7 @@ API endpoints for managing the Model Registry (config/model_registry.json)
 import json
 from pathlib import Path
 from typing import Dict, Any
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from utils import get_logger
 
@@ -49,10 +49,12 @@ async def get_registry():
 
 
 @router.post("")
-async def update_registry(updates: Dict[str, Any]):
+async def update_registry(updates: Dict[str, Any], request: Request):
     """Update the model registry (full replace)."""
     try:
         _save_registry(updates)
+        if hasattr(request.app.state, 'nexus'):
+            request.app.state.nexus.reload_config()
         return {"status": "success", "registry": updates}
     except Exception as e:
         logger.error(f"Failed to update registry: {e}")
@@ -60,7 +62,7 @@ async def update_registry(updates: Dict[str, Any]):
 
 
 @router.post("/provider/{provider_name}")
-async def update_provider(provider_name: str, updates: Dict[str, Any]):
+async def update_provider(provider_name: str, updates: Dict[str, Any], request: Request):
     """Update a single provider's settings."""
     try:
         registry = _load_registry()
@@ -76,6 +78,9 @@ async def update_provider(provider_name: str, updates: Dict[str, Any]):
         registry["providers"] = providers
         _save_registry(registry)
         
+        if hasattr(request.app.state, 'nexus'):
+            request.app.state.nexus.reload_config()
+            
         return {"status": "success", "provider": provider_name, "config": providers[provider_name]}
     except HTTPException:
         raise
@@ -87,7 +92,7 @@ async def update_provider(provider_name: str, updates: Dict[str, Any]):
 # ===== Model CRUD =====
 
 @router.post("/provider/{provider_name}/models")
-async def add_model(provider_name: str, model_data: Dict[str, Any]):
+async def add_model(provider_name: str, model_data: Dict[str, Any], request: Request):
     """Add a model to a provider."""
     try:
         registry = _load_registry()
@@ -109,6 +114,9 @@ async def add_model(provider_name: str, model_data: Dict[str, Any]):
         models[model_key] = entry
 
         _save_registry(registry)
+        if hasattr(request.app.state, 'nexus'):
+            request.app.state.nexus.reload_config()
+            
         logger.info(f"Added model '{model_key}' to provider '{provider_name}'")
         return {"status": "success", "provider": provider_name, "model_key": model_key, "model": entry}
     except HTTPException:
@@ -119,7 +127,7 @@ async def add_model(provider_name: str, model_data: Dict[str, Any]):
 
 
 @router.put("/provider/{provider_name}/models/{model_key}")
-async def update_model(provider_name: str, model_key: str, model_data: Dict[str, Any]):
+async def update_model(provider_name: str, model_key: str, model_data: Dict[str, Any], request: Request):
     """Update a model within a provider."""
     try:
         registry = _load_registry()
@@ -137,6 +145,9 @@ async def update_model(provider_name: str, model_key: str, model_data: Dict[str,
             models[model_key][k] = v
 
         _save_registry(registry)
+        if hasattr(request.app.state, 'nexus'):
+            request.app.state.nexus.reload_config()
+            
         logger.info(f"Updated model '{model_key}' for provider '{provider_name}'")
         return {"status": "success", "provider": provider_name, "model_key": model_key, "model": models[model_key]}
     except HTTPException:
@@ -147,7 +158,7 @@ async def update_model(provider_name: str, model_key: str, model_data: Dict[str,
 
 
 @router.delete("/provider/{provider_name}/models/{model_key}")
-async def delete_model(provider_name: str, model_key: str):
+async def delete_model(provider_name: str, model_key: str, request: Request):
     """Remove a model from a provider."""
     try:
         registry = _load_registry()
@@ -162,6 +173,9 @@ async def delete_model(provider_name: str, model_key: str):
 
         del models[model_key]
         _save_registry(registry)
+        if hasattr(request.app.state, 'nexus'):
+            request.app.state.nexus.reload_config()
+            
         logger.info(f"Deleted model '{model_key}' from provider '{provider_name}'")
         return {"status": "success", "provider": provider_name, "model_key": model_key}
     except HTTPException:

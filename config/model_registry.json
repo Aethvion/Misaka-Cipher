@@ -21,9 +21,10 @@
                         "verification"
                     ],
                     "tier": "fast",
-                    "input_cost_per_1m_tokens": 0.10,
-                    "output_cost_per_1m_tokens": 0.40,
-                    "notes": "Free tier. Use for verification, simple logic, and routine chat."
+                    "input_cost_per_1m_tokens": 0.1,
+                    "output_cost_per_1m_tokens": 0.4,
+                    "notes": "Free tier. Use for verification, simple logic, and routine chat.",
+                    "description": "Free tier. Use for verification, simple logic, and routine chat."
                 },
                 "pro": {
                     "id": "gemini-1.5-pro-latest",
@@ -35,8 +36,9 @@
                     ],
                     "tier": "premium",
                     "input_cost_per_1m_tokens": 1.25,
-                    "output_cost_per_1m_tokens": 5.00,
-                    "notes": "Use for complex architecture and high-stakes tool creation."
+                    "output_cost_per_1m_tokens": 5,
+                    "notes": "Use for complex architecture and high-stakes tool creation.",
+                    "description": "Use for complex architecture and high-stakes tool creation."
                 },
                 "imagen": {
                     "id": "imagen-3.0-generate-002",
@@ -45,7 +47,10 @@
                     ],
                     "tier": "specialized",
                     "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict",
-                    "notes": "Google Imagen 3 for image generation via Gemini API."
+                    "notes": "Google Imagen 3 for image generation via Gemini API.",
+                    "input_cost_per_1m_tokens": 0,
+                    "output_cost_per_1m_tokens": 0,
+                    "description": "Google Imagen 3 for image generation via Gemini API."
                 }
             },
             "active": false,
@@ -71,8 +76,9 @@
                     ],
                     "tier": "fast",
                     "input_cost_per_1m_tokens": 0.15,
-                    "output_cost_per_1m_tokens": 0.60,
-                    "notes": "Lightweight model for simple tasks."
+                    "output_cost_per_1m_tokens": 0.6,
+                    "notes": "Lightweight model for simple tasks.",
+                    "description": "Lightweight model for simple tasks."
                 },
                 "default": {
                     "id": "gpt-4o",
@@ -82,9 +88,10 @@
                         "code_generation"
                     ],
                     "tier": "premium",
-                    "input_cost_per_1m_tokens": 2.50,
-                    "output_cost_per_1m_tokens": 10.00,
-                    "notes": "High-performance model."
+                    "input_cost_per_1m_tokens": 2.5,
+                    "output_cost_per_1m_tokens": 10,
+                    "notes": "High-performance model.",
+                    "description": "High-performance model."
                 },
                 "dalle": {
                     "id": "dall-e-3",
@@ -93,7 +100,10 @@
                     ],
                     "tier": "specialized",
                     "endpoint": "https://api.openai.com/v1/images/generations",
-                    "notes": "DALL-E 3 for image generation."
+                    "notes": "DALL-E 3 for image generation.",
+                    "input_cost_per_1m_tokens": 0,
+                    "output_cost_per_1m_tokens": 0,
+                    "description": "DALL-E 3 for image generation."
                 }
             },
             "active": false,
@@ -118,9 +128,10 @@
                         "analysis"
                     ],
                     "tier": "fast",
-                    "input_cost_per_1m_tokens": 0.30,
-                    "output_cost_per_1m_tokens": 0.50,
-                    "notes": "xAI Grok-3 Mini Fast. Cheapest and fastest Grok model."
+                    "input_cost_per_1m_tokens": 0.3,
+                    "output_cost_per_1m_tokens": 0.5,
+                    "notes": "xAI Grok-3 Mini Fast. Cheapest and fastest Grok model.",
+                    "description": "xAI Grok-3 Mini Fast. Cheapest and fastest Grok model."
                 }
             },
             "active": true,
@@ -146,7 +157,8 @@
                     "tier": "local",
                     "input_cost_per_1m_tokens": 0,
                     "output_cost_per_1m_tokens": 0,
-                    "notes": "Ollama/vLLM - unlimited retries, no token cost. Roadmap."
+                    "notes": "Ollama/vLLM - unlimited retries, no token cost. Roadmap.",
+                    "description": "Ollama/vLLM - unlimited retries, no token cost. Roadmap."
                 }
             },
             "active": false,

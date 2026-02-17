@@ -122,6 +122,40 @@ class ProviderManager:
             self.chat_priority_order = self.priority_order
             self.agent_priority_order = self.priority_order
 
+    def reload_config(self):
+        """Reload configuration from disk and update active providers."""
+        logger.info("Reloading provider configuration...")
+        
+        # 1. Reload registry overrides (Priorities, Model Maps)
+        self._load_registry_overrides()
+        
+        # 2. Update active provider instances with new config
+        workspace = Path(__file__).parent.parent
+        registry_path = workspace / "config" / "model_registry.json"
+        
+        if not registry_path.exists():
+            return
+            
+        try:
+            with open(registry_path, 'r') as f:
+                registry = json.load(f)
+            
+            for name, reg_config in registry.get('providers', {}).items():
+                if name in self.providers:
+                    provider = self.providers[name]
+                    
+                    # Update Max Retries
+                    if 'retries_per_step' in reg_config:
+                        provider.config.max_retries = int(reg_config['retries_per_step'])
+                        logger.debug(f"Updated {name} max_retries to {provider.config.max_retries}")
+                        
+                    # We could also update specific model configs here if we tracked them per-provider
+                    
+            logger.info("Provider configuration reload complete")
+            
+        except Exception as e:
+            logger.error(f"Failed to reload provider config: {e}")
+
     def _initialize_providers(self):
         """Initialize all providers (regardless of active status)."""
         # We need to initialize ALL providers so they can be used if specifically requested

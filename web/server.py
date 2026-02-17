@@ -199,6 +199,7 @@ async def startup_event():
         # Initialize Nexus Core
         nexus = NexusCore()
         nexus.initialize()
+        app.state.nexus = nexus
         logger.info("✓ Nexus Core initialized")
         
         # Initialize Factory
