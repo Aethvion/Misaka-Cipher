@@ -1813,37 +1813,41 @@ function populateModelDropdown(registry) {
     const currentVal = select.value;
     let html = '<option value="auto">Model: Auto</option>';
 
-    // Collect all models
+    // Collect chat-only models
     const allModels = [];
     for (const [providerName, config] of Object.entries(registry.providers)) {
         if (config.models) {
             for (const [modelKey, modelInfo] of Object.entries(config.models)) {
-                // Determine display name
-                let display = `${providerName}/${modelKey}`;
                 let id = modelInfo;
+                let isImageModel = false;
+
                 if (typeof modelInfo === 'object') {
                     id = modelInfo.id;
+                    // Skip image generation models
                     if (modelInfo.capabilities && modelInfo.capabilities.includes('image_generation')) {
-                        display += ' (Image)';
+                        isImageModel = true;
                     }
                 }
-                allModels.push({ key: modelKey, id: id, provider: providerName, display: display });
+
+                if (isImageModel) continue;
+
+                // Display the exact model ID
+                allModels.push({ id: id, provider: providerName });
             }
         }
     }
 
-    // Sort models
-    allModels.sort((a, b) => a.display.localeCompare(b.display));
+    // Sort by model ID
+    allModels.sort((a, b) => a.id.localeCompare(b.id));
 
-    // Add to dropdown
+    // Add to dropdown — display the model ID directly
     for (const model of allModels) {
-        // We use the model ID as the value to send to backend
-        html += `<option value="${model.id}">${model.display}</option>`;
+        html += `<option value="${model.id}">${model.id}</option>`;
     }
 
     select.innerHTML = html;
 
-    // Restore selection if distinct
+    // Restore selection if still available
     if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
         select.value = currentVal;
     }

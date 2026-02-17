@@ -241,8 +241,15 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
             parsedContent = content; // Fallback to raw text
         }
 
+        // Build model label if available
+        let modelLabel = '';
+        const modelId = taskData?.metadata?.model_id;
+        if (modelId) {
+            modelLabel = `<span class="msg-model-label">${modelId}</span>`;
+        }
+
         // Wrap in a div to ensure block styles work correctly after the strong tag
-        messageContent = `<strong>Misaka:</strong> <div style="display:inline-block; width:100%;">${parsedContent}</div>`;
+        messageContent = `${modelLabel}<strong>Misaka:</strong> <div style="display:inline-block; width:100%;">${parsedContent}</div>`;
 
 
         // Add expandable task details if available

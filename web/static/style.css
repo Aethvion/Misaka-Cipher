@@ -2352,3 +2352,17 @@ input:checked+.slider:before {
     margin: 1.5rem 0;
     opacity: 0.5;
 }
+
+/* Model label badge in assistant messages */
+.msg-model-label {
+    float: right;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.15rem 0.5rem;
+    margin-left: 0.5rem;
+    opacity: 0.8;
+}
