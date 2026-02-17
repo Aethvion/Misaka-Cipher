@@ -150,11 +150,21 @@ function initializeUI() {
     const sendButton = document.getElementById('send-button');
 
     sendButton.addEventListener('click', sendMessage);
-    chatInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
+    chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            if (!e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+            // Shift+Enter allows default behavior (newline)
         }
+    });
+
+    // Auto-resize textarea
+    chatInput.addEventListener('input', function () {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+        if (this.value === '') this.style.height = '';
     });
 
     // Memory search (removed in favor of overview)
@@ -767,9 +777,9 @@ async function searchMemory() {
 
 // ===== Chat Functions =====
 
-function sendMessageOld() {
-    const input = document.getElementById('chat-input');
-    const message = input.value.trim();
+function sendMessage() {
+    const chatInput = document.getElementById('chat-input');
+    const message = chatInput.value.trim();
 
     if (!message || chatWs.readyState !== WebSocket.OPEN) return;
 
@@ -777,10 +787,12 @@ function sendMessageOld() {
     addMessage('user', message);
 
     // Send via WebSocket
-    chatWs.send(JSON.stringify({ message }));
+    const messageData = { message: message };
+    chatWs.send(JSON.stringify(messageData));
 
-    // Clear input
-    input.value = '';
+    // Clear input and reset height
+    chatInput.value = '';
+    chatInput.style.height = '';
 }
 
 // Configure Marked options

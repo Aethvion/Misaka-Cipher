@@ -146,17 +146,18 @@ function switchThread(threadId) {
 
 function toggleChatInput(enabled) {
     const input = document.getElementById('chat-input');
-    const btn = document.getElementById('send-button');
+    const button = document.getElementById('send-button');
 
-    if (input && btn) {
+    if (input) {
         input.disabled = !enabled;
-        btn.disabled = !enabled;
+        if (button) button.disabled = !enabled;
 
         if (!enabled) {
-            input.placeholder = "Select or create a thread to start...";
+            input.placeholder = "Select a thread to start chatting...";
+            input.value = '';
+            input.style.height = ''; // Reset height
         } else {
-            input.placeholder = "Enter your command...";
-            input.focus();
+            input.placeholder = "Ask me anything... (e.g., 'Analyze TSLA stock outlook')";
         }
     }
 }
