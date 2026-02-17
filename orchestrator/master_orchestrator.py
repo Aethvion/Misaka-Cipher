@@ -96,7 +96,7 @@ class MasterOrchestrator:
         """Set callback for real-time step monitoring."""
         self.step_callback = callback
     
-    def process_message(self, user_message: str, mode: str = "auto", trace_id: Optional[str] = None) -> ExecutionResult:
+    def process_message(self, user_message: str, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None) -> ExecutionResult:
         """
         Process user message end-to-end.
         
@@ -104,6 +104,7 @@ class MasterOrchestrator:
             user_message: User's input message
             mode: Execution mode ("auto" or "chat_only")
             trace_id: Optional trace ID (if provided by caller)
+            model_id: Optional specific model ID to force
             
         Returns:
             ExecutionResult with complete execution details
@@ -114,6 +115,8 @@ class MasterOrchestrator:
         self.current_trace_id = trace_id
         
         logger.info(f"[{trace_id}] Processing message: {user_message[:50]}...")
+        if model_id:
+            logger.info(f"[{trace_id}] Force Model: {model_id}")
 
         if self.step_callback:
              self.step_callback({
@@ -127,6 +130,7 @@ class MasterOrchestrator:
         try:
             # Step 1: Analyze intent
             force_chat = (mode == "chat_only")
+            # Pass model_id via kwargs if needed, but IntentAnalyzer mostly uses 'flash' or default
             intent = self.intent_analyzer.analyze(user_message, trace_id, force_chat=force_chat)
             logger.info(f"[{trace_id}] Intent: {intent.intent_type.value} (confidence: {intent.confidence:.2f})")
             
@@ -140,7 +144,7 @@ class MasterOrchestrator:
                  })
 
             # Step 2: Create action plan
-            plan = self.decide_action(intent, trace_id)
+            plan = self.decide_action(intent, trace_id, model_id=model_id)
             logger.info(f"[{trace_id}] Action plan: {', '.join(plan.actions)}")
             
             # Step 3: Execute plan
@@ -179,7 +183,8 @@ class MasterOrchestrator:
                         'success': result.success,
                         'execution_time': execution_time,
                         'tools_forged': result.tools_forged,
-                        'agents_spawned': result.agents_spawned
+                        'agents_spawned': result.agents_spawned,
+                        'model_id': model_id
                     }
                 )
                 
@@ -216,13 +221,14 @@ class MasterOrchestrator:
                 error=str(e)
             )
     
-    def decide_action(self, intent: IntentAnalysis, trace_id: str) -> ActionPlan:
+    def decide_action(self, intent: IntentAnalysis, trace_id: str, model_id: Optional[str] = None) -> ActionPlan:
         """
         Decide what actions to take based on intent.
         
         Args:
             intent: Analyzed user intent
             trace_id: Trace ID for this execution
+            model_id: Optional specific model to use
             
         Returns:
             ActionPlan with sequence of actions
@@ -237,7 +243,7 @@ class MasterOrchestrator:
         # Route based on intent type
         if intent.intent_type == IntentType.CHAT:
             actions.append("direct_response")
-            plan.direct_response = self._generate_chat_response(intent)
+            plan.direct_response = self._generate_chat_response(intent, model_id=model_id)
         
         elif intent.intent_type == IntentType.SYSTEM:
             actions.append("system_status")
@@ -266,11 +272,15 @@ class MasterOrchestrator:
             actions.append("spawn_agent")
             plan.requires_factory = True
             plan.agent_spec = self._build_agent_spec(intent)
+            # Pass model preference to agent spec/context if possible?
+            # For now, agents depend on factory/provider manager config which we split.
+            # If model_id is specific, we might want to override it here.
+            # But AgentSpec doesn't have a clean slot. We'll rely on global "Agent" priority for now.
         
         else:
             # Unknown intent - try to have a conversation
             actions.append("direct_response")
-            plan.direct_response = self._generate_chat_response(intent)
+            plan.direct_response = self._generate_chat_response(intent, model_id=model_id)
         
         return plan
     
@@ -674,12 +684,13 @@ class MasterOrchestrator:
             temperature=0.7
         )
     
-    def _generate_chat_response(self, intent: IntentAnalysis) -> str:
+    def _generate_chat_response(self, intent: IntentAnalysis, model_id: Optional[str] = None) -> str:
         """Generate direct chat response via Nexus Core."""
         request = Request(
             prompt=intent.prompt,
             request_type="generation",
-            temperature=0.7
+            temperature=0.7,
+            model=model_id,
         )
         
         response = self.nexus.route_request(request)

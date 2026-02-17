@@ -16,6 +16,7 @@ class TaskSubmitRequest(BaseModel):
     prompt: str
     thread_id: Optional[str] = "default"
     thread_title: Optional[str] = None
+    model_id: Optional[str] = None
 
 
 class ThreadSettingsRequest(BaseModel):
@@ -42,7 +43,8 @@ async def submit_task(request: TaskSubmitRequest):
         task_id = await task_manager.submit_task(
             prompt=request.prompt,
             thread_id=request.thread_id,
-            thread_title=request.thread_title
+            thread_title=request.thread_title,
+            model_id=request.model_id
         )
         
         return TaskResponse(

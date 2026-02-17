@@ -1788,6 +1788,8 @@ loadAllPackages = async function () {
 
 // ===== Provider Settings =====
 
+// ===== Provider Settings =====
+
 let _registryData = null;
 
 async function loadProviderSettings() {
@@ -1796,10 +1798,54 @@ async function loadProviderSettings() {
         if (!response.ok) throw new Error('Failed to load registry');
         _registryData = await response.json();
         renderProviderCards(_registryData);
+        populateModelDropdown(_registryData); // Also populate dropdown when loading settings
     } catch (error) {
         console.error('Error loading provider settings:', error);
         const container = document.getElementById('provider-cards-container');
         if (container) container.innerHTML = '<div class="loading-placeholder">Error loading providers</div>';
+    }
+}
+
+function populateModelDropdown(registry) {
+    const select = document.getElementById('model-select');
+    if (!select || !registry || !registry.providers) return;
+
+    const currentVal = select.value;
+    let html = '<option value="auto">Model: Auto</option>';
+
+    // Collect all models
+    const allModels = [];
+    for (const [providerName, config] of Object.entries(registry.providers)) {
+        if (config.models) {
+            for (const [modelKey, modelInfo] of Object.entries(config.models)) {
+                // Determine display name
+                let display = `${providerName}/${modelKey}`;
+                let id = modelInfo;
+                if (typeof modelInfo === 'object') {
+                    id = modelInfo.id;
+                    if (modelInfo.capabilities && modelInfo.capabilities.includes('image_generation')) {
+                        display += ' (Image)';
+                    }
+                }
+                allModels.push({ key: modelKey, id: id, provider: providerName, display: display });
+            }
+        }
+    }
+
+    // Sort models
+    allModels.sort((a, b) => a.display.localeCompare(b.display));
+
+    // Add to dropdown
+    for (const model of allModels) {
+        // We use the model ID as the value to send to backend
+        html += `<option value="${model.id}">${model.display}</option>`;
+    }
+
+    select.innerHTML = html;
+
+    // Restore selection if distinct
+    if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
+        select.value = currentVal;
     }
 }
 
@@ -1816,9 +1862,15 @@ function renderProviderCards(registry) {
     container.innerHTML = '';
 
     for (const [name, config] of Object.entries(providers)) {
-        const isActive = config.active;
+        // Determine active states
+        const chatConfig = config.chat_config || { active: config.active, priority: config.priority };
+        const agentConfig = config.agent_config || { active: config.active, priority: config.priority };
+
+        // Use chat config as "main" active for visual if legacy, or just check if either is active
+        const isMainActive = chatConfig.active || agentConfig.active;
+
         const card = document.createElement('div');
-        card.className = `provider-card ${isActive ? 'active' : 'inactive'}`;
+        card.className = `provider-card ${isMainActive ? 'active' : 'inactive'}`;
         card.dataset.provider = name;
 
         // Build model tags
@@ -1828,25 +1880,46 @@ function renderProviderCards(registry) {
             const modelId = typeof modelInfo === 'string' ? modelInfo : modelInfo.id;
             const capabilities = typeof modelInfo === 'object' ? (modelInfo.capabilities || []) : [];
             const isSpecialized = capabilities.includes('image_generation');
-            modelTags += `<span class="model-tag ${isSpecialized ? 'specialized' : ''}" title="${capabilities.join(', ')}">${modelKey}: ${modelId}</span>`;
+            modelTags += `<span class="model-tag ${isSpecialized ? 'specialized' : ''}" title="${capabilities.join(', ')}">${modelKey}</span>`;
         }
 
         card.innerHTML = `
             <div class="provider-card-header">
-                <h4><span class="provider-status-dot ${isActive ? 'active' : 'inactive'}"></span>${name}</h4>
-                <label class="switch">
-                    <input type="checkbox" class="provider-active-toggle" data-provider="${name}" ${isActive ? 'checked' : ''}>
-                    <span class="slider round"></span>
-                </label>
+                <h4><span class="provider-status-dot ${isMainActive ? 'active' : 'inactive'}"></span>${name}</h4>
+                 <div class="provider-card-field" style="margin:0; padding:0; flex-direction:row; gap:10px;">
+                    <label style="font-size:0.8em; margin:0;">Global Retries:</label>
+                    <input type="number" class="provider-retries" data-provider="${name}" value="${config.retries_per_step || 0}" min="0" max="50" style="width:50px; padding:2px;">
+                </div>
             </div>
-            <div class="provider-card-field">
-                <label>Priority</label>
-                <input type="number" class="provider-priority" data-provider="${name}" value="${config.priority || 99}" min="1" max="99">
+
+            <div class="provider-config-section">
+                <h5>Chat Configuration</h5>
+                <div class="provider-card-row">
+                    <label class="switch" title="Enable for Chat">
+                        <input type="checkbox" class="chat-active-toggle" data-provider="${name}" ${chatConfig.active ? 'checked' : ''}>
+                        <span class="slider round"></span>
+                    </label>
+                    <div class="provider-card-field inline">
+                        <label>Priority</label>
+                        <input type="number" class="chat-priority" data-provider="${name}" value="${chatConfig.priority || 99}" min="1" max="99">
+                    </div>
+                </div>
             </div>
-            <div class="provider-card-field">
-                <label>Retries / Step</label>
-                <input type="number" class="provider-retries" data-provider="${name}" value="${config.retries_per_step || 0}" min="0" max="50">
+
+            <div class="provider-config-section">
+                <h5>Agent Configuration</h5>
+                <div class="provider-card-row">
+                    <label class="switch" title="Enable for Agents">
+                        <input type="checkbox" class="agent-active-toggle" data-provider="${name}" ${agentConfig.active ? 'checked' : ''}>
+                        <span class="slider round"></span>
+                    </label>
+                    <div class="provider-card-field inline">
+                        <label>Priority</label>
+                        <input type="number" class="agent-priority" data-provider="${name}" value="${agentConfig.priority || 99}" min="1" max="99">
+                    </div>
+                </div>
             </div>
+
             <div class="provider-card-field">
                 <label>API Key Env</label>
                 <span style="font-family: 'Fira Code', monospace; font-size: 0.8rem; color: var(--primary);">${config.api_key_env || '(none)'}</span>
@@ -1860,12 +1933,18 @@ function renderProviderCards(registry) {
         container.appendChild(card);
     }
 
-    // Active toggle listeners
-    container.querySelectorAll('.provider-active-toggle').forEach(toggle => {
+    // Active toggle listeners (Visual update only, value collected on save)
+    container.querySelectorAll('.chat-active-toggle, .agent-active-toggle').forEach(toggle => {
         toggle.addEventListener('change', (e) => {
             const card = e.target.closest('.provider-card');
             const dot = card.querySelector('.provider-status-dot');
-            if (e.target.checked) {
+
+            // Re-check if ANY are active
+            const chatActive = card.querySelector('.chat-active-toggle').checked;
+            const agentActive = card.querySelector('.agent-active-toggle').checked;
+            const isActive = chatActive || agentActive;
+
+            if (isActive) {
                 card.classList.replace('inactive', 'active');
                 dot.classList.replace('inactive', 'active');
             } else {
@@ -1894,13 +1973,23 @@ async function saveProviderSettings() {
             const name = card.dataset.provider;
             if (!_registryData.providers[name]) return;
 
-            const activeToggle = card.querySelector('.provider-active-toggle');
-            const priorityInput = card.querySelector('.provider-priority');
+            const chatActive = card.querySelector('.chat-active-toggle')?.checked ?? false;
+            const chatPriority = parseInt(card.querySelector('.chat-priority')?.value) || 99;
+
+            const agentActive = card.querySelector('.agent-active-toggle')?.checked ?? false;
+            const agentPriority = parseInt(card.querySelector('.agent-priority')?.value) || 99;
+
             const retriesInput = card.querySelector('.provider-retries');
 
-            _registryData.providers[name].active = activeToggle?.checked ?? false;
-            _registryData.providers[name].priority = parseInt(priorityInput?.value) || 99;
+            // Update schema
+            _registryData.providers[name].chat_config = { active: chatActive, priority: chatPriority };
+            _registryData.providers[name].agent_config = { active: agentActive, priority: agentPriority };
+
             _registryData.providers[name].retries_per_step = parseInt(retriesInput?.value) || 0;
+
+            // Legacy/Compatibility fields (optional, but good for older consumers)
+            _registryData.providers[name].active = chatActive;
+            _registryData.providers[name].priority = chatPriority;
         });
 
         // POST to API
@@ -1919,6 +2008,10 @@ async function saveProviderSettings() {
         }
 
         console.log('Provider settings saved');
+
+        // Refresh dropdown
+        populateModelDropdown(_registryData);
+
     } catch (error) {
         console.error('Error saving provider settings:', error);
         if (statusEl) {

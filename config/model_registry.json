@@ -1,9 +1,15 @@
 {
     "providers": {
         "google_ai": {
-            "active": false,
+            "chat_config": {
+                "active": false,
+                "priority": 1
+            },
+            "agent_config": {
+                "active": true,
+                "priority": 1
+            },
             "api_key_env": "GOOGLE_AI_API_KEY",
-            "priority": 1,
             "retries_per_step": 5,
             "models": {
                 "flash": {
@@ -39,12 +45,20 @@
                     "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict",
                     "notes": "Google Imagen 3 for image generation via Gemini API."
                 }
-            }
+            },
+            "active": false,
+            "priority": 1
         },
         "openai": {
-            "active": true,
+            "chat_config": {
+                "active": false,
+                "priority": 99
+            },
+            "agent_config": {
+                "active": false,
+                "priority": 99
+            },
             "api_key_env": "OPENAI_API_KEY",
-            "priority": 99,
             "retries_per_step": 2,
             "models": {
                 "default": {
@@ -77,12 +91,20 @@
                     "endpoint": "https://api.openai.com/v1/images/generations",
                     "notes": "DALL-E 3 for image generation."
                 }
-            }
+            },
+            "active": false,
+            "priority": 99
         },
         "grok": {
-            "active": false,
+            "chat_config": {
+                "active": true,
+                "priority": 3
+            },
+            "agent_config": {
+                "active": false,
+                "priority": 3
+            },
             "api_key_env": "GROK_API_KEY",
-            "priority": 3,
             "retries_per_step": 0,
             "models": {
                 "default": {
@@ -95,12 +117,20 @@
                     "cost_per_1k_tokens": 0.005,
                     "notes": "xAI Grok-2."
                 }
-            }
+            },
+            "active": true,
+            "priority": 3
         },
         "local": {
-            "active": false,
+            "chat_config": {
+                "active": false,
+                "priority": 2
+            },
+            "agent_config": {
+                "active": false,
+                "priority": 2
+            },
             "api_key_env": "",
-            "priority": 2,
             "retries_per_step": 20,
             "models": {
                 "default": {
@@ -110,9 +140,11 @@
                     ],
                     "tier": "local",
                     "cost_per_1k_tokens": 0,
-                    "notes": "Ollama/vLLM \u00e2\u20ac\u201d unlimited retries, no token cost. Roadmap."
+                    "notes": "Ollama/vLLM - unlimited retries, no token cost. Roadmap."
                 }
-            }
+            },
+            "active": false,
+            "priority": 2
         }
     },
     "routing_strategy": {

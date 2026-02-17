@@ -576,6 +576,10 @@ async function sendMessage() {
     // Add user message to current thread
     addMessageToThread(messageThreadId, 'user', message);
 
+    // Get model selection
+    const modelSelect = document.getElementById('model-select');
+    const modelId = modelSelect ? modelSelect.value : null;
+
     try {
         // Submit task to queue
         const response = await fetch('/api/tasks/submit', {
@@ -586,7 +590,8 @@ async function sendMessage() {
             body: JSON.stringify({
                 prompt: message,
                 thread_id: messageThreadId,
-                thread_title: threads[messageThreadId]?.title // Send title to ensure backend has it
+                thread_title: threads[messageThreadId]?.title, // Send title to ensure backend has it
+                model_id: (modelId && modelId !== 'auto') ? modelId : null
             })
         });
 

@@ -76,36 +76,64 @@ class ProviderManager:
             
             registry_providers = registry.get('providers', {})
             
+            self.chat_priority_order = []
+            self.agent_priority_order = []
+            
+            # Temporary lists for sorting
+            chat_providers = []
+            agent_providers = []
+            
+            self.model_to_provider_map = {}
+            
             for name, reg_config in registry_providers.items():
                 if name in self.config:
-                    # Override settings if present in registry
-                    if 'active' in reg_config:
-                        self.config[name]['enabled'] = reg_config['active']
-                    
-                    if 'retries_per_step' in reg_config:
-                        self.config[name]['max_retries'] = reg_config['retries_per_step']
+                    # Parse Chat Config
+                    chat_config = reg_config.get('chat_config', {})
+                    if chat_config.get('active', False):
+                        chat_providers.append((name, chat_config.get('priority', 99)))
                         
-                    if 'priority' in reg_config:
-                        self.config[name]['priority'] = reg_config['priority']
-                        
-                    logger.info(f"Loaded registry overrides for {name} (retries: {self.config[name].get('max_retries')})")
+                    # Parse Agent Config
+                    agent_config = reg_config.get('agent_config', {})
+                    if agent_config.get('active', False):
+                        agent_providers.append((name, agent_config.get('priority', 99)))
+
+                    # Build Model Map
+                    models = reg_config.get('models', {})
+                    for model_key, model_data in models.items():
+                        model_id = model_data.get('id')
+                        if model_id:
+                            self.model_to_provider_map[model_id] = name
+
+                    logger.info(f"Loaded registry overrides for {name}")
+            
+            # Sort and store
+            chat_providers.sort(key=lambda x: x[1])
+            self.chat_priority_order = [p[0] for p in chat_providers]
+            
+            agent_providers.sort(key=lambda x: x[1])
+            self.agent_priority_order = [p[0] for p in agent_providers]
+            
+            logger.info(f"Chat Priority: {self.chat_priority_order}")
+            logger.info(f"Agent Priority: {self.agent_priority_order}")
                     
         except Exception as e:
             logger.error(f"Failed to load model registry overrides: {str(e)}")
+            # Fallback to default behavior if failed
+            self.chat_priority_order = self.priority_order
+            self.agent_priority_order = self.priority_order
 
     def _initialize_providers(self):
-        """Initialize all enabled providers."""
-        # Sort providers by priority
-        provider_list = [
-            (name, config)
-            for name, config in self.config.items()
-            if config.get('enabled', False)
-        ]
-        provider_list.sort(key=lambda x: x[1].get('priority', 999))
+        """Initialize all providers (regardless of active status)."""
+        # We need to initialize ALL providers so they can be used if specifically requested
+        # even if they are not in the active priority lists.
         
-        # Initialize each provider
-        for name, config in provider_list:
+        for name, config in self.config.items():
             try:
+                # Initialize unless explicitly disabled in YAML (system level disable)
+                # But for now, we trust YAML enabled flag as "system enabled"
+                # and registry as "user enabled".
+                # Actually, let's just initialize everything in config.
+                
                 provider_class = self.PROVIDER_CLASSES.get(name)
                 if not provider_class:
                     logger.warning(f"Unknown provider: {name}")
@@ -122,9 +150,9 @@ class ProviderManager:
                 )
                 
                 self.providers[name] = provider_class(provider_config)
-                self.priority_order.append(name)
+                # self.priority_order.append(name) # Legacy
                 
-                logger.info(f"Initialized provider: {name} (priority {config.get('priority')})")
+                logger.info(f"Initialized provider: {name}")
                 
             except Exception as e:
                 logger.error(f"Failed to initialize provider {name}: {str(e)}")
@@ -148,6 +176,8 @@ class ProviderManager:
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         preferred_provider: Optional[str] = None,
+        model: Optional[str] = None,
+        request_type: str = "generation",
         **kwargs
     ) -> ProviderResponse:
         """
@@ -159,19 +189,70 @@ class ProviderManager:
             temperature: Sampling temperature
             max_tokens: Maximum tokens to generate
             preferred_provider: Preferred provider to try first
+            model: Specific model ID to use (overrides ALL routing)
+            request_type: "generation" (Chat) or "agent_call" (Agent)
             **kwargs: Additional provider-specific parameters
             
         Returns:
             ProviderResponse from first successful provider
         """
-        # Determine provider order
-        provider_order = self.priority_order.copy()
+        provider_order = []
         
-        # If preferred provider specified, try it first
+        # 1. Specific Model Override
+        if model and model != "auto":
+            # Find which provider owns this model
+            # This is a bit inefficient, we might want a reverse lookup map later.
+            target_provider_name = None
+            
+            # Check registry first (if loaded)
+            # We don't have direct access to registry dict here easily without reloading.
+            # Let's check instantiated providers.
+            pass # We'll do it inside loop or map it.
+            
+            # Temporary Hack: Hardcoded mapping or search?
+            # Better: Provider classes should know their models?
+            # Or we look at config.
+            
+            # Let's try to find provider for the model
+            found_provider_name = None
+            for p_name, p_instance in self.providers.items():
+                # This check depends on provider implementation
+                # BaseProvider doesn't have list of models.
+                # But we can try to guess or use the registry if we cached it.
+                # For now, let's look at `model_registry.json` again? No, too slow.
+                # Let's assume we can pass the provider name if known, OR
+                # we iterate all providers and see who claims it?
+                pass
+
+            # Update: The frontend sends model ID (e.g., 'gemini-2.0-flash').
+            # We need to find the provider for this ID.
+            # We'll reload registry map for lookup or cache it in __init__
+            # For now, let's just cheat and look at known prefixes or reload registry lightly?
+            # No, let's cache registry mapping in _load_registry_overrides.
+            
+            if hasattr(self, 'model_to_provider_map'):
+                 target_provider_name = self.model_to_provider_map.get(model)
+            
+            if target_provider_name and target_provider_name in self.providers:
+                provider_order = [target_provider_name]
+                logger.info(f"[{trace_id}] Model '{model}' forced provider: {target_provider_name}")
+            else:
+                logger.warning(f"[{trace_id}] Model '{model}' not found in map, falling back to auto")
+        
+        # 2. Select Priority List based on Type
+        if not provider_order:
+            if request_type == "agent_call" or "agent" in request_type:
+                provider_order = self.agent_priority_order.copy()
+                logger.info(f"[{trace_id}] Using AGENT priority: {provider_order}")
+            else:
+                provider_order = self.chat_priority_order.copy()
+                logger.info(f"[{trace_id}] Using CHAT priority: {provider_order}")
+        
+        # 3. Apply Preferred Provider (if valid and in order)
         if preferred_provider and preferred_provider in provider_order:
             provider_order.remove(preferred_provider)
             provider_order.insert(0, preferred_provider)
-        
+            
         last_error = None
         
         # Try each provider in order
@@ -188,11 +269,15 @@ class ProviderManager:
             logger.info(f"[{trace_id}] Attempting request with provider: {provider_name}")
             
             try:
+                # If a specific model was requested, pass it
+                current_model = model if (model and model != "auto") else None
+                
                 response = provider.generate(
                     prompt=prompt,
                     trace_id=trace_id,
                     temperature=temperature,
                     max_tokens=max_tokens,
+                    model=current_model, # Pass specific model if set
                     **kwargs
                 )
                 
@@ -262,16 +347,19 @@ class ProviderManager:
                 }
                 for name, provider in self.providers.items()
             },
-            'priority_order': self.priority_order
+            'chat_priority': getattr(self, 'chat_priority_order', []),
+            'agent_priority': getattr(self, 'agent_priority_order', [])
         }
 
     def get_global_max_retries(self) -> int:
         """Get the maximum retries from the highest priority active provider."""
-        if not self.priority_order:
-            return 3
-        
-        # Primary provider
-        primary_name = self.priority_order[0]
-        if primary_name in self.config:
-            return self.config[primary_name].get('max_retries', 3)
+        # Check Agent priority first as this is usually called by Factory
+        if hasattr(self, 'agent_priority_order') and self.agent_priority_order:
+             primary = self.agent_priority_order[0]
+             return self.config.get(primary, {}).get('max_retries', 3)
+             
+        if hasattr(self, 'chat_priority_order') and self.chat_priority_order:
+             primary = self.chat_priority_order[0]
+             return self.config.get(primary, {}).get('max_retries', 3)
+             
         return 3

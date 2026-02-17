@@ -123,10 +123,12 @@ class TaskWorker:
                                 context_prompt = f"Chat History:\n{history_str}\n\nCurrent Message:\n{task.prompt}"
                                 logger.info(f"[{task.id}] Injected context ({len(history_tasks)//2} turns)")
 
+                    model_id = task.metadata.get('model_id')
+                    
                     # Use lambda to pass mode argument since run_in_executor only takes args for the callable
                     result = await loop.run_in_executor(
                         None,  # Use default executor
-                        lambda: self.orchestrator.process_message(context_prompt, mode=mode, trace_id=task.id)
+                        lambda: self.orchestrator.process_message(context_prompt, mode=mode, trace_id=task.id, model_id=model_id)
                     )
                     
                     # Convert ExecutionResult to dict
@@ -315,7 +317,7 @@ class TaskQueueManager:
         logger.info(f"Updated settings for thread {thread_id}: {settings}")
         return True
 
-    async def submit_task(self, prompt: str, thread_id: str = "default", thread_title: str = None) -> str:
+    async def submit_task(self, prompt: str, thread_id: str = "default", thread_title: str = None, model_id: Optional[str] = None) -> str:
         """
         Submit a task to the queue.
         
@@ -323,6 +325,7 @@ class TaskQueueManager:
             prompt: User prompt/message
             thread_id: Chat thread ID
             thread_title: Optional title for the thread
+            model_id: Optional specific model ID to use
             
         Returns:
             Task ID
@@ -357,6 +360,10 @@ class TaskQueueManager:
         # Propagate thread mode to task metadata (for worker/orchestrator to see)
         task.metadata['mode'] = self.threads[thread_id].mode
         
+        # Store model_id if provided
+        if model_id:
+            task.metadata['model_id'] = model_id
+        
         # Save thread state
         self._save_thread(thread_id)
         
@@ -366,7 +373,7 @@ class TaskQueueManager:
         # Add to queue
         await self.queue.put(task)
         
-        logger.info(f"Task {task.id} submitted to queue (thread: {thread_id}, mode: {task.metadata['mode']})")
+        logger.info(f"Task {task.id} submitted to queue (thread: {thread_id}, mode: {task.metadata['mode']}, model: {model_id})")
         
         return task.id
     

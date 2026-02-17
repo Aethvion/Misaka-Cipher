@@ -29,6 +29,7 @@ class Request:
     request_type: str = "generation"  # generation, tool_execution, agent_call
     metadata: Optional[Dict[str, Any]] = None
     preferred_provider: Optional[str] = None
+    model: Optional[str] = None
     temperature: float = 0.7
     max_tokens: Optional[int] = None
     
@@ -137,6 +138,8 @@ class NexusCore:
         logger.info(f"[{trace_id}] === NEW REQUEST ===")
         logger.info(f"[{trace_id}] Type: {request.request_type}")
         logger.info(f"[{trace_id}] Prompt length: {len(request.prompt)} chars")
+        if request.model:
+            logger.info(f"[{trace_id}] Requested Model: {request.model}")
         
         try:
             # Pre-flight firewall scan (with intent detection)
@@ -178,7 +181,9 @@ class NexusCore:
                     trace_id=trace_id,
                     temperature=request.temperature,
                     max_tokens=request.max_tokens,
-                    preferred_provider=request.preferred_provider
+                    preferred_provider=request.preferred_provider,
+                    model=request.model,
+                    request_type=request.request_type
                 )
                 
                 # Build response
