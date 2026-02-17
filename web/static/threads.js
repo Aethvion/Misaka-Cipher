@@ -301,10 +301,12 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
                         <summary style="cursor: pointer;">Task Details</summary>
                         <div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-primary); border-radius: 4px;">
                             <div style="display: flex; justify-content: space-between;">
-                                <span><strong>ID:</strong> ${taskData.id.substring(0, 8)}...</span>
+                                <span><strong>ID:</strong> ${taskData.id}</span>
                                 <span><strong>Time:</strong> ${taskData.result?.execution_time?.toFixed(2) || '0.00'}s</span>
                             </div>
                             <div style="margin-top: 0.3rem;"><strong>Worker:</strong> ${taskData.worker_id || 'N/A'}</div>
+                            <div style="margin-top: 0.3rem;"><strong>Model:</strong> ${taskData.result?.model_id || taskData.metadata?.model_id || 'N/A'}</div>
+                            <div style="margin-top: 0.3rem;"><strong>Mode:</strong> ${taskData.metadata?.mode || 'N/A'}</div>
                             
                             <!-- Standard Actions Info -->
                             ${taskData.result?.actions_taken?.length > 0 ? `<div style="margin-top: 0.3rem;"><strong>Actions:</strong> ${taskData.result.actions_taken.join(', ')}</div>` : ''}
