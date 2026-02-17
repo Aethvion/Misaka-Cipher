@@ -140,7 +140,8 @@ class TaskWorker:
                         'agents_spawned': result.agents_spawned,
                         'memories_queried': result.memories_queried,
                         'execution_time': result.execution_time,
-                        'error': result.error
+                        'error': result.error,
+                        'model_id': result.model_id
                     }
 
                     # Attach usage data (models used, tokens, costs) from usage tracker
@@ -156,6 +157,10 @@ class TaskWorker:
                     # Update task with result
                     task.status = TaskStatus.COMPLETED
                     task.result = result_dict
+                    
+                    # Update metadata with actual model used (important for Auto mode)
+                    if result.model_id:
+                        task.metadata['model_id'] = result.model_id
                     task.completed_at = datetime.now()
                     
                     logger.info(

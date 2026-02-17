@@ -90,6 +90,7 @@ class GrokProvider(BaseProvider):
                 provider="grok",
                 trace_id=trace_id,
                 metadata={
+                    'model': active_model,
                     'finish_reason': data['choices'][0].get('finish_reason'),
                     'usage': data.get('usage', {})
                 }

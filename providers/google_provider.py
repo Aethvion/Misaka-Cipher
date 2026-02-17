@@ -51,6 +51,12 @@ class GoogleAIProvider(BaseProvider):
             active_model = model if model else self.config.model
             logger.debug(f"[{trace_id}] Generating with Google AI model {active_model}")
             
+            # Use specific model instance if requested, otherwise default
+            if active_model != self.config.model:
+                 gen_model = genai.GenerativeModel(active_model)
+            else:
+                 gen_model = self.model
+            
             # Remove 'model' from kwargs to prevent passing to generate_content
             kwargs.pop('model', None)
             
@@ -62,7 +68,7 @@ class GoogleAIProvider(BaseProvider):
                 generation_config['max_output_tokens'] = max_tokens
             
             # Generate response
-            response = self.model.generate_content(
+            response = gen_model.generate_content(
                 prompt,
                 generation_config=generation_config,
                 **kwargs
@@ -73,12 +79,20 @@ class GoogleAIProvider(BaseProvider):
             
             logger.info(f"[{trace_id}] Successfully generated response with Google AI")
             
+            # Extract usage
+            usage_meta = {
+                'prompt_token_count': getattr(response.usage_metadata, 'prompt_token_count', None),
+                'candidates_token_count': getattr(response.usage_metadata, 'candidates_token_count', None),
+                'total_tokens': getattr(response.usage_metadata, 'total_token_count', None)
+            } if hasattr(response, 'usage_metadata') and response.usage_metadata else {}
+
             return ProviderResponse(
                 content=response.text,
-                model=self.config.model,
+                model=active_model,
                 provider="google_ai",
                 trace_id=trace_id,
                 metadata={
+                    'model': active_model,
                     'finish_reason': response.candidates[0].finish_reason.name if response.candidates else None,
                     'safety_ratings': [
                         {
@@ -87,11 +101,7 @@ class GoogleAIProvider(BaseProvider):
                         }
                         for rating in response.candidates[0].safety_ratings
                     ] if response.candidates else [],
-                    'usage': {
-                        'prompt_token_count': getattr(response.usage_metadata, 'prompt_token_count', None),
-                        'candidates_token_count': getattr(response.usage_metadata, 'candidates_token_count', None),
-                        'total_tokens': getattr(response.usage_metadata, 'total_token_count', None)
-                    } if hasattr(response, 'usage_metadata') and response.usage_metadata else {}
+                    'usage': usage_meta
                 }
             )
             

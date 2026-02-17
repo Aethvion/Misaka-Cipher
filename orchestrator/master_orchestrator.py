@@ -37,6 +37,7 @@ class ActionPlan:
     requires_memory: bool = False
     memory_query: Optional[str] = None
     direct_response: Optional[str] = None
+    model_used: Optional[str] = None
 
 
 @dataclass
@@ -51,6 +52,8 @@ class ExecutionResult:
     memories_queried: int
     execution_time: float
     error: Optional[str] = None
+    model_id: Optional[str] = None
+    usage: Optional[Dict[str, Any]] = None
 
 
 class MasterOrchestrator:
@@ -184,7 +187,7 @@ class MasterOrchestrator:
                         'execution_time': execution_time,
                         'tools_forged': result.tools_forged,
                         'agents_spawned': result.agents_spawned,
-                        'model_id': model_id
+                        'model_id': result.model_id or model_id
                     }
                 )
                 
@@ -243,7 +246,10 @@ class MasterOrchestrator:
         # Route based on intent type
         if intent.intent_type == IntentType.CHAT:
             actions.append("direct_response")
-            plan.direct_response = self._generate_chat_response(intent, model_id=model_id)
+            resp_obj = self._generate_chat_response(intent, model_id=model_id)
+            plan.direct_response = resp_obj.content
+            if resp_obj.metadata and 'model' in resp_obj.metadata:
+                plan.model_used = resp_obj.metadata['model']
         
         elif intent.intent_type == IntentType.SYSTEM:
             actions.append("system_status")
@@ -280,7 +286,10 @@ class MasterOrchestrator:
         else:
             # Unknown intent - try to have a conversation
             actions.append("direct_response")
-            plan.direct_response = self._generate_chat_response(intent, model_id=model_id)
+            resp_obj = self._generate_chat_response(intent, model_id=model_id)
+            plan.direct_response = resp_obj.content
+            if resp_obj.metadata and 'model' in resp_obj.metadata:
+                plan.model_used = resp_obj.metadata['model']
         
         return plan
     
@@ -563,7 +572,8 @@ class MasterOrchestrator:
                 tools_forged=tools_forged,
                 agents_spawned=agents_spawned,
                 memories_queried=memories_queried,
-                execution_time=0  # Filled by process_message
+                execution_time=0,  # Filled by process_message
+                model_id=plan.model_used
             )
             
         except Exception as e:
@@ -684,7 +694,7 @@ class MasterOrchestrator:
             temperature=0.7
         )
     
-    def _generate_chat_response(self, intent: IntentAnalysis, model_id: Optional[str] = None) -> str:
+    def _generate_chat_response(self, intent: IntentAnalysis, model_id: Optional[str] = None) -> Response:
         """Generate direct chat response via Nexus Core."""
         request = Request(
             prompt=intent.prompt,
@@ -696,9 +706,17 @@ class MasterOrchestrator:
         response = self.nexus.route_request(request)
         
         if response.success:
-            return response.content
+            return response
         else:
-            return f"I encountered an error: {response.error}"
+            # Create a localized response with error message
+            logging.error(f"Chat generation failed: {response.error}")
+            return Response(
+                content=f"I encountered an error: {response.error}",
+                trace_id=request.trace_id,
+                success=False,
+                error=response.error,
+                metadata={}
+            )
     
     def _get_system_status(self) -> str:
         """Get system status summary."""

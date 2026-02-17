@@ -1799,7 +1799,7 @@ async function loadProviderSettings() {
         if (!response.ok) throw new Error('Failed to load registry');
         _registryData = await response.json();
         renderProviderCards(_registryData);
-        populateModelDropdown(_registryData); // Also populate dropdown when loading settings
+        loadChatModels(); // Also populate dropdown when loading settings
     } catch (error) {
         console.error('Error loading provider settings:', error);
         const container = document.getElementById('provider-cards-container');
