@@ -38,3 +38,8 @@ logs/
 
 # --- WORKFOLDER ---
 WorkFolder/
+
+
+# --- OTHER LOGS AND SETTINGS FILES ---
+data/usage_log.json
+workspace/user_preferences.json
