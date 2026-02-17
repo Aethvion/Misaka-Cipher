@@ -2076,3 +2076,70 @@ input:checked+.slider:before {
 .thread-item.active .thread-settings-panel.terminal-stack.open {
     display: flex;
 }
+
+/* System Terminal */
+.system-terminal {
+    background: #0a0e1a;
+    border-top: 1px solid var(--border);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.8rem;
+    color: #a0a0a0;
+    display: flex;
+    flex-direction: column;
+    /* Fixed height for ~10 lines */
+    height: 15rem;
+    transition: height 0.3s ease;
+}
+
+.terminal-header {
+    background: #151a2b;
+    padding: 0.3rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.terminal-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.terminal-line {
+    word-break: break-word;
+    line-height: 1.4;
+    animation: fadeIn 0.2s ease;
+}
+
+.term-time {
+    color: var(--text-secondary);
+    opacity: 0.6;
+    margin-right: 0.5rem;
+}
+
+.term-agent {
+    color: var(--accent);
+    margin-right: 0.5rem;
+}
+
+.term-action {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.term-status {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+}
+
+.term-error {
+    color: var(--error);
+}

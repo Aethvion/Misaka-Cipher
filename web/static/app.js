@@ -24,6 +24,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ===== WebSocket Management =====
 
+// ===== System Terminal =====
+
+function updateSystemTerminal(message, title, agent, status) {
+    const terminal = document.getElementById('terminal-content');
+    if (!terminal) return;
+
+    const line = document.createElement('div');
+    line.className = 'terminal-line';
+
+    const time = new Date().toLocaleTimeString([], { hour12: false });
+
+    // Status Icon
+    let icon = 'ℹ️';
+    if (status === 'running') icon = '⏳';
+    if (status === 'completed') icon = '✓';
+    if (status === 'failed') icon = '❌';
+
+    // Build line content
+    let html = `<span class="term-time">[${time}]</span>`;
+
+    if (agent) {
+        html += `<span class="term-agent">${agent}</span>`;
+    }
+
+    if (title) {
+        html += `<span class="term-action">${title}:</span> `;
+    }
+
+    // Clean message content (remove markdown if possible or just text)
+    // For terminal view, we want concise text, so minimal markdown parsing
+    // Actually, simple text is better.
+    let textContent = message;
+
+    html += `<span>${textContent}</span>`;
+    html += `<span class="term-status">${icon}</span>`;
+
+    line.innerHTML = html;
+
+    // Append
+    terminal.appendChild(line);
+
+    // Scroll to bottom
+    terminal.scrollTop = terminal.scrollHeight;
+
+    // Limit lines (e.g., 500)
+    if (terminal.children.length > 500) {
+        terminal.removeChild(terminal.firstChild);
+    }
+}
+
 function initializeWebSockets() {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsHost = window.location.host;
@@ -739,13 +789,14 @@ function handleChatMessage(event) {
             loadFiles();
         }
     } else if (data.type === 'agent_step') {
+        // Updated: Route to System Terminal
+        updateSystemTerminal(
+            data.content,
+            data.title,
+            data.agent_name,
+            data.status
+        );
 
-        addMessage('agent_step', data.content, {
-            title: data.title,
-            agent_name: data.agent_name,
-            status: data.status,
-            trace_id: data.trace_id
-        });
     } else if (data.type === 'package_installed') {
         console.log('Package installed:', data.package);
         loadAllPackages();
