@@ -42,15 +42,18 @@ class GrokProvider(BaseProvider):
         trace_id: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
         **kwargs
     ) -> ProviderResponse:
         """Generate response using Grok."""
         try:
-            logger.debug(f"[{trace_id}] Generating with Grok model {self.config.model}")
+            # Use explicit model override or fall back to config
+            active_model = model if model else self.config.model
+            logger.debug(f"[{trace_id}] Generating with Grok model {active_model}")
             
             # Build request payload
             payload = {
-                "model": self.config.model,
+                "model": active_model,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": temperature,
             }
@@ -76,7 +79,7 @@ class GrokProvider(BaseProvider):
             
             return ProviderResponse(
                 content=data['choices'][0]['message']['content'],
-                model=self.config.model,
+                model=active_model,
                 provider="grok",
                 trace_id=trace_id,
                 metadata={
@@ -91,7 +94,7 @@ class GrokProvider(BaseProvider):
             
             return ProviderResponse(
                 content="",
-                model=self.config.model,
+                model=active_model,
                 provider="grok",
                 trace_id=trace_id,
                 error=str(e)

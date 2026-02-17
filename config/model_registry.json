@@ -61,6 +61,16 @@
             "api_key_env": "OPENAI_API_KEY",
             "retries_per_step": 2,
             "models": {
+                "mini": {
+                    "id": "gpt-4o-mini",
+                    "capabilities": [
+                        "chat",
+                        "analysis"
+                    ],
+                    "tier": "fast",
+                    "cost_per_1k_tokens": 0.00015,
+                    "notes": "Lightweight model for simple tasks."
+                },
                 "default": {
                     "id": "gpt-4o",
                     "capabilities": [
@@ -71,16 +81,6 @@
                     "tier": "premium",
                     "cost_per_1k_tokens": 0.005,
                     "notes": "High-performance model."
-                },
-                "mini": {
-                    "id": "gpt-4o-mini",
-                    "capabilities": [
-                        "chat",
-                        "analysis"
-                    ],
-                    "tier": "fast",
-                    "cost_per_1k_tokens": 0.00015,
-                    "notes": "Lightweight model for simple tasks."
                 },
                 "dalle": {
                     "id": "dall-e-3",

@@ -1774,8 +1774,8 @@
       },
       "approved_at": null,
       "installed_at": "2026-02-12T15:50:52.313218",
-      "usage_count": 8,
-      "last_used_at": "2026-02-16T12:54:10.509681"
+      "usage_count": 9,
+      "last_used_at": "2026-02-17T17:25:37.833333"
     },
     {
       "package_name": "opencv-python",
@@ -3742,5 +3742,5 @@
     "yfinance": "1.1.0"
   },
   "denied": [],
-  "last_updated": "2026-02-17T08:41:10.217253"
+  "last_updated": "2026-02-17T17:25:37.837983"
 }

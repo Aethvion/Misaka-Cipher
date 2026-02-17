@@ -255,6 +255,21 @@ class ProviderManager:
             
         last_error = None
         
+        # Check if ALL providers in the order are OFFLINE - if so, reset them
+        # This prevents permanent lockout from temporary failures
+        all_offline = all(
+            self.providers.get(name) and self.providers[name].status == ProviderStatus.OFFLINE
+            for name in provider_order
+            if self.providers.get(name)
+        )
+        if all_offline and provider_order:
+            logger.warning(f"[{trace_id}] All providers are OFFLINE, resetting status to retry")
+            for name in provider_order:
+                provider = self.providers.get(name)
+                if provider:
+                    provider._consecutive_failures = 0
+                    provider._status = ProviderStatus.HEALTHY
+        
         # Try each provider in order
         for provider_name in provider_order:
             provider = self.providers.get(provider_name)

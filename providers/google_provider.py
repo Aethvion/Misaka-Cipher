@@ -41,11 +41,18 @@ class GoogleAIProvider(BaseProvider):
         trace_id: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
         **kwargs
     ) -> ProviderResponse:
         """Generate response using Google AI."""
         try:
-            logger.debug(f"[{trace_id}] Generating with Google AI model {self.config.model}")
+            # For Google AI, the model is bound at init time via genai.GenerativeModel.
+            # The model param is accepted to prevent kwargs conflicts.
+            active_model = model if model else self.config.model
+            logger.debug(f"[{trace_id}] Generating with Google AI model {active_model}")
+            
+            # Remove 'model' from kwargs to prevent passing to generate_content
+            kwargs.pop('model', None)
             
             # Configure generation
             generation_config = {

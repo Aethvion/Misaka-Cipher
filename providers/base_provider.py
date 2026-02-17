@@ -61,7 +61,9 @@ class BaseProvider(ABC):
             config: Provider configuration
         """
         self.config = config
-        self._status = ProviderStatus.UNKNOWN
+        # Start as HEALTHY so providers are always attempted on first use.
+        # Status will change to OFFLINE after max_retries consecutive failures.
+        self._status = ProviderStatus.HEALTHY
         self._consecutive_failures = 0
     
     @abstractmethod
@@ -71,6 +73,7 @@ class BaseProvider(ABC):
         trace_id: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
         **kwargs
     ) -> ProviderResponse:
         """
@@ -81,6 +84,7 @@ class BaseProvider(ABC):
             trace_id: Trace ID for this request
             temperature: Sampling temperature (0.0-1.0)
             max_tokens: Maximum tokens to generate
+            model: Optional model override (overrides config model)
             **kwargs: Additional provider-specific parameters
             
         Returns:

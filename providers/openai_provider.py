@@ -42,18 +42,24 @@ class OpenAIProvider(BaseProvider):
         trace_id: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
         **kwargs
     ) -> ProviderResponse:
         """Generate response using OpenAI."""
         try:
-            logger.debug(f"[{trace_id}] Generating with OpenAI model {self.config.model}")
+            # Use explicit model override or fall back to config
+            active_model = model if model else self.config.model
+            logger.debug(f"[{trace_id}] Generating with OpenAI model {active_model}")
             
             # Build messages
             messages = [{"role": "user", "content": prompt}]
             
+            # Remove 'model' from kwargs if present to avoid duplicate
+            kwargs.pop('model', None)
+            
             # Generate response
             response = self.client.chat.completions.create(
-                model=self.config.model,
+                model=active_model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
@@ -67,7 +73,7 @@ class OpenAIProvider(BaseProvider):
             
             return ProviderResponse(
                 content=response.choices[0].message.content,
-                model=self.config.model,
+                model=active_model,
                 provider="openai",
                 trace_id=trace_id,
                 metadata={
@@ -86,7 +92,7 @@ class OpenAIProvider(BaseProvider):
             
             return ProviderResponse(
                 content="",
-                model=self.config.model,
+                model=active_model,
                 provider="openai",
                 trace_id=trace_id,
                 error=str(e)
