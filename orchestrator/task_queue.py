@@ -534,22 +534,32 @@ class TaskQueueManager:
             thread = self.threads[thread_id]
             file_path = self.threads_dir / f"{thread.id}.json"
             
+            # Ensure directory exists
+            self.threads_dir.mkdir(parents=True, exist_ok=True)
+            
             with open(file_path, 'w', encoding='utf-8') as f:
+                # Use to_dict() which now sanitizes data
                 json.dump(thread.to_dict(), f, indent=2)
                 
         except Exception as e:
-            logger.error(f"Failed to save thread {thread_id}: {e}")
+            logger.error(f"Failed to save thread {thread_id}: {e}", exc_info=True)
+            # Try to save a backup/sanitized version if possible?
+            # For now, just logging the full stack trace is a huge improvement over silent failure
 
     def _save_task(self, task: Task):
         """Save task state to disk."""
         try:
             file_path = self.tasks_dir / f"{task.id}.json"
             
+            # Ensure directory exists
+            self.tasks_dir.mkdir(parents=True, exist_ok=True)
+            
             with open(file_path, 'w', encoding='utf-8') as f:
+                # Use to_dict() which now sanitizes data
                 json.dump(task.to_dict(), f, indent=2)
                 
         except Exception as e:
-            logger.error(f"Failed to save task {task.id}: {e}")
+            logger.error(f"Failed to save task {task.id}: {e}", exc_info=True)
 
     def _load_tasks(self):
         """Load tasks from disk."""

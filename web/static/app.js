@@ -145,20 +145,26 @@ function initializeUI() {
         tab.addEventListener('click', () => switchMainTab(tab.dataset.maintab));
     });
 
-    // Chat input
+    // Chat interaction
     const chatInput = document.getElementById('chat-input');
     const sendButton = document.getElementById('send-button');
 
-    sendButton.addEventListener('click', sendMessage);
-    chatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            if (!e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-            // Shift+Enter allows default behavior (newline)
-        }
-    });
+    // Remove legacy binding - Threads.js handles this now
+    // if (sendButton) {
+    //     sendButton.addEventListener('click', sendMessage);
+    // }
+
+    // if (chatInput) {
+    //     chatInput.addEventListener('keydown', (e) => {
+    //         if (e.key === 'Enter') {
+    //             if (!e.shiftKey) {
+    //                 e.preventDefault();
+    //                 sendMessage();
+    //             }
+    //             // Shift+Enter allows default behavior (newline)
+    //         }
+    //     });
+    // }
 
     // Auto-resize textarea
     chatInput.addEventListener('input', function () {
@@ -806,7 +812,8 @@ async function searchMemory() {
 
 // ===== Chat Functions =====
 
-function sendMessage() {
+// function sendMessage() {
+function _legacy_sendMessage() {
     const chatInput = document.getElementById('chat-input');
     const message = chatInput.value.trim();
 

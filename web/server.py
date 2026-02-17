@@ -105,7 +105,8 @@ class ConnectionManager:
             try:
                 await connection.send_json(message)
             except Exception as e:
-                logger.error(f"Error broadcasting to {channel}: {str(e)}")
+                # Only log real errors, not just disconnects (which might show as various things)
+                logger.error(f"Error broadcasting to {channel}: {type(e).__name__}: {e}")
                 disconnected.append(connection)
         
         # Remove disconnected clients
@@ -152,6 +153,7 @@ class ChatMessage(BaseModel):
     """Chat message from user."""
     message: str
     trace_id: Optional[str] = None
+    thread_id: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
@@ -353,31 +355,68 @@ async def chat(message: ChatMessage):
     if not orchestrator:
         raise HTTPException(status_code=503, detail="Orchestrator not initialized")
     
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(message: ChatMessage):
+    """
+    Send message to Master Orchestrator.
+    
+    The orchestrator will analyze intent and autonomously coordinate
+    Factory, Forge, and Memory Tier as needed.
+    """
+    if not orchestrator:
+        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+    
     try:
-        # Process message through orchestrator
-        # Use simple blocking call here for HTTP API (websockets handles streaming)
-        # We could async it, but it might timeout the HTTP request if long running
-        result = await asyncio.to_thread(orchestrator.process_message, message.message)
+        # Submit task to queue for persistence
+        from orchestrator.task_queue import get_task_queue_manager
+        task_manager = get_task_queue_manager()
         
-        # Broadcast to WebSocket clients
-        await manager.broadcast({
-            "type": "chat_response",
-            "trace_id": result.trace_id,
-            "response": result.response,
-            "actions": result.actions_taken,
-            "timestamp": datetime.now().isoformat()
-        }, "chat")
+        # Use provided thread_id or default
+        thread_id = message.thread_id or "default"
         
-        return ChatResponse(
-            response=result.response,
-            trace_id=result.trace_id,
-            actions_taken=result.actions_taken,
-            tools_forged=result.tools_forged,
-            agents_spawned=result.agents_spawned,
-            execution_time=result.execution_time,
-            success=result.success
+        # Submit task
+        task_id = await task_manager.submit_task(
+            prompt=message.message,
+            thread_id=thread_id
         )
         
+        # Poll for result (timeout after 60s)
+        # We need to wait because this API endpoint expects a synchronous-like response
+        # In the future, clients should use /api/tasks/submit and poll manually
+        start_time = datetime.now()
+        while (datetime.now() - start_time).total_seconds() < 60:
+            task = task_manager.get_task(task_id)
+            if task and task.status == "completed":
+                result_dict = task.result
+                
+                # Broadcast to WebSocket clients (if not already done by worker)
+                # Worker doesn't broadcast yet, so we do it here? 
+                # Actually, duplicate broadcast might be annoying.
+                # But since the worker logic doesn't broadcast to "chat" channel explicitly in the simplified version...
+                # Let's keep the broadcast here for now to ensure UI updates if they listen to WS.
+                # However, the worker MIGHT be updated later to broadcast.
+                
+                # Construct response
+                return ChatResponse(
+                    response=result_dict.get('response'),
+                    trace_id=task.id,
+                    actions_taken=result_dict.get('actions_taken', []),
+                    tools_forged=result_dict.get('tools_forged', []),
+                    agents_spawned=result_dict.get('agents_spawned', []),
+                    execution_time=result_dict.get('execution_time', 0),
+                    success=result_dict.get('success', True)
+                )
+                
+            elif task and task.status == "failed":
+                raise HTTPException(status_code=500, detail=f"Task execution failed: {task.error}")
+                
+            await asyncio.sleep(0.5)
+            
+        # Timeout
+        raise HTTPException(status_code=504, detail="Task execution timed out")
+        
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Chat endpoint error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

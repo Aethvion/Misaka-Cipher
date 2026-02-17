@@ -20,6 +20,27 @@ function initThreadManagement() {
     // Set up event listeners
     document.getElementById('new-thread-button').addEventListener('click', createNewThread);
 
+    // Bind Send Button explicitly (overriding app.js legacy behavior)
+    const sendButton = document.getElementById('send-button');
+    if (sendButton) {
+        // Clone and replace to strip old listeners
+        const newBtn = sendButton.cloneNode(true);
+        sendButton.parentNode.replaceChild(newBtn, sendButton);
+        newBtn.addEventListener('click', sendMessage);
+    }
+
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        // Clone/replace is risky for input if it has other bindings, but for now we just add listener
+        // Actually, let's just add the listener. The app.js one is commented out.
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+
 
 
     // Set up thread list click delegation

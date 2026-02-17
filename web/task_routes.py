@@ -164,6 +164,9 @@ async def update_thread_mode(thread_id: str, request: Dict[str, str]):
         
     except HTTPException:
         raise
+    except TypeError as e:
+        # JSON serialization error
+        raise HTTPException(status_code=400, detail=f"Invalid data format: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -182,6 +185,8 @@ async def update_thread_settings(thread_id: str, request: ThreadSettingsRequest)
         
     except HTTPException:
         raise
+    except TypeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid settings format: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

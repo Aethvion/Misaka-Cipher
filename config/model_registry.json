@@ -1,7 +1,7 @@
 {
     "providers": {
         "google_ai": {
-            "active": true,
+            "active": false,
             "api_key_env": "GOOGLE_AI_API_KEY",
             "priority": 1,
             "retries_per_step": 5,
@@ -42,10 +42,10 @@
             }
         },
         "openai": {
-            "active": false,
+            "active": true,
             "api_key_env": "OPENAI_API_KEY",
             "priority": 99,
-            "retries_per_step": 0,
+            "retries_per_step": 2,
             "models": {
                 "default": {
                     "id": "gpt-4o",
