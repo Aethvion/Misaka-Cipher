@@ -1,5 +1,5 @@
 # Misaka Cipher (M.I.S.A.K.A.)
-**Multitask Intelligence & Strategic Analysis Kernel Architecture** *Operating within the A.E.G.I.S. Framework*
+**Multitask Intelligence & Strategic Analysis Kernel Architecture**
 
 <div align="center">
 
