@@ -62,15 +62,9 @@ body {
 
 .header-nav {
     padding: 0 1rem;
-    overflow-x: auto;
-    overflow-y: visible;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
 }
 
-.header-nav::-webkit-scrollbar {
-    display: none;
-}
+
 
 .main-tabs {
     display: flex;
@@ -2556,12 +2550,12 @@ input:checked+.slider:before {
     border: 1px solid var(--border);
     border-radius: 6px;
     min-width: 160px;
-    z-index: 100;
+    z-index: 200;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     overflow: hidden;
 }
 
-.main-tab-dropdown:hover .tab-dropdown-menu {
+.main-tab-dropdown.open .tab-dropdown-menu {
     display: block;
 }
 

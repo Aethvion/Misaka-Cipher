@@ -140,8 +140,9 @@ function updateConnectionStatus(connected) {
 // ===== UI Initialization =====
 
 function initializeUI() {
-    // Main tab switching
+    // Main tab switching (skip dropdown-managed tabs)
     document.querySelectorAll('.main-tab').forEach(tab => {
+        if (tab.closest('.main-tab-dropdown')) return; // handled separately
         tab.addEventListener('click', () => switchMainTab(tab.dataset.maintab));
     });
 
@@ -235,13 +236,30 @@ function initializeUI() {
         });
     });
 
-    // Chat/Arena dropdown switching
+    // Chat/Agent/Arena dropdown - click to toggle
+    const dropdownWrapper = document.querySelector('.main-tab-dropdown');
+    const dropdownBtn = dropdownWrapper ? dropdownWrapper.querySelector('.main-tab') : null;
+    if (dropdownBtn && dropdownWrapper) {
+        dropdownBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownWrapper.classList.toggle('open');
+        });
+    }
+
+    // Dropdown items
     document.querySelectorAll('.tab-dropdown-item').forEach(item => {
         item.addEventListener('click', (e) => {
             e.stopPropagation();
             const subtab = item.dataset.subtab;
             switchChatArenaMode(subtab);
+            // Close dropdown
+            if (dropdownWrapper) dropdownWrapper.classList.remove('open');
         });
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', () => {
+        if (dropdownWrapper) dropdownWrapper.classList.remove('open');
     });
 
     // Initialize arena
