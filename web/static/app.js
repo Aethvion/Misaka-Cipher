@@ -1634,29 +1634,19 @@ async function loadPreferences() {
 }
 
 function updateChatLayout() {
-    const layout = document.querySelector('.four-column-layout');
+    const layout = document.querySelector('.three-column-layout');
     if (!layout) return;
 
-    const logsCol = document.querySelector('.logs-column');
     const agentsCol = document.querySelector('.agents-column');
 
-    const hideLogs = prefs.get('ui_toggles.hide_system_logs', false);
     const hideAgents = prefs.get('ui_toggles.hide_agents_panel', false);
 
     // Visibility
-    if (logsCol) logsCol.style.display = hideLogs ? 'none' : 'flex';
     if (agentsCol) agentsCol.style.display = hideAgents ? 'none' : 'flex';
 
-    // Grid Template
-    // Default: 15% (Threads) | 20% (Logs) | 45% (Chat) | 20% (Agents)
-    // We maintain Threads at 15%.
-    // If visible, Logs is 20%. Agents is 20%.
-    // Chat takes remainder (1fr).
-
-    let template = '15% '; // Threads
-    if (!hideLogs) template += '20% '; // Logs
-    template += '1fr '; // Chat
-    if (!hideAgents) template += '20%'; // Agents
+    // Grid Template: Threads | Chat | Agents
+    let template = '15% 1fr';
+    if (!hideAgents) template += ' 20%';
 
     layout.style.gridTemplateColumns = template;
 }

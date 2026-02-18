@@ -45,16 +45,20 @@
         <nav class="header-nav">
             <div class="main-tabs">
                 <div class="main-tab-dropdown">
-                    <button class="main-tab active" data-maintab="chat"><span class="tab-icon">💬</span>Chat <span class="dropdown-arrow">▾</span></button>
+                    <button class="main-tab active" data-maintab="chat"><span class="tab-icon">💬</span>Chat <span
+                            class="dropdown-arrow">▾</span></button>
                     <div class="tab-dropdown-menu">
-                        <button class="tab-dropdown-item active" data-subtab="chat"><span class="tab-icon">💬</span>Chat</button>
-                        <button class="tab-dropdown-item" data-subtab="arena"><span class="tab-icon">⚔️</span>Arena</button>
+                        <button class="tab-dropdown-item active" data-subtab="chat"><span
+                                class="tab-icon">💬</span>Chat</button>
+                        <button class="tab-dropdown-item" data-subtab="arena"><span
+                                class="tab-icon">⚔️</span>Arena</button>
                     </div>
                 </div>
                 <button class="main-tab" data-maintab="files"><span class="tab-icon">📁</span>Files</button>
                 <button class="main-tab" data-maintab="tools"><span class="tab-icon">🔧</span>Tools</button>
                 <button class="main-tab" data-maintab="packages"><span class="tab-icon">📦</span>Packages</button>
                 <button class="main-tab" data-maintab="memory"><span class="tab-icon">🧠</span>Memory</button>
+                <button class="main-tab" data-maintab="logs"><span class="tab-icon">📜</span>Logs</button>
                 <button class="main-tab" data-maintab="usage"><span class="tab-icon">📊</span>Usage</button>
                 <button class="main-tab" data-maintab="settings"><span class="tab-icon">⚙️</span>Settings</button>
             </div>
@@ -65,7 +69,7 @@
     <main class="main-container">
         <!-- Chat Tab (4-column layout with threads) -->
         <div class="main-tab-panel active" id="chat-panel">
-            <div class="four-column-layout">
+            <div class="three-column-layout">
                 <!-- Far Left: Thread List -->
                 <div class="column threads-column">
                     <div class="column-header">
@@ -75,16 +79,6 @@
                         <!-- Threads will be populated here -->
                     </div>
                 </div>
-                <!-- Column closed here naturally if we remove the inner div -->
-                <!-- The structure is:
-                     <div class="four-column-layout">
-                       <div class="column threads-column">...</div>
-                       <template>...</template>
-                       <div class="column logs-column">...</div>
-                       ...
-                     </div>
-                -->
-                <!-- So we delete line 66 only -->
                 <template id="thread-item-template">
                     <div class="thread-item">
                         <div class="thread-header-row">
@@ -134,14 +128,6 @@
                                 </label>
                             </div>
 
-                            <!-- System Terminal Toggle -->
-                            <div class="term-stack-item">
-                                <label title="Show/Hide System Terminal">TERM:</label>
-                                <label class="term-check">
-                                    <input type="checkbox" class="terminal-toggle" checked> Show
-                                </label>
-                            </div>
-
                             <!-- Delete -->
                             <div class="term-stack-item" style="margin-top:4px;">
                                 <button class="term-btn delete-btn" title="Delete Thread">DELETE THREAD</button>
@@ -149,17 +135,6 @@
                         </div>
                     </div>
                 </template>
-
-                <!-- Left: System Logs -->
-                <div class="column logs-column">
-                    <div class="column-header">
-                        <h2>System Logs</h2>
-                    </div>
-                    <div class="logs-container" id="logs-container">
-                        <!-- Logs will stream here -->
-                    </div>
-                </div>
-
                 <!-- Center: Chat Interface -->
                 <div class="column chat-column">
                     <div class="column-header">
@@ -187,12 +162,7 @@
                         </div>
                     </div>
 
-                    <div id="system-terminal" class="system-terminal">
-                        <div class="terminal-header">SYSTEM TERMINAL</div>
-                        <div class="terminal-content" id="terminal-content">
-                            <div class="terminal-line"><span class="term-time">[SYSTEM]</span> Ready.</div>
-                        </div>
-                    </div>
+
 
                     <div class="chat-interface-wrapper">
                         <textarea id="chat-input" class="chat-input" rows="1"
@@ -275,7 +245,8 @@
                         </div>
                     </div>
                     <div class="arena-input-wrapper">
-                        <textarea id="arena-input" class="chat-input" rows="1" placeholder="Enter a prompt for all models..."></textarea>
+                        <textarea id="arena-input" class="chat-input" rows="1"
+                            placeholder="Enter a prompt for all models..."></textarea>
                         <button id="arena-send" class="send-button"><i class="fas fa-paper-plane"></i></button>
                     </div>
                 </div>
@@ -297,9 +268,33 @@
                             </tr>
                         </thead>
                         <tbody id="arena-leaderboard-body">
-                            <tr><td colspan="5" class="placeholder-text">No battles yet</td></tr>
+                            <tr>
+                                <td colspan="5" class="placeholder-text">No battles yet</td>
+                            </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Tab -->
+        <div class="main-tab-panel" id="logs-panel">
+            <div class="logs-layout">
+                <div class="logs-pane">
+                    <div class="logs-pane-header">
+                        <h3>📜 System Logs</h3>
+                    </div>
+                    <div class="logs-container" id="logs-container">
+                        <!-- Logs will stream here via WebSocket -->
+                    </div>
+                </div>
+                <div class="logs-pane terminal-pane">
+                    <div class="logs-pane-header">
+                        <h3>⚡ System Terminal</h3>
+                    </div>
+                    <div class="terminal-content" id="terminal-content">
+                        <div class="terminal-line"><span class="term-time">[SYSTEM]</span> Ready.</div>
+                    </div>
                 </div>
             </div>
         </div>
