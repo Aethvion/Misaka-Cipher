@@ -10,6 +10,8 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-experimental-orange.svg)](https://github.com/Aethvion/Misaka-Cipher)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 [📚 Documentation](/documentation/) | [🚀 Getting Started](/documentation/human/Getting_Started.md) | [🤖 AI Docs](/documentation/ai/) | [💬 Discussions](https://github.com/Aethvion/Misaka-Cipher/discussions)
 
@@ -409,7 +411,27 @@ We welcome contributions! Whether you're:
 - 📚 Enhancing documentation
 - 🧪 Adding tests
 
-Check out our [Contributing Guidelines](CONTRIBUTING.md) (coming soon) and join the discussion!
+Please read our [Contributing Guidelines](CONTRIBUTING.md) to get started!
+
+### Quick Start for Contributors
+
+```bash
+# Fork and clone the repository
+git clone https://github.com/YOUR_USERNAME/Misaka-Cipher.git
+cd Misaka-Cipher
+
+# Create a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run tests
+python main.py --test
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
