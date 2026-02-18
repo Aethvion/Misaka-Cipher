@@ -234,6 +234,18 @@ function initializeUI() {
             });
         });
     });
+
+    // Chat/Arena dropdown switching
+    document.querySelectorAll('.tab-dropdown-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const subtab = item.dataset.subtab;
+            switchChatArenaMode(subtab);
+        });
+    });
+
+    // Initialize arena
+    initializeArena();
 }
 
 function switchMainTab(tabName) {
@@ -241,14 +253,21 @@ function switchMainTab(tabName) {
 
     // Update tab buttons
     document.querySelectorAll('.main-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.maintab === tabName);
+        if (tab.closest('.main-tab-dropdown')) {
+            // Dropdown tab: active if chat or arena
+            tab.classList.toggle('active', tabName === 'chat' || tabName === 'arena');
+        } else {
+            tab.classList.toggle('active', tab.dataset.maintab === tabName);
+        }
     });
 
     // Update panels
     document.querySelectorAll('.main-tab-panel').forEach(panel => {
         panel.classList.remove('active');
     });
-    document.getElementById(`${tabName}-panel`).classList.add('active');
+
+    const targetPanel = document.getElementById(`${tabName}-panel`);
+    if (targetPanel) targetPanel.classList.add('active');
 
     // Load data for tab
     if (tabName === 'files') {
@@ -259,6 +278,9 @@ function switchMainTab(tabName) {
         loadProviderSettings();
     } else if (tabName === 'usage') {
         loadUsageDashboard();
+    } else if (tabName === 'arena') {
+        loadArenaModels();
+        loadArenaLeaderboard();
     }
 }
 
@@ -2512,15 +2534,17 @@ function renderRecentCallsTable(entries) {
     if (!tbody) return;
 
     if (!entries.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="placeholder-text">No API calls recorded yet</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="placeholder-text">No API calls recorded yet</td></tr>';
         return;
     }
 
     tbody.innerHTML = entries.slice(0, 25).map(e => {
         const time = new Date(e.timestamp).toLocaleTimeString();
         const provider = e.provider || 'unknown';
+        const source = e.source || 'chat';
         return `<tr>
             <td style="font-family: 'Fira Code', monospace; font-size: 0.8rem;">${time}</td>
+            <td><span class="source-badge ${source}">${source}</span></td>
             <td><span class="provider-badge ${provider}">${provider}</span></td>
             <td style="font-family: 'Fira Code', monospace; font-size: 0.8rem;">${e.model || '?'}</td>
             <td>${formatNumber(e.prompt_tokens || 0)}${e.tokens_estimated ? ' ~' : ''}</td>
@@ -2529,4 +2553,274 @@ function renderRecentCallsTable(entries) {
             <td>${formatCost(e.output_cost || 0)}</td>
         </tr>`;
     }).join('');
+}
+
+// ===== Arena Mode =====
+
+let arenaSelectedModels = [];
+let arenaAvailableModels = [];
+
+function switchChatArenaMode(mode) {
+    // Update dropdown items
+    document.querySelectorAll('.tab-dropdown-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.subtab === mode);
+    });
+
+    // Update dropdown button label
+    const btn = document.querySelector('.main-tab-dropdown .main-tab');
+    if (btn) {
+        const icon = mode === 'arena' ? '⚔️' : '💬';
+        const label = mode === 'arena' ? 'Arena' : 'Chat';
+        btn.innerHTML = `<span class="tab-icon">${icon}</span>${label} <span class="dropdown-arrow">▾</span>`;
+    }
+
+    // Switch panel
+    switchMainTab(mode);
+}
+
+function initializeArena() {
+    // Send button
+    const sendBtn = document.getElementById('arena-send');
+    if (sendBtn) {
+        sendBtn.addEventListener('click', sendArenaPrompt);
+    }
+
+    // Input enter key
+    const input = document.getElementById('arena-input');
+    if (input) {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendArenaPrompt();
+            }
+        });
+        input.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            if (this.value === '') this.style.height = '';
+        });
+    }
+
+    // Model add dropdown
+    const addSelect = document.getElementById('arena-model-add');
+    if (addSelect) {
+        addSelect.addEventListener('change', () => {
+            const modelId = addSelect.value;
+            if (modelId && !arenaSelectedModels.includes(modelId)) {
+                arenaSelectedModels.push(modelId);
+                renderArenaChips();
+            }
+            addSelect.value = '';
+        });
+    }
+
+    // Clear leaderboard
+    const clearBtn = document.getElementById('arena-clear-leaderboard');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', clearArenaLeaderboard);
+    }
+}
+
+async function loadArenaModels() {
+    try {
+        const res = await fetch('/api/registry/models/chat');
+        if (!res.ok) return;
+        const data = await res.json();
+        arenaAvailableModels = data.models || [];
+
+        // Populate add-model dropdown
+        const addSelect = document.getElementById('arena-model-add');
+        if (addSelect) {
+            let html = '<option value="">+ Add Model...</option>';
+            for (const m of arenaAvailableModels) {
+                html += `<option value="${m.id}">${m.id} (${m.provider})</option>`;
+            }
+            addSelect.innerHTML = html;
+        }
+
+        // Populate evaluator dropdown
+        const evalSelect = document.getElementById('arena-evaluator');
+        if (evalSelect) {
+            let html = '<option value="">No Evaluator</option>';
+            for (const m of arenaAvailableModels) {
+                html += `<option value="${m.id}">${m.id}</option>`;
+            }
+            evalSelect.innerHTML = html;
+        }
+    } catch (err) {
+        console.error('Failed to load arena models:', err);
+    }
+}
+
+function renderArenaChips() {
+    const container = document.getElementById('arena-model-chips');
+    if (!container) return;
+
+    container.innerHTML = arenaSelectedModels.map(id => `
+        <span class="arena-chip">
+            ${id}
+            <span class="chip-remove" onclick="removeArenaModel('${id}')">&times;</span>
+        </span>
+    `).join('');
+}
+
+function removeArenaModel(modelId) {
+    arenaSelectedModels = arenaSelectedModels.filter(id => id !== modelId);
+    renderArenaChips();
+}
+
+async function sendArenaPrompt() {
+    const input = document.getElementById('arena-input');
+    const prompt = input ? input.value.trim() : '';
+
+    if (!prompt) return;
+    if (arenaSelectedModels.length < 2) {
+        alert('Please add at least 2 models to the arena.');
+        return;
+    }
+
+    input.value = '';
+    input.style.height = '';
+
+    const evalSelect = document.getElementById('arena-evaluator');
+    const evaluatorModelId = evalSelect ? evalSelect.value : '';
+
+    // Show loading
+    const responsesDiv = document.getElementById('arena-responses');
+    const loadingHtml = `
+        <div class="arena-battle-round">
+            <div class="arena-prompt-bar"><strong>Prompt:</strong> ${escapeHtml(prompt)}</div>
+            <div class="arena-cards-grid">
+                ${arenaSelectedModels.map(id => `
+                    <div class="arena-response-card">
+                        <div class="card-header"><span class="card-model">${id}</span></div>
+                        <div class="card-body"><div class="arena-loading"><div class="spinner"></div> Generating...</div></div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    // Remove placeholder if present
+    const placeholder = responsesDiv.querySelector('.arena-placeholder');
+    if (placeholder) placeholder.remove();
+
+    responsesDiv.insertAdjacentHTML('beforeend', loadingHtml);
+    responsesDiv.scrollTop = responsesDiv.scrollHeight;
+
+    try {
+        const res = await fetch('/api/arena/battle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: prompt,
+                model_ids: arenaSelectedModels,
+                evaluator_model_id: evaluatorModelId || null
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.detail || 'Battle failed');
+        }
+
+        // Replace the loading round with actual results
+        const lastRound = responsesDiv.querySelector('.arena-battle-round:last-child');
+        if (lastRound) {
+            const cardsGrid = lastRound.querySelector('.arena-cards-grid');
+            cardsGrid.innerHTML = data.responses.map(r => {
+                const isWinner = r.model_id === data.winner_id;
+                const scoreHtml = r.score !== null && r.score !== undefined
+                    ? `<span class="card-score">${r.score}/10</span>`
+                    : '';
+                const badgeHtml = isWinner ? '<span class="card-badge">🏆 Winner</span>' : '';
+
+                return `
+                    <div class="arena-response-card ${isWinner ? 'winner' : ''}">
+                        ${badgeHtml}
+                        <div class="card-header">
+                            <span class="card-model">${r.model_id}</span>
+                            ${scoreHtml}
+                        </div>
+                        <div class="card-body">${escapeHtml(r.response)}</div>
+                        <div class="card-provider">via ${r.provider}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update leaderboard from response
+        if (data.leaderboard) {
+            renderArenaLeaderboard(data.leaderboard);
+        }
+
+    } catch (err) {
+        console.error('Arena battle failed:', err);
+        const lastRound = responsesDiv.querySelector('.arena-battle-round:last-child');
+        if (lastRound) {
+            const cardsGrid = lastRound.querySelector('.arena-cards-grid');
+            cardsGrid.innerHTML = `<div class="arena-response-card" style="border-color: var(--error);">
+                <div class="card-body" style="color: var(--error);">Battle failed: ${escapeHtml(err.message)}</div>
+            </div>`;
+        }
+    }
+}
+
+async function loadArenaLeaderboard() {
+    try {
+        const res = await fetch('/api/arena/leaderboard');
+        const data = await res.json();
+        renderArenaLeaderboard(data.models || {});
+    } catch (err) {
+        console.error('Failed to load leaderboard:', err);
+    }
+}
+
+function renderArenaLeaderboard(modelsData) {
+    const tbody = document.getElementById('arena-leaderboard-body');
+    if (!tbody) return;
+
+    const models = Object.entries(modelsData);
+    if (!models.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="placeholder-text">No battles yet</td></tr>';
+        return;
+    }
+
+    // Sort by wins desc, then win rate
+    models.sort((a, b) => {
+        if (b[1].wins !== a[1].wins) return b[1].wins - a[1].wins;
+        const rateA = a[1].battles > 0 ? a[1].wins / a[1].battles : 0;
+        const rateB = b[1].battles > 0 ? b[1].wins / b[1].battles : 0;
+        return rateB - rateA;
+    });
+
+    tbody.innerHTML = models.map(([id, stats], i) => {
+        const winRate = stats.battles > 0 ? ((stats.wins / stats.battles) * 100).toFixed(0) : 0;
+        const barWidth = Math.min(winRate, 100);
+        return `<tr>
+            <td style="font-weight:600; color: var(--primary);">${i + 1}</td>
+            <td style="font-size:0.78rem; font-family:'Fira Code',monospace;">${id}</td>
+            <td style="color: var(--success); font-weight:600;">${stats.wins}</td>
+            <td>${stats.battles}</td>
+            <td>${winRate}%<span class="win-rate-bar" style="width:${barWidth * 0.5}px;"></span></td>
+        </tr>`;
+    }).join('');
+}
+
+async function clearArenaLeaderboard() {
+    if (!confirm('Clear the entire arena leaderboard?')) return;
+
+    try {
+        await fetch('/api/arena/leaderboard', { method: 'DELETE' });
+        renderArenaLeaderboard({});
+    } catch (err) {
+        console.error('Failed to clear leaderboard:', err);
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

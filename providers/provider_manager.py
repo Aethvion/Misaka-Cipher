@@ -212,6 +212,7 @@ class ProviderManager:
         preferred_provider: Optional[str] = None,
         model: Optional[str] = None,
         request_type: str = "generation",
+        source: str = "chat",
         **kwargs
     ) -> ProviderResponse:
         """
@@ -345,7 +346,8 @@ class ProviderManager:
                             response_content=response.content,
                             trace_id=trace_id,
                             success=True,
-                            metadata=response.metadata or {}
+                            metadata=response.metadata or {},
+                            source=source
                         )
                     except Exception as usage_err:
                         logger.debug(f"[{trace_id}] Usage tracking failed (non-critical): {usage_err}")

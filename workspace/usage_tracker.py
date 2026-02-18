@@ -106,7 +106,8 @@ class UsageTracker:
         trace_id: str,
         operation: str = "chat",
         success: bool = True,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
+        source: str = "chat"
     ):
         """Log an API call with token and cost estimation."""
         metadata = metadata or {}
@@ -136,7 +137,8 @@ class UsageTracker:
             "operation": operation,
             "trace_id": trace_id,
             "success": success,
-            "tokens_estimated": "usage" not in metadata
+            "tokens_estimated": "usage" not in metadata,
+            "source": source
         }
 
         self._log.append(entry)
@@ -144,7 +146,7 @@ class UsageTracker:
 
         logger.debug(
             f"[{trace_id}] Usage logged: {provider}/{model} "
-            f"tokens={total_tokens} in=${input_cost:.6f} out=${output_cost:.6f}"
+            f"tokens={total_tokens} in=${input_cost:.6f} out=${output_cost:.6f} source={source}"
         )
 
     def _compute_entry_costs(self, entry: Dict[str, Any]) -> tuple:

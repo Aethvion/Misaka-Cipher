@@ -44,7 +44,13 @@
         </div>
         <nav class="header-nav">
             <div class="main-tabs">
-                <button class="main-tab active" data-maintab="chat"><span class="tab-icon">💬</span>Chat</button>
+                <div class="main-tab-dropdown">
+                    <button class="main-tab active" data-maintab="chat"><span class="tab-icon">💬</span>Chat <span class="dropdown-arrow">▾</span></button>
+                    <div class="tab-dropdown-menu">
+                        <button class="tab-dropdown-item active" data-subtab="chat"><span class="tab-icon">💬</span>Chat</button>
+                        <button class="tab-dropdown-item" data-subtab="arena"><span class="tab-icon">⚔️</span>Arena</button>
+                    </div>
+                </div>
                 <button class="main-tab" data-maintab="files"><span class="tab-icon">📁</span>Files</button>
                 <button class="main-tab" data-maintab="tools"><span class="tab-icon">🔧</span>Tools</button>
                 <button class="main-tab" data-maintab="packages"><span class="tab-icon">📦</span>Packages</button>
@@ -231,6 +237,69 @@
                     <div class="agents-list" id="agents-list">
                         <div class="no-agents">No active agents</div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Arena Tab -->
+        <div class="main-tab-panel" id="arena-panel">
+            <div class="arena-layout">
+                <!-- Arena Controls -->
+                <div class="arena-controls">
+                    <div class="arena-section">
+                        <h3>⚔️ Arena Models</h3>
+                        <p class="arena-hint">Select models to compete. Send a prompt and all models respond.</p>
+                        <div class="arena-model-selector">
+                            <select id="arena-model-add" class="control-select">
+                                <option value="">+ Add Model...</option>
+                            </select>
+                            <div class="arena-model-chips" id="arena-model-chips">
+                                <!-- model chips inserted by JS -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="arena-section">
+                        <h3>🧑‍⚖️ Evaluator (Optional)</h3>
+                        <select id="arena-evaluator" class="control-select" style="width:100%;">
+                            <option value="">No Evaluator</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Arena Chat -->
+                <div class="arena-chat-area">
+                    <div class="arena-responses" id="arena-responses">
+                        <div class="arena-placeholder">
+                            <span class="tab-icon" style="font-size:3rem;">⚔️</span>
+                            <p>Add models and send a prompt to start a battle!</p>
+                        </div>
+                    </div>
+                    <div class="arena-input-wrapper">
+                        <textarea id="arena-input" class="chat-input" rows="1" placeholder="Enter a prompt for all models..."></textarea>
+                        <button id="arena-send" class="send-button"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+
+                <!-- Leaderboard -->
+                <div class="arena-leaderboard-section">
+                    <div class="arena-leaderboard-header">
+                        <h3>🏆 Leaderboard</h3>
+                        <button id="arena-clear-leaderboard" class="action-btn small danger">Clear</button>
+                    </div>
+                    <table class="usage-table" id="arena-leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Model</th>
+                                <th>Wins</th>
+                                <th>Battles</th>
+                                <th>Win Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody id="arena-leaderboard-body">
+                            <tr><td colspan="5" class="placeholder-text">No battles yet</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -492,6 +561,7 @@
                         <thead>
                             <tr>
                                 <th>Time</th>
+                                <th>Source</th>
                                 <th>Provider</th>
                                 <th>Model</th>
                                 <th>In Tokens</th>
@@ -502,7 +572,7 @@
                         </thead>
                         <tbody id="usage-recent-tbody">
                             <tr>
-                                <td colspan="7" class="placeholder-text">No data yet</td>
+                                <td colspan="8" class="placeholder-text">No data yet</td>
                             </tr>
                         </tbody>
                     </table>

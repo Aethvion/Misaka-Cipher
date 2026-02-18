@@ -26,6 +26,7 @@ from web.tool_routes import router as tool_router
 from web.memory_routes import router as memory_router
 from web.registry_routes import router as registry_router
 from web.usage_routes import router as usage_router
+from web.arena_routes import router as arena_router
 
 logger = get_logger(__name__)
 
@@ -62,6 +63,9 @@ app.include_router(registry_router)
 
 # Include usage routes
 app.include_router(usage_router)
+
+# Include arena routes
+app.include_router(arena_router)
 
 # Global instances (initialized on startup)
 orchestrator: Optional[MasterOrchestrator] = None
