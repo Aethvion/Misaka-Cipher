@@ -3522,6 +3522,150 @@
       "installed_at": null,
       "usage_count": 1,
       "last_used_at": "2026-02-17T08:41:10.214216"
+    },
+    {
+      "package_name": "beautifulsoup4",
+      "requested_by": "System Sync",
+      "reason": "Pre-existing package",
+      "requested_at": "2026-02-18T15:24:57.888068",
+      "status": "installed",
+      "metadata": {
+        "name": "beautifulsoup4",
+        "version": "4.14.3",
+        "description": "Discovered via system sync"
+      },
+      "approved_at": null,
+      "installed_at": "2026-02-18T15:24:57.888068",
+      "usage_count": 0,
+      "last_used_at": null
+    },
+    {
+      "package_name": "cffi",
+      "requested_by": "System Sync",
+      "reason": "Pre-existing package",
+      "requested_at": "2026-02-18T15:24:57.888068",
+      "status": "installed",
+      "metadata": {
+        "name": "cffi",
+        "version": "2.0.0",
+        "description": "Discovered via system sync"
+      },
+      "approved_at": null,
+      "installed_at": "2026-02-18T15:24:57.888068",
+      "usage_count": 0,
+      "last_used_at": null
+    },
+    {
+      "package_name": "curl_cffi",
+      "requested_by": "System Sync",
+      "reason": "Pre-existing package",
+      "requested_at": "2026-02-18T15:24:57.888068",
+      "status": "installed",
+      "metadata": {
+        "name": "curl_cffi",
+        "version": "0.13.0",
+        "description": "Discovered via system sync"
+      },
+      "approved_at": null,
+      "installed_at": "2026-02-18T15:24:57.888068",
+      "usage_count": 0,
+      "last_used_at": null
+    },
+    {
+      "package_name": "frozendict",
+      "requested_by": "System Sync",
+      "reason": "Pre-existing package",
+      "requested_at": "2026-02-18T15:24:57.888068",
+      "status": "installed",
+      "metadata": {
+        "name": "frozendict",
+        "version": "2.4.7",
+        "description": "Discovered via system sync"
+      },
+      "approved_at": null,
+      "installed_at": "2026-02-18T15:24:57.888068",
+      "usage_count": 0,
+      "last_used_at": null
+    },
+    {
+      "package_name": "multitasking",
+      "requested_by": "System Sync",
+      "reason": "Pre-existing package",
+      "requested_at": "2026-02-18T15:24:57.888068",
+      "status": "installed",
+      "metadata": {
+        "name": "multitasking",
+        "version": "0.0.12",
+        "description": "Discovered via system sync"
+      },
+      "approved_at": null,
+      "installed_at": "2026-02-18T15:24:57.888068",
+      "usage_count": 0,
+      "last_used_at": null
+    },
+    {
+      "package_name": "peewee",
+      "requested_by": "System Sync",
+      "reason": "Pre-existing package",
+      "requested_at": "2026-02-18T15:24:57.888068",
+      "status": "installed",
+      "metadata": {
+        "name": "peewee",
+        "version": "3.19.0",
+        "description": "Discovered via system sync"
+      },
+      "approved_at": null,
+      "installed_at": "2026-02-18T15:24:57.888068",
+      "usage_count": 0,
+      "last_used_at": null
+    },
+    {
+      "package_name": "platformdirs",
+      "requested_by": "System Sync",
+      "reason": "Pre-existing package",
+      "requested_at": "2026-02-18T15:24:57.888068",
+      "status": "installed",
+      "metadata": {
+        "name": "platformdirs",
+        "version": "4.6.0",
+        "description": "Discovered via system sync"
+      },
+      "approved_at": null,
+      "installed_at": "2026-02-18T15:24:57.888068",
+      "usage_count": 0,
+      "last_used_at": null
+    },
+    {
+      "package_name": "pycparser",
+      "requested_by": "System Sync",
+      "reason": "Pre-existing package",
+      "requested_at": "2026-02-18T15:24:57.888068",
+      "status": "installed",
+      "metadata": {
+        "name": "pycparser",
+        "version": "3.0",
+        "description": "Discovered via system sync"
+      },
+      "approved_at": null,
+      "installed_at": "2026-02-18T15:24:57.888068",
+      "usage_count": 0,
+      "last_used_at": null
+    },
+    {
+      "package_name": "soupsieve",
+      "requested_by": "System Sync",
+      "reason": "Pre-existing package",
+      "requested_at": "2026-02-18T15:24:57.888068",
+      "status": "installed",
+      "metadata": {
+        "name": "soupsieve",
+        "version": "2.8.3",
+        "description": "Discovered via system sync"
+      },
+      "approved_at": null,
+      "installed_at": "2026-02-18T15:24:57.888068",
+      "usage_count": 0,
+      "last_used_at": null
     }
   ],
   "installed": {
@@ -3735,12 +3879,21 @@
     "watchfiles": "1.1.1",
     "wcwidth": "0.2.13",
     "websocket-client": "1.9.0",
-    "websockets": "11.0.3",
+    "websockets": "16.0",
     "Werkzeug": "3.1.3",
     "yarl": "1.18.3",
     "zipp": "3.23.0",
-    "yfinance": "1.1.0"
+    "yfinance": "1.1.0",
+    "beautifulsoup4": "4.14.3",
+    "cffi": "2.0.0",
+    "curl_cffi": "0.13.0",
+    "frozendict": "2.4.7",
+    "multitasking": "0.0.12",
+    "peewee": "3.19.0",
+    "platformdirs": "4.6.0",
+    "pycparser": "3.0",
+    "soupsieve": "2.8.3"
   },
   "denied": [],
-  "last_updated": "2026-02-17T17:25:37.837983"
+  "last_updated": "2026-02-18T15:24:57.890600"
 }

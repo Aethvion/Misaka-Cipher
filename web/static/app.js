@@ -254,8 +254,8 @@ function switchMainTab(tabName) {
     // Update tab buttons
     document.querySelectorAll('.main-tab').forEach(tab => {
         if (tab.closest('.main-tab-dropdown')) {
-            // Dropdown tab: active if chat or arena
-            tab.classList.toggle('active', tabName === 'chat' || tabName === 'arena');
+            // Dropdown tab: active if chat, agent, or arena
+            tab.classList.toggle('active', tabName === 'chat' || tabName === 'agent' || tabName === 'arena');
         } else {
             tab.classList.toggle('active', tab.dataset.maintab === tabName);
         }
@@ -266,7 +266,9 @@ function switchMainTab(tabName) {
         panel.classList.remove('active');
     });
 
-    const targetPanel = document.getElementById(`${tabName}-panel`);
+    // Agent mode re-uses chat-panel
+    const panelId = tabName === 'agent' ? 'chat-panel' : `${tabName}-panel`;
+    const targetPanel = document.getElementById(panelId);
     if (targetPanel) targetPanel.classList.add('active');
 
     // Load data for tab
@@ -282,6 +284,9 @@ function switchMainTab(tabName) {
         loadArenaModels();
         loadArenaLeaderboard();
     }
+
+    // Update layout based on mode
+    updateChatLayout();
 }
 
 // ===== Data Loading =====
@@ -1614,20 +1619,8 @@ async function loadPreferences() {
     const strictMode = document.getElementById('setting-strict-mode');
     if (strictMode) strictMode.checked = prefs.get('validation.strict_mode', false);
 
-    const agentsPanel = document.getElementById('setting-hide-agents-panel');
-    if (agentsPanel) {
-        const hideAgents = prefs.get('ui_toggles.hide_agents_panel', false);
-        agentsPanel.checked = hideAgents;
-    }
-
     const hideSystem = document.getElementById('setting-hide-system-pkgs');
     if (hideSystem) hideSystem.checked = prefs.get('package_filters.hide_system', false);
-
-    const hideLogs = document.getElementById('setting-hide-system-logs');
-    if (hideLogs) {
-        const shouldHide = prefs.get('ui_toggles.hide_system_logs', false);
-        hideLogs.checked = shouldHide;
-    }
 
     // updateChatLayout handles all visibility and grid sizing
     updateChatLayout();
@@ -1638,17 +1631,13 @@ function updateChatLayout() {
     if (!layout) return;
 
     const agentsCol = document.querySelector('.agents-column');
+    const showAgents = currentMainTab === 'agent';
 
-    const hideAgents = prefs.get('ui_toggles.hide_agents_panel', false);
+    // Show agents column only in agent mode
+    if (agentsCol) agentsCol.style.display = showAgents ? 'flex' : 'none';
 
-    // Visibility
-    if (agentsCol) agentsCol.style.display = hideAgents ? 'none' : 'flex';
-
-    // Grid Template: Threads | Chat | Agents
-    let template = '15% 1fr';
-    if (!hideAgents) template += ' 20%';
-
-    layout.style.gridTemplateColumns = template;
+    // Grid Template: Threads | Chat (| Agents)
+    layout.style.gridTemplateColumns = showAgents ? '15% 1fr 20%' : '15% 1fr';
 }
 
 // Deprecated: toggleAgentsPanel
@@ -1720,15 +1709,6 @@ setupPackageListeners = function () {
         strictMode.addEventListener('change', (e) => savePreference('validation.strict_mode', e.target.checked));
     }
 
-    const agentsPanel = document.getElementById('setting-hide-agents-panel');
-    if (agentsPanel) {
-        agentsPanel.addEventListener('change', (e) => {
-            const hide = e.target.checked;
-            savePreference('ui_toggles.hide_agents_panel', hide);
-            updateChatLayout();
-        });
-    }
-
     const settingHideSystem = document.getElementById('setting-hide-system-pkgs');
     if (settingHideSystem) {
         settingHideSystem.addEventListener('change', (e) => {
@@ -1738,23 +1718,13 @@ setupPackageListeners = function () {
             const mainToggle = document.getElementById('hide-system-packages');
             if (mainToggle) {
                 mainToggle.checked = checked;
-                // Trigger change to update table
                 mainToggle.dispatchEvent(new Event('change'));
             } else {
-                // If main toggle not present (e.g. looking at settings tab), manually trigger reload
                 renderPackagesTable();
             }
         });
     }
 
-    const hideLogs = document.getElementById('setting-hide-system-logs');
-    if (hideLogs) {
-        hideLogs.addEventListener('change', (e) => {
-            const checked = e.target.checked;
-            savePreference('ui_toggles.hide_system_logs', checked);
-            updateChatLayout();
-        });
-    }
 };
 
 // Override sort click to save
@@ -2559,9 +2529,9 @@ function switchChatArenaMode(mode) {
     // Update dropdown button label
     const btn = document.querySelector('.main-tab-dropdown .main-tab');
     if (btn) {
-        const icon = mode === 'arena' ? '⚔️' : '💬';
-        const label = mode === 'arena' ? 'Arena' : 'Chat';
-        btn.innerHTML = `<span class="tab-icon">${icon}</span>${label} <span class="dropdown-arrow">▾</span>`;
+        const icons = { chat: '💬', agent: '🤖', arena: '⚔️' };
+        const labels = { chat: 'Chat', agent: 'Agent', arena: 'Arena' };
+        btn.innerHTML = `<span class="tab-icon">${icons[mode] || '💬'}</span>${labels[mode] || 'Chat'} <span class="dropdown-arrow">▾</span>`;
     }
 
     // Switch panel
