@@ -9,13 +9,16 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-active-success.svg)](https://github.com/MarcelvanDuijnDev/MisakaCipher)
+[![Status](https://img.shields.io/badge/status-experimental-orange.svg)](https://github.com/MarcelvanDuijnDev/MisakaCipher)
 
 [📚 Documentation](/documentation/) | [🚀 Getting Started](/documentation/human/Getting_Started.md) | [🤖 AI Docs](/documentation/ai/) | [💬 Discussions](https://github.com/MarcelvanDuijnDev/MisakaCipher/discussions)
 
-</div>
+---
+
+### ⚠️ Misaka Cipher STATUS: EXPERIMENTAL⚠️
 
 ---
+</div>
 
 ## 🎯 The Vision: Infinite Sessions, Infinite Possibilities
 
