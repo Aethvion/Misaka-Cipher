@@ -64,6 +64,9 @@ async function loadThreads() {
 
         // Merge with existing threads (don't overwrite local-only threads like 'default')
         data.threads.forEach(thread => {
+            // Default mode if not set
+            if (!thread.mode) thread.mode = 'auto';
+
             if (!threads[thread.id]) {
                 threads[thread.id] = thread;
                 threadMessages[thread.id] = []; // Initialize message storage
@@ -99,12 +102,14 @@ async function createNewThread() {
 
     const threadId = `thread-${Date.now()}`;
 
-    // Create thread locally
+    // Create thread locally — inherit mode from current tab
+    const threadMode = (typeof currentMainTab !== 'undefined' && currentMainTab === 'agent') ? 'auto' : 'chat_only';
     threads[threadId] = {
         id: threadId,
         title: title,
         task_ids: [],
-        settings: { system_terminal_enabled: true },
+        mode: threadMode,
+        settings: {},
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
     };
@@ -395,7 +400,17 @@ function renderThreadList() {
     threadsList.innerHTML = '';
     const template = document.getElementById('thread-item-template');
 
+    // Filter threads based on current tab mode
+    const showChat = (typeof currentMainTab === 'undefined' || currentMainTab === 'chat');
+    const showAgent = (typeof currentMainTab !== 'undefined' && currentMainTab === 'agent');
+
     Object.values(threads).forEach(thread => {
+        const isChatOnly = (thread.mode === 'chat_only');
+
+        // Filter: Chat tab shows chat_only threads, Agent tab shows non-chat_only threads
+        if (showChat && !isChatOnly) return;
+        if (showAgent && isChatOnly) return;
+
         const taskCount = thread.task_ids ? thread.task_ids.length : 0;
 
         // Clone template
@@ -418,8 +433,11 @@ function renderThreadList() {
         const modeBadge = clone.querySelector('.thread-mode-badge');
         if (thread.mode === 'chat_only') {
             modeBadge.style.display = 'inline-block';
+            modeBadge.textContent = 'CHAT';
         } else {
-            modeBadge.style.display = 'none';
+            modeBadge.style.display = 'inline-block';
+            modeBadge.textContent = 'AGENT';
+            modeBadge.style.background = 'var(--success, #22c55e)';
         }
 
         // --- Settings Logic (Vertical Stack Foldout) ---
@@ -463,7 +481,6 @@ function renderThreadList() {
         // Initialize Settings Inputs
         const contextSelect = clone.querySelector('select[name="contextMode"]');
         const windowInput = clone.querySelector('.context-window-input');
-        const chatOnlyToggle = clone.querySelector('.chat-only-toggle');
 
         // Context Mode (Dropdown)
         if (contextSelect) {
@@ -482,31 +499,15 @@ function renderThreadList() {
             windowInput.addEventListener('change', () => saveThreadSettings(thread.id));
         }
 
-        // Chat Only Checkbox
-        if (chatOnlyToggle) {
-            chatOnlyToggle.checked = (thread.mode === 'chat_only');
-            chatOnlyToggle.addEventListener('change', (e) => {
-                const newMode = e.target.checked ? 'chat_only' : 'auto';
+        // Transfer Button
+        const transferBtn = clone.querySelector('.transfer-btn');
+        if (transferBtn) {
+            // Label based on current mode
+            transferBtn.textContent = thread.mode === 'chat_only' ? '→ TRANSFER TO AGENT' : '→ TRANSFER TO CHAT';
+            transferBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const newMode = thread.mode === 'chat_only' ? 'auto' : 'chat_only';
                 toggleThreadMode(thread.id, newMode);
-            });
-        }
-
-        // Terminal Toggle
-        const terminalToggle = clone.querySelector('.terminal-toggle');
-        if (terminalToggle) {
-            // Default to true if not set
-            const isEnabled = (thread.settings && thread.settings.system_terminal_enabled !== false);
-            terminalToggle.checked = isEnabled;
-
-            terminalToggle.addEventListener('change', (e) => {
-                if (!thread.settings) thread.settings = {};
-                thread.settings.system_terminal_enabled = e.target.checked;
-                saveThreadSettings(thread.id);
-
-                // If active thread, update UI immediately
-                if (isActive && typeof updateTerminalVisibility === 'function') {
-                    updateTerminalVisibility();
-                }
             });
         }
 
@@ -549,12 +550,28 @@ async function deleteThread(threadId) {
     }
 }
 
-// Toggle thread mode
+// Toggle thread mode (transfer)
 async function toggleThreadMode(threadId, mode) {
+    const wasActive = (threadId === currentThreadId);
+
     // Optimistic update
     if (threads[threadId]) {
         threads[threadId].mode = mode;
         renderThreadList();
+
+        // If the transferred thread was active, select next visible thread
+        if (wasActive) {
+            const visibleThreads = document.querySelectorAll('.thread-item');
+            if (visibleThreads.length > 0) {
+                switchThread(visibleThreads[0].dataset.threadId);
+            } else {
+                currentThreadId = null;
+                toggleChatInput(false);
+                const chatMessages = document.getElementById('chat-messages');
+                if (chatMessages) chatMessages.innerHTML = '';
+                document.getElementById('active-thread-title').textContent = 'No threads';
+            }
+        }
     }
 
     try {
@@ -751,16 +768,12 @@ async function saveThreadSettings(threadId) {
     const windowInput = threadItem.querySelector('.context-window-input');
     const contextWindow = windowInput ? parseInt(windowInput.value) : 5;
 
-    // Terminal Setting
-    const terminalToggle = threadItem.querySelector('.terminal-toggle');
-    const terminalEnabled = terminalToggle ? terminalToggle.checked : true;
 
     // Update local state
     if (threads[threadId]) {
         threads[threadId].settings = {
             context_mode: contextMode,
-            context_window: contextWindow,
-            system_terminal_enabled: terminalEnabled
+            context_window: contextWindow
         };
     }
 

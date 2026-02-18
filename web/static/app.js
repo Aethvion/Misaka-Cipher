@@ -2552,8 +2552,30 @@ function switchChatArenaMode(mode) {
         btn.innerHTML = `<span class="tab-icon">${icons[mode] || '💬'}</span>${labels[mode] || 'Chat'} <span class="dropdown-arrow">▾</span>`;
     }
 
-    // Switch panel
+    // Switch panel (this updates currentMainTab)
     switchMainTab(mode);
+
+    // Re-render thread list to filter by mode
+    if (typeof renderThreadList === 'function') {
+        renderThreadList();
+
+        // Auto-select first visible thread if current is no longer visible
+        if (mode === 'chat' || mode === 'agent') {
+            const visibleThreads = document.querySelectorAll('.thread-item');
+            const currentVisible = document.querySelector(`.thread-item[data-thread-id="${currentThreadId}"]`);
+            if (!currentVisible && visibleThreads.length > 0) {
+                const firstId = visibleThreads[0].dataset.threadId;
+                if (typeof switchThread === 'function') switchThread(firstId);
+            } else if (visibleThreads.length === 0) {
+                // No threads for this mode — clear chat
+                currentThreadId = null;
+                if (typeof toggleChatInput === 'function') toggleChatInput(false);
+                const chatMessages = document.getElementById('chat-messages');
+                if (chatMessages) chatMessages.innerHTML = '';
+                document.getElementById('active-thread-title').textContent = 'No threads';
+            }
+        }
+    }
 }
 
 function initializeArena() {
