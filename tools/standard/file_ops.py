@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Optional, Union, Any, Dict
 from datetime import datetime
 
-# Define workspace root
-WORKSPACE_ROOT = Path("C:/Aethvion/MisakaCipher/WorkFolder")
+# Define workspace root - use environment variable or default to relative path
+WORKSPACE_ROOT = Path(os.environ.get("MISAKA_WORKSPACE", Path(__file__).parent.parent / "WorkFolder"))
 
 def data_save_file(content: Any, filename: str, domain: str = "General") -> Dict[str, Any]:
     """

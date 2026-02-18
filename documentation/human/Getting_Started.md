@@ -86,8 +86,8 @@ Result: $1.60 in API costs, fully automatic, self-improving system
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/MarcelvanDuijnDev/MisakaCipher.git
-cd MisakaCipher
+git clone https://github.com/Aethvion/Misaka-Cipher.git
+cd Misaka-Cipher
 ```
 
 ### Step 2: Install Dependencies

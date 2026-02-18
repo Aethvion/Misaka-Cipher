@@ -21,7 +21,7 @@ Primary Purpose: Self-evolving agentic system for autonomous tool generation and
 ## DIRECTORY STRUCTURE
 
 ```
-MisakaCipher/
+Misaka-Cipher/
 ├── main.py                      # Entry point (CLI/Web/Test modes)
 ├── cli.py                       # Interactive CLI interface
 ├── nexus_core.py                # Central orchestration hub [SINGLE POINT OF ENTRY]

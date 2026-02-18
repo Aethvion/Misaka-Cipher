@@ -9,9 +9,9 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-experimental-orange.svg)](https://github.com/MarcelvanDuijnDev/MisakaCipher)
+[![Status](https://img.shields.io/badge/status-experimental-orange.svg)](https://github.com/Aethvion/Misaka-Cipher)
 
-[📚 Documentation](/documentation/) | [🚀 Getting Started](/documentation/human/Getting_Started.md) | [🤖 AI Docs](/documentation/ai/) | [💬 Discussions](https://github.com/MarcelvanDuijnDev/MisakaCipher/discussions)
+[📚 Documentation](/documentation/) | [🚀 Getting Started](/documentation/human/Getting_Started.md) | [🤖 AI Docs](/documentation/ai/) | [💬 Discussions](https://github.com/Aethvion/Misaka-Cipher/discussions)
 
 ---
 
@@ -119,8 +119,8 @@ Multi-tiered memory architecture for learning and context retention.
 
 ```bash
 # Clone repository
-git clone https://github.com/MarcelvanDuijnDev/MisakaCipher.git
-cd MisakaCipher
+git clone https://github.com/Aethvion/Misaka-Cipher.git
+cd Misaka-Cipher
 
 # Install dependencies
 pip install -r requirements.txt
@@ -250,7 +250,7 @@ Built-in security layer that protects sensitive data:
 ## 📁 Directory Structure
 
 ```
-MisakaCipher/
+Misaka-Cipher/
 ├── main.py                 # Entry point (CLI/Web/Test modes)
 ├── cli.py                  # Interactive command-line interface
 ├── nexus_core.py           # Central orchestration hub [SINGLE POINT OF ENTRY]
@@ -424,8 +424,8 @@ Check out our [Contributing Guidelines](CONTRIBUTING.md) (coming soon) and join 
 - **Documentation:** [/documentation/](/documentation/)
 - **Human Docs:** [Getting Started](/documentation/human/Getting_Started.md)
 - **AI Docs:** [System Spec](/documentation/ai/SYSTEM_SPEC.md)
-- **Issues:** [GitHub Issues](https://github.com/MarcelvanDuijnDev/MisakaCipher/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/MarcelvanDuijnDev/MisakaCipher/discussions)
+- **Issues:** [GitHub Issues](https://github.com/Aethvion/Misaka-Cipher/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/Aethvion/Misaka-Cipher/discussions)
 
 ---
 
@@ -434,9 +434,9 @@ Check out our [Contributing Guidelines](CONTRIBUTING.md) (coming soon) and join 
 Need help? Have questions?
 
 1. 📖 Check the [Getting Started Guide](/documentation/human/Getting_Started.md)
-2. 🔍 Search [existing issues](https://github.com/MarcelvanDuijnDev/MisakaCipher/issues)
-3. 💬 Start a [discussion](https://github.com/MarcelvanDuijnDev/MisakaCipher/discussions)
-4. 🐛 [Open an issue](https://github.com/MarcelvanDuijnDev/MisakaCipher/issues/new)
+2. 🔍 Search [existing issues](https://github.com/Aethvion/Misaka-Cipher/issues)
+3. 💬 Start a [discussion](https://github.com/Aethvion/Misaka-Cipher/discussions)
+4. 🐛 [Open an issue](https://github.com/Aethvion/Misaka-Cipher/issues/new)
 
 ---
 
@@ -446,7 +446,7 @@ Need help? Have questions?
 
 *"Every tool forged is a permanent upgrade to the system."*
 
-[⭐ Star us on GitHub](https://github.com/MarcelvanDuijnDev/MisakaCipher) | [📣 Share on Twitter](https://twitter.com/intent/tweet?text=Check%20out%20Misaka%20Cipher%20-%20A%20self-evolving%20AI%20system!&url=https://github.com/MarcelvanDuijnDev/MisakaCipher)
+[⭐ Star us on GitHub](https://github.com/Aethvion/Misaka-Cipher) | [📣 Share on Twitter](https://twitter.com/intent/tweet?text=Check%20out%20Misaka%20Cipher%20-%20A%20self-evolving%20AI%20system!&url=https://github.com/Aethvion/Misaka-Cipher)
 
 </div>
 
@@ -473,8 +473,8 @@ Each conversation thread has configurable settings via the **▶ SETTINGS** togg
 **Ready to start forging?** 🔥
 
 ```bash
-git clone https://github.com/MarcelvanDuijnDev/MisakaCipher.git
-cd MisakaCipher
+git clone https://github.com/Aethvion/Misaka-Cipher.git
+cd Misaka-Cipher
 pip install -r requirements.txt
 python main.py --cli
 ```

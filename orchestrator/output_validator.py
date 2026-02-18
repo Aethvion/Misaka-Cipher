@@ -3,6 +3,7 @@ Misaka Cipher - Output Validator
 Validates agent outputs to ensure they match user intent
 """
 
+import os
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
@@ -10,7 +11,8 @@ from utils import get_logger
 
 logger = get_logger(__name__)
 
-WORK_FOLDER = Path("C:/Aethvion/MisakaCipher/WorkFolder")
+# Use environment variable or default to relative path
+WORK_FOLDER = Path(os.environ.get("MISAKA_WORKSPACE", Path(__file__).parent.parent / "WorkFolder"))
 
 
 @dataclass

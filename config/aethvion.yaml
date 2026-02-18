@@ -109,7 +109,7 @@ development:
   
 # Paths
 paths:
-  workspace: "C:\\Aethvion\\MisakaCipher"
+  workspace: "."  # Use current directory as workspace
   logs: "logs"
   data: "data"
   tools: "forge/generated_tools"

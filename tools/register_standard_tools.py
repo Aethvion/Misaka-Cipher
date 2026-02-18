@@ -4,7 +4,8 @@ from pathlib import Path
 from datetime import datetime
 
 # Add project root to path
-sys.path.append(str(Path(__file__).parent.parent))
+project_root = Path(__file__).parent.parent
+sys.path.append(str(project_root))
 
 from forge.tool_registry import ToolRegistry
 
@@ -13,6 +14,9 @@ registry = ToolRegistry()
 
 print("Registering standard tools...")
 
+# Get the absolute path to file_ops.py
+file_ops_path = project_root / "tools" / "standard" / "file_ops.py"
+
 # Data_Save_File
 registry.register({
     "name": "Data_Save_File",
@@ -20,7 +24,7 @@ registry.register({
     "action": "Save",
     "object": "File",
     "description": "Save content to a file in the workspace. Use this to persist reports, code, or data.",
-    "file_path": str(Path("C:/Aethvion/MisakaCipher/tools/standard/file_ops.py").absolute()),
+    "file_path": str(file_ops_path.absolute()),
     "trace_id": "SYSTEM_INIT",
     "created_at": datetime.now().isoformat(),
     "parameters": {
@@ -38,7 +42,7 @@ registry.register({
     "action": "Read",
     "object": "File",
     "description": "Read content from a file in the workspace.",
-    "file_path": str(Path("C:/Aethvion/MisakaCipher/tools/standard/file_ops.py").absolute()),
+    "file_path": str(file_ops_path.absolute()),
     "trace_id": "SYSTEM_INIT",
     "created_at": datetime.now().isoformat(),
     "parameters": {

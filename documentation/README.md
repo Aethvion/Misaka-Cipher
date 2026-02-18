@@ -154,7 +154,7 @@ Machine-readable specifications for AI agents operating within the system.
 ## 🤝 Contributing to Documentation
 
 ### Found an Error?
-1. Check if it's already reported in [Issues](https://github.com/MarcelvanDuijnDev/MisakaCipher/issues)
+1. Check if it's already reported in [Issues](https://github.com/Aethvion/Misaka-Cipher/issues)
 2. If not, open a new issue with:
    - Documentation file name
    - Section/line number
@@ -186,7 +186,7 @@ Machine-readable specifications for AI agents operating within the system.
 - **Security Rules:** [config/security.yaml](../config/security.yaml)
 
 ### Community
-- **GitHub Repository:** [MarcelvanDuijnDev/MisakaCipher](https://github.com/MarcelvanDuijnDev/MisakaCipher)
+- **GitHub Repository:** [Aethvion/Misaka-Cipher](https://github.com/Aethvion/Misaka-Cipher)
 - **Issues:** Report bugs or request features
 - **Discussions:** Ask questions and share ideas
 - **Pull Requests:** Contribute improvements
@@ -238,4 +238,4 @@ This documentation follows a **dual-tier approach**:
 
 **Maintained By:** Agentic Sprint Cycles + Human Contributors
 
-**Feedback Welcome:** [Open an Issue](https://github.com/MarcelvanDuijnDev/MisakaCipher/issues/new)
+**Feedback Welcome:** [Open an Issue](https://github.com/Aethvion/Misaka-Cipher/issues/new)
