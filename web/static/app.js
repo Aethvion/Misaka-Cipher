@@ -2397,16 +2397,18 @@ async function loadHeaderStatus() {
 
 async function loadSystemStatusTab() {
     const container = document.querySelector('.roadmap-tree');
-    if (!container) return; // Not on status page or element missing
+    if (!container) return;
 
     try {
-        // Fetch data in parallel
-        const [staticRes, apiRes] = await Promise.all([
+        // Fetch data: Status JSON (Roadmap), Metrics JSON (Heavy), API Status (Light)
+        const [roadmapRes, metricsRes, apiRes] = await Promise.all([
             fetch('/static/assets/system-status.json?v=' + Date.now()),
+            fetch('/static/assets/system-metrics.json?v=' + Date.now()),
             fetch('/api/system/status')
         ]);
 
-        const staticData = staticRes.ok ? await staticRes.json() : {};
+        const roadmapData = roadmapRes.ok ? await roadmapRes.json() : {};
+        const metricsData = metricsRes.ok ? await metricsRes.json() : {};
         const apiData = apiRes.ok ? await apiRes.json() : {};
 
         // Update Header Meta
@@ -2414,15 +2416,15 @@ async function loadSystemStatusTab() {
         const verEl = document.getElementById('system-version-display');
         const dateEl = document.getElementById('status-last-update');
 
-        if (nameEl) nameEl.textContent = staticData.system_name || 'Misaka Cipher';
-        if (verEl) verEl.textContent = staticData.version ? `v${staticData.version}` : '';
-        if (dateEl) dateEl.textContent = staticData.last_update || 'Unknown';
+        if (nameEl) nameEl.textContent = roadmapData.system_name || 'Misaka Cipher';
+        if (verEl) verEl.textContent = roadmapData.version ? `v${roadmapData.version}` : '';
+        if (dateEl) dateEl.textContent = roadmapData.last_update || 'Unknown';
 
-        // Render Telemetry
-        renderSystemTelemetry(apiData);
+        // Render Telemetry (Merge API + Static Metrics)
+        renderSystemTelemetry(apiData, metricsData);
 
         // Render Roadmap Tree
-        const roadmap = staticData.roadmap || {};
+        const roadmap = roadmapData.roadmap || {};
         let html = '';
 
         // Helper to render section
@@ -2450,14 +2452,19 @@ async function loadSystemStatusTab() {
     }
 }
 
-function renderSystemTelemetry(data) {
+function renderSystemTelemetry(apiData, metricsData) {
     const container = document.getElementById('status-telemetry');
     if (!container) return;
 
-    if (!data.nexus) {
-        container.innerHTML = '';
-        return;
-    }
+    // API Data = Realtime (Nexus, Agents, Tools)
+    // Metrics Data = Cached (Disk, DB, Memories)
+
+    const nexusStatus = apiData.nexus || {};
+    const factoryStatus = apiData.factory || {};
+    const forgeStatus = apiData.forge || {};
+
+    const systemMetrics = metricsData.system || {};
+    const memoryMetrics = metricsData.memory || {};
 
     const formatBytes = (bytes) => {
         if (!bytes) return '0 B';
@@ -2470,31 +2477,61 @@ function renderSystemTelemetry(data) {
     container.innerHTML = `
         <div class="telemetry-card">
             <div class="t-label">NEXUS STATUS</div>
-            <div class="t-value ${data.nexus.initialized ? 'online' : 'offline'}">
-                ${data.nexus.initialized ? 'ONLINE' : 'OFFLINE'}
+            <div class="t-value ${nexusStatus.initialized ? 'online' : 'offline'}">
+                ${nexusStatus.initialized ? 'ONLINE' : 'OFFLINE'}
             </div>
         </div>
         <div class="telemetry-card">
             <div class="t-label">ACTIVE AGENTS</div>
-            <div class="t-value">${data.factory?.active_agents || 0} <span class="t-sub">/ ${data.factory?.total_agents || 0}</span></div>
+            <div class="t-value">${factoryStatus.active_agents || 0} <span class="t-sub">/ ${factoryStatus.total_agents || 0}</span></div>
         </div>
         <div class="telemetry-card">
             <div class="t-label">TOOLS</div>
-            <div class="t-value">${data.forge?.total_tools || 0}</div>
+            <div class="t-value">${forgeStatus.total_tools || 0}</div>
         </div>
         <div class="telemetry-card">
             <div class="t-label">PROJECT SIZE</div>
-            <div class="t-value">${formatBytes(data.system?.project_size_bytes)}</div>
+            <div class="t-value">${formatBytes(systemMetrics.project_size_bytes)}</div>
         </div>
         <div class="telemetry-card">
             <div class="t-label">KNOWLEDGE BASE</div>
-            <div class="t-value">${formatBytes(data.system?.db_size_bytes)} <span class="t-sub">(DB)</span></div>
+            <div class="t-value">${formatBytes(systemMetrics.db_size_bytes)} <span class="t-sub">(DB)</span></div>
         </div>
         <div class="telemetry-card">
             <div class="t-label">MEMORY UNITS</div>
-            <div class="t-value">${data.memory?.episodic_count || 0}</div>
+            <div class="t-value">${memoryMetrics.episodic_count || 0}</div>
         </div>
     `;
+}
+
+async function syncSystemTelemetry() {
+    const btn = document.getElementById('sync-telemetry-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spin fa-spinner"></i> Syncing...';
+    }
+
+    try {
+        const response = await fetch('/api/system/telemetry/sync', { method: 'POST' });
+        if (!response.ok) throw new Error('Sync failed');
+
+        await loadSystemStatusTab(); // Reload to show new data
+
+        // Show temp success state
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check"></i> Synced';
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fas fa-sync"></i> Sync Telemetry';
+                btn.disabled = false;
+            }, 2000);
+        }
+    } catch (error) {
+        console.error('Telemetry sync error:', error);
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+            btn.disabled = false;
+        }
+    }
 }
 
 // ===== Usage Dashboard =====

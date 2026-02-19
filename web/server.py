@@ -434,22 +434,37 @@ async def chat(message: ChatMessage):
 
 @app.get("/api/system/status")
 async def get_system_status():
-    """Get comprehensive system status."""
+    """Get lightweight system status (Nexus, Agents, Tools)."""
     if not nexus:
         raise HTTPException(status_code=503, detail="System not initialized")
     
     try:
         status = nexus.get_status()
         
-        # Get tool list safely
-        tools = forge.registry.list_tools()
-        recent_tools = []
-        for t in tools[:5]:
-            recent_tools.append({
-                "name": t.get('name', 'unknown'),
-                "domain": t.get('domain', 'unknown')
-            })
-        
+        return {
+            "nexus": {
+                "initialized": status['initialized'],
+                "active_traces": status['active_traces'],
+                "firewall": status['firewall'],
+                "providers": status['providers']
+            },
+            "factory": {
+                "active_agents": factory.registry.get_active_count(),
+                "total_agents": len(factory.registry.get_all_agents())
+            },
+            "forge": {
+                "total_tools": len(forge.registry.list_tools())
+            }
+        }
+    except Exception as e:
+        logger.error(f"System status error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/system/telemetry/sync")
+async def sync_system_telemetry():
+    """Calculate heavy metrics (Disk, DB) and save to static JSON."""
+    try:
         # Calculate Disk Usage (Project & DB)
         project_size = 0
         db_size = 0
@@ -463,37 +478,36 @@ async def get_system_status():
                     if 'chroma' in str(path) or '.db' in path.name:
                         db_size += size
         except Exception:
-            pass # resilient to permission errors
+            pass 
 
-        return {
-            "nexus": {
-                "initialized": status['initialized'],
-                "active_traces": status['active_traces'],
-                "firewall": status['firewall'],
-                "providers": status['providers']
-            },
-            "factory": {
-                "total_agents": len(factory.registry.get_all_agents()),
-                "active_agents": factory.registry.get_active_count(),
-                "max_concurrent": factory.max_concurrent_agents
-            },
-            "forge": {
-                "total_tools": len(tools),
-                "recent_tools": recent_tools
-            },
-            "memory": {
-                "episodic_count": orchestrator.episodic_memory.collection.count() if hasattr(orchestrator.episodic_memory, 'collection') else 0,
-                "graph_stats": orchestrator.knowledge_graph.get_stats()
-            },
+        # Memory/Episodic Count
+        episodic_count = 0
+        if orchestrator and hasattr(orchestrator, 'episodic_memory') and hasattr(orchestrator.episodic_memory, 'collection'):
+            episodic_count = orchestrator.episodic_memory.collection.count()
+
+        # Construct Metrics Data
+        metrics = {
             "system": {
                 "project_size_bytes": project_size,
                 "db_size_bytes": db_size,
-                "python_version": sys.version.split(' ')[0],
-                "platform": sys.platform
+                "last_sync": datetime.now().isoformat()
+            },
+            "memory": {
+                "episodic_count": episodic_count
             }
         }
+
+        # Save to static asset
+        metrics_path = Path(__file__).parent / "static" / "assets" / "system-metrics.json"
+        metrics_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(metrics_path, 'w') as f:
+            json.dump(metrics, f, indent=2)
+            
+        return metrics
+
     except Exception as e:
-        logger.error(f"System status error: {str(e)}", exc_info=True)
+        logger.error(f"Telemetry sync error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
