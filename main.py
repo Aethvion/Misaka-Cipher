@@ -1,7 +1,7 @@
 """
 Misaka Cipher - Main Entry Point
 M.I.S.A.K.A.: Multitask Intelligence & Strategic Analysis Kernel Architecture
-Framework: A.E.G.I.S.
+
 
 Interactive CLI Interface (default)
 Use --test flag to run verification tests

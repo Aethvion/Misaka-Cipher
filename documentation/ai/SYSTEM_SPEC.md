@@ -10,7 +10,7 @@
 Name: Misaka Cipher
 Acronym: M.I.S.A.K.A.
 Full Name: Multitask Intelligence & Strategic Analysis Kernel Architecture
-Framework: A.E.G.I.S. (Aethvion-Empowered Generative Intelligence System)
+
 Version: Sprint 3+
 Language: Python 3.10+
 Primary Purpose: Self-evolving agentic system for autonomous tool generation and task execution

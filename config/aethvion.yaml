@@ -1,12 +1,12 @@
 # Misaka Cipher - Aethvion Global Configuration
 # M.I.S.A.K.A.: Multitask Intelligence & Strategic Analysis Kernel Architecture
-# Framework: A.E.G.I.S. (Analytic Engine for Global Insights & Strategy)
+
 
 system:
   name: "Misaka Cipher"
   version: "1.0.0-sprint1"
   codename: "M.I.S.A.K.A."
-  framework: "A.E.G.I.S."
+
   environment: "development"  # development, staging, production
   
   # System Identity

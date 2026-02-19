@@ -74,7 +74,6 @@ class NexusCore:
         logger.info("MISAKA CIPHER - NEXUS CORE")
         logger.info("M.I.S.A.K.A.: Multitask Intelligence & Strategic Analysis")
         logger.info("          Kernel Architecture")
-        logger.info("Framework: A.E.G.I.S.")
         logger.info("=" * 60)
     
     def initialize(self):
