@@ -607,12 +607,43 @@
                 </div>
 
 
+                <!-- Developer Mode -->
+                <div class="setting-group dev-mode-group">
+                    <div class="setting-item" style="border-bottom: none;">
+                        <div class="setting-label" style="flex:1;">
+                            <strong>🔧 Developer Mode</strong>
+                            <span>Reveal sensitive configuration options. Resets on page refresh.</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="setting-dev-mode">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- .env Management (hidden by default, shown by dev mode) -->
+                <div class="setting-group env-section" id="env-section" style="display:none;">
+                    <h3>🔑 Environment Variables (.env)</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                        API keys are stored in your local <code>.env</code> file and never committed to version control.
+                    </p>
+                    <div id="env-status-container">
+                        <div class="loading-placeholder">Checking .env status...</div>
+                    </div>
+                </div>
+
                 <div class="setting-group">
                     <h3>Provider Settings</h3>
                     <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
                         Configure AI providers, priorities, and retry budgets per step. Saved to
                         <code>model_registry.json</code>.
                     </p>
+
+                    <!-- Unsaved indicator -->
+                    <div id="provider-unsaved-banner" class="unsaved-banner" style="display:none;">
+                        ⚠ Unsaved changes — click Save to apply
+                    </div>
+
                     <div id="provider-cards-container" class="provider-cards-grid">
                         <div class="loading-placeholder">Loading providers...</div>
                     </div>

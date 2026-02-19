@@ -4,6 +4,8 @@ API endpoints for managing the Model Registry (config/model_registry.json)
 """
 
 import json
+import os
+import re
 from pathlib import Path
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Request
@@ -14,7 +16,135 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/registry", tags=["registry"])
 
-REGISTRY_PATH = Path(__file__).parent.parent / "config" / "model_registry.json"
+PROJECT_ROOT = Path(__file__).parent.parent
+REGISTRY_PATH = PROJECT_ROOT / "config" / "model_registry.json"
+SUGGESTED_PATH = PROJECT_ROOT / "config" / "suggested_models.json"
+ENV_PATH = PROJECT_ROOT / ".env"
+ENV_EXAMPLE_PATH = PROJECT_ROOT / ".env.example"
+
+
+# ===== .env Management =====
+
+@router.get("/env/status")
+async def get_env_status():
+    """Check if .env exists and return masked key info."""
+    try:
+        exists = ENV_PATH.exists()
+        keys = []
+
+        if exists:
+            content = ENV_PATH.read_text(encoding="utf-8")
+            for line in content.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    name, _, value = line.partition("=")
+                    name = name.strip()
+                    value = value.strip()
+                    has_value = bool(value) and not value.startswith("your_")
+                    masked = (value[:4] + "****") if has_value and len(value) > 4 else ("****" if has_value else "")
+                    keys.append({"name": name, "has_value": has_value, "masked_value": masked})
+        else:
+            # Show expected keys from .env.example
+            if ENV_EXAMPLE_PATH.exists():
+                content = ENV_EXAMPLE_PATH.read_text(encoding="utf-8")
+                for line in content.splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if "=" in line:
+                        name, _, _ = line.partition("=")
+                        keys.append({"name": name.strip(), "has_value": False, "masked_value": ""})
+
+        return {"exists": exists, "keys": keys}
+    except Exception as e:
+        logger.error(f"Failed to get env status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/env/create")
+async def create_env():
+    """Create .env from .env.example if it doesn't exist."""
+    try:
+        if ENV_PATH.exists():
+            return {"status": "exists", "message": ".env already exists"}
+
+        if not ENV_EXAMPLE_PATH.exists():
+            raise HTTPException(status_code=404, detail=".env.example not found")
+
+        # Copy .env.example to .env
+        content = ENV_EXAMPLE_PATH.read_text(encoding="utf-8")
+        ENV_PATH.write_text(content, encoding="utf-8")
+        logger.info("Created .env from .env.example")
+        return {"status": "created"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to create .env: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/env/update")
+async def update_env_key(data: Dict[str, Any]):
+    """Update a specific key in .env."""
+    try:
+        key_name = data.get("key")
+        key_value = data.get("value", "")
+
+        if not key_name:
+            raise HTTPException(status_code=400, detail="'key' is required")
+
+        if not ENV_PATH.exists():
+            raise HTTPException(status_code=404, detail=".env file not found. Create it first.")
+
+        content = ENV_PATH.read_text(encoding="utf-8")
+        lines = content.splitlines()
+
+        # Find and update the key, or append it
+        found = False
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            if "=" in stripped:
+                name, _, _ = stripped.partition("=")
+                if name.strip() == key_name:
+                    lines[i] = f"{key_name}={key_value}"
+                    found = True
+                    break
+
+        if not found:
+            lines.append(f"\n{key_name}={key_value}")
+
+        ENV_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        logger.info(f"Updated .env key: {key_name}")
+
+        # Reload into current process environment
+        os.environ[key_name] = key_value
+
+        return {"status": "success", "key": key_name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to update .env key: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Suggested Models =====
+
+@router.get("/suggested")
+async def get_suggested_models():
+    """Get suggested models for all providers."""
+    try:
+        if not SUGGESTED_PATH.exists():
+            return {}
+        with open(SUGGESTED_PATH, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Failed to load suggested models: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 def _load_registry() -> Dict[str, Any]:

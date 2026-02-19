@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize UI listeners (TABS, INPUTS, ETC)
     initializeUI();
 
+    // Developer mode (must be before loadInitialData so toggle is ready)
+    initDevMode();
+
     // Initial load
     loadInitialData();
 });
@@ -1789,17 +1792,41 @@ loadAllPackages = async function () {
 
 // ===== Provider Settings =====
 
-// ===== Provider Settings =====
-
 let _registryData = null;
+let _suggestedModels = {};
+let _settingsDirty = false;
+
+function markSettingsDirty() {
+    if (_settingsDirty) return;
+    _settingsDirty = true;
+    const banner = document.getElementById('provider-unsaved-banner');
+    if (banner) banner.style.display = 'block';
+}
+
+function clearSettingsDirty() {
+    _settingsDirty = false;
+    const banner = document.getElementById('provider-unsaved-banner');
+    if (banner) banner.style.display = 'none';
+}
 
 async function loadProviderSettings() {
     try {
-        const response = await fetch('/api/registry');
-        if (!response.ok) throw new Error('Failed to load registry');
-        _registryData = await response.json();
+        // Load registry and suggestions in parallel
+        const [regRes, sugRes] = await Promise.all([
+            fetch('/api/registry'),
+            fetch('/api/registry/suggested')
+        ]);
+
+        if (!regRes.ok) throw new Error('Failed to load registry');
+        _registryData = await regRes.json();
+
+        if (sugRes.ok) {
+            _suggestedModels = await sugRes.json();
+        }
+
         renderProviderCards(_registryData);
-        loadChatModels(); // Also populate dropdown when loading settings
+        loadChatModels();
+        clearSettingsDirty();
     } catch (error) {
         console.error('Error loading provider settings:', error);
         const container = document.getElementById('provider-cards-container');
@@ -1855,8 +1882,7 @@ function renderProviderCards(registry) {
         card.className = `provider-card ${isMainActive ? 'active' : 'inactive'}`;
         card.dataset.provider = name;
 
-        // Build interactive model cards
-        // Build interactive model cards (Table Layout)
+        // Build model rows
         const models = config.models || {};
         const sortedModelKeys = Object.keys(models).sort();
         let modelCardsHtml = '';
@@ -1898,44 +1924,45 @@ function renderProviderCards(registry) {
             `;
         }
 
+        // Build suggestion options for this provider
+        const suggestions = _suggestedModels[name] || [];
+        let suggestOptions = '<option value="">— Select suggested model —</option>';
+        for (const s of suggestions) {
+            suggestOptions += `<option value="${s.key}" data-model='${JSON.stringify(s)}'>${s.id} (${s.tier}) — ${s.description}</option>`;
+        }
+        suggestOptions += '<option value="__custom__">✏️ Custom model...</option>';
+
         card.innerHTML = `
             <div class="provider-card-header">
                 <h4><span class="provider-status-dot ${isMainActive ? 'active' : 'inactive'}"></span>${name}</h4>
-                 <div class="provider-card-field" style="margin:0; padding:0; flex-direction:row; gap:10px;">
+                <div class="provider-card-field" style="margin:0; padding:0; flex-direction:row; gap:10px;">
                     <label style="font-size:0.8em; margin:0;">Global Retries:</label>
                     <input type="number" class="provider-retries" data-provider="${name}" value="${config.retries_per_step || 0}" min="0" max="50" style="width:50px; padding:2px;">
                 </div>
             </div>
 
-            <div class="provider-config-section">
-                <h5>Chat Configuration</h5>
-                <div class="provider-card-row">
-                    <label class="switch" title="Enable for Chat">
+            <div class="provider-config-inline">
+                <div class="config-toggle-row">
+                    <span class="toggle-label">Allow for chat</span>
+                    <label class="switch small">
                         <input type="checkbox" class="chat-active-toggle" data-provider="${name}" ${chatConfig.active ? 'checked' : ''}>
                         <span class="slider round"></span>
                     </label>
-                    <div class="provider-card-field inline">
-                        <label>Priority</label>
-                        <input type="number" class="chat-priority" data-provider="${name}" value="${chatConfig.priority || 99}" min="1" max="99">
-                    </div>
+                    <span class="toggle-label priority-label">Priority</span>
+                    <input type="number" class="priority-input chat-priority" data-provider="${name}" value="${chatConfig.priority || 99}" min="1" max="99">
                 </div>
-            </div>
-
-            <div class="provider-config-section">
-                <h5>Agent Configuration</h5>
-                <div class="provider-card-row">
-                    <label class="switch" title="Enable for Agents">
+                <div class="config-toggle-row">
+                    <span class="toggle-label">Allow for agents</span>
+                    <label class="switch small">
                         <input type="checkbox" class="agent-active-toggle" data-provider="${name}" ${agentConfig.active ? 'checked' : ''}>
                         <span class="slider round"></span>
                     </label>
-                    <div class="provider-card-field inline">
-                        <label>Priority</label>
-                        <input type="number" class="agent-priority" data-provider="${name}" value="${agentConfig.priority || 99}" min="1" max="99">
-                    </div>
+                    <span class="toggle-label priority-label">Priority</span>
+                    <input type="number" class="priority-input agent-priority" data-provider="${name}" value="${agentConfig.priority || 99}" min="1" max="99">
                 </div>
             </div>
 
-            <div class="provider-card-field">
+            <div class="provider-card-field dev-only-field" style="display:none;">
                 <label>API Key Env</label>
                 <span style="font-family: 'Fira Code', monospace; font-size: 0.8rem; color: var(--primary);">${config.api_key_env || '(none)'}</span>
             </div>
@@ -1957,7 +1984,10 @@ function renderProviderCards(registry) {
                             ${modelCardsHtml || '<tr><td colspan="6" style="text-align: center; padding: 2rem; opacity: 0.5;">No models configured</td></tr>'}
                         </tbody>
                     </table>
-                    <div class="table-footer">
+                    <div class="table-footer add-model-area" data-provider="${name}">
+                        <select class="model-suggestion-select" data-provider="${name}" style="display:none;">
+                            ${suggestOptions}
+                        </select>
                         <button class="model-add-btn" data-provider="${name}">+ Add Model</button>
                     </div>
                 </div>
@@ -1968,8 +1998,15 @@ function renderProviderCards(registry) {
     }
 
     // --- Event listeners ---
+    _attachProviderListeners(container);
+}
 
-    // Active toggle listeners
+function _attachProviderListeners(container) {
+    // Track changes on all inputs/toggles
+    container.addEventListener('input', () => markSettingsDirty());
+    container.addEventListener('change', () => markSettingsDirty());
+
+    // Active toggle listeners (update card visual state)
     container.querySelectorAll('.chat-active-toggle, .agent-active-toggle').forEach(toggle => {
         toggle.addEventListener('change', (e) => {
             const card = e.target.closest('.provider-card');
@@ -1997,7 +2034,6 @@ function renderProviderCards(registry) {
             try {
                 const res = await fetch(`/api/registry/provider/${provName}/models/${modelKey}`, { method: 'DELETE' });
                 if (!res.ok) throw new Error('Delete failed');
-                // Refresh
                 await loadProviderSettings();
                 loadChatModels();
             } catch (err) {
@@ -2007,15 +2043,51 @@ function renderProviderCards(registry) {
         });
     });
 
-    // Add model buttons
+    // Add model buttons — show suggestion dropdown inline
     container.querySelectorAll('.model-add-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        btn.addEventListener('click', (e) => {
             const provName = e.target.dataset.provider;
-            const key = prompt('Enter a short key for the model (e.g. "flash", "pro"):');
-            if (!key) return;
+            const area = e.target.closest('.add-model-area');
+            const select = area.querySelector('.model-suggestion-select');
+            // Toggle dropdown
+            if (select.style.display === 'none') {
+                select.style.display = 'block';
+                btn.textContent = 'Cancel';
+                select.value = '';
+            } else {
+                select.style.display = 'none';
+                btn.textContent = '+ Add Model';
+            }
+        });
+    });
 
-            const modelId = prompt('Enter the model ID (e.g. "gemini-2.0-flash"):');
-            if (!modelId) return;
+    // Suggestion select change
+    container.querySelectorAll('.model-suggestion-select').forEach(sel => {
+        sel.addEventListener('change', async (e) => {
+            const provName = sel.dataset.provider;
+            const val = sel.value;
+            const area = sel.closest('.add-model-area');
+            const addBtn = area.querySelector('.model-add-btn');
+
+            if (!val) return;
+
+            let key, modelId, inputCost = 0, outputCost = 0, caps = ['chat'], desc = '';
+
+            if (val === '__custom__') {
+                key = prompt('Enter a short key for the model (e.g. "flash", "pro"):');
+                if (!key) { sel.value = ''; return; }
+                modelId = prompt('Enter the model ID (e.g. "gemini-2.0-flash"):');
+                if (!modelId) { sel.value = ''; return; }
+            } else {
+                const opt = sel.options[sel.selectedIndex];
+                const data = JSON.parse(opt.dataset.model);
+                key = data.key;
+                modelId = data.id;
+                inputCost = data.input_cost || 0;
+                outputCost = data.output_cost || 0;
+                caps = data.capabilities || ['chat'];
+                desc = data.description || '';
+            }
 
             try {
                 const res = await fetch(`/api/registry/provider/${provName}/models`, {
@@ -2024,10 +2096,10 @@ function renderProviderCards(registry) {
                     body: JSON.stringify({
                         key: key.trim(),
                         id: modelId.trim(),
-                        capabilities: ['chat'],
-                        input_cost_per_1m_tokens: 0,
-                        output_cost_per_1m_tokens: 0,
-                        description: ''
+                        capabilities: caps,
+                        input_cost_per_1m_tokens: inputCost,
+                        output_cost_per_1m_tokens: outputCost,
+                        description: desc
                     })
                 });
                 if (!res.ok) {
@@ -2040,6 +2112,9 @@ function renderProviderCards(registry) {
                 console.error('Failed to add model:', err);
                 alert(`Failed to add model: ${err.message}`);
             }
+
+            sel.style.display = 'none';
+            addBtn.textContent = '+ Add Model';
         });
     });
 
@@ -2051,16 +2126,15 @@ function renderProviderCards(registry) {
                 const val = input.value.trim();
                 if (!val) return;
                 const capContainer = input.closest('.model-caps-container');
-                const placeholder = capContainer.querySelector('.cap-placeholder');
-                if (placeholder) placeholder.remove();
                 const tag = document.createElement('span');
                 tag.className = `cap-tag${val === 'image_generation' ? ' cap-image' : ''}`;
                 tag.textContent = val;
                 tag.style.cursor = 'pointer';
                 tag.title = 'Click to remove';
-                tag.addEventListener('click', () => tag.remove());
+                tag.addEventListener('click', () => { tag.remove(); markSettingsDirty(); });
                 capContainer.insertBefore(tag, input);
                 input.value = '';
+                markSettingsDirty();
             }
         });
     });
@@ -2069,7 +2143,7 @@ function renderProviderCards(registry) {
     container.querySelectorAll('.cap-tag').forEach(tag => {
         tag.style.cursor = 'pointer';
         tag.title = 'Click to remove';
-        tag.addEventListener('click', () => tag.remove());
+        tag.addEventListener('click', () => { tag.remove(); markSettingsDirty(); });
     });
 
     // Save button listener
@@ -2105,7 +2179,7 @@ async function saveProviderSettings() {
 
             _registryData.providers[name].retries_per_step = parseInt(retriesInput?.value) || 0;
 
-            // Legacy/Compatibility fields (optional, but good for older consumers)
+            // Legacy fields
             _registryData.providers[name].active = chatActive;
             _registryData.providers[name].priority = chatPriority;
 
@@ -2113,19 +2187,16 @@ async function saveProviderSettings() {
             const modelEntries = card.querySelectorAll('.model-entry');
             modelEntries.forEach(entry => {
                 const modelKey = entry.dataset.modelKey;
-                if (!_registryData.providers[name].models[modelKey]) return; // Should exist
+                if (!_registryData.providers[name].models[modelKey]) return;
 
                 const id = entry.querySelector('.model-id-input').value.trim();
                 const inputCost = parseFloat(entry.querySelector('.model-input-cost').value) || 0;
                 const outputCost = parseFloat(entry.querySelector('.model-output-cost').value) || 0;
                 const desc = entry.querySelector('.model-desc-input').value.trim();
 
-                // Collect capabilities
                 const caps = [];
                 entry.querySelectorAll('.cap-tag').forEach(tag => caps.push(tag.textContent));
 
-                // Update model object
-                // Handle case where model might be a simple string in original config (legacy)
                 if (typeof _registryData.providers[name].models[modelKey] === 'string') {
                     _registryData.providers[name].models[modelKey] = {
                         id: id || _registryData.providers[name].models[modelKey]
@@ -2138,9 +2209,6 @@ async function saveProviderSettings() {
                 modelObj.output_cost_per_1m_tokens = outputCost;
                 modelObj.description = desc;
                 modelObj.capabilities = caps;
-
-                // Ensure legacy simple string ID is updated if it was just converted?
-                // Actually, best to strictly use object format now.
             });
         });
 
@@ -2153,15 +2221,14 @@ async function saveProviderSettings() {
 
         if (!response.ok) throw new Error('Failed to save');
 
+        clearSettingsDirty();
+
         if (statusEl) {
             statusEl.textContent = '\u2713 Saved';
             statusEl.style.color = 'var(--success)';
             setTimeout(() => { statusEl.textContent = ''; }, 3000);
         }
 
-        console.log('Provider settings saved');
-
-        // Refresh chat model dropdown
         loadChatModels();
 
     } catch (error) {
@@ -2170,6 +2237,115 @@ async function saveProviderSettings() {
             statusEl.textContent = '\u2717 Save failed';
             statusEl.style.color = 'var(--error)';
         }
+    }
+}
+
+// ===== Developer Mode & .env Management =====
+
+function initDevMode() {
+    const toggle = document.getElementById('setting-dev-mode');
+    if (!toggle) return;
+
+    toggle.addEventListener('change', () => {
+        const envSection = document.getElementById('env-section');
+        const devFields = document.querySelectorAll('.dev-only-field');
+
+        if (toggle.checked) {
+            if (envSection) { envSection.style.display = ''; loadEnvStatus(); }
+            devFields.forEach(f => f.style.display = '');
+        } else {
+            if (envSection) envSection.style.display = 'none';
+            devFields.forEach(f => f.style.display = 'none');
+        }
+    });
+}
+
+async function loadEnvStatus() {
+    const container = document.getElementById('env-status-container');
+    if (!container) return;
+
+    try {
+        const res = await fetch('/api/registry/env/status');
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+
+        if (!data.exists) {
+            container.innerHTML = `
+                <div class="env-not-found">
+                    <p>No <code>.env</code> file found. Create one to store your API keys securely.</p>
+                    <button id="create-env-btn" class="btn-primary">Create .env from template</button>
+                </div>
+            `;
+            document.getElementById('create-env-btn').addEventListener('click', async () => {
+                try {
+                    const r = await fetch('/api/registry/env/create', { method: 'POST' });
+                    if (!r.ok) throw new Error('Failed');
+                    loadEnvStatus(); // Reload
+                } catch (e) {
+                    alert('Failed to create .env: ' + e.message);
+                }
+            });
+        } else {
+            let keysHtml = '';
+            for (const k of data.keys) {
+                keysHtml += `
+                    <div class="env-key-row">
+                        <label class="env-key-name">${k.name}</label>
+                        <div class="env-key-input-wrapper">
+                            <input type="password" class="env-key-input" data-key="${k.name}"
+                                placeholder="${k.has_value ? k.masked_value : 'Not set'}"
+                                value="">
+                            <button class="env-reveal-btn" title="Reveal key">👁</button>
+                        </div>
+                        <button class="env-save-key-btn btn-primary small" data-key="${k.name}">Save</button>
+                        <span class="env-key-status ${k.has_value ? 'set' : 'unset'}">${k.has_value ? '✓ Set' : '⚠ Not set'}</span>
+                    </div>
+                `;
+            }
+            container.innerHTML = `<div class="env-keys-list">${keysHtml}</div>`;
+
+            // Reveal toggle
+            container.querySelectorAll('.env-reveal-btn').forEach(btn => {
+                btn.addEventListener('mousedown', () => {
+                    const input = btn.previousElementSibling;
+                    input.type = 'text';
+                });
+                btn.addEventListener('mouseup', () => {
+                    const input = btn.previousElementSibling;
+                    input.type = 'password';
+                });
+                btn.addEventListener('mouseleave', () => {
+                    const input = btn.previousElementSibling;
+                    input.type = 'password';
+                });
+            });
+
+            // Save individual key
+            container.querySelectorAll('.env-save-key-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const keyName = btn.dataset.key;
+                    const input = container.querySelector(`.env-key-input[data-key="${keyName}"]`);
+                    const value = input.value.trim();
+                    if (!value) { alert('Enter a value first'); return; }
+
+                    try {
+                        const r = await fetch('/api/registry/env/update', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ key: keyName, value: value })
+                        });
+                        if (!r.ok) throw new Error('Failed');
+                        input.value = '';
+                        loadEnvStatus();
+                    } catch (e) {
+                        alert('Failed to save key: ' + e.message);
+                    }
+                });
+            });
+        }
+    } catch (e) {
+        container.innerHTML = '<div class="loading-placeholder">Error loading .env status</div>';
+        console.error('Failed to load env status:', e);
     }
 }
 

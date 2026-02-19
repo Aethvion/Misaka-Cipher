@@ -2940,3 +2940,231 @@ input:checked+.slider:before {
     font-size: 0.75rem;
     background: var(--bg-primary);
 }
+
+
+/* ===== Provider Config Inline Toggles ===== */
+
+.provider-config-inline {
+    padding: 0.5rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.config-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.82rem;
+}
+
+.config-toggle-row .toggle-label {
+    min-width: 110px;
+    color: var(--text);
+    font-size: 0.82rem;
+}
+
+.config-toggle-row .priority-label {
+    min-width: auto;
+    color: var(--text-secondary);
+    margin-left: auto;
+}
+
+.config-toggle-row .priority-input {
+    width: 48px;
+    padding: 2px 4px;
+    text-align: center;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+/* Small switch variant */
+.switch.small {
+    width: 36px;
+    height: 18px;
+}
+
+.switch.small .slider:before {
+    height: 14px;
+    width: 14px;
+    left: 2px;
+    bottom: 2px;
+}
+
+.switch.small input:checked+.slider:before {
+    transform: translateX(18px);
+}
+
+
+/* ===== Unsaved Banner ===== */
+
+.unsaved-banner {
+    background: rgba(255, 170, 0, 0.12);
+    border: 1px solid rgba(255, 170, 0, 0.4);
+    color: #ffaa00;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* ===== Developer Mode ===== */
+
+.dev-mode-group {
+    border: 1px dashed rgba(255, 170, 0, 0.3);
+    background: rgba(255, 170, 0, 0.03);
+}
+
+.dev-mode-group .setting-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+
+/* ===== .env Management ===== */
+
+.env-section {
+    border: 1px solid rgba(0, 217, 255, 0.15);
+    background: rgba(0, 217, 255, 0.02);
+}
+
+.env-not-found {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--text-secondary);
+}
+
+.env-not-found code {
+    color: var(--primary);
+}
+
+.env-keys-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.env-key-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.env-key-name {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.8rem;
+    color: var(--primary);
+    min-width: 180px;
+    font-weight: 600;
+}
+
+.env-key-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex: 1;
+    max-width: 200px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    overflow: hidden;
+}
+
+.env-key-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    padding: 0.35rem 0.5rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.78rem;
+    outline: none;
+    overflow-x: scroll;
+    white-space: nowrap;
+}
+
+.env-key-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.env-reveal-btn {
+    background: none;
+    border: none;
+    border-left: 1px solid var(--border);
+    padding: 0.35rem 0.5rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    transition: color 0.15s;
+}
+
+.env-reveal-btn:hover {
+    color: var(--primary);
+}
+
+.env-save-key-btn.small {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+}
+
+.env-key-status {
+    font-size: 0.75rem;
+    min-width: 70px;
+    text-align: center;
+}
+
+.env-key-status.set {
+    color: var(--success, #22c55e);
+}
+
+.env-key-status.unset {
+    color: #ffaa00;
+}
+
+
+/* ===== Model Suggestion Select ===== */
+
+.model-suggestion-select {
+    width: 100%;
+    padding: 0.4rem;
+    margin-bottom: 0.4rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--primary);
+    color: var(--text);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.model-suggestion-select option {
+    background: var(--bg-secondary);
+    color: var(--text);
+}
+
+.add-model-area {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}

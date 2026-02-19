@@ -36,11 +36,12 @@ Thumbs.db
 logs/
 
 
-# --- WORKFOLDER ---
-WorkFolder/
+# --- outputfiles ---
+outputfiles/
 
 
 # --- OTHER LOGS AND SETTINGS FILES ---
 data/usage_log.json
 workspace/user_preferences.json
 data/arena_leaderboard.json
+config/model_registry.json
