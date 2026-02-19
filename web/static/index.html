@@ -45,13 +45,23 @@
         <nav class="header-nav">
             <div class="main-tabs">
                 <div class="main-tab-dropdown">
-                    <button class="main-tab active" data-maintab="chat"><span class="tab-icon">💬</span>Chat <span
-                            class="dropdown-arrow">▾</span></button>
+                    <!-- Split Button Group -->
+                    <div class="split-btn-group">
+                        <button class="main-tab split-main-action active" data-maintab="chat">
+                            <span class="tab-icon">💬</span>Chat
+                        </button>
+                        <button class="main-tab split-arrow-action">
+                            <span class="dropdown-arrow">▾</span>
+                        </button>
+                    </div>
+
                     <div class="tab-dropdown-menu">
                         <button class="tab-dropdown-item active" data-subtab="chat"><span
                                 class="tab-icon">💬</span>Chat</button>
                         <button class="tab-dropdown-item" data-subtab="agent"><span
                                 class="tab-icon">🤖</span>Agent</button>
+                        <button class="tab-dropdown-item" data-subtab="image"><span
+                                class="tab-icon">🎨</span>Image</button>
                         <button class="tab-dropdown-item" data-subtab="arena"><span
                                 class="tab-icon">⚔️</span>Arena</button>
                     </div>
@@ -466,6 +476,43 @@
         </div>
 
         <!-- Settings Tab -->
+        <!-- Image Studio Tab -->
+        <div class="main-tab-panel" id="image-panel">
+            <div class="image-studio-container">
+                <!-- Main Viewer Area -->
+                <div class="image-studio-viewer">
+                    <div class="empty-state-viewer">
+                        <i class="fas fa-image" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <h3>Image Studio</h3>
+                        <p>Generate, Edit, or View Images</p>
+                    </div>
+                </div>
+
+                <!-- Sidebar Controls -->
+                <div class="image-studio-sidebar">
+                    <div class="sidebar-header">
+                        <h3>CONTROLS</h3>
+                    </div>
+                    <div class="sidebar-content">
+                        <!-- Placeholder for tools -->
+                        <div class="control-group">
+                            <label>Mode</label>
+                            <select class="term-select" style="width: 100%;">
+                                <option value="generate">Generate</option>
+                                <option value="edit">Edit</option>
+                                <option value="upscale">Upscale</option>
+                            </select>
+                        </div>
+                        <div class="control-group" style="margin-top: 1rem;">
+                            <label>Prompt</label>
+                            <textarea class="term-input" rows="4" placeholder="Describe your image..."></textarea>
+                        </div>
+                        <button class="term-btn primary" style="width: 100%; margin-top: 1rem;">GENERATE</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Usage Tab -->
         <div class="main-tab-panel" id="usage-panel">
             <div class="panel-header">

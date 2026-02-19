@@ -3444,3 +3444,90 @@ input:checked+.slider:before {
 .roadmap-section.planned .roadmap-item {
     border-left: none;
 }
+
+/* --- Split Button Dropdown --- */
+.split-btn-group {
+    display: flex;
+    align-items: center;
+}
+
+.split-main-action {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: 1px solid rgba(0, 0, 0, 0.3);
+    margin-right: 0;
+}
+
+.split-arrow-action {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    padding: 0 8px;
+    /* Narrower padding for arrow */
+    margin-left: 0;
+    min-width: auto;
+}
+
+.split-arrow-action .dropdown-arrow {
+    margin-left: 0;
+    /* Center the arrow */
+}
+
+/* --- Image Studio Panel --- */
+.image-studio-container {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+}
+
+.image-studio-viewer {
+    flex: 1;
+    background: #0d0d0d;
+    /* Very dark background for image viewing */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-right: 1px solid var(--border);
+}
+
+.empty-state-viewer {
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.image-studio-sidebar {
+    width: 320px;
+    background: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+}
+
+.image-studio-sidebar .sidebar-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-tertiary);
+}
+
+.image-studio-sidebar .sidebar-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--primary);
+}
+
+.image-studio-sidebar .sidebar-content {
+    padding: 1rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.control-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.control-group textarea {
+    width: 100%;
+    resize: vertical;
+}

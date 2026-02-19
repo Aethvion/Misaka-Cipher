@@ -239,13 +239,23 @@ function initializeUI() {
         });
     });
 
-    // Chat/Agent/Arena dropdown - click to toggle
+    // Split Button Logic (Chat/Agent/Image/Arena)
     const dropdownWrapper = document.querySelector('.main-tab-dropdown');
-    const dropdownBtn = dropdownWrapper ? dropdownWrapper.querySelector('.main-tab') : null;
-    if (dropdownBtn && dropdownWrapper) {
-        dropdownBtn.addEventListener('click', (e) => {
+    const arrowBtn = dropdownWrapper ? dropdownWrapper.querySelector('.split-arrow-action') : null;
+    const mainActionBtn = dropdownWrapper ? dropdownWrapper.querySelector('.split-main-action') : null;
+
+    if (arrowBtn && dropdownWrapper) {
+        arrowBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             dropdownWrapper.classList.toggle('open');
+        });
+    }
+
+    if (mainActionBtn) {
+        mainActionBtn.addEventListener('click', () => {
+            // Activate currently selected mode (stored in data-maintab)
+            const mode = mainActionBtn.dataset.maintab;
+            switchMainTab(mode);
         });
     }
 
@@ -254,7 +264,7 @@ function initializeUI() {
         item.addEventListener('click', (e) => {
             e.stopPropagation();
             const subtab = item.dataset.subtab;
-            switchChatArenaMode(subtab);
+            switchMainTab(subtab);
             // Close dropdown
             if (dropdownWrapper) dropdownWrapper.classList.remove('open');
         });
@@ -275,11 +285,38 @@ function switchMainTab(tabName) {
     // Update tab buttons
     document.querySelectorAll('.main-tab').forEach(tab => {
         if (tab.closest('.main-tab-dropdown')) {
-            // Dropdown tab: active if chat, agent, or arena
-            tab.classList.toggle('active', tabName === 'chat' || tabName === 'agent' || tabName === 'arena');
+            // Dropdown tab: active if chat, agent, image, or arena
+            const categories = ['chat', 'agent', 'image', 'arena'];
+            const isActive = categories.includes(tabName);
+
+            // Check if this is the generic main tab button (the left split)
+            if (tab.classList.contains('split-main-action')) {
+                tab.classList.toggle('active', isActive);
+
+                // Update the button text/icon if it matches one of our modes
+                if (isActive) {
+                    // Update data-maintab to reflect current mode
+                    tab.dataset.maintab = tabName;
+
+                    let icon = '💬';
+                    let label = 'Chat';
+                    if (tabName === 'agent') { icon = '🤖'; label = 'Agent'; }
+                    if (tabName === 'image') { icon = '🎨'; label = 'Image'; }
+                    if (tabName === 'arena') { icon = '⚔️'; label = 'Arena'; }
+
+                    tab.innerHTML = `<span class="tab-icon">${icon}</span>${label}`;
+                }
+            } else if (tab.classList.contains('split-arrow-action')) {
+                tab.classList.toggle('active', isActive);
+            }
         } else {
             tab.classList.toggle('active', tab.dataset.maintab === tabName);
         }
+    });
+
+    // Update Sub-tab active state in dropdown
+    document.querySelectorAll('.tab-dropdown-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.subtab === tabName);
     });
 
     // Update panels
@@ -288,7 +325,9 @@ function switchMainTab(tabName) {
     });
 
     // Agent mode re-uses chat-panel
-    const panelId = tabName === 'agent' ? 'chat-panel' : `${tabName}-panel`;
+    let panelId = `${tabName}-panel`;
+    if (tabName === 'agent') panelId = 'chat-panel';
+
     const targetPanel = document.getElementById(panelId);
     if (targetPanel) targetPanel.classList.add('active');
 
