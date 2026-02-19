@@ -66,6 +66,16 @@
                             "standard"
                         ]
                     }
+                },
+                "gemini-3.0-flash": {
+                    "id": "gemini-3.0-flash",
+                    "capabilities": [
+                        "chat"
+                    ],
+                    "input_cost_per_1m_tokens": 0,
+                    "output_cost_per_1m_tokens": 0,
+                    "description": "",
+                    "image_config": null
                 }
             },
             "active": true,

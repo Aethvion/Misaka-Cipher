@@ -709,7 +709,7 @@ class MasterOrchestrator:
             return response
         else:
             # Create a localized response with error message
-            logging.error(f"Chat generation failed: {response.error}")
+            logger.error(f"Chat generation failed: {response.error}")
             return Response(
                 content=f"I encountered an error: {response.error}",
                 trace_id=request.trace_id,
