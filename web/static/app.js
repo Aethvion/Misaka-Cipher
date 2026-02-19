@@ -2400,27 +2400,33 @@ async function loadSystemStatusTab() {
     if (!container) return; // Not on status page or element missing
 
     try {
-        // Cache bust to ensure fresh status
-        const response = await fetch('/static/assets/system-status.json?v=' + Date.now());
-        if (!response.ok) throw new Error('Failed to load system status');
-        const data = await response.json();
+        // Fetch data in parallel
+        const [staticRes, apiRes] = await Promise.all([
+            fetch('/static/assets/system-status.json?v=' + Date.now()),
+            fetch('/api/system/status')
+        ]);
 
-        // Update Header
+        const staticData = staticRes.ok ? await staticRes.json() : {};
+        const apiData = apiRes.ok ? await apiRes.json() : {};
+
+        // Update Header Meta
         const nameEl = document.getElementById('system-name-display');
         const verEl = document.getElementById('system-version-display');
         const dateEl = document.getElementById('status-last-update');
 
-        if (nameEl) nameEl.textContent = data.system_name || 'Misaka Cipher';
-        if (verEl) verEl.textContent = data.version ? `v${data.version}` : '';
-        if (dateEl) dateEl.textContent = data.last_update || 'Unknown';
+        if (nameEl) nameEl.textContent = staticData.system_name || 'Misaka Cipher';
+        if (verEl) verEl.textContent = staticData.version ? `v${staticData.version}` : '';
+        if (dateEl) dateEl.textContent = staticData.last_update || 'Unknown';
+
+        // Render Telemetry
+        renderSystemTelemetry(apiData);
 
         // Render Roadmap Tree
-        const roadmap = data.roadmap || {};
+        const roadmap = staticData.roadmap || {};
         let html = '';
 
         // Helper to render section
         const renderSection = (title, items, type) => {
-            // Even if empty, render the column to maintain layout if needed, or check items.length
             const itemsHtml = (items || []).map(item => `<div class="roadmap-item">${item}</div>`).join('');
             return `
                 <div class="roadmap-section ${type}">
@@ -2442,6 +2448,53 @@ async function loadSystemStatusTab() {
         console.error('Error loading system status:', error);
         container.innerHTML = '<div class="error-placeholder">Failed to load system status. Check console.</div>';
     }
+}
+
+function renderSystemTelemetry(data) {
+    const container = document.getElementById('status-telemetry');
+    if (!container) return;
+
+    if (!data.nexus) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const formatBytes = (bytes) => {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    };
+
+    container.innerHTML = `
+        <div class="telemetry-card">
+            <div class="t-label">NEXUS STATUS</div>
+            <div class="t-value ${data.nexus.initialized ? 'online' : 'offline'}">
+                ${data.nexus.initialized ? 'ONLINE' : 'OFFLINE'}
+            </div>
+        </div>
+        <div class="telemetry-card">
+            <div class="t-label">ACTIVE AGENTS</div>
+            <div class="t-value">${data.factory?.active_agents || 0} <span class="t-sub">/ ${data.factory?.total_agents || 0}</span></div>
+        </div>
+        <div class="telemetry-card">
+            <div class="t-label">TOOLS</div>
+            <div class="t-value">${data.forge?.total_tools || 0}</div>
+        </div>
+        <div class="telemetry-card">
+            <div class="t-label">PROJECT SIZE</div>
+            <div class="t-value">${formatBytes(data.system?.project_size_bytes)}</div>
+        </div>
+        <div class="telemetry-card">
+            <div class="t-label">KNOWLEDGE BASE</div>
+            <div class="t-value">${formatBytes(data.system?.db_size_bytes)} <span class="t-sub">(DB)</span></div>
+        </div>
+        <div class="telemetry-card">
+            <div class="t-label">MEMORY UNITS</div>
+            <div class="t-value">${data.memory?.episodic_count || 0}</div>
+        </div>
+    `;
 }
 
 // ===== Usage Dashboard =====

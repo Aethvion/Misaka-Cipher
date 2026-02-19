@@ -3193,13 +3193,68 @@ input:checked+.slider:before {
     text-transform: uppercase;
 }
 
+/* Telemetry Grid */
+.status-telemetry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px dashed var(--border);
+}
+
+.telemetry-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    padding: 0.8rem;
+    border-radius: 4px;
+}
+
+.telemetry-card .t-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.4rem;
+}
+
+.telemetry-card .t-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.telemetry-card .t-value.online {
+    color: var(--success);
+}
+
+.telemetry-card .t-value.offline {
+    color: var(--error);
+}
+
+.telemetry-card .t-sub {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+    font-family: 'Fira Code', monospace;
+}
+
+
 /* Roadmap Grid */
 .roadmap-tree {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 3rem;
+    grid-template-columns: repeat(3, 1fr);
+    /* Force 3 columns side-by-side */
+    gap: 2rem;
     position: relative;
     padding: 0;
+}
+
+@media (max-width: 1024px) {
+    .roadmap-tree {
+        grid-template-columns: 1fr;
+        /* Stack on small screens */
+    }
 }
 
 /* Remove old tree line */

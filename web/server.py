@@ -13,6 +13,7 @@ from pathlib import Path
 import asyncio
 import json
 import logging
+import sys
 from datetime import datetime
 
 from nexus_core import NexusCore
@@ -449,6 +450,21 @@ async def get_system_status():
                 "domain": t.get('domain', 'unknown')
             })
         
+        # Calculate Disk Usage (Project & DB)
+        project_size = 0
+        db_size = 0
+        
+        try:
+            root_dir = Path(__file__).parent.parent
+            for path in root_dir.rglob('*'):
+                if path.is_file():
+                    size = path.stat().st_size
+                    project_size += size
+                    if 'chroma' in str(path) or '.db' in path.name:
+                        db_size += size
+        except Exception:
+            pass # resilient to permission errors
+
         return {
             "nexus": {
                 "initialized": status['initialized'],
@@ -468,6 +484,12 @@ async def get_system_status():
             "memory": {
                 "episodic_count": orchestrator.episodic_memory.collection.count() if hasattr(orchestrator.episodic_memory, 'collection') else 0,
                 "graph_stats": orchestrator.knowledge_graph.get_stats()
+            },
+            "system": {
+                "project_size_bytes": project_size,
+                "db_size_bytes": db_size,
+                "python_version": sys.version.split(' ')[0],
+                "platform": sys.platform
             }
         }
     except Exception as e:
