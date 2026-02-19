@@ -49,7 +49,25 @@
             ],
             "input_cost": 0,
             "output_cost": 0,
-            "description": "Google Imagen 3 for image generation."
+            "description": "Google Imagen 3 for image generation.",
+            "image_config": {
+                "aspect_ratios": [
+                    "1:1",
+                    "16:9",
+                    "9:16",
+                    "4:3",
+                    "3:4"
+                ],
+                "resolutions": [
+                    "1024x1024"
+                ],
+                "supports_negative_prompt": true,
+                "supports_seed": true,
+                "steps_range": null,
+                "quality_options": [
+                    "standard"
+                ]
+            }
         }
     ],
     "openai": [
@@ -101,7 +119,26 @@
             ],
             "input_cost": 0,
             "output_cost": 0,
-            "description": "DALL-E 3 for image generation."
+            "description": "DALL-E 3 for image generation.",
+            "image_config": {
+                "aspect_ratios": [
+                    "1:1",
+                    "16:9",
+                    "9:16"
+                ],
+                "resolutions": [
+                    "1024x1024",
+                    "1024x1792",
+                    "1792x1024"
+                ],
+                "supports_negative_prompt": false,
+                "supports_seed": false,
+                "steps_range": null,
+                "quality_options": [
+                    "standard",
+                    "hd"
+                ]
+            }
         }
     ],
     "grok": [

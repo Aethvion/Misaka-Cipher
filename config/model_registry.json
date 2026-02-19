@@ -45,12 +45,27 @@
                     "capabilities": [
                         "image_generation"
                     ],
-                    "tier": "specialized",
-                    "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict",
-                    "notes": "Google Imagen 3 for image generation via Gemini API.",
                     "input_cost_per_1m_tokens": 0,
                     "output_cost_per_1m_tokens": 0,
-                    "description": "Google Imagen 3 for image generation via Gemini API."
+                    "description": "Google Imagen 3 for image generation.",
+                    "image_config": {
+                        "aspect_ratios": [
+                            "1:1",
+                            "16:9",
+                            "9:16",
+                            "4:3",
+                            "3:4"
+                        ],
+                        "resolutions": [
+                            "1024x1024"
+                        ],
+                        "supports_negative_prompt": true,
+                        "supports_seed": true,
+                        "steps_range": null,
+                        "quality_options": [
+                            "standard"
+                        ]
+                    }
                 }
             },
             "active": true,

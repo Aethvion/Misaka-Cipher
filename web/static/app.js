@@ -310,6 +310,156 @@ function initializeImageStudio() {
             }, 3000);
         });
     }
+
+    // Load models
+    loadImageModels();
+
+    // Model Selector Change
+    const modelSelector = document.getElementById('image-model-selector');
+    if (modelSelector) {
+        modelSelector.addEventListener('change', () => {
+            updateImageStudioControls();
+        });
+    }
+}
+
+async function loadImageModels() {
+    const selector = document.getElementById('image-model-selector');
+    if (!selector) return;
+
+    // Ensure registry data is loaded
+    if (!_registryData) {
+        await loadProviderSettings();
+    }
+
+    if (!_registryData || !_registryData.providers) return;
+
+    let html = '';
+    const models = [];
+
+    // Find all models with image_generation capability
+    for (const [providerName, config] of Object.entries(_registryData.providers)) {
+        if (!config.models) continue;
+        for (const [key, info] of Object.entries(config.models)) {
+            const caps = info.capabilities || [];
+            if (caps.includes('image_generation')) {
+                models.push({
+                    key: key,
+                    id: info.id || key,
+                    provider: providerName,
+                    name: `${providerName}: ${info.id || key}`,
+                    image_config: info.image_config
+                });
+            }
+        }
+    }
+
+    if (models.length === 0) {
+        html = '<option value="" disabled>No image models found</option>';
+    } else {
+        models.forEach(m => {
+            html += `<option value="${m.key}" data-provider="${m.provider}">${m.name}</option>`;
+        });
+    }
+
+    selector.innerHTML = html;
+
+    // Trigger update for initial selection
+    if (selector.value) {
+        updateImageStudioControls();
+    }
+}
+
+function updateImageStudioControls() {
+    const selector = document.getElementById('image-model-selector');
+    if (!selector || !selector.value) return;
+
+    // Find model data
+    const selectedKey = selector.value;
+    const selectedOption = selector.options[selector.selectedIndex];
+    const providerName = selectedOption.dataset.provider;
+
+    if (!_registryData || !_registryData.providers || !_registryData.providers[providerName]) return;
+
+    const modelInfo = _registryData.providers[providerName].models[selectedKey];
+    if (!modelInfo) return;
+
+    const config = modelInfo.image_config || {};
+    const sidebarContent = document.querySelector('.image-studio-sidebar .sidebar-content');
+
+    // Remove existing dynamic controls (anything after the model selector group)
+    // We need a stable way to identify dynamic controls. 
+    // Let's assume controls after the "Model" group are dynamic, EXCEPT "Prompt" and "Generate".
+    // Alternatively, we can target specific classes.
+    // Let's clear specific dynamic containers if we added them, but we didn't add containers yet.
+    // Strategy: Remove elements with class 'dynamic-control'.
+
+    sidebarContent.querySelectorAll('.dynamic-control').forEach(el => el.remove());
+
+    // Insert new controls BEFORE the Prompt group (which we can identify by checking siblings or IDs)
+    const promptGroup = document.getElementById('image-prompt-input')?.closest('.control-group');
+
+    // Helper to create control
+    const createControl = (html) => {
+        const div = document.createElement('div');
+        div.className = 'control-group dynamic-control';
+        div.style.marginTop = '1rem';
+        div.innerHTML = html;
+        if (promptGroup) {
+            sidebarContent.insertBefore(div, promptGroup);
+        } else {
+            sidebarContent.appendChild(div);
+        }
+    };
+
+    // Aspect Ratios
+    if (config.aspect_ratios && config.aspect_ratios.length > 0) {
+        const options = config.aspect_ratios.map(r => `<option value="${r}">${r}</option>`).join('');
+        createControl(`
+            <label>Aspect Ratio</label>
+            <select class="term-select" style="width:100%;" id="image-aspect-ratio">
+                ${options}
+            </select>
+        `);
+    }
+
+    // Resolutions
+    if (config.resolutions && config.resolutions.length > 0) {
+        const options = config.resolutions.map(r => `<option value="${r}">${r}</option>`).join('');
+        createControl(`
+            <label>Resolution</label>
+            <select class="term-select" style="width:100%;" id="image-resolution">
+                ${options}
+            </select>
+        `);
+    }
+
+    // Negative Prompt
+    if (config.supports_negative_prompt) {
+        createControl(`
+            <label>Negative Prompt</label>
+            <textarea class="term-input" id="image-negative-prompt" rows="2" placeholder="Low quality, blurry..."></textarea>
+        `);
+    }
+
+    // Seed
+    if (config.supports_seed) {
+        createControl(`
+            <label>Seed (Optional)</label>
+            <input type="number" class="term-input" id="image-seed" placeholder="Random">
+        `);
+    }
+
+    // Quality
+    if (config.quality_options && config.quality_options.length > 1) {
+        const options = config.quality_options.map(q => `<option value="${q}">${q}</option>`).join('');
+        createControl(`
+            <label>Quality</label>
+            <select class="term-select" style="width:100%;" id="image-quality">
+                ${options}
+            </select>
+        `);
+    }
 }
 
 function switchMainTab(tabName) {
@@ -1965,12 +2115,21 @@ function renderProviderCards(registry) {
         for (const modelKey of sortedModelKeys) {
             const modelInfo = models[modelKey];
             const info = typeof modelInfo === 'object' ? modelInfo : { id: modelInfo };
-            const caps = (info.capabilities || []).map(c =>
-                `<span class="cap-tag ${c === 'image_generation' ? 'cap-image' : ''}" title="Click to remove">${c}</span>`
+            const caps = (info.capabilities || []);
+            const isImageGen = caps.includes('image_generation');
+
+            const capsHtml = caps.map(c =>
+                `<span class="cap-tag ${c === 'image_generation' ? 'cap-image' : ''}" data-cap="${c}" title="Click to remove">${c} ×</span>`
             ).join('');
+
             const inputCost = info.input_cost_per_1m_tokens ?? '';
             const outputCost = info.output_cost_per_1m_tokens ?? '';
             const desc = info.description || info.notes || '';
+
+            // Image Config Data
+            const imgConfig = info.image_config || {};
+            const aspects = (imgConfig.aspect_ratios || []).join(', ');
+            const resols = (imgConfig.resolutions || []).join(', ');
 
             modelCardsHtml += `
                 <tr class="model-entry" data-model-key="${modelKey}">
@@ -1985,18 +2144,60 @@ function renderProviderCards(registry) {
                     </td>
                     <td>
                         <div class="caps-cell model-caps-container">
-                            ${caps}
-                            <input type="text" class="cap-input cap-add-input" placeholder="+ add">
+                            ${capsHtml}
+                            <select class="cap-add-select" style="width: 80px; font-size: 0.8rem; padding: 2px;">
+                                <option value="" disabled selected>+ Add</option>
+                                <option value="chat">Chat</option>
+                                <option value="analysis">Analysis</option>
+                                <option value="code_generation">Code</option>
+                                <option value="image_generation">Image Gen</option>
+                                <option value="complex_reasoning">Reasoning</option>
+                                <option value="verification">Verification</option>
+                            </select>
                         </div>
                     </td>
                     <td>
                         <input type="text" class="model-input input-desc model-desc-input" value="${desc}" placeholder="Description...">
                     </td>
-                    <td style="text-align: center;">
+                    <td style="text-align: center; display: flex; gap: 5px; justify-content: center;">
+                        ${isImageGen ? `<button class="btn-icon model-config-btn" title="Configure Image Settings">⚙️</button>` : ''}
                         <button class="btn-icon model-delete-btn" data-provider="${name}" data-model-key="${modelKey}" title="Remove model">×</button>
                     </td>
                 </tr>
             `;
+
+            if (isImageGen) {
+                modelCardsHtml += `
+                    <tr class="image-config-row" style="display: none; background: rgba(0,0,0,0.2);">
+                        <td colspan="6" style="padding: 10px 20px;">
+                            <div class="image-config-form" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div class="config-group">
+                                    <label>Aspect Ratios (comma-separated)</label>
+                                    <input type="text" class="model-input img-config-aspects" value="${aspects}" placeholder="1:1, 16:9, 4:3">
+                                </div>
+                                <div class="config-group">
+                                    <label>Resolutions (comma-separated)</label>
+                                    <input type="text" class="model-input img-config-resols" value="${resols}" placeholder="1024x1024, 1024x1792">
+                                </div>
+                                <div class="config-group" style="grid-column: span 2; display: flex; gap: 20px; align-items: center;">
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" class="img-config-neg-prompt" ${imgConfig.supports_negative_prompt ? 'checked' : ''}>
+                                        Negative Prompt
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" class="img-config-seed" ${imgConfig.supports_seed ? 'checked' : ''}>
+                                        Seed Control
+                                    </label>
+                                    <label class="checkbox-label">
+                                        <input type="checkbox" class="img-config-quality" ${(imgConfig.quality_options?.length > 1) ? 'checked' : ''}>
+                                        HD Quality Option
+                                    </label>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
         }
 
         // Build suggestion options for this provider
@@ -2146,7 +2347,7 @@ function _attachProviderListeners(container) {
 
             if (!val) return;
 
-            let key, modelId, inputCost = 0, outputCost = 0, caps = ['chat'], desc = '';
+            let key, modelId, inputCost = 0, outputCost = 0, caps = ['chat'], desc = '', imageConfig = null;
 
             if (val === '__custom__') {
                 key = prompt('Enter a short key for the model (e.g. "flash", "pro"):');
@@ -2162,6 +2363,7 @@ function _attachProviderListeners(container) {
                 outputCost = data.output_cost || 0;
                 caps = data.capabilities || ['chat'];
                 desc = data.description || '';
+                imageConfig = data.image_config || null;
             }
 
             try {
@@ -2174,7 +2376,8 @@ function _attachProviderListeners(container) {
                         capabilities: caps,
                         input_cost_per_1m_tokens: inputCost,
                         output_cost_per_1m_tokens: outputCost,
-                        description: desc
+                        description: desc,
+                        image_config: imageConfig
                     })
                 });
                 if (!res.ok) {
@@ -2193,31 +2396,55 @@ function _attachProviderListeners(container) {
         });
     });
 
-    // Capability tag add (Enter key) and remove (click)
-    container.querySelectorAll('.cap-add-input').forEach(input => {
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const val = input.value.trim();
-                if (!val) return;
-                const capContainer = input.closest('.model-caps-container');
-                const tag = document.createElement('span');
-                tag.className = `cap-tag${val === 'image_generation' ? ' cap-image' : ''}`;
-                tag.textContent = val;
-                tag.style.cursor = 'pointer';
-                tag.title = 'Click to remove';
-                tag.addEventListener('click', () => { tag.remove(); markSettingsDirty(); });
-                capContainer.insertBefore(tag, input);
-                input.value = '';
-                markSettingsDirty();
+    // Configure button listeners (Toggle Image Settings)
+    container.querySelectorAll('.model-config-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const row = btn.closest('tr');
+            const configRow = row.nextElementSibling;
+            if (configRow && configRow.classList.contains('image-config-row')) {
+                configRow.style.display = configRow.style.display === 'none' ? 'table-row' : 'none';
+            }
+        });
+    });
+
+    // Capability Select (Add capability)
+    container.querySelectorAll('.cap-add-select').forEach(select => {
+        select.addEventListener('change', (e) => {
+            const val = select.value;
+            if (!val) return;
+
+            const capContainer = select.parentElement;
+
+            // Check if already exists
+            const existing = Array.from(capContainer.querySelectorAll('.cap-tag'))
+                .map(t => t.dataset.cap);
+
+            if (existing.includes(val)) {
+                select.value = "";
+                return;
+            }
+
+            const tag = document.createElement('span');
+            tag.className = `cap-tag${val === 'image_generation' ? ' cap-image' : ''}`;
+            tag.dataset.cap = val;
+            tag.textContent = val + ' ×'; // x char
+            tag.title = 'Click to remove';
+            tag.addEventListener('click', () => { tag.remove(); markSettingsDirty(); });
+
+            capContainer.insertBefore(tag, select);
+            select.value = "";
+            markSettingsDirty();
+
+            // If adding image_generation, we might want to show a hint to save
+            if (val === 'image_generation') {
+                // Ideally we'd re-render to show the config button, but for now just saving is fine
+                alert('Added Image Generation. Please SAVE to configure image settings.');
             }
         });
     });
 
     // Make existing cap tags removable
     container.querySelectorAll('.cap-tag').forEach(tag => {
-        tag.style.cursor = 'pointer';
-        tag.title = 'Click to remove';
         tag.addEventListener('click', () => { tag.remove(); markSettingsDirty(); });
     });
 
@@ -2270,7 +2497,7 @@ async function saveProviderSettings() {
                 const desc = entry.querySelector('.model-desc-input').value.trim();
 
                 const caps = [];
-                entry.querySelectorAll('.cap-tag').forEach(tag => caps.push(tag.textContent));
+                entry.querySelectorAll('.cap-tag').forEach(tag => caps.push(tag.dataset.cap || tag.textContent.replace(' ×', '')));
 
                 if (typeof _registryData.providers[name].models[modelKey] === 'string') {
                     _registryData.providers[name].models[modelKey] = {
@@ -2284,6 +2511,26 @@ async function saveProviderSettings() {
                 modelObj.output_cost_per_1m_tokens = outputCost;
                 modelObj.description = desc;
                 modelObj.capabilities = caps;
+
+                // Scrape Image Config if present
+                if (caps.includes('image_generation')) {
+                    const configRow = entry.nextElementSibling;
+                    if (configRow && configRow.classList.contains('image-config-row')) {
+                        const aspects = configRow.querySelector('.img-config-aspects').value.split(',').map(s => s.trim()).filter(Boolean);
+                        const resols = configRow.querySelector('.img-config-resols').value.split(',').map(s => s.trim()).filter(Boolean);
+                        const negPrompt = configRow.querySelector('.img-config-neg-prompt').checked;
+                        const seed = configRow.querySelector('.img-config-seed').checked;
+                        const quality = configRow.querySelector('.img-config-quality').checked;
+
+                        modelObj.image_config = {
+                            aspect_ratios: aspects,
+                            resolutions: resols,
+                            supports_negative_prompt: negPrompt,
+                            supports_seed: seed,
+                            quality_options: quality ? ['standard', 'hd'] : ['standard']
+                        };
+                    }
+                }
             });
         });
 
