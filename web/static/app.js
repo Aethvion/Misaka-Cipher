@@ -304,6 +304,8 @@ function switchMainTab(tabName) {
     } else if (tabName === 'arena') {
         loadArenaModels();
         loadArenaLeaderboard();
+    } else if (tabName === 'status') {
+        loadSystemStatusTab();
     }
 
     // Update layout based on mode
@@ -314,7 +316,8 @@ function switchMainTab(tabName) {
 
 async function loadInitialData() {
     await loadPreferences(); // Load prefs FIRST
-    await loadSystemStatus();
+    await loadHeaderStatus(); // Restore header status
+    await loadSystemStatusTab(); // Load status tab data
     await loadTools();        // Background
     loadPackages();     // Background
     loadMemoryData();   // Background
@@ -325,8 +328,8 @@ async function loadInitialData() {
         initThreadManagement();
     }
 
-    // Refresh status every 5 seconds
-    setInterval(loadSystemStatus, 5000);
+    // Refresh status every 5 seconds (Header)
+    setInterval(loadHeaderStatus, 5000);
 
     // Refresh packages every 10 seconds
     setInterval(loadPackages, 10000);
@@ -2346,6 +2349,98 @@ async function loadEnvStatus() {
     } catch (e) {
         container.innerHTML = '<div class="loading-placeholder">Error loading .env status</div>';
         console.error('Failed to load env status:', e);
+    }
+}
+
+// ===== Header Status =====
+
+async function loadHeaderStatus() {
+    try {
+        const response = await fetch('/api/system/status');
+        if (!response.ok) return; // Silent fail
+        const data = await response.json();
+
+        const nexusEl = document.getElementById('nexus-status');
+        const agentsEl = document.getElementById('agents-count');
+        const toolsEl = document.getElementById('tools-count');
+        const filesEl = document.getElementById('files-count');
+        const indicatorEl = document.getElementById('status-indicator');
+
+        if (nexusEl) {
+            const isOnline = data.nexus && data.nexus.initialized;
+            nexusEl.textContent = isOnline ? 'ONLINE' : 'OFFLINE';
+            nexusEl.style.color = isOnline ? 'var(--success)' : 'var(--error)';
+
+            // Update connection dot
+            if (indicatorEl) {
+                const dot = indicatorEl.querySelector('.status-dot');
+                const text = indicatorEl.querySelector('.status-text');
+                if (dot) dot.style.background = isOnline ? 'var(--success)' : 'var(--error)';
+                if (text) text.textContent = isOnline ? 'Connected' : 'Disconnected';
+            }
+        }
+
+        if (agentsEl && data.factory) agentsEl.textContent = data.factory.active_agents || 0;
+        if (toolsEl && data.forge) toolsEl.textContent = data.forge.total_tools || 0;
+
+        // Use episodic count as a proxy for files/memories for now
+        if (filesEl && data.memory) filesEl.textContent = data.memory.episodic_count || 0;
+
+    } catch (e) {
+        console.error('Header status update failed', e);
+    }
+}
+
+// ===== System Status =====
+
+// ===== System Status Tab (Roadmap) =====
+
+async function loadSystemStatusTab() {
+    const container = document.querySelector('.roadmap-tree');
+    if (!container) return; // Not on status page or element missing
+
+    try {
+        // Cache bust to ensure fresh status
+        const response = await fetch('/static/assets/system-status.json?v=' + Date.now());
+        if (!response.ok) throw new Error('Failed to load system status');
+        const data = await response.json();
+
+        // Update Header
+        const nameEl = document.getElementById('system-name-display');
+        const verEl = document.getElementById('system-version-display');
+        const dateEl = document.getElementById('status-last-update');
+
+        if (nameEl) nameEl.textContent = data.system_name || 'Misaka Cipher';
+        if (verEl) verEl.textContent = data.version ? `v${data.version}` : '';
+        if (dateEl) dateEl.textContent = data.last_update || 'Unknown';
+
+        // Render Roadmap Tree
+        const roadmap = data.roadmap || {};
+        let html = '';
+
+        // Helper to render section
+        const renderSection = (title, items, type, icon) => {
+            if (!items || items.length === 0) return '';
+            const itemsHtml = items.map(item => `<div class="roadmap-item">${item}</div>`).join('');
+            return `
+                <div class="roadmap-section ${type}">
+                    <h3>${icon} ${title} <span style="font-size:0.8em; opacity:0.7; margin-left:auto;">(${items.length})</span></h3>
+                    <div class="roadmap-items">
+                        ${itemsHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        html += renderSection('Operational / Completed', roadmap.working, 'working', '✅');
+        html += renderSection('Work In Progress', roadmap.wip, 'wip', '🚧');
+        html += renderSection('Planned Features', roadmap.planned, 'planned', '🔮');
+
+        container.innerHTML = html || '<div class="no-data">No roadmap data available</div>';
+
+    } catch (error) {
+        console.error('Error loading system status:', error);
+        container.innerHTML = '<div class="error-placeholder">Failed to load system status. Check console.</div>';
     }
 }
 

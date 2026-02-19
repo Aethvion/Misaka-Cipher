@@ -62,6 +62,7 @@
                 <button class="main-tab" data-maintab="memory"><span class="tab-icon">🧠</span>Memory</button>
                 <button class="main-tab" data-maintab="logs"><span class="tab-icon">📜</span>Logs</button>
                 <button class="main-tab" data-maintab="usage"><span class="tab-icon">📊</span>Usage</button>
+                <button class="main-tab" data-maintab="status"><span class="tab-icon">🚦</span>Status</button>
                 <button class="main-tab" data-maintab="settings"><span class="tab-icon">⚙️</span>Settings</button>
             </div>
         </nav>
@@ -81,6 +82,8 @@
                         <!-- Threads will be populated here -->
                     </div>
                 </div>
+                <!-- ... existing content ... -->
+
                 <template id="thread-item-template">
                     <div class="thread-item">
                         <div class="thread-header-row">
@@ -654,6 +657,27 @@
                 </div>
             </div>
         </div>
+        </div>
+        </div>
+
+        <!-- System Status Panel -->
+        <div class="main-tab-panel" id="status-panel">
+            <div class="panel-header">
+                <h2>System Status</h2>
+                <div class="status-meta">
+                    <span id="system-name-display">Misaka Cipher</span>
+                    <span class="status-divider">•</span>
+                    <span id="system-version-display">v1.2.0</span>
+                    <span class="status-divider">•</span>
+                    <span class="last-update">Last Updated: <span id="status-last-update">--</span></span>
+                </div>
+            </div>
+            <div class="status-container">
+                <div class="roadmap-tree">
+                    <!-- Roadmap items injected via JS -->
+                    <div class="loading-placeholder">Loading system status...</div>
+                </div>
+            </div>
         </div>
     </main>
 
