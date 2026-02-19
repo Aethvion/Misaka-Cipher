@@ -2456,36 +2456,123 @@ async function loadSystemStatusTab() {
 
         container.innerHTML = html;
 
+        // Start Vitals Polling
+        startVitalsPolling();
+
     } catch (error) {
         console.error('Error loading system status:', error);
         container.innerHTML = '<div class="error-placeholder">Failed to load system status. Check console.</div>';
     }
 }
 
-function renderSystemTelemetry(apiData, metricsData) {
-    const container = document.getElementById('status-telemetry');
-    if (!container) return;
+let vitalsInterval = null;
 
-    // API Data = Realtime (Nexus, Agents, Tools)
-    // Metrics Data = Cached (Disk, DB, Memories)
+function startVitalsPolling() {
+    if (vitalsInterval) return; // Already running
+
+    // Poll every 3 seconds
+    vitalsInterval = setInterval(async () => {
+        const tab = document.getElementById('status-panel');
+        // Stop if tab not visible or switched away (simple check)
+        if (!tab || tab.style.display === 'none' && !tab.classList.contains('active')) {
+            // Note: tab display handling depends on how switchMainTab works. 
+            // Ideally we hook into switchMainTab, but checking visibility here is a safety net.
+            // If the app hides panels by display:none, this works.
+        }
+
+        // Better check: is it the active tab?
+        // Relying on the fact that if we are here, we probably want updates.
+        // But to be safe and save resources:
+        if (document.querySelector('.main-tab-panel.active')?.id !== 'status-panel') {
+            stopVitalsPolling();
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/system/status');
+            if (res.ok) {
+                const data = await res.json();
+                updateRealtimeVitals(data);
+            }
+        } catch (e) { console.warn('Vitals poll failed', e); }
+    }, 3000);
+}
+
+function stopVitalsPolling() {
+    if (vitalsInterval) {
+        clearInterval(vitalsInterval);
+        vitalsInterval = null;
+    }
+}
+
+function updateRealtimeVitals(apiData) {
+    // Only updates the Realtime section
+    const container = document.getElementById('realtime-info-grid');
+    if (!container) return;
 
     const nexusStatus = apiData.nexus || {};
     const factoryStatus = apiData.factory || {};
-    const forgeStatus = apiData.forge || {};
-    const vitals = apiData.vitals || {}; // New Vitals
+    const vitals = apiData.vitals || {};
 
-    const systemMetrics = metricsData.system || {};
-    const memoryMetrics = metricsData.memory || {};
+    container.innerHTML = renderRealtimeCards(nexusStatus, factoryStatus, vitals);
+}
 
-    const formatBytes = (bytes) => {
-        if (!bytes) return '0 B';
-        const k = 1024;
-        const sizes = ['B', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-    };
+function renderSystemTelemetry(apiData, metricsData) {
+    // Realtime Section
+    const rtContainer = document.getElementById('realtime-info-grid');
+    if (rtContainer) {
+        rtContainer.innerHTML = renderRealtimeCards(
+            apiData.nexus || {},
+            apiData.factory || {},
+            apiData.vitals || {}
+        );
+    }
 
-    container.innerHTML = `
+    // Local Info Section
+    const localContainer = document.getElementById('local-info-grid');
+    if (localContainer) {
+        const forgeStatus = apiData.forge || {};
+        const systemMetrics = metricsData.system || {};
+        const memoryMetrics = metricsData.memory || {};
+
+        const formatBytes = (bytes) => {
+            if (!bytes) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        };
+
+        // Update Local Timestamp
+        const syncEl = document.getElementById('telemetry-last-sync');
+        if (syncEl) {
+            const lastSync = systemMetrics.last_sync;
+            syncEl.textContent = lastSync ? new Date(lastSync).toLocaleString() : 'Never';
+        }
+
+        localContainer.innerHTML = `
+            <div class="telemetry-card">
+                <div class="t-label">PROJECT SIZE</div>
+                <div class="t-value">${formatBytes(systemMetrics.project_size_bytes)}</div>
+            </div>
+            <div class="telemetry-card">
+                <div class="t-label">EPISODIC (DB)</div>
+                <div class="t-value">${memoryMetrics.episodic_count || 0} <span class="t-sub">(Memories)</span></div>
+            </div>
+            <div class="telemetry-card">
+                <div class="t-label">KNOWLEDGE BASE</div>
+                <div class="t-value">${formatBytes(systemMetrics.db_size_bytes)} <span class="t-sub">(DB)</span></div>
+            </div>
+            <div class="telemetry-card">
+                <div class="t-label">TOOLS</div>
+                <div class="t-value">${forgeStatus.total_tools || 0}</div>
+            </div>
+        `;
+    }
+}
+
+function renderRealtimeCards(nexusStatus, factoryStatus, vitals) {
+    return `
         <div class="telemetry-card">
             <div class="t-label">NEXUS STATUS</div>
             <div class="t-value ${nexusStatus.initialized ? 'online' : 'offline'}">
@@ -2493,26 +2580,20 @@ function renderSystemTelemetry(apiData, metricsData) {
             </div>
         </div>
         <div class="telemetry-card">
-            <div class="t-label">VITALS (CPU / RAM)</div>
-            <div class="t-value" style="font-size: 0.95rem;">
-                CPU: ${vitals.cpu_percent || 0}% <span class="t-sub" style="margin-left:5px;">RAM: ${vitals.ram_percent || 0}%</span>
+            <div class="t-label">CPU USAGE</div>
+            <div class="t-value">
+                ${vitals.cpu_percent || 0}%
+            </div>
+        </div>
+        <div class="telemetry-card">
+            <div class="t-label">RAM USAGE</div>
+            <div class="t-value" style="font-size: 1rem;">
+                ${vitals.ram_used_gb || 0} GB <span class="t-sub">/ ${vitals.ram_total_gb || 0} GB (${vitals.ram_percent || 0}%)</span>
             </div>
         </div>
         <div class="telemetry-card">
             <div class="t-label">ACTIVE AGENTS</div>
             <div class="t-value">${factoryStatus.active_agents || 0} <span class="t-sub">/ ${factoryStatus.total_agents || 0}</span></div>
-        </div>
-        <div class="telemetry-card">
-            <div class="t-label">TOOLS</div>
-            <div class="t-value">${forgeStatus.total_tools || 0}</div>
-        </div>
-        <div class="telemetry-card">
-            <div class="t-label">PROJECT SIZE</div>
-            <div class="t-value">${formatBytes(systemMetrics.project_size_bytes)}</div>
-        </div>
-        <div class="telemetry-card">
-            <div class="t-label">EPISODIC (DB)</div>
-            <div class="t-value">${memoryMetrics.episodic_count || 0} <span class="t-sub">(Memories)</span></div>
         </div>
     `;
 }

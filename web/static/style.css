@@ -3203,6 +3203,53 @@ input:checked+.slider:before {
     border-bottom: 1px dashed var(--border);
 }
 
+/* Section Labels */
+.section-label {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85rem;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+}
+
+.live-indicator {
+    color: var(--error);
+    animation: pulse-live 2s infinite;
+    font-size: 0.7rem;
+}
+
+@keyframes pulse-live {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+.xs-btn {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    min-width: 100px;
+}
+
+
 .telemetry-card {
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--border);

@@ -663,38 +663,42 @@
         <!-- System Status Panel -->
         <div class="main-tab-panel" id="status-panel">
             <div class="panel-header" style="background: transparent; border-bottom: none; padding-bottom: 0;">
-                <h2 class="status-header-title">FEATURES_CHECKLIST</h2>
+                <h2 class="status-header-title">Status</h2>
 
-                <!-- Global System Info -->
-                <div class="status-meta" style="justify-content: space-between; align-items: flex-end;">
-                    <div class="meta-left">
-                        <div class="meta-row">
-                            <span id="system-name-display" class="meta-primary">Misaka Cipher</span>
-                            <span class="status-divider">::</span>
-                            <span id="system-version-display" class="meta-primary">v1.2.0</span>
-                        </div>
-                        <div class="meta-row sub-meta">
-                            <span class="last-update">SYSTEM UPDATE: <span id="status-last-update">--</span></span>
-                        </div>
-                    </div>
+                <div class="status-meta">
+                    <span id="system-name-display" class="meta-primary">Misaka Cipher</span>
+                    <span class="status-divider">::</span>
+                    <span id="system-version-display" class="meta-primary">v1.2.0</span>
+                    <span class="status-divider">::</span>
+                    <span class="last-update">SYSTEM UPDATE: <span id="status-last-update">--</span></span>
+                </div>
+            </div>
 
-                    <div class="meta-right" style="text-align: right;">
-                        <div class="meta-row sub-meta">
-                            <span class="last-update">LOCAL SYNC: <span id="telemetry-last-sync">--</span></span>
-                        </div>
-                        <button id="sync-telemetry-btn" class="icon-btn" style="margin-top: 0.5rem;"
-                            title="Sync System Telemetry" onclick="syncSystemTelemetry()">
-                            <i class="fas fa-sync"></i> Sync Telemetry
+            <div class="status-container">
+                <!-- Realtime Vitals Section -->
+                <div class="section-label">REALTIME VITALS <span class="live-indicator">● LIVE</span></div>
+                <div id="realtime-info-grid" class="status-telemetry-grid">
+                    <!-- Populated by JS (CPU, RAM, Agents, Nexus) -->
+                </div>
+
+                <!-- Local System Info Section -->
+                <div class="section-header-row">
+                    <div class="section-label">LOCAL SYSTEM INFO</div>
+                    <div class="local-meta-right">
+                        <span class="last-update" style="margin-right: 1rem;">LAST SYNC: <span
+                                id="telemetry-last-sync">--</span></span>
+                        <button id="sync-telemetry-btn" class="icon-btn xs-btn" title="Sync Local Info"
+                            onclick="syncSystemTelemetry()">
+                            <i class="fas fa-sync"></i> Sync
                         </button>
                     </div>
                 </div>
-            </div>
-            <div class="status-container">
-                <!-- Telemetry Section -->
-                <div id="status-telemetry" class="status-telemetry-grid">
-                    <!-- Populated by JS -->
+                <div id="local-info-grid" class="status-telemetry-grid">
+                    <!-- Populated by JS (Project Size, DB Size, Tools) -->
                 </div>
 
+                <!-- Features Checklist -->
+                <div class="section-label" style="margin-top: 2rem;">ROADMAP & FEATURES</div>
                 <div class="roadmap-tree">
                     <!-- Roadmap items injected via JS -->
                     <div class="loading-placeholder">Loading system status...</div>
