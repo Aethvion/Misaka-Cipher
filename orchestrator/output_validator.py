@@ -12,7 +12,7 @@ from utils import get_logger
 logger = get_logger(__name__)
 
 # Use environment variable or default to relative path
-WORK_FOLDER = Path(os.environ.get("MISAKA_WORKSPACE", Path(__file__).parent.parent / "WorkFolder"))
+WORK_FOLDER = Path(os.environ.get("MISAKA_WORKSPACE", Path(__file__).parent.parent / "outputfiles"))
 
 
 @dataclass
@@ -106,7 +106,7 @@ class OutputValidator:
             is_path = (
                 content_stripped.startswith('C:\\') or
                 content_stripped.startswith('/') or
-                'WorkFolder' in content_stripped or
+                'outputfiles' in content_stripped or
                 (len(content_stripped) < 200 and ('\\' in content_stripped or '/' in content_stripped))
             )
             
@@ -205,16 +205,16 @@ class OutputValidator:
                 if Path(path_str).exists():
                     return Path(path_str)
         
-        # Look for WorkFolder paths
-        if 'WorkFolder' in output:
-            # Extract path containing WorkFolder
+        # Look for outputfiles paths
+        if 'outputfiles' in output:
+            # Extract path containing outputfiles
             lines = output.split('\n')
             for line in lines:
-                if 'WorkFolder' in line:
+                if 'outputfiles' in line:
                     # Try to extract path
                     parts = line.split()
                     for part in parts:
-                        if 'WorkFolder' in part:
+                        if 'outputfiles' in part:
                             path_str = part.strip('"\',.:;')
                             if Path(path_str).exists():
                                 return Path(path_str)

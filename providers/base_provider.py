@@ -91,6 +91,34 @@ class BaseProvider(ABC):
             ProviderResponse object
         """
         pass
+
+    @abstractmethod
+    def generate_image(
+        self,
+        prompt: str,
+        trace_id: str,
+        model: Optional[str] = None,
+        n: int = 1,
+        size: str = "1024x1024",
+        quality: str = "standard",
+        **kwargs
+    ) -> ProviderResponse:
+        """
+        Generate an image from the provider.
+        
+        Args:
+            prompt: Image prompt
+            trace_id: Trace ID for this request
+            model: Optional model override
+            n: Number of images to generate
+            size: Image size text (e.g. "1024x1024")
+            quality: Quality setting
+            **kwargs: Additional provider-specific parameters
+            
+        Returns:
+            ProviderResponse object (content will be URL or base64)
+        """
+        pass
     
     @abstractmethod
     def stream(

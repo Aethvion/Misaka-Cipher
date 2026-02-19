@@ -157,7 +157,7 @@ class KnowledgeGraph:
         Add a file node for user deliverables.
         
         Args:
-            file_path: Relative path to file in WorkFolder
+            file_path: Relative path to file in outputfiles
             domain: Domain category (Finance, System, etc.)
             trace_id: Trace_ID that created this file
             metadata: Optional metadata (size, type, etc.)

@@ -318,7 +318,7 @@ Misaka-Cipher/
 │   └── templates/          # HTML templates
 │
 ├── tests/                  # ✅ Test suite
-└── WorkFolder/             # 📂 AI output directory
+└── outputfiles/            # 📂 AI output directory
 ```
 
 ---

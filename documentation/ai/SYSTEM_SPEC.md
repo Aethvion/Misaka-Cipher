@@ -105,7 +105,7 @@ Misaka-Cipher/
 ├── workspace/                   # Workspace management
 │   └── workspace_manager.py     # File system operations
 │
-├── WorkFolder/                  # AI output directory
+├── outputfiles/                  # AI output directory
 │
 └── tests/                       # Test suite
     ├── test_factory.py
@@ -332,7 +332,7 @@ Tool Storage:
 - tools/registry.json (Tool metadata)
 
 Workspace:
-- WorkFolder/ (AI output directory)
+- outputfiles/ (AI output directory)
 - workspace/ (temporary files)
 
 Logs:
@@ -430,7 +430,7 @@ tools/standard/
 **Security Checks:**
 - ✓ No arbitrary code execution
 - ✓ No external network calls without explicit API keys
-- ✓ No file system access outside WorkFolder (unless explicitly allowed)
+- ✓ No file system access outside outputfiles (unless explicitly allowed)
 - ✓ No credential leakage in logs
 
 **Aethvion Compliance:**
@@ -620,7 +620,7 @@ AGENT_TEMPLATES = {
 
 ## WORKSPACE MANAGEMENT
 
-**Primary Directory:** `WorkFolder/`
+**Primary Directory:** `outputfiles/`
 
 **Purpose:**
 - AI-generated files (code, data, reports)
@@ -629,7 +629,7 @@ AGENT_TEMPLATES = {
 
 **Structure:**
 ```
-WorkFolder/
+outputfiles/
 ├── agents/           # Agent-specific output
 │   └── [agent_name]/
 ├── tools/            # Tool-generated output

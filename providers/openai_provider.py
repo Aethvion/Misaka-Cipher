@@ -146,3 +146,67 @@ class OpenAIProvider(BaseProvider):
         except Exception as e:
             logger.warning(f"OpenAI credential validation failed: {str(e)}")
             return False
+            return False
+
+    def generate_image(
+        self,
+        prompt: str,
+        trace_id: str,
+        model: Optional[str] = None,
+        n: int = 1,
+        size: str = "1024x1024",
+        quality: str = "standard",
+        **kwargs
+    ) -> ProviderResponse:
+        """Generate image using OpenAI."""
+        try:
+            active_model = model if model else "dall-e-3"
+            logger.debug(f"[{trace_id}] Generating image with OpenAI model {active_model}")
+
+            # Generate
+            # DALL-E 3 requires specific sizes, 1024x1024 is standard.
+            # quality: standard or hd
+            
+            # Map size from app.js '1024x1024' to API inputs
+            # OpenAI API takes 'size' param directly.
+            
+            response = self.client.images.generate(
+                model=active_model,
+                prompt=prompt,
+                n=n,
+                size=size,
+                quality=quality,
+                response_format="b64_json",
+                user=trace_id
+            )
+            
+            import base64
+            image_bytes_list = []
+            for img_data in response.data:
+                if img_data.b64_json:
+                    image_bytes_list.append(base64.b64decode(img_data.b64_json))
+            
+            self.record_success()
+            logger.info(f"[{trace_id}] Successfully generated {len(image_bytes_list)} images with OpenAI")
+
+            return ProviderResponse(
+                content=f"Generated {len(image_bytes_list)} images",
+                model=active_model,
+                provider="openai",
+                trace_id=trace_id,
+                metadata={
+                    'images': image_bytes_list,
+                    'format': 'png' # OpenAI returns PNG by default for b64_json
+                }
+            )
+
+        except Exception as e:
+            logger.error(f"[{trace_id}] OpenAI image generation failed: {str(e)}")
+            self.record_failure()
+            return ProviderResponse(
+                content="",
+                model=active_model,
+                provider="openai",
+                trace_id=trace_id,
+                error=str(e)
+            )

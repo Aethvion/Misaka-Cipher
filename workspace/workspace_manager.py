@@ -1,6 +1,6 @@
 """
 Misaka Cipher - Workspace Manager
-Manages user-facing output files in WorkFolder
+Manages user-facing output files in outputfiles
 """
 
 from pathlib import Path
@@ -42,7 +42,7 @@ class WorkspaceManager:
     """
     Workspace Manager - Output file organization for user deliverables.
     
-    Manages user-facing output files in WorkFolder with automatic domain
+    Manages user-facing output files in outputfiles with automatic domain
     organization. Does NOT manage AI code/tools (those stay in their normal locations).
     
     Scope:
@@ -57,12 +57,12 @@ class WorkspaceManager:
         Initialize Workspace Manager.
         
         Args:
-            workspace_root: Root directory for user outputs (default: WorkFolder/)
+            workspace_root: Root directory for user outputs (default: outputfiles/)
         """
         if workspace_root is None:
-            # Default to WorkFolder in project root
+            # Default to outputfiles in project root
             project_root = Path(__file__).parent.parent
-            workspace_root = project_root / "WorkFolder"
+            workspace_root = project_root / "outputfiles"
         
         self.workspace_root = Path(workspace_root)
         
@@ -91,7 +91,7 @@ class WorkspaceManager:
             filename: Desired filename
             
         Returns:
-            Full path in WorkFolder/{domain}/{filename}
+            Full path in outputfiles/{domain}/{filename}
         """
         # Normalize domain
         if domain not in self.ALLOWED_DOMAINS:

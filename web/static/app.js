@@ -295,19 +295,90 @@ function initializeImageStudio() {
                 return;
             }
 
+            // Collect parameters
+            const model = document.getElementById('image-model-selector').value;
+            const aspectRatio = document.getElementById('image-aspect-ratio')?.value;
+            const resolution = document.getElementById('image-resolution')?.value;
+            const negPrompt = document.getElementById('image-negative-prompt')?.value;
+            const seed = document.getElementById('image-seed')?.value;
+            const quality = document.getElementById('image-quality')?.value;
+
             // Show loading
             if (loadingOverlay) loadingOverlay.style.display = 'flex';
             generateBtn.disabled = true;
             generateBtn.textContent = 'GENERATING...';
 
-            // Simulate generation (replace with API call later)
-            setTimeout(() => {
-                if (loadingOverlay) loadingOverlay.style.display = 'none';
-                generateBtn.disabled = false;
-                generateBtn.textContent = 'GENERATE';
+            // Call API
+            fetch('/api/image/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: promptInput.value.trim(),
+                    model: model,
+                    n: 1,
+                    size: resolution || "1024x1024",
+                    aspect_ratio: aspectRatio,
+                    negative_prompt: negPrompt,
+                    seed: seed ? parseInt(seed) : null,
+                    quality: quality || "standard"
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (loadingOverlay) loadingOverlay.style.display = 'none';
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'GENERATE';
 
-                // TODO: Handle actual image response
-            }, 3000);
+                    if (data.success && data.images && data.images.length > 0) {
+                        const imgData = data.images[0];
+                        const viewer = document.getElementById('image-viewer-container');
+
+                        // Hide empty state
+                        const emptyState = viewer.querySelector('.empty-state-viewer');
+                        if (emptyState) emptyState.style.display = 'none';
+
+                        // Cleanup previous result
+                        const existingImg = viewer.querySelector('.generated-result-container');
+                        if (existingImg) existingImg.remove();
+
+                        // Create result view
+                        const container = document.createElement('div');
+                        container.className = 'generated-result-container';
+                        container.style.display = 'flex';
+                        container.style.flexDirection = 'column';
+                        container.style.alignItems = 'center';
+                        container.style.gap = '1rem';
+                        container.style.width = '100%';
+                        container.style.height = '100%';
+
+                        const img = document.createElement('img');
+                        img.src = imgData.url;
+                        img.className = 'generated-image-preview';
+                        img.style.maxWidth = '100%';
+                        img.style.maxHeight = '80vh';
+                        img.style.objectFit = 'contain';
+                        img.style.borderRadius = '8px';
+                        img.style.boxShadow = '0 0 20px rgba(0,0,0,0.5)';
+
+                        const meta = document.createElement('div');
+                        meta.className = 'image-meta';
+                        meta.innerHTML = `<span style="color:var(--text-secondary); font-size:0.9em;">Saved to: ${imgData.filename}</span>`;
+
+                        container.appendChild(img);
+                        container.appendChild(meta);
+                        viewer.appendChild(container);
+
+                    } else {
+                        alert('Generation failed: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(err => {
+                    if (loadingOverlay) loadingOverlay.style.display = 'none';
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'GENERATE';
+                    console.error(err);
+                    alert('Error generating image: ' + err.message);
+                });
         });
     }
 

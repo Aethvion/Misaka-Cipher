@@ -323,7 +323,7 @@ def validate_security(code: str, spec: ToolSpec) -> ValidationResult:
     Scan for security violations:
     1. No arbitrary code execution (eval, exec)
     2. No shell command injection (subprocess without validation)
-    3. No file system access outside WorkFolder (unless explicitly allowed)
+    3. No file system access outside outputfiles (unless explicitly allowed)
     4. No network calls without API keys
     5. No credential logging
     """
@@ -341,8 +341,8 @@ def validate_security(code: str, spec: ToolSpec) -> ValidationResult:
     
     # Check for unrestricted file access
     if "open(" in code:
-        if "WorkFolder" not in code:
-            issues.append("File access outside WorkFolder without validation")
+        if "outputfiles" not in code:
+            issues.append("File access outside outputfiles without validation")
     
     # Check for credential leakage
     if re.search(r'(api[_-]?key|password|secret).*(print|log)', code, re.IGNORECASE):

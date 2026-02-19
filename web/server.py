@@ -68,6 +68,10 @@ app.include_router(usage_router)
 # Include arena routes
 app.include_router(arena_router)
 
+# Include image routes
+from web.image_routes import router as image_router
+app.include_router(image_router)
+
 # Global instances (initialized on startup)
 orchestrator: Optional[MasterOrchestrator] = None
 nexus: Optional[NexusCore] = None

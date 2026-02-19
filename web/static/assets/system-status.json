@@ -4,24 +4,22 @@
     "last_update": "2025-02-19",
     "roadmap": {
         "working": [
-            "Nexus Core",
-            "The Factory (agent spawning)",
-            "The Forge (tool generation)",
-            "Memory Tier (ChromaDB, NetworkX)",
+            "Chat",
+            "Arena mode",
+            "Provider settings",
+            "Model registry",
+            "Trace IDs",
+            "Intelligence Firewall",
             "Web dashboard & CLI",
             "Provider abstraction (Gemini, OpenAI, Grok)",
             "Intelligence Firewall & Trace IDs"
         ],
         "wip": [
-            "Local model support (Ollama, vLLM)",
-            "Additional provider integrations",
-            "Richer web dashboard"
+            "Image generation"
         ],
         "planned": [
-            "Plugin & extension system",
-            "API layer for external integrations",
-            "Enhanced knowledge graph viz",
-            "Multi-agent orchestration improvements"
+            "Local model support (Ollama, vLLM)",
+            "Additional provider integrations"
         ]
     }
 }
