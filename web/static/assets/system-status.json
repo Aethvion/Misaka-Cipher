@@ -4,23 +4,24 @@
     "last_update": "2025-02-19",
     "roadmap": {
         "working": [
-            "Multi-Provider Support (Google, OpenAI, Grok, Anthropic, Local)",
-            "Agentic Reasoning & Planning",
-            "Memory Systems (Episodic & Semantic)",
-            "Tool Forge (Dynamic Tool Creation)",
-            "Code Execution Sandbox",
-            "Voice Synthesis (TTS)"
+            "Nexus Core",
+            "The Factory (agent spawning)",
+            "The Forge (tool generation)",
+            "Memory Tier (ChromaDB, NetworkX)",
+            "Web dashboard & CLI",
+            "Provider abstraction (Gemini, OpenAI, Grok)",
+            "Intelligence Firewall & Trace IDs"
         ],
         "wip": [
-            "System Status Dashboard",
-            "Enhanced Mobile Responsiveness",
-            "Deeper Knowledge Graph Integration"
+            "Local model support (Ollama, vLLM)",
+            "Additional provider integrations",
+            "Richer web dashboard"
         ],
         "planned": [
-            "Multi-Modal Input (Vision/Audio)",
-            "distributed Agent Swarms",
-            "Self-Correction Loops v2",
-            "Plugin Marketplace"
+            "Plugin & extension system",
+            "API layer for external integrations",
+            "Enhanced knowledge graph viz",
+            "Multi-agent orchestration improvements"
         ]
     }
 }

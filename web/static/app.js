@@ -2419,12 +2419,12 @@ async function loadSystemStatusTab() {
         let html = '';
 
         // Helper to render section
-        const renderSection = (title, items, type, icon) => {
-            if (!items || items.length === 0) return '';
-            const itemsHtml = items.map(item => `<div class="roadmap-item">${item}</div>`).join('');
+        const renderSection = (title, items, type) => {
+            // Even if empty, render the column to maintain layout if needed, or check items.length
+            const itemsHtml = (items || []).map(item => `<div class="roadmap-item">${item}</div>`).join('');
             return `
                 <div class="roadmap-section ${type}">
-                    <h3>${icon} ${title} <span style="font-size:0.8em; opacity:0.7; margin-left:auto;">(${items.length})</span></h3>
+                    <h3>${title}</h3>
                     <div class="roadmap-items">
                         ${itemsHtml}
                     </div>
@@ -2432,11 +2432,11 @@ async function loadSystemStatusTab() {
             `;
         };
 
-        html += renderSection('Operational / Completed', roadmap.working, 'working', '✅');
-        html += renderSection('Work In Progress', roadmap.wip, 'wip', '🚧');
-        html += renderSection('Planned Features', roadmap.planned, 'planned', '🔮');
+        html += renderSection('COMPLETED', roadmap.working, 'working');
+        html += renderSection('WORK IN PROGRESS', roadmap.wip, 'wip');
+        html += renderSection('PLANNED', roadmap.planned, 'planned');
 
-        container.innerHTML = html || '<div class="no-data">No roadmap data available</div>';
+        container.innerHTML = html;
 
     } catch (error) {
         console.error('Error loading system status:', error);
