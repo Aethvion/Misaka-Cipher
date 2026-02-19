@@ -480,11 +480,16 @@
         <div class="main-tab-panel" id="image-panel">
             <div class="image-studio-container">
                 <!-- Main Viewer Area -->
-                <div class="image-studio-viewer">
+                <div class="image-studio-viewer" id="image-viewer-container">
                     <div class="empty-state-viewer">
                         <i class="fas fa-image" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
                         <h3>Image Studio</h3>
                         <p>Generate, Edit, or View Images</p>
+                    </div>
+                    <!-- Loading Overlay -->
+                    <div class="image-loading-overlay" id="image-loading-overlay" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">GENERATING...</div>
                     </div>
                 </div>
 
@@ -494,7 +499,7 @@
                         <h3>CONTROLS</h3>
                     </div>
                     <div class="sidebar-content">
-                        <!-- Placeholder for tools -->
+                        <!-- Controls -->
                         <div class="control-group">
                             <label>Mode</label>
                             <select class="term-select" style="width: 100%;">
@@ -503,11 +508,23 @@
                                 <option value="upscale">Upscale</option>
                             </select>
                         </div>
+
+                        <div class="control-group" style="margin-top: 1rem;">
+                            <label>Model</label>
+                            <select class="term-select" id="image-model-selector" style="width: 100%;">
+                                <option value="flux-schnell">Flux Schnell</option>
+                                <option value="sd-xl">Stable Diffusion XL</option>
+                                <option value="dall-e-3">DALL-E 3</option>
+                            </select>
+                        </div>
+
                         <div class="control-group" style="margin-top: 1rem;">
                             <label>Prompt</label>
-                            <textarea class="term-input" rows="4" placeholder="Describe your image..."></textarea>
+                            <textarea class="term-input" id="image-prompt-input" rows="4"
+                                placeholder="Describe your image..."></textarea>
                         </div>
-                        <button class="term-btn primary" style="width: 100%; margin-top: 1rem;">GENERATE</button>
+                        <button class="term-btn primary" id="generate-image-btn"
+                            style="width: 100%; margin-top: 1rem;">GENERATE</button>
                     </div>
                 </div>
             </div>

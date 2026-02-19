@@ -277,6 +277,39 @@ function initializeUI() {
 
     // Initialize arena
     initializeArena();
+
+    // Initialize Image Studio
+    initializeImageStudio();
+}
+
+function initializeImageStudio() {
+    const generateBtn = document.getElementById('generate-image-btn');
+    const loadingOverlay = document.getElementById('image-loading-overlay');
+    const promptInput = document.getElementById('image-prompt-input');
+
+    if (generateBtn) {
+        generateBtn.addEventListener('click', () => {
+            // Basic validation
+            if (!promptInput || !promptInput.value.trim()) {
+                alert('Please enter a prompt first.');
+                return;
+            }
+
+            // Show loading
+            if (loadingOverlay) loadingOverlay.style.display = 'flex';
+            generateBtn.disabled = true;
+            generateBtn.textContent = 'GENERATING...';
+
+            // Simulate generation (replace with API call later)
+            setTimeout(() => {
+                if (loadingOverlay) loadingOverlay.style.display = 'none';
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'GENERATE';
+
+                // TODO: Handle actual image response
+            }, 3000);
+        });
+    }
 }
 
 function switchMainTab(tabName) {

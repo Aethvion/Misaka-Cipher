@@ -2532,12 +2532,11 @@ input:checked+.slider:before {
 }
 
 .main-tab-dropdown .dropdown-arrow {
-    font-size: 0.7rem;
-    margin-left: 2px;
+    font-size: 1.2rem;
     transition: transform 0.2s;
 }
 
-.main-tab-dropdown:hover .dropdown-arrow {
+.main-tab-dropdown.open .dropdown-arrow {
     transform: rotate(180deg);
 }
 
@@ -3461,10 +3460,11 @@ input:checked+.slider:before {
 .split-arrow-action {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
-    padding: 0 8px;
+    padding: 0 2px;
     /* Narrower padding for arrow */
     margin-left: 0;
     min-width: auto;
+    min-height: 39px;
 }
 
 .split-arrow-action .dropdown-arrow {
@@ -3530,4 +3530,44 @@ input:checked+.slider:before {
 .control-group textarea {
     width: 100%;
     resize: vertical;
+}
+
+/* --- Image Loading Overlay --- */
+.image-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(5px);
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(0, 217, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--primary);
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 1rem;
+}
+
+.loading-text {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--primary);
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
