@@ -2362,32 +2362,42 @@ async function loadHeaderStatus() {
 
         const nexusEl = document.getElementById('nexus-status');
         const agentsEl = document.getElementById('agents-count');
-        const toolsEl = document.getElementById('tools-count');
-        const filesEl = document.getElementById('files-count');
-        const indicatorEl = document.getElementById('status-indicator');
-
-        if (nexusEl) {
+        // Nexus Status Indicator
+        const indicator = document.getElementById('nexus-status-indicator');
+        if (indicator) {
+            const dot = indicator.querySelector('.status-dot');
+            const text = indicator.querySelector('.status-text');
             const isOnline = data.nexus && data.nexus.initialized;
-            nexusEl.textContent = isOnline ? 'ONLINE' : 'OFFLINE';
-            nexusEl.style.color = isOnline ? 'var(--success)' : 'var(--error)';
 
-            // Update connection dot
-            if (indicatorEl) {
-                const dot = indicatorEl.querySelector('.status-dot');
-                const text = indicatorEl.querySelector('.status-text');
-                if (dot) dot.style.background = isOnline ? 'var(--success)' : 'var(--error)';
-                if (text) text.textContent = isOnline ? 'Connected' : 'Disconnected';
+            if (dot) dot.style.backgroundColor = isOnline ? 'var(--success)' : 'var(--error)';
+            if (indicator) indicator.style.borderColor = isOnline ? 'var(--success)' : 'var(--error)';
+            if (text) {
+                text.textContent = isOnline ? 'ONLINE' : 'OFFLINE';
+                text.style.color = isOnline ? 'var(--success)' : 'var(--error)';
             }
         }
 
-        if (agentsEl && data.factory) agentsEl.textContent = data.factory.active_agents || 0;
-        if (toolsEl && data.forge) toolsEl.textContent = data.forge.total_tools || 0;
+        // Counts
+        const agentsCount = document.getElementById('agents-count');
+        const toolsCount = document.getElementById('tools-count');
+        // Files count removed from header UI, so we stop updating it
 
-        // Use episodic count as a proxy for files/memories for now
-        if (filesEl && data.memory) filesEl.textContent = data.memory.episodic_count || 0;
+        if (agentsCount) agentsCount.textContent = data.factory ? data.factory.active_agents : '0';
+        if (toolsCount) toolsCount.textContent = data.forge ? data.forge.total_tools : '0';
 
-    } catch (e) {
-        console.error('Header status update failed', e);
+    } catch (error) {
+        // Handle disconnection visually
+        const indicator = document.getElementById('nexus-status-indicator');
+        if (indicator) {
+            const dot = indicator.querySelector('.status-dot');
+            const text = indicator.querySelector('.status-text');
+            if (dot) dot.style.backgroundColor = 'var(--error)';
+            if (indicator) indicator.style.borderColor = 'var(--error)';
+            if (text) {
+                text.textContent = 'DISCONNECTED';
+                text.style.color = 'var(--error)';
+            }
+        }
     }
 }
 
@@ -2462,6 +2472,7 @@ function renderSystemTelemetry(apiData, metricsData) {
     const nexusStatus = apiData.nexus || {};
     const factoryStatus = apiData.factory || {};
     const forgeStatus = apiData.forge || {};
+    const vitals = apiData.vitals || {}; // New Vitals
 
     const systemMetrics = metricsData.system || {};
     const memoryMetrics = metricsData.memory || {};
@@ -2482,6 +2493,12 @@ function renderSystemTelemetry(apiData, metricsData) {
             </div>
         </div>
         <div class="telemetry-card">
+            <div class="t-label">VITALS (CPU / RAM)</div>
+            <div class="t-value" style="font-size: 0.95rem;">
+                CPU: ${vitals.cpu_percent || 0}% <span class="t-sub" style="margin-left:5px;">RAM: ${vitals.ram_percent || 0}%</span>
+            </div>
+        </div>
+        <div class="telemetry-card">
             <div class="t-label">ACTIVE AGENTS</div>
             <div class="t-value">${factoryStatus.active_agents || 0} <span class="t-sub">/ ${factoryStatus.total_agents || 0}</span></div>
         </div>
@@ -2494,12 +2511,8 @@ function renderSystemTelemetry(apiData, metricsData) {
             <div class="t-value">${formatBytes(systemMetrics.project_size_bytes)}</div>
         </div>
         <div class="telemetry-card">
-            <div class="t-label">KNOWLEDGE BASE</div>
-            <div class="t-value">${formatBytes(systemMetrics.db_size_bytes)} <span class="t-sub">(DB)</span></div>
-        </div>
-        <div class="telemetry-card">
-            <div class="t-label">MEMORY UNITS</div>
-            <div class="t-value">${memoryMetrics.episodic_count || 0}</div>
+            <div class="t-label">EPISODIC (DB)</div>
+            <div class="t-value">${memoryMetrics.episodic_count || 0} <span class="t-sub">(Memories)</span></div>
         </div>
     `;
 }

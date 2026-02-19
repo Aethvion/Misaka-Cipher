@@ -664,18 +664,29 @@
         <div class="main-tab-panel" id="status-panel">
             <div class="panel-header" style="background: transparent; border-bottom: none; padding-bottom: 0;">
                 <h2 class="status-header-title">FEATURES_CHECKLIST</h2>
-                <div class="status-meta">
-                    <span id="system-name-display">Misaka Cipher</span>
-                    <span class="status-divider">::</span>
-                    <span id="system-version-display">v1.2.0</span>
-                    <span class="status-divider">::</span>
-                    <span class="last-update">UPDATED <span id="status-last-update">--</span></span>
 
-                    <button id="sync-telemetry-btn" class="icon-btn"
-                        style="margin-left: auto; font-size: 0.8rem; opacity: 0.7;" title="Sync System Telemetry"
-                        onclick="syncSystemTelemetry()">
-                        <i class="fas fa-sync"></i> Sync Telemetry
-                    </button>
+                <!-- Global System Info -->
+                <div class="status-meta" style="justify-content: space-between; align-items: flex-end;">
+                    <div class="meta-left">
+                        <div class="meta-row">
+                            <span id="system-name-display" class="meta-primary">Misaka Cipher</span>
+                            <span class="status-divider">::</span>
+                            <span id="system-version-display" class="meta-primary">v1.2.0</span>
+                        </div>
+                        <div class="meta-row sub-meta">
+                            <span class="last-update">SYSTEM UPDATE: <span id="status-last-update">--</span></span>
+                        </div>
+                    </div>
+
+                    <div class="meta-right" style="text-align: right;">
+                        <div class="meta-row sub-meta">
+                            <span class="last-update">LOCAL SYNC: <span id="telemetry-last-sync">--</span></span>
+                        </div>
+                        <button id="sync-telemetry-btn" class="icon-btn" style="margin-top: 0.5rem;"
+                            title="Sync System Telemetry" onclick="syncSystemTelemetry()">
+                            <i class="fas fa-sync"></i> Sync Telemetry
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="status-container">

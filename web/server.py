@@ -434,12 +434,30 @@ async def chat(message: ChatMessage):
 
 @app.get("/api/system/status")
 async def get_system_status():
-    """Get lightweight system status (Nexus, Agents, Tools)."""
+    """Get lightweight system status (Nexus, Agents, Tools, Vitals)."""
     if not nexus:
         raise HTTPException(status_code=503, detail="System not initialized")
     
     try:
         status = nexus.get_status()
+        
+        # System Vitals (CPU/RAM)
+        vitals = {
+            "cpu_percent": 0,
+            "ram_percent": 0,
+            "ram_used_gb": 0,
+            "ram_total_gb": 0
+        }
+        
+        try:
+            import psutil
+            vitals["cpu_percent"] = psutil.cpu_percent(interval=None)
+            mem = psutil.virtual_memory()
+            vitals["ram_percent"] = mem.percent
+            vitals["ram_used_gb"] = round(mem.used / (1024**3), 1)
+            vitals["ram_total_gb"] = round(mem.total / (1024**3), 1)
+        except ImportError:
+            pass
         
         return {
             "nexus": {
@@ -454,7 +472,8 @@ async def get_system_status():
             },
             "forge": {
                 "total_tools": len(forge.registry.list_tools())
-            }
+            },
+            "vitals": vitals
         }
     except Exception as e:
         logger.error(f"System status error: {str(e)}", exc_info=True)

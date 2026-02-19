@@ -15,3 +15,6 @@ pyyaml>=6.0
 
 # Utilities
 python-dotenv>=1.0.0
+
+# System Monitoring
+psutil>=5.9.0
