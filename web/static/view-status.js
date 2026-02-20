@@ -29,6 +29,18 @@ async function loadHeaderStatus() {
         if (agentsCount) agentsCount.textContent = data.factory ? data.factory.active_agents : '0';
         if (toolsCount) toolsCount.textContent = data.forge ? data.forge.total_tools : '0';
 
+        // Update compact status bar with today's usage
+        if (data.usage_today) {
+            const tokensEl = document.getElementById('tokens-today');
+            const costEl = document.getElementById('cost-today');
+            if (tokensEl && typeof formatNumber === 'function') {
+                tokensEl.textContent = formatNumber(data.usage_today.tokens || 0);
+            }
+            if (costEl && typeof formatCost === 'function') {
+                costEl.textContent = formatCost(data.usage_today.cost || 0);
+            }
+        }
+
     } catch (error) {
         const indicator = document.getElementById('nexus-status-indicator');
         if (indicator) {

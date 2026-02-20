@@ -187,70 +187,140 @@ function renderTimelineChart(hourlyData) {
     });
 }
 
-function renderCostByModelChart(data) {
-    const ctx = document.getElementById('chart-cost-model');
+function renderCostByModelChart(costData) {
+    const ctx = document.getElementById('chart-cost-by-model');
     if (!ctx || typeof Chart === 'undefined') return;
 
     if (_costByModelChart) _costByModelChart.destroy();
 
-    const items = data.costs || [];
-    const labels = items.map(i => i.model);
-    const inCosts = items.map(i => i.input_cost);
-    const outCosts = items.map(i => i.output_cost);
+    const models = costData.models || [];
+    if (!models.length) return;
+
+    const labels = models.map(m => m.name);
+    const inputCosts = models.map(m => m.input_cost);
+    const outputCosts = models.map(m => m.output_cost);
 
     _costByModelChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
             datasets: [
-                { label: 'Out ($)', data: outCosts, backgroundColor: '#ff00aa' },
-                { label: 'In ($)', data: inCosts, backgroundColor: '#00d9ff' }
+                {
+                    label: 'Input Cost',
+                    data: inputCosts,
+                    backgroundColor: 'rgba(0, 217, 255, 0.7)',
+                    borderColor: '#00d9ff',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Output Cost',
+                    data: outputCosts,
+                    backgroundColor: 'rgba(255, 0, 255, 0.7)',
+                    borderColor: '#ff00ff',
+                    borderWidth: 1
+                }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             indexAxis: 'y',
-            scales: {
-                x: { stacked: true, ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                y: { stacked: true, ticks: { color: '#a0a0a0', font: { size: 10 } }, grid: { display: false } }
+            plugins: {
+                legend: {
+                    labels: { color: '#a0a0a0', font: { size: 12 } }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return context.dataset.label + ': $' + context.raw.toFixed(6);
+                        }
+                    }
+                }
             },
-            plugins: { legend: { display: false } }
+            scales: {
+                x: {
+                    stacked: false,
+                    title: { display: true, text: 'Cost ($)', color: '#a0a0a0' },
+                    ticks: { color: '#a0a0a0' },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y: {
+                    ticks: { color: '#a0a0a0', font: { family: "'Fira Code', monospace", size: 11 } },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
         }
     });
 }
 
-function renderTokensByModelChart(data) {
-    const ctx = document.getElementById('chart-tokens-model');
+function renderTokensByModelChart(tokensData) {
+    const ctx = document.getElementById('chart-tokens-by-model');
     if (!ctx || typeof Chart === 'undefined') return;
 
     if (_tokensByModelChart) _tokensByModelChart.destroy();
 
-    const items = data.tokens || [];
-    const labels = items.map(i => i.model);
-    const values = items.map(i => i.tokens);
+    const models = tokensData.models || [];
+    if (!models.length) return;
+
+    const labels = models.map(m => m.name);
+    const inputTokens = models.map(m => m.prompt_tokens);
+    const outputTokens = models.map(m => m.completion_tokens);
 
     _tokensByModelChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
-            datasets: [{ data: values, backgroundColor: '#00d9ff' }]
+            datasets: [
+                {
+                    label: 'Input Tokens',
+                    data: inputTokens,
+                    backgroundColor: 'rgba(0, 217, 255, 0.7)',
+                    borderColor: '#00d9ff',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Output Tokens',
+                    data: outputTokens,
+                    backgroundColor: 'rgba(255, 200, 0, 0.7)',
+                    borderColor: '#ffc800',
+                    borderWidth: 1
+                }
+            ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             indexAxis: 'y',
-            scales: {
-                x: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.05)' } },
-                y: { ticks: { color: '#a0a0a0', font: { size: 10 } }, grid: { display: false } }
+            plugins: {
+                legend: {
+                    labels: { color: '#a0a0a0', font: { size: 12 } }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            return context.dataset.label + ': ' + formatNumber(context.raw);
+                        }
+                    }
+                }
             },
-            plugins: { legend: { display: false } }
+            scales: {
+                x: {
+                    stacked: false,
+                    title: { display: true, text: 'Tokens', color: '#a0a0a0' },
+                    ticks: { color: '#a0a0a0' },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y: {
+                    ticks: { color: '#a0a0a0', font: { family: "'Fira Code', monospace", size: 11 } },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
         }
     });
 }
 
 function renderModelUsageTable(summary) {
-    const tbody = document.getElementById('usage-models-tbody');
+    const tbody = document.getElementById('usage-model-tbody');
     if (!tbody) return;
 
     const models = summary.by_model || {};

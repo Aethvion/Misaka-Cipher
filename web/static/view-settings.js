@@ -193,7 +193,7 @@ function renderProviderCards(registry) {
             const isImageGen = caps.includes('image_generation');
 
             const capsHtml = caps.map(c =>
-                `<span class="cap-tag ${c === 'image_generation' ? 'cap-image' : ''}" data-cap="${c}" title="Click to remove">${c} ├ù</span>`
+                `<span class="cap-tag ${c === 'image_generation' ? 'cap-image' : ''}" data-cap="${c}" title="Click to remove">${c} x</span>`
             ).join('');
 
             const inputCost = info.input_cost_per_1m_tokens ?? '';
@@ -235,7 +235,7 @@ function renderProviderCards(registry) {
                     </td>
                     <td style="text-align: center; display: flex; gap: 5px; justify-content: center;">
                         ${isImageGen ? `<button class="btn-icon model-config-btn" title="Configure Image Settings">ÔÜÖ´©Å</button>` : ''}
-                        <button class="btn-icon model-delete-btn" data-provider="${name}" data-model-key="${modelKey}" title="Remove model">├ù</button>
+                        <button class="btn-icon model-delete-btn" data-provider="${name}" data-model-key="${modelKey}" title="Remove model">x</button>
                     </td>
                 </tr>
             `;
@@ -276,11 +276,11 @@ function renderProviderCards(registry) {
 
         // Build suggestion options for this provider
         const suggestions = _suggestedModels[name] || [];
-        let suggestOptions = '<option value="">ÔÇö Select suggested model ÔÇö</option>';
+        let suggestOptions = '<option value="">Select suggested model</option>';
         for (const s of suggestions) {
-            suggestOptions += `<option value="${s.key}" data-model='${JSON.stringify(s)}'>${s.id} (${s.tier}) ÔÇö ${s.description}</option>`;
+            suggestOptions += `<option value="${s.key}" data-model='${JSON.stringify(s)}'>${s.id} (${s.tier}) - ${s.description}</option>`;
         }
-        suggestOptions += '<option value="__custom__">Ô£Å´©Å Custom model...</option>';
+        suggestOptions += '<option value="__custom__">Custom model...</option>';
 
         card.innerHTML = `
             <div class="provider-card-header">
@@ -501,7 +501,7 @@ function _attachProviderListeners(container) {
             const tag = document.createElement('span');
             tag.className = `cap-tag${val === 'image_generation' ? ' cap-image' : ''}`;
             tag.dataset.cap = val;
-            tag.textContent = val + ' ├ù'; // x char
+            tag.textContent = val + ' x';
             tag.title = 'Click to remove';
             tag.addEventListener('click', () => { tag.remove(); markSettingsDirty(); });
 
@@ -571,7 +571,7 @@ async function saveProviderSettings() {
                 const desc = entry.querySelector('.model-desc-input').value.trim();
 
                 const caps = [];
-                entry.querySelectorAll('.cap-tag').forEach(tag => caps.push(tag.dataset.cap || tag.textContent.replace(' ├ù', '')));
+                entry.querySelectorAll('.cap-tag').forEach(tag => caps.push(tag.dataset.cap || tag.textContent.replace(' x', '')));
 
                 if (typeof _registryData.providers[name].models[modelKey] === 'string') {
                     _registryData.providers[name].models[modelKey] = {
@@ -744,4 +744,4 @@ async function loadEnvStatus() {
         console.error('Failed to load env status:', e);
     }
 }
-
+
