@@ -1,5 +1,5 @@
 # Misaka Cipher - Requirements
-# Python dependencies for Sprint 1: Nexus Core
+# Python dependencies
 
 # Google AI
 google-generativeai>=0.3.0
@@ -18,3 +18,16 @@ python-dotenv>=1.0.0
 
 # System Monitoring
 psutil>=5.9.0
+
+# Web Server
+fastapi>=0.109.1
+uvicorn>=0.24.0
+pydantic>=2.0.0
+
+# CLI Interface
+rich>=13.0.0
+
+# Memory Tier (optional, install separately if needed)
+# chromadb>=0.4.0
+# sentence-transformers>=2.2.0
+# networkx>=3.0
