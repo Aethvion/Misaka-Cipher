@@ -3500,7 +3500,6 @@
           "tqdm",
           "typing-extensions",
           "absl-py",
-          "black",
           "nose2",
           "pandas",
           "pytype",
@@ -3508,7 +3507,7 @@
           "Pillow",
           "ipython"
         ],
-        "dependency_count": 16,
+        "dependency_count": 15,
         "safety_score": 60.0,
         "safety_level": "MEDIUM",
         "safety_reasons": [
