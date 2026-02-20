@@ -235,12 +235,9 @@ class TaskQueueManager:
         self.running = False
         
         # Persistence setup
-        # Use a hidden folder in memory for threads to avoid cluttering workspace
-        self.threads_dir = Path(__file__).parent.parent / "memory" / "storage" / "threads"
-        self.threads_dir.mkdir(parents=True, exist_ok=True)
-        
-        self.tasks_dir = Path(__file__).parent.parent / "memory" / "storage" / "tasks"
-        self.tasks_dir.mkdir(parents=True, exist_ok=True)
+        # Use a hierarchical workspaces folder for threads to support future expansion
+        self.workspaces_dir = Path(__file__).parent.parent / "memory" / "storage" / "workspaces"
+        self.workspaces_dir.mkdir(parents=True, exist_ok=True)
         
         self._load_threads()
         self._load_tasks()
@@ -464,29 +461,15 @@ class TaskQueueManager:
         # Remove from memory
         del self.threads[thread_id]
         
-        # Delete thread file
-        thread_file = self.threads_dir / f"{thread_id}.json"
-        if thread_file.exists():
+        # Delete the entire thread workspace folder
+        thread_dir = self.workspaces_dir / thread_id
+        if thread_dir.exists():
+            import shutil
             try:
-                thread_file.unlink()
-                logger.info(f"Deleted thread file: {thread_file}")
+                shutil.rmtree(thread_dir)
+                logger.info(f"Deleted thread workspace: {thread_dir}")
             except Exception as e:
-                logger.error(f"Failed to delete thread file {thread_file}: {e}")
-
-        # Delete associated tasks
-        for tid in task_ids:
-            # Remove from memory
-            if tid in self.tasks:
-                del self.tasks[tid]
-            
-            # Delete task file
-            task_file = self.tasks_dir / f"{tid}.json"
-            if task_file.exists():
-                try:
-                    task_file.unlink()
-                    logger.debug(f"Deleted task file: {task_file}")
-                except Exception as e:
-                    logger.error(f"Failed to delete task file {task_file}: {e}")
+                logger.error(f"Failed to delete thread workspace {thread_dir}: {e}")
                 
         return True
 
@@ -518,29 +501,33 @@ class TaskQueueManager:
         """Load threads from disk."""
         try:
             count = 0
-            for file_path in self.threads_dir.glob("*.json"):
-                try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                        
-                    # Reconstruct ChatThread
-                    thread = ChatThread(
-                        id=data['id'],
-                        title=data.get('title', 'Untitled'),
-                        created_at=datetime.fromisoformat(data['created_at']),
-                        updated_at=datetime.fromisoformat(data['updated_at']),
-                        task_ids=data.get('task_ids', []),
-                        metadata=data.get('metadata', {}),
-                        mode=data.get('mode', 'auto'),
-                        is_deleted=data.get('is_deleted', False)
-                    )
-                    
-                    if not thread.is_deleted:
-                        self.threads[thread.id] = thread
-                        count += 1
-                        
-                except Exception as e:
-                    logger.error(f"Failed to load thread from {file_path}: {e}")
+            if self.workspaces_dir.exists():
+                for thread_dir in self.workspaces_dir.iterdir():
+                    if thread_dir.is_dir():
+                        file_path = thread_dir / f"{thread_dir.name}.json"
+                        if file_path.exists():
+                            try:
+                                with open(file_path, 'r', encoding='utf-8') as f:
+                                    data = json.load(f)
+                                    
+                                # Reconstruct ChatThread
+                                thread = ChatThread(
+                                    id=data['id'],
+                                    title=data.get('title', 'Untitled'),
+                                    created_at=datetime.fromisoformat(data['created_at']),
+                                    updated_at=datetime.fromisoformat(data['updated_at']),
+                                    task_ids=data.get('task_ids', []),
+                                    metadata=data.get('metadata', {}),
+                                    mode=data.get('mode', 'auto'),
+                                    is_deleted=data.get('is_deleted', False)
+                                )
+                                
+                                if not thread.is_deleted:
+                                    self.threads[thread.id] = thread
+                                    count += 1
+                                    
+                            except Exception as e:
+                                logger.error(f"Failed to load thread from {file_path}: {e}")
             
             logger.info(f"Loaded {count} threads from disk")
             
@@ -554,10 +541,12 @@ class TaskQueueManager:
             
         try:
             thread = self.threads[thread_id]
-            file_path = self.threads_dir / f"{thread.id}.json"
             
-            # Ensure directory exists
-            self.threads_dir.mkdir(parents=True, exist_ok=True)
+            # Create thread-specific workspace directory
+            thread_dir = self.workspaces_dir / thread.id
+            thread_dir.mkdir(parents=True, exist_ok=True)
+            
+            file_path = thread_dir / f"{thread.id}.json"
             
             with open(file_path, 'w', encoding='utf-8') as f:
                 # Use to_dict() which now sanitizes data
@@ -571,10 +560,12 @@ class TaskQueueManager:
     def _save_task(self, task: Task):
         """Save task state to disk."""
         try:
-            file_path = self.tasks_dir / f"{task.id}.json"
+            # Task goes into its thread's workspace/tasks/ directory
+            thread_dir = self.workspaces_dir / task.thread_id
+            tasks_dir = thread_dir / "tasks"
+            tasks_dir.mkdir(parents=True, exist_ok=True)
             
-            # Ensure directory exists
-            self.tasks_dir.mkdir(parents=True, exist_ok=True)
+            file_path = tasks_dir / f"{task.id}.json"
             
             with open(file_path, 'w', encoding='utf-8') as f:
                 # Use to_dict() which now sanitizes data
@@ -587,35 +578,36 @@ class TaskQueueManager:
         """Load tasks from disk."""
         try:
             count = 0
-            for file_path in self.tasks_dir.glob("*.json"):
-                try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                    
-                    # Reconstruct Task
-                    # Note: We need to convert string timestamps back to datetime
-                    # Use a helper if possible, or manual parse
-                    
-                    # Basic reconstruction
-                    task = Task(
-                        id=data['id'],
-                        thread_id=data['thread_id'],
-                        prompt=data['prompt'],
-                        status=TaskStatus(data['status']),
-                        created_at=datetime.fromisoformat(data['created_at']),
-                        started_at=datetime.fromisoformat(data['started_at']) if data.get('started_at') else None,
-                        completed_at=datetime.fromisoformat(data['completed_at']) if data.get('completed_at') else None,
-                        error=data.get('error'),
-                        result=data.get('result'),
-                        metadata=data.get('metadata', {}),
-                        worker_id=data.get('worker_id')
-                    )
-                    
-                    self.tasks[task.id] = task
-                    count += 1
-                        
-                except Exception as e:
-                    logger.error(f"Failed to load task from {file_path}: {e}")
+            if self.workspaces_dir.exists():
+                for thread_dir in self.workspaces_dir.iterdir():
+                    if thread_dir.is_dir():
+                        tasks_dir = thread_dir / "tasks"
+                        if tasks_dir.exists():
+                            for file_path in tasks_dir.glob("*.json"):
+                                try:
+                                    with open(file_path, 'r', encoding='utf-8') as f:
+                                        data = json.load(f)
+                                    
+                                    # Basic reconstruction
+                                    task = Task(
+                                        id=data['id'],
+                                        thread_id=data['thread_id'],
+                                        prompt=data['prompt'],
+                                        status=TaskStatus(data['status']),
+                                        created_at=datetime.fromisoformat(data['created_at']),
+                                        started_at=datetime.fromisoformat(data['started_at']) if data.get('started_at') else None,
+                                        completed_at=datetime.fromisoformat(data['completed_at']) if data.get('completed_at') else None,
+                                        error=data.get('error'),
+                                        result=data.get('result'),
+                                        metadata=data.get('metadata', {}),
+                                        worker_id=data.get('worker_id')
+                                    )
+                                    
+                                    self.tasks[task.id] = task
+                                    count += 1
+                                        
+                                except Exception as e:
+                                    logger.error(f"Failed to load task from {file_path}: {e}")
             
             logger.info(f"Loaded {count} tasks from disk")
             
