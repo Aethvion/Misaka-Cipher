@@ -3418,13 +3418,19 @@ function switchChatArenaMode(mode) {
     // Update dropdown button label
     const btn = document.querySelector('.main-tab-dropdown .main-tab');
     if (btn) {
-        const icons = { chat: '💬', agent: '🤖', arena: '⚔️' };
-        const labels = { chat: 'Chat', agent: 'Agent', arena: 'Arena' };
+        const icons = { chat: '💬', agent: '🤖', arena: '⚔️', aiconv: '🎭' };
+        const labels = { chat: 'Chat', agent: 'Agent', arena: 'Arena', aiconv: 'AI Conv' };
         btn.innerHTML = `<span class="tab-icon">${icons[mode] || '💬'}</span>${labels[mode] || 'Chat'} <span class="dropdown-arrow">▾</span>`;
     }
 
     // Switch panel (this updates currentMainTab)
     switchMainTab(mode);
+
+    // AI Conversations mode init
+    if (mode === 'aiconv' && !window.aiconvInitialized) {
+        initializeAIConv();
+        window.aiconvInitialized = true;
+    }
 
     // Re-render thread list to filter by mode
     if (typeof renderThreadList === 'function') {
@@ -3694,4 +3700,268 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ===== AI Conversations Mode =====
+let aiconvSelectedModels = [];
+let aiconvState = {
+    isRunning: false,
+    isPaused: false,
+    currentTurnIndex: 0, // Used to know which model goes next
+    totalTurnsCompleted: 0,
+    maxTurnsPerModel: 5,
+    messageHistory: [], // Full conversation history [{role: 'user'|'assistant', content: '...', name: 'model_id'}]
+    estTokens: 0,
+    estCost: 0
+};
+
+function initializeAIConv() {
+    // Populate dropdown with available arena/chat models
+    const addSelect = document.getElementById('aiconv-model-add');
+    if (addSelect && arenaAvailableModels.length > 0) {
+        let html = '<option value="">+ Add Model...</option>';
+        for (const m of arenaAvailableModels) {
+            html += `<option value="${m.id}">${m.id} (${m.provider})</option>`;
+        }
+        addSelect.innerHTML = html;
+
+        // Use arenaAvailableModels array loaded by loadArenaModels()
+    }
+
+    if (addSelect) {
+        addSelect.addEventListener('change', () => {
+            const modelId = addSelect.value;
+            if (modelId && !aiconvSelectedModels.includes(modelId)) {
+                aiconvSelectedModels.push(modelId);
+                renderAIConvChips();
+            }
+            addSelect.value = '';
+        });
+    }
+
+    const startBtn = document.getElementById('aiconv-start-btn');
+    const pauseBtn = document.getElementById('aiconv-pause-btn');
+    const stopBtn = document.getElementById('aiconv-stop-btn');
+
+    if (startBtn) startBtn.addEventListener('click', startAIConv);
+    if (pauseBtn) pauseBtn.addEventListener('click', togglePauseAIConv);
+    if (stopBtn) stopBtn.addEventListener('click', stopAIConv);
+}
+
+function renderAIConvChips() {
+    const container = document.getElementById('aiconv-model-chips');
+    if (!container) return;
+
+    container.innerHTML = aiconvSelectedModels.map((id, index) => `
+        <span class="arena-chip">
+            <span class="chip-number">${index + 1}</span> ${id}
+            <span class="chip-remove" onclick="removeAIConvModel('${id}')">&times;</span>
+        </span>
+    `).join('');
+}
+
+function removeAIConvModel(modelId) {
+    if (aiconvState.isRunning && !aiconvState.isPaused) return; // Prevent removes while running
+    aiconvSelectedModels = aiconvSelectedModels.filter(id => id !== modelId);
+    renderAIConvChips();
+}
+
+// Global functions for logic
+async function startAIConv() {
+    if (aiconvSelectedModels.length < 2) {
+        alert("Please select at least 2 models.");
+        return;
+    }
+
+    const topicInput = document.getElementById('aiconv-topic');
+    const msgCountInput = document.getElementById('aiconv-msg-count');
+    const topic = topicInput ? topicInput.value.trim() : '';
+    const maxMsgs = msgCountInput ? parseInt(msgCountInput.value) || 5 : 5;
+
+    if (!topic) {
+        alert("Please enter a topic or initial prompt.");
+        return;
+    }
+
+    // Reset State
+    aiconvState.isRunning = true;
+    aiconvState.isPaused = false;
+    aiconvState.currentTurnIndex = 0;
+    aiconvState.totalTurnsCompleted = 0;
+    aiconvState.maxTurnsPerModel = maxMsgs;
+    aiconvState.messageHistory = [{ role: 'system', content: `The topic of this conversation is: ${topic}. Please keep responses concise and engaging.` }];
+    aiconvState.estTokens = 0;
+    aiconvState.estCost = 0;
+
+    // Update UI
+    document.getElementById('aiconv-start-btn').disabled = true;
+    document.getElementById('aiconv-pause-btn').disabled = false;
+    document.getElementById('aiconv-stop-btn').disabled = false;
+    document.getElementById('aiconv-pause-btn').innerHTML = '<i class="fas fa-pause"></i> Pause';
+    document.getElementById('aiconv-topic').disabled = true;
+
+    const messagesContainer = document.getElementById('aiconv-messages');
+    messagesContainer.innerHTML = `
+        <div class="message system-message">
+            <div class="message-content">
+                <strong>System:</strong> Starting conversation on topic: "${escapeHtml(topic)}"
+            </div>
+        </div>
+    `;
+
+    updateAIConvUI();
+
+    // Start Loop
+    runAIConvLoop();
+}
+
+function togglePauseAIConv() {
+    aiconvState.isPaused = !aiconvState.isPaused;
+    const pauseBtn = document.getElementById('aiconv-pause-btn');
+    if (aiconvState.isPaused) {
+        pauseBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
+    } else {
+        pauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+        runAIConvLoop(); // Kick things back off
+    }
+}
+
+function stopAIConv() {
+    aiconvState.isRunning = false;
+    aiconvState.isPaused = false;
+
+    document.getElementById('aiconv-start-btn').disabled = false;
+    document.getElementById('aiconv-pause-btn').disabled = true;
+    document.getElementById('aiconv-stop-btn').disabled = true;
+    document.getElementById('aiconv-topic').disabled = false;
+
+    const messagesContainer = document.getElementById('aiconv-messages');
+    messagesContainer.insertAdjacentHTML('beforeend', `
+        <div class="message system-message">
+            <div class="message-content">
+                <strong>System:</strong> Conversation stopped.
+            </div>
+        </div>
+    `);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+async function runAIConvLoop() {
+    const totalTarget = aiconvState.maxTurnsPerModel * aiconvSelectedModels.length;
+
+    while (aiconvState.isRunning && !aiconvState.isPaused && aiconvState.totalTurnsCompleted < totalTarget) {
+        const currentModel = aiconvSelectedModels[aiconvState.currentTurnIndex];
+
+        // Show loading marker
+        const messagesContainer = document.getElementById('aiconv-messages');
+        const loadingId = `aiconv-loading-${Date.now()}`;
+        messagesContainer.insertAdjacentHTML('beforeend', `
+            <div class="message assistant-message flex-col" id="${loadingId}">
+                <div class="message-header">
+                    <span class="message-role">🎭 ${currentModel}</span>
+                </div>
+                <div class="message-content">
+                    <div class="spinner" style="display:inline-block; width:12px; height:12px; border-width:2px; margin-right:5px;"></div> Thinking...
+                </div>
+            </div>
+        `);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        try {
+            // Hit backend
+            const res = await fetch('/api/arena/aiconv/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model_id: currentModel,
+                    messages: aiconvState.messageHistory
+                })
+            });
+
+            const data = await res.json();
+
+            // Remove loading msg
+            const loadingEl = document.getElementById(loadingId);
+            if (loadingEl) loadingEl.remove();
+
+            if (!res.ok || !aiconvState.isRunning) {
+                if (aiconvState.isRunning) {
+                    console.error("AI Conv Error:", data.detail || 'Unknown error');
+                    stopAIConv();
+                }
+                break;
+            }
+
+            // Append to history
+            const responseText = data.response;
+            aiconvState.messageHistory.push({
+                role: 'assistant',
+                name: currentModel,
+                content: responseText
+            });
+
+            // Update Tokens & Cost
+            if (data.usage) {
+                aiconvState.estTokens += (data.usage.total_tokens || 0);
+                aiconvState.estCost += (data.usage.total_cost || 0);
+            }
+
+            // Append to UI
+            messagesContainer.insertAdjacentHTML('beforeend', `
+                <div class="message assistant-message flex-col">
+                    <div class="message-header">
+                        <span class="message-role" style="color: var(--primary);">🎭 ${currentModel}</span>
+                    </div>
+                    <div class="message-content" style="white-space: pre-wrap;">${escapeHtml(responseText)}</div>
+                </div>
+            `);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            aiconvState.totalTurnsCompleted++;
+
+            // Move to next model
+            aiconvState.currentTurnIndex = (aiconvState.currentTurnIndex + 1) % aiconvSelectedModels.length;
+
+            updateAIConvUI();
+
+            // Small delay between turns for readability and rate limiting
+            if (aiconvState.totalTurnsCompleted < totalTarget) {
+                await new Promise(r => setTimeout(r, 1000));
+            }
+
+        } catch (err) {
+            console.error('Turn execution failed:', err);
+            const loadingEl = document.getElementById(loadingId);
+            if (loadingEl) loadingEl.remove();
+            stopAIConv();
+            break;
+        }
+    }
+
+    if (aiconvState.totalTurnsCompleted >= totalTarget && aiconvState.isRunning) {
+        stopAIConv();
+        const messagesContainer = document.getElementById('aiconv-messages');
+        messagesContainer.insertAdjacentHTML('beforeend', `
+            <div class="message system-message">
+                <div class="message-content">
+                    <strong>System:</strong> Conversation completed successfully!
+                </div>
+            </div>
+        `);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+}
+
+function updateAIConvUI() {
+    const totalTarget = aiconvState.maxTurnsPerModel * aiconvSelectedModels.length;
+
+    // Static Stats
+    document.getElementById('aiconv-total-msgs').textContent = aiconvState.totalTurnsCompleted;
+    document.getElementById('aiconv-est-tokens').textContent = '~' + formatNumber(aiconvState.estTokens);
+    document.getElementById('aiconv-est-cost').textContent = formatCost(aiconvState.estCost);
+
+    // Live Tracker
+    document.getElementById('aiconv-live-tokens').textContent = formatNumber(aiconvState.estTokens);
+    document.getElementById('aiconv-live-cost').textContent = formatCost(aiconvState.estCost);
+    document.getElementById('aiconv-progress').textContent = `${aiconvState.totalTurnsCompleted}/${totalTarget}`;
 }

@@ -2588,6 +2588,18 @@ input:checked+.slider:before {
     overflow: hidden;
 }
 
+.dropdown-category {
+    padding: 0.5rem 1rem 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+    border-bottom: 1px solid rgba(0, 217, 255, 0.1);
+    margin-bottom: 0.25rem;
+}
+
 .main-tab-dropdown.open .tab-dropdown-menu {
     display: block;
 }
@@ -2624,6 +2636,11 @@ input:checked+.slider:before {
     grid-template-columns: 260px 1fr 280px;
     height: 100%;
     gap: 0;
+}
+
+/* AI Conv uses 2 columns instead of 3 */
+.aiconv-layout {
+    grid-template-columns: 300px 1fr;
 }
 
 .arena-controls {

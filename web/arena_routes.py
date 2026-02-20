@@ -193,3 +193,58 @@ async def clear_leaderboard():
     """Clear the arena leaderboard."""
     _save_leaderboard({"models": {}})
     return {"status": "success", "message": "Leaderboard cleared"}
+
+
+class AIConvTurnRequest(BaseModel):
+    """Request for a single turn in AI Conversation."""
+    model_id: str
+    system_prompt: Optional[str] = None
+    messages: List[Dict[str, str]] # History of the conversation including current prompt
+
+
+@router.post("/aiconv/generate")
+async def aiconv_generate(request: AIConvTurnRequest, req: Request):
+    """Generate a single turn for AI Conversations."""
+    try:
+        nexus = getattr(req.app.state, 'nexus', None)
+        if not nexus:
+            raise HTTPException(status_code=503, detail="System not initialized")
+        provider_manager = nexus.provider_manager
+
+        trace_id = f"AICONV_{uuid.uuid4().hex[:8]}"
+        
+        # Build the full prompt string or use the provider's message format if supported.
+        # Since call_with_failover usually takes a single string prompt, we construct it:
+        full_prompt = ""
+        if request.system_prompt:
+            full_prompt += f"{request.system_prompt}\n\n"
+            
+        for msg in request.messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            name = msg.get("name")
+            
+            if name:
+                full_prompt += f"[{name}]: {content}\n\n"
+            else:
+                full_prompt += f"[{role.capitalize()}]: {content}\n\n"
+
+        response = await asyncio.to_thread(
+            provider_manager.call_with_failover,
+            prompt=full_prompt,
+            trace_id=trace_id,
+            model=request.model_id,
+            source="aiconv"
+        )
+        
+        return {
+            "model_id": request.model_id,
+            "response": response.content if response.success else f"Error: {response.error}",
+            "provider": response.provider,
+            "success": response.success,
+            "usage": response.usage if hasattr(response, 'usage') else {}
+        }
+
+    except Exception as e:
+        logger.error(f"AI Conv generate error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
