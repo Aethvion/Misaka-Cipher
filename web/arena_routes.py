@@ -242,7 +242,7 @@ async def aiconv_generate(request: AIConvTurnRequest, req: Request):
             "response": response.content if response.success else f"Error: {response.error}",
             "provider": response.provider,
             "success": response.success,
-            "usage": response.usage if hasattr(response, 'usage') else {}
+            "usage": response.metadata.get("usage", {}) if response.metadata else {}
         }
 
     except Exception as e:

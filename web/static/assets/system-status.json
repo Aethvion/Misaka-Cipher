@@ -6,6 +6,7 @@
         "working": [
             "Chat",
             "Arena mode",
+            "AI conversations",
             "Provider settings",
             "Model registry",
             "Trace IDs",
@@ -15,7 +16,8 @@
             "Intelligence Firewall & Trace IDs"
         ],
         "wip": [
-            "Image generation"
+            "Image generation",
+            "agents"
         ],
         "planned": [
             "Local model support (Ollama, vLLM)",

@@ -3917,9 +3917,24 @@ async function runAIConvLoop() {
 
             // Update Tokens & Cost
             if (data.usage) {
-                aiconvState.estInTokens += (data.usage.prompt_tokens || 0);
-                aiconvState.estOutTokens += (data.usage.completion_tokens || 0);
-                aiconvState.estCost += (data.usage.total_cost || 0);
+                // Handle dict variants (OpenAI vs Google)
+                const inTokens = data.usage.prompt_tokens || data.usage.prompt_token_count || 0;
+                const outTokens = data.usage.completion_tokens || data.usage.candidates_token_count || 0;
+
+                aiconvState.estInTokens += inTokens;
+                aiconvState.estOutTokens += outTokens;
+
+                // Calculate estimated cost
+                let inCost = 0;
+                let outCost = 0;
+                if (typeof arenaAvailableModels !== 'undefined') {
+                    const modelInfo = arenaAvailableModels.find(m => m.id === currentModel.id);
+                    if (modelInfo) {
+                        inCost = (inTokens / 1000000) * (modelInfo.input_cost_per_1m_tokens || 0);
+                        outCost = (outTokens / 1000000) * (modelInfo.output_cost_per_1m_tokens || 0);
+                    }
+                }
+                aiconvState.estCost += (inCost + outCost);
             }
 
             // Append to UI (Parsing Markdown if marked is available, otherwise fallback to escapeHtml)
