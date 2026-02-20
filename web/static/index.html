@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Misaka Cipher - Nexus Portal</title>
+    <link rel="icon" href="data:,">
 
     <!-- Fonts -->
     <link
@@ -70,6 +71,7 @@
                             Conversations</button>
                     </div>
                 </div>
+                <button class="main-tab" data-maintab="files"><span class="tab-icon">📁</span>Files</button>
                 <button class="main-tab" data-maintab="tools"><span class="tab-icon">🔧</span>Tools</button>
                 <button class="main-tab" data-maintab="packages"><span class="tab-icon">📦</span>Packages</button>
                 <button class="main-tab" data-maintab="memory"><span class="tab-icon">🧠</span>Memory</button>
@@ -884,7 +886,23 @@
     <script src="/static/lib/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="/static/threads.js?v=4"></script>
-    <script src="/static/app.js?v=5"></script>
+    <!-- Core & State Management -->
+    <script src="/static/core.js?v=1"></script>
+
+    <!-- Views (Passive Data Renderers) -->
+    <script src="/static/view-files.js?v=1"></script>
+    <script src="/static/view-memory.js?v=1"></script>
+    <script src="/static/view-tools.js?v=1"></script>
+    <script src="/static/view-packages.js?v=1"></script>
+    <script src="/static/view-usage.js?v=1"></script>
+    <script src="/static/view-status.js?v=1"></script>
+    <script src="/static/view-settings.js?v=1"></script>
+
+    <!-- Modes (Active Interactive Panels) -->
+    <script src="/static/mode-image.js?v=1"></script>
+    <script src="/static/mode-arena.js?v=1"></script>
+    <script src="/static/mode-aiconv.js?v=1"></script>
+    <script src="/static/mode-chat.js?v=1"></script>
 </body>
 
 </html>

@@ -1,4 +1,4 @@
-// Misaka Cipher - Web Dashboard JavaScript
+﻿// Misaka Cipher - Web Dashboard JavaScript
 // Handles WebSocket connections, UI interactions, and real-time updates
 
 // WebSocket connections
@@ -66,10 +66,10 @@ function updateSystemTerminal(message, title, agent, status) {
     const time = new Date().toLocaleTimeString([], { hour12: false });
 
     // Status Icon
-    let icon = 'ℹ️';
-    if (status === 'running') icon = '⏳';
-    if (status === 'completed') icon = '✓';
-    if (status === 'failed') icon = '❌';
+    let icon = 'Ôä╣´©Å';
+    if (status === 'running') icon = 'ÔÅ│';
+    if (status === 'completed') icon = 'Ô£ô';
+    if (status === 'failed') icon = 'ÔØî';
 
     // Build line content
     let html = `<span class="term-time">[${time}]</span>`;
@@ -552,12 +552,12 @@ function switchMainTab(tabName) {
                     // Update data-maintab to reflect current mode
                     tab.dataset.maintab = tabName;
 
-                    let icon = '💬';
+                    let icon = '­ƒÆ¼';
                     let label = 'Chat';
-                    if (tabName === 'agent') { icon = '🤖'; label = 'Agent'; }
-                    if (tabName === 'image') { icon = '🎨'; label = 'Image'; }
-                    if (tabName === 'arena') { icon = '⚔️'; label = 'Arena'; }
-                    if (tabName === 'aiconv') { icon = '🎭'; label = 'AI Conv'; }
+                    if (tabName === 'agent') { icon = '­ƒñû'; label = 'Agent'; }
+                    if (tabName === 'image') { icon = '­ƒÄ¿'; label = 'Image'; }
+                    if (tabName === 'arena') { icon = 'ÔÜö´©Å'; label = 'Arena'; }
+                    if (tabName === 'aiconv') { icon = '­ƒÄ¡'; label = 'AI Conv'; }
 
                     tab.innerHTML = `<span class="tab-icon">${icon}</span>${label}`;
                 }
@@ -913,7 +913,7 @@ function renderThreadMemory(threads) {
                 // Main Row
                 // Allow clicking row to toggle details if details exist
                 const onclickAttr = mem.details ? `onclick="toggleMemoryDetails(this, '${mem.memory_id.replace(/[^a-zA-Z0-9]/g, '-')}')" style="cursor:pointer;"` : '';
-                const expandIcon = mem.details ? '<span class="expand-icon">▶</span> ' : '';
+                const expandIcon = mem.details ? '<span class="expand-icon">ÔûÂ</span> ' : '';
 
                 return `
                     <tr ${onclickAttr} class="memory-row">
@@ -1045,7 +1045,7 @@ function renderToolsTable() {
             <tr class="package-row" onclick="toggleToolDetails('${detailsId}')">
                 <td>
                     <div class="pkg-name">
-                        <span class="expand-icon">▶</span> ${tool.name}
+                        <span class="expand-icon">ÔûÂ</span> ${tool.name}
                     </div>
                 </td>
                 <td><span class="status-badge installed">${tool.domain}</span></td>
@@ -1149,8 +1149,8 @@ async function searchMemory() {
                 <div style="color: var(--primary); font-weight: 600;">${mem.event_type}</div>
                 <div style="margin: 0.5rem 0;">${mem.summary}</div>
                 <div style="font-size: 0.8rem; color: var(--text-secondary);">
-                    <span>${mem.domain}</span> • 
-                    <span>${formatDate(mem.timestamp)}</span> • 
+                    <span>${mem.domain}</span> ÔÇó 
+                    <span>${formatDate(mem.timestamp)}</span> ÔÇó 
                     <span style="font-family: 'Fira Code', monospace; color: var(--accent);">${mem.memory_id}</span>
                 </div>
             </div>
@@ -1287,7 +1287,7 @@ function addMessage(sender, content, metadata = {}) {
         html = `
                     <details class="agent-step-details" ${isError ? 'open' : ''}>
                 <summary class="agent-step-summary ${isError ? 'error' : ''}">
-                    <span class="step-icon">${isError ? '⚠️' : '🤖'}</span>
+                    <span class="step-icon">${isError ? 'ÔÜá´©Å' : '­ƒñû'}</span>
                     <span class="step-title">${title}</span>
                     ${agentName ? `<span class="step-agent">${agentName}</span>` : ''}
                 </summary>
@@ -1414,16 +1414,16 @@ function downloadFile(domain, filename) {
 
 function getFileIcon(type) {
     const icons = {
-        'pdf': '📄',
-        'txt': '📝',
-        'csv': '📊',
-        'json': '🔧',
-        'html': '🌐',
-        'png': '🖼️',
-        'jpg': '🖼️',
-        'mp3': '🎵'
+        'pdf': '­ƒôä',
+        'txt': '­ƒôØ',
+        'csv': '­ƒôè',
+        'json': '­ƒöº',
+        'html': '­ƒîÉ',
+        'png': '­ƒû╝´©Å',
+        'jpg': '­ƒû╝´©Å',
+        'mp3': '­ƒÄÁ'
     };
-    return icons[type] || '📁';
+    return icons[type] || '­ƒôü';
 }
 
 function formatFileSize(bytes) {
@@ -1605,8 +1605,8 @@ function renderPackagesTable() {
         let actionsHtml = '';
         if (pkg.status === 'pending') {
             actionsHtml = `
-                <button class="icon-btn approve-btn" data-pkg="${pkg.package_name}" title="Approve">✓</button>
-                <button class="icon-btn deny-btn" data-pkg="${pkg.package_name}" title="Deny">✗</button>
+                <button class="icon-btn approve-btn" data-pkg="${pkg.package_name}" title="Approve">Ô£ô</button>
+                <button class="icon-btn deny-btn" data-pkg="${pkg.package_name}" title="Deny">Ô£ù</button>
             `;
         } else if (pkg.status === 'installed') {
             actionsHtml = `<span class="dim-text">Active</span>`;
@@ -1633,7 +1633,7 @@ function renderPackagesTable() {
             <tr class="package-row ${pkg.status}" onclick="togglePackageDetails('${detailsId}')">
                 <td>
                     <div class="pkg-name">
-                        <span class="expand-icon">▶</span> ${pkg.package_name}
+                        <span class="expand-icon">ÔûÂ</span> ${pkg.package_name}
                     </div>
                 </td>
                 <td><span class="status-badge ${pkg.status}">${pkg.status}</span></td>
@@ -2196,7 +2196,7 @@ function renderProviderCards(registry) {
             const isImageGen = caps.includes('image_generation');
 
             const capsHtml = caps.map(c =>
-                `<span class="cap-tag ${c === 'image_generation' ? 'cap-image' : ''}" data-cap="${c}" title="Click to remove">${c} ×</span>`
+                `<span class="cap-tag ${c === 'image_generation' ? 'cap-image' : ''}" data-cap="${c}" title="Click to remove">${c} ├ù</span>`
             ).join('');
 
             const inputCost = info.input_cost_per_1m_tokens ?? '';
@@ -2237,8 +2237,8 @@ function renderProviderCards(registry) {
                         <input type="text" class="model-input input-desc model-desc-input" value="${desc}" placeholder="Description...">
                     </td>
                     <td style="text-align: center; display: flex; gap: 5px; justify-content: center;">
-                        ${isImageGen ? `<button class="btn-icon model-config-btn" title="Configure Image Settings">⚙️</button>` : ''}
-                        <button class="btn-icon model-delete-btn" data-provider="${name}" data-model-key="${modelKey}" title="Remove model">×</button>
+                        ${isImageGen ? `<button class="btn-icon model-config-btn" title="Configure Image Settings">ÔÜÖ´©Å</button>` : ''}
+                        <button class="btn-icon model-delete-btn" data-provider="${name}" data-model-key="${modelKey}" title="Remove model">├ù</button>
                     </td>
                 </tr>
             `;
@@ -2279,11 +2279,11 @@ function renderProviderCards(registry) {
 
         // Build suggestion options for this provider
         const suggestions = _suggestedModels[name] || [];
-        let suggestOptions = '<option value="">— Select suggested model —</option>';
+        let suggestOptions = '<option value="">ÔÇö Select suggested model ÔÇö</option>';
         for (const s of suggestions) {
-            suggestOptions += `<option value="${s.key}" data-model='${JSON.stringify(s)}'>${s.id} (${s.tier}) — ${s.description}</option>`;
+            suggestOptions += `<option value="${s.key}" data-model='${JSON.stringify(s)}'>${s.id} (${s.tier}) ÔÇö ${s.description}</option>`;
         }
-        suggestOptions += '<option value="__custom__">✏️ Custom model...</option>';
+        suggestOptions += '<option value="__custom__">Ô£Å´©Å Custom model...</option>';
 
         card.innerHTML = `
             <div class="provider-card-header">
@@ -2396,7 +2396,7 @@ function _attachProviderListeners(container) {
         });
     });
 
-    // Add model buttons — show suggestion dropdown inline
+    // Add model buttons ÔÇö show suggestion dropdown inline
     container.querySelectorAll('.model-add-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const provName = e.target.dataset.provider;
@@ -2504,7 +2504,7 @@ function _attachProviderListeners(container) {
             const tag = document.createElement('span');
             tag.className = `cap-tag${val === 'image_generation' ? ' cap-image' : ''}`;
             tag.dataset.cap = val;
-            tag.textContent = val + ' ×'; // x char
+            tag.textContent = val + ' ├ù'; // x char
             tag.title = 'Click to remove';
             tag.addEventListener('click', () => { tag.remove(); markSettingsDirty(); });
 
@@ -2574,7 +2574,7 @@ async function saveProviderSettings() {
                 const desc = entry.querySelector('.model-desc-input').value.trim();
 
                 const caps = [];
-                entry.querySelectorAll('.cap-tag').forEach(tag => caps.push(tag.dataset.cap || tag.textContent.replace(' ×', '')));
+                entry.querySelectorAll('.cap-tag').forEach(tag => caps.push(tag.dataset.cap || tag.textContent.replace(' ├ù', '')));
 
                 if (typeof _registryData.providers[name].models[modelKey] === 'string') {
                     _registryData.providers[name].models[modelKey] = {
@@ -2694,10 +2694,10 @@ async function loadEnvStatus() {
                             <input type="password" class="env-key-input" data-key="${k.name}"
                                 placeholder="${k.has_value ? k.masked_value : 'Not set'}"
                                 value="">
-                            <button class="env-reveal-btn" title="Reveal key">👁</button>
+                            <button class="env-reveal-btn" title="Reveal key">­ƒæü</button>
                         </div>
                         <button class="env-save-key-btn btn-primary small" data-key="${k.name}">Save</button>
-                        <span class="env-key-status ${k.has_value ? 'set' : 'unset'}">${k.has_value ? '✓ Set' : '⚠ Not set'}</span>
+                        <span class="env-key-status ${k.has_value ? 'set' : 'unset'}">${k.has_value ? 'Ô£ô Set' : 'ÔÜá Not set'}</span>
                     </div>
                 `;
             }
@@ -3444,9 +3444,9 @@ function switchChatArenaMode(mode) {
     // Update dropdown button label
     const btn = document.querySelector('.main-tab-dropdown .main-tab');
     if (btn) {
-        const icons = { chat: '💬', agent: '🤖', arena: '⚔️', aiconv: '🎭' };
+        const icons = { chat: '­ƒÆ¼', agent: '­ƒñû', arena: 'ÔÜö´©Å', aiconv: '­ƒÄ¡' };
         const labels = { chat: 'Chat', agent: 'Agent', arena: 'Arena', aiconv: 'AI Conv' };
-        btn.innerHTML = `<span class="tab-icon">${icons[mode] || '💬'}</span>${labels[mode] || 'Chat'} <span class="dropdown-arrow">▾</span>`;
+        btn.innerHTML = `<span class="tab-icon">${icons[mode] || '­ƒÆ¼'}</span>${labels[mode] || 'Chat'} <span class="dropdown-arrow">Ôû¥</span>`;
     }
 
     // Switch panel (this updates currentMainTab)
@@ -3464,7 +3464,7 @@ function switchChatArenaMode(mode) {
                 const firstId = visibleThreads[0].dataset.threadId;
                 if (typeof switchThread === 'function') switchThread(firstId);
             } else if (visibleThreads.length === 0) {
-                // No threads for this mode — clear chat
+                // No threads for this mode ÔÇö clear chat
                 currentThreadId = null;
                 if (typeof toggleChatInput === 'function') toggleChatInput(false);
                 const chatMessages = document.getElementById('chat-messages');
@@ -3636,7 +3636,7 @@ async function sendArenaPrompt() {
                 const scoreHtml = r.score !== null && r.score !== undefined
                     ? `<span class="card-score">${r.score}/10</span>`
                     : '';
-                const badgeHtml = isWinner ? '<span class="card-badge">🏆 Winner</span>' : '';
+                const badgeHtml = isWinner ? '<span class="card-badge">­ƒÅå Winner</span>' : '';
 
                 return `
                     <div class="arena-response-card ${isWinner ? 'winner' : ''}">
@@ -3884,7 +3884,7 @@ async function runAIConvLoop() {
         messagesContainer.insertAdjacentHTML('beforeend', `
             <div class="message ai-message" id="${loadingId}" style="border-left: 4px solid ${currentModel.color};">
                 <div class="message-header">
-                    <span class="message-role" style="color: ${currentModel.color};">🎭 ${currentModel.name} <span style="font-size:0.8em; opacity:0.7;">(${currentModel.id})</span></span>
+                    <span class="message-role" style="color: ${currentModel.color};">­ƒÄ¡ ${currentModel.name} <span style="font-size:0.8em; opacity:0.7;">(${currentModel.id})</span></span>
                 </div>
                 <div class="message-content">
                     <div class="typing-indicator">
@@ -3963,7 +3963,7 @@ async function runAIConvLoop() {
             messagesContainer.insertAdjacentHTML('beforeend', `
                 <div class="message ai-message" style="border-left: 4px solid ${currentModel.color}; background: var(--bg-tertiary);">
                     <div class="message-header">
-                        <span class="message-role" style="color: ${currentModel.color}; font-weight: bold; font-size: 1.05rem;">🎭 ${currentModel.name}</span>
+                        <span class="message-role" style="color: ${currentModel.color}; font-weight: bold; font-size: 1.05rem;">­ƒÄ¡ ${currentModel.name}</span>
                         <span style="font-size: 0.75rem; color: var(--text-secondary); margin-left: 0.5rem;">(${currentModel.id})</span>
                     </div>
                     <div class="message-content markdown-body" style="padding-top: 0.5rem;">${htmlContent}</div>
