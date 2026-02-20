@@ -539,8 +539,8 @@ function switchMainTab(tabName) {
     // Update tab buttons
     document.querySelectorAll('.main-tab').forEach(tab => {
         if (tab.closest('.main-tab-dropdown')) {
-            // Dropdown tab: active if chat, agent, image, or arena
-            const categories = ['chat', 'agent', 'image', 'arena'];
+            // Dropdown tab: active if chat, agent, image, arena, or aiconv
+            const categories = ['chat', 'agent', 'image', 'arena', 'aiconv'];
             const isActive = categories.includes(tabName);
 
             // Check if this is the generic main tab button (the left split)
@@ -2821,10 +2821,17 @@ async function loadSystemStatusTab() {
         const nameEl = document.getElementById('system-name-display');
         const verEl = document.getElementById('system-version-display');
         const dateEl = document.getElementById('status-last-update');
+        const compEl = document.getElementById('system-company-display');
+        const contactEl = document.getElementById('system-contact-display');
 
-        if (nameEl) nameEl.textContent = roadmapData.system_name || 'Misaka Cipher';
-        if (verEl) verEl.textContent = roadmapData.version ? `v${roadmapData.version}` : '';
-        if (dateEl) dateEl.textContent = roadmapData.last_update || 'Unknown';
+        const sys = roadmapData.system || roadmapData; // Fallback mapping
+
+        if (nameEl) nameEl.textContent = sys.name || sys.system_name || 'Misaka Cipher';
+        if (verEl) verEl.textContent = sys.version ? `v${sys.version}` : '';
+        if (dateEl) dateEl.textContent = sys.last_sync || sys.last_update || 'Unknown';
+        if (compEl) compEl.textContent = sys.company || '';
+        if (contactEl) contactEl.textContent = sys.contact || '';
+        if (contactEl && sys.contact) contactEl.href = `mailto:${sys.contact}`;
 
         // Render Telemetry (Merge API + Static Metrics)
         renderSystemTelemetry(apiData, metricsData);
@@ -2835,7 +2842,20 @@ async function loadSystemStatusTab() {
 
         // Helper to render section
         const renderSection = (title, items, type) => {
-            const itemsHtml = (items || []).map(item => `<div class="roadmap-item">${item}</div>`).join('');
+            let itemsHtml = '';
+
+            if (Array.isArray(items)) {
+                itemsHtml = items.map(item => `<div class="roadmap-item">${item}</div>`).join('');
+            } else if (items && typeof items === 'object') {
+                for (const [category, list] of Object.entries(items)) {
+                    const titleStr = category.toUpperCase();
+                    itemsHtml += `<div class="roadmap-category" style="margin-top: 0.8rem;">
+                        <div class="roadmap-category-title" style="font-size: 0.75rem; color: var(--primary); font-weight: bold; margin-bottom: 0.4rem; letter-spacing: 0.05em;">${titleStr}</div>
+                        ${(list || []).map(item => `<div class="roadmap-item">${item}</div>`).join('')}
+                    </div>`;
+                }
+            }
+
             return `
                 <div class="roadmap-section ${type}">
                     <h3>${title}</h3>
@@ -2846,7 +2866,7 @@ async function loadSystemStatusTab() {
             `;
         };
 
-        html += renderSection('COMPLETED', roadmap.working, 'working');
+        html += renderSection('FEATURES', roadmap.features || roadmap.working, 'working');
         html += renderSection('WORK IN PROGRESS', roadmap.wip, 'wip');
         html += renderSection('PLANNED', roadmap.planned, 'planned');
 

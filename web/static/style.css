@@ -74,8 +74,8 @@ body {
 
 .main-tab {
     background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
     color: var(--text-secondary);
     padding: 0.65rem 1rem;
     cursor: pointer;
@@ -100,7 +100,7 @@ body {
 
 .main-tab.active {
     color: var(--primary);
-    border-bottom-color: var(--primary);
+    border-color: var(--primary);
     background: rgba(0, 217, 255, 0.08);
 }
 
@@ -2558,6 +2558,23 @@ input:checked+.slider:before {
     border-top: 1px solid var(--border);
     display: flex;
     justify-content: flex-end;
+}
+
+.split-button {
+    display: flex;
+}
+
+.split-button .split-main-action {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right: none;
+}
+
+.split-button .split-arrow-action {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
 }
 
 /* ===== Chat/Arena Dropdown ===== */

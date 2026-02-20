@@ -1,27 +1,53 @@
 {
-    "system_name": "Misaka Cipher",
-    "version": "0.0.1",
-    "last_update": "2025-02-19",
+    "system": {
+        "name": "Misaka Cipher",
+        "company": "Aethvion",
+        "version": "0.0.1",
+        "last_sync": "2026-02-20",
+        "contact": "dev@misakacipher.com"
+    },
     "roadmap": {
-        "working": [
-            "Chat",
-            "Arena mode",
-            "AI conversations",
-            "Provider settings",
-            "Model registry",
-            "Trace IDs",
-            "Intelligence Firewall",
-            "Web dashboard & CLI",
-            "Provider abstraction (Gemini, OpenAI, Grok)",
-            "Intelligence Firewall & Trace IDs"
-        ],
-        "wip": [
-            "Image generation",
-            "agents"
-        ],
-        "planned": [
-            "Local model support (Ollama, vLLM)",
-            "Additional provider integrations"
-        ]
+        "features": {
+            "modes": [
+                "Chat",
+                "Arena Mode",
+                "AI Conversations"
+            ],
+            "providers": [
+                "Gemini",
+                "OpenAI"
+            ],
+            "security": [
+                "Trace IDs",
+                "Intelligence Firewall"
+            ],
+            "interface": [
+                "Web Dashboard",
+                "CLI"
+            ]
+        },
+        "wip": {
+            "providers": [
+                "Grok"
+            ],
+            "capabilities": [
+                "Image Generation",
+                "Autonomous Agents"
+            ]
+        },
+        "planned": {
+            "providers": [
+                "Anthropic",
+                "DeepSeek"
+            ],
+            "infrastructure": [
+                "Local Model Support (Ollama)",
+                "vLLM Integration"
+            ],
+            "community": [
+                "Plugin System",
+                "Extended Documentation"
+            ]
+        }
     }
 }
