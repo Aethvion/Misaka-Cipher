@@ -9,15 +9,6 @@ Misaka Cipher takes security seriously. As a self-evolving AI system that can ge
 * **Provider Isolation**: API keys are isolated and never exposed to generated code
 * **Audit Trail**: Complete traceability with Trace_ID for all operations
 
-## 🔒 Supported Versions
-
-We release security updates for the following versions:
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.x.x   | :white_check_mark: |
-| < 1.0   | :x:                |
-
 ## 🐛 Reporting a Vulnerability
 
 We appreciate your efforts to responsibly disclose your findings and will make every effort to acknowledge your contributions.
