@@ -557,6 +557,7 @@ function switchMainTab(tabName) {
                     if (tabName === 'agent') { icon = '🤖'; label = 'Agent'; }
                     if (tabName === 'image') { icon = '🎨'; label = 'Image'; }
                     if (tabName === 'arena') { icon = '⚔️'; label = 'Arena'; }
+                    if (tabName === 'aiconv') { icon = '🎭'; label = 'AI Conv'; }
 
                     tab.innerHTML = `<span class="tab-icon">${icon}</span>${label}`;
                 }
@@ -597,6 +598,8 @@ function switchMainTab(tabName) {
     } else if (tabName === 'arena') {
         loadArenaModels();
         loadArenaLeaderboard();
+    } else if (tabName === 'aiconv') {
+        loadArenaModels();
     } else if (tabName === 'status') {
         loadSystemStatusTab();
     }
@@ -3429,12 +3432,6 @@ function switchChatArenaMode(mode) {
     // Switch panel (this updates currentMainTab)
     switchMainTab(mode);
 
-    // AI Conversations mode init
-    if (mode === 'aiconv' && !window.aiconvInitialized) {
-        initializeAIConv();
-        window.aiconvInitialized = true;
-    }
-
     // Re-render thread list to filter by mode
     if (typeof renderThreadList === 'function') {
         renderThreadList();
@@ -3723,31 +3720,6 @@ let aiconvState = {
     estCost: 0
 };
 
-function initializeAIConv() {
-    // Populate dropdown with available arena/chat models
-    const addSelect = document.getElementById('aiconv-model-add');
-    if (addSelect && arenaAvailableModels.length > 0 && addSelect.options.length <= 1) {
-        let html = '<option value="">+ Add Model...</option>';
-        for (const m of arenaAvailableModels) {
-            const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
-                ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
-                : '';
-            html += `<option value="${m.id}" title="${m.description || ''}">${m.id}${costHint}</option>`;
-        }
-        addSelect.innerHTML = html;
-    }
-
-    // Event delegation is used globally for this dropdown to prevent listener loss
-
-    const startBtn = document.getElementById('aiconv-start-btn');
-    const pauseBtn = document.getElementById('aiconv-pause-btn');
-    const stopBtn = document.getElementById('aiconv-stop-btn');
-
-    if (startBtn) startBtn.addEventListener('click', startAIConv);
-    if (pauseBtn) pauseBtn.addEventListener('click', togglePauseAIConv);
-    if (stopBtn) stopBtn.addEventListener('click', stopAIConv);
-}
-
 function renderAIConvChips() {
     const container = document.getElementById('aiconv-model-chips');
     if (!container) return;
@@ -3988,5 +3960,19 @@ document.addEventListener('change', (e) => {
             if (typeof renderAIConvChips === 'function') renderAIConvChips();
         }
         e.target.value = '';
+    }
+});
+
+// Global Click Delegation for Dynamic Buttons
+document.addEventListener('click', (e) => {
+    // AI Conversations Controls
+    if (e.target && e.target.id === 'aiconv-start-btn') {
+        if (typeof startAIConv === 'function') startAIConv();
+    }
+    if (e.target && e.target.id === 'aiconv-pause-btn') {
+        if (typeof togglePauseAIConv === 'function') togglePauseAIConv();
+    }
+    if (e.target && e.target.id === 'aiconv-stop-btn') {
+        if (typeof stopAIConv === 'function') stopAIConv();
     }
 });

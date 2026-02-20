@@ -45,3 +45,4 @@ data/usage_log.json
 workspace/user_preferences.json
 data/arena_leaderboard.json
 config/model_registry.json
+web/static/assets/system-metrics.json
