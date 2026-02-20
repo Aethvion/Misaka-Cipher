@@ -1,10 +1,10 @@
 {
   "system": {
-    "project_size_bytes": 1201906007,
-    "db_size_bytes": 64095721,
-    "last_sync": "2026-02-19T13:28:51.801476"
+    "project_size_bytes": 1202400473,
+    "db_size_bytes": 64099817,
+    "last_sync": "2026-02-20T01:04:57.719746"
   },
   "memory": {
-    "episodic_count": 193
+    "episodic_count": 194
   }
 }

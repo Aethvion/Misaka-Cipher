@@ -3027,10 +3027,19 @@ let _tokensByModelChart = null;
 
 async function loadUsageDashboard() {
     try {
+        // Read preference for time range
+        const timeRange = prefs.get('usage.time_range', '1w');
+        const hours = timeRange === '1d' ? 24 : 168; // 1w = 168h
+
+        // Update buttons UI state
+        document.querySelectorAll('.chart-time-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.range === timeRange);
+        });
+
         const [summaryRes, historyRes, hourlyRes, costModelRes, tokensModelRes] = await Promise.all([
             fetch('/api/usage/summary'),
             fetch('/api/usage/history?limit=50'),
-            fetch('/api/usage/hourly?hours=24'),
+            fetch(`/api/usage/hourly?hours=${hours}`),
             fetch('/api/usage/cost-by-model'),
             fetch('/api/usage/tokens-by-model')
         ]);
@@ -3049,9 +3058,26 @@ async function loadUsageDashboard() {
         renderModelUsageTable(summary);
         renderRecentCallsTable(history.entries || []);
 
+        // Setup listeners if not already done
+        if (!window.usageListenersSetup) {
+            setupUsageListeners();
+            window.usageListenersSetup = true;
+        }
+
     } catch (error) {
         console.error('Error loading usage dashboard:', error);
     }
+}
+
+function setupUsageListeners() {
+    document.querySelectorAll('.chart-time-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const range = e.target.dataset.range;
+            await savePreference('usage.time_range', range);
+            // Reload dashboard to reflect change
+            loadUsageDashboard();
+        });
+    });
 }
 
 function formatNumber(n) {
