@@ -351,3 +351,22 @@ class UsageTracker:
             })
 
         return result
+
+    def get_today_summary(self) -> Dict[str, Any]:
+        """Get total tokens and estimated cost for today (since midnight local time approximation, or UTC to be safe). 
+           We'll use UTC since everything else is UTC, or just the last 24 hours."""
+        # Using UTC for simplicity to match `datetime.utcnow().isoformat()`
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() + "Z"
+        
+        tokens = 0
+        cost = 0.0
+        
+        for entry in self._log:
+            if entry.get("timestamp", "") >= today_start:
+                tokens += entry.get("total_tokens", 0)
+                cost += entry.get("estimated_cost", 0.0)
+                
+        return {
+            "tokens": tokens,
+            "cost": round(cost, 6)
+        }

@@ -462,6 +462,14 @@ async def get_system_status():
             vitals["ram_total_gb"] = round(mem.total / (1024**3), 1)
         except ImportError:
             pass
+            
+        # Daily Usage
+        try:
+            from workspace.usage_tracker import get_usage_tracker
+            tracker = get_usage_tracker()
+            usage_today = tracker.get_today_summary()
+        except ImportError:
+            usage_today = {"tokens": 0, "cost": 0.0}
         
         return {
             "nexus": {
@@ -477,7 +485,8 @@ async def get_system_status():
             "forge": {
                 "total_tools": len(forge.registry.list_tools())
             },
-            "vitals": vitals
+            "vitals": vitals,
+            "usage_today": usage_today
         }
     except Exception as e:
         logger.error(f"System status error: {str(e)}", exc_info=True)

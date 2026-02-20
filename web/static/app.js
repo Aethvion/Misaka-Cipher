@@ -634,14 +634,17 @@ async function loadSystemStatus() {
         const data = await response.json();
 
         // Update compact status bar
-        document.getElementById('nexus-status').textContent = data.nexus?.initialized ? '✓' : '✗';
-        document.getElementById('agents-count').textContent = data.factory?.active_agents || 0;
-        document.getElementById('tools-count').textContent = data.forge?.total_tools || 0;
+        if (data.usage_today) {
+            const tokensEl = document.getElementById('tokens-today');
+            const costEl = document.getElementById('cost-today');
+            if (tokensEl) tokensEl.textContent = formatNumber(data.usage_today.tokens || 0);
+            if (costEl) costEl.textContent = formatCost(data.usage_today.cost || 0);
+        }
 
-        // Load files count
-        const filesResp = await fetch('/api/workspace/files');
-        const filesData = await filesResp.json();
-        document.getElementById('files-count').textContent = filesData.count || 0;
+        const agentsEl = document.getElementById('agents-count');
+        const toolsEl = document.getElementById('tools-count');
+        if (agentsEl) agentsEl.textContent = data.factory?.active_agents || 0;
+        if (toolsEl) toolsEl.textContent = data.forge?.total_tools || 0;
 
     } catch (error) {
         console.error('Status load error:', error);
@@ -3748,7 +3751,7 @@ function initializeAIConv() {
     if (addSelect) {
         addSelect.addEventListener('change', () => {
             const modelId = addSelect.value;
-            if (modelId && !aiconvSelectedModels.includes(modelId)) {
+            if (modelId) {
                 aiconvSelectedModels.push(modelId);
                 renderAIConvChips();
             }
@@ -3772,14 +3775,14 @@ function renderAIConvChips() {
     container.innerHTML = aiconvSelectedModels.map((id, index) => `
         <span class="arena-chip">
             <span class="chip-number">${index + 1}</span> ${id}
-            <span class="chip-remove" onclick="removeAIConvModel('${id}')">&times;</span>
+            <span class="chip-remove" onclick="removeAIConvModel(${index})">&times;</span>
         </span>
     `).join('');
 }
 
-function removeAIConvModel(modelId) {
+function removeAIConvModel(index) {
     if (aiconvState.isRunning && !aiconvState.isPaused) return; // Prevent removes while running
-    aiconvSelectedModels = aiconvSelectedModels.filter(id => id !== modelId);
+    aiconvSelectedModels.splice(index, 1);
     renderAIConvChips();
 }
 
@@ -3873,12 +3876,14 @@ async function runAIConvLoop() {
         const messagesContainer = document.getElementById('aiconv-messages');
         const loadingId = `aiconv-loading-${Date.now()}`;
         messagesContainer.insertAdjacentHTML('beforeend', `
-            <div class="message assistant-message flex-col" id="${loadingId}">
+            <div class="message ai-message" id="${loadingId}">
                 <div class="message-header">
                     <span class="message-role">🎭 ${currentModel}</span>
                 </div>
                 <div class="message-content">
-                    <div class="spinner" style="display:inline-block; width:12px; height:12px; border-width:2px; margin-right:5px;"></div> Thinking...
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
                 </div>
             </div>
         `);
@@ -3925,7 +3930,7 @@ async function runAIConvLoop() {
 
             // Append to UI
             messagesContainer.insertAdjacentHTML('beforeend', `
-                <div class="message assistant-message flex-col">
+                <div class="message ai-message">
                     <div class="message-header">
                         <span class="message-role" style="color: var(--primary);">🎭 ${currentModel}</span>
                     </div>
