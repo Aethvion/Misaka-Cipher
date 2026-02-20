@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "misaka-cipher"
+version = "1.0.0"
+description = "M.I.S.A.K.A. – Multitask Intelligence & Strategic Analysis Kernel Architecture: a self-evolving agentic AI system"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Aethvion", url = "https://github.com/Aethvion" }
+]
+keywords = ["ai", "agents", "autonomous", "llm", "tool-generation", "multi-agent"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "google-generativeai>=0.3.0",
+    "openai>=1.0.0",
+    "requests>=2.31.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "psutil>=5.9.0",
+    "fastapi>=0.109.1",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.0.0",
+    "rich>=13.0.0",
+]
+
+[project.optional-dependencies]
+memory = [
+    "chromadb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+    "networkx>=3.0",
+]
+dev = [
+    "pytest>=7.0",
+    "flake8>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Aethvion/Misaka-Cipher"
+Repository = "https://github.com/Aethvion/Misaka-Cipher"
+Documentation = "https://github.com/Aethvion/Misaka-Cipher/tree/main/documentation"
+"Bug Tracker" = "https://github.com/Aethvion/Misaka-Cipher/issues"
+Changelog = "https://github.com/Aethvion/Misaka-Cipher/blob/main/CHANGELOG.md"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v"
