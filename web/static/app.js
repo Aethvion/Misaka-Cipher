@@ -622,7 +622,7 @@ async function loadInitialData() {
     }
 
     // Refresh status every 5 seconds (Header)
-    setInterval(loadHeaderStatus, 5000);
+    setInterval(loadSystemStatus, 5000);
 
     // Refresh packages every 10 seconds
     setInterval(loadPackages, 10000);
@@ -3481,18 +3481,7 @@ function initializeArena() {
         });
     }
 
-    // Model add dropdown
-    const addSelect = document.getElementById('arena-model-add');
-    if (addSelect) {
-        addSelect.addEventListener('change', () => {
-            const modelId = addSelect.value;
-            if (modelId && !arenaSelectedModels.includes(modelId)) {
-                arenaSelectedModels.push(modelId);
-                renderArenaChips();
-            }
-            addSelect.value = '';
-        });
-    }
+    // Model add dropdown is now handled globally via event delegation
 
     // Clear leaderboard
     const clearBtn = document.getElementById('arena-clear-leaderboard');
@@ -3748,16 +3737,7 @@ function initializeAIConv() {
         addSelect.innerHTML = html;
     }
 
-    if (addSelect) {
-        addSelect.addEventListener('change', () => {
-            const modelId = addSelect.value;
-            if (modelId) {
-                aiconvSelectedModels.push(modelId);
-                renderAIConvChips();
-            }
-            addSelect.value = '';
-        });
-    }
+    // Event delegation is used globally for this dropdown to prevent listener loss
 
     const startBtn = document.getElementById('aiconv-start-btn');
     const pauseBtn = document.getElementById('aiconv-pause-btn');
@@ -3987,3 +3967,26 @@ function updateAIConvUI() {
     document.getElementById('aiconv-live-cost').textContent = formatCost(aiconvState.estCost);
     document.getElementById('aiconv-progress').textContent = `${aiconvState.totalTurnsCompleted}/${totalTarget}`;
 }
+
+// ===== Global Event Delegation for Dynamic Dropdowns =====
+document.addEventListener('change', (e) => {
+    // Arena Model Selector
+    if (e.target && e.target.id === 'arena-model-add') {
+        const modelId = e.target.value;
+        if (modelId && typeof arenaSelectedModels !== 'undefined' && !arenaSelectedModels.includes(modelId)) {
+            arenaSelectedModels.push(modelId);
+            if (typeof renderArenaChips === 'function') renderArenaChips();
+        }
+        e.target.value = '';
+    }
+
+    // AI Conversations Model Selector
+    if (e.target && e.target.id === 'aiconv-model-add') {
+        const modelId = e.target.value;
+        if (modelId && typeof aiconvSelectedModels !== 'undefined') {
+            aiconvSelectedModels.push(modelId);
+            if (typeof renderAIConvChips === 'function') renderAIConvChips();
+        }
+        e.target.value = '';
+    }
+});
