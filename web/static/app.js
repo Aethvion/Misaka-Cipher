@@ -3510,9 +3510,25 @@ async function loadArenaModels() {
         if (addSelect) {
             let html = '<option value="">+ Add Model...</option>';
             for (const m of arenaAvailableModels) {
-                html += `<option value="${m.id}">${m.id} (${m.provider})</option>`;
+                const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
+                    ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
+                    : '';
+                html += `<option value="${m.id}" title="${m.description || ''}">${m.id}${costHint}</option>`;
             }
             addSelect.innerHTML = html;
+        }
+
+        // Pre-populate AI Conv dropdown
+        const aiconvSelect = document.getElementById('aiconv-model-add');
+        if (aiconvSelect) {
+            let html = '<option value="">+ Add Model...</option>';
+            for (const m of arenaAvailableModels) {
+                const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
+                    ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
+                    : '';
+                html += `<option value="${m.id}" title="${m.description || ''}">${m.id}${costHint}</option>`;
+            }
+            aiconvSelect.innerHTML = html;
         }
 
         // Populate evaluator dropdown
@@ -3718,14 +3734,15 @@ let aiconvState = {
 function initializeAIConv() {
     // Populate dropdown with available arena/chat models
     const addSelect = document.getElementById('aiconv-model-add');
-    if (addSelect && arenaAvailableModels.length > 0) {
+    if (addSelect && arenaAvailableModels.length > 0 && addSelect.options.length <= 1) {
         let html = '<option value="">+ Add Model...</option>';
         for (const m of arenaAvailableModels) {
-            html += `<option value="${m.id}">${m.id} (${m.provider})</option>`;
+            const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
+                ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
+                : '';
+            html += `<option value="${m.id}" title="${m.description || ''}">${m.id}${costHint}</option>`;
         }
         addSelect.innerHTML = html;
-
-        // Use arenaAvailableModels array loaded by loadArenaModels()
     }
 
     if (addSelect) {
