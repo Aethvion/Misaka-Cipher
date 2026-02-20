@@ -3708,15 +3708,19 @@ function escapeHtml(text) {
 }
 
 // ===== AI Conversations Mode =====
-let aiconvSelectedModels = [];
+let aiconvSelectedModels = []; // Now stores objects: { id, name, color, personality }
+let aiconvAvailableNames = ['Alice', 'Bob', 'Charlie', 'Dave', 'Eve', 'Frank', 'Grace', 'Heidi', 'Ivan', 'Judy', 'Mallory', 'Olivia', 'Peggy', 'Sybil', 'Trent', 'Victor', 'Walter'];
+let aiconvUsedNames = [];
+
 let aiconvState = {
     isRunning: false,
     isPaused: false,
     currentTurnIndex: 0, // Used to know which model goes next
     totalTurnsCompleted: 0,
     maxTurnsPerModel: 5,
-    messageHistory: [], // Full conversation history [{role: 'user'|'assistant', content: '...', name: 'model_id'}]
-    estTokens: 0,
+    messageHistory: [], // Full history passed each time
+    estInTokens: 0,
+    estOutTokens: 0,
     estCost: 0
 };
 
@@ -3724,12 +3728,33 @@ function renderAIConvChips() {
     const container = document.getElementById('aiconv-model-chips');
     if (!container) return;
 
-    container.innerHTML = aiconvSelectedModels.map((id, index) => `
-        <span class="arena-chip">
-            <span class="chip-number">${index + 1}</span> ${id}
-            <span class="chip-remove" onclick="removeAIConvModel(${index})">&times;</span>
-        </span>
+    container.innerHTML = aiconvSelectedModels.map((model, index) => `
+        <div class="aiconv-identity-card" style="border: 1px solid ${model.color}; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 6px; background: var(--bg-tertiary); border-left: 4px solid ${model.color};">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
+                <div style="display:flex; align-items:center; gap: 0.5rem;">
+                    <span class="chip-number" style="background:${model.color}; color:#000; padding:2px 6px; border-radius:12px; font-weight:bold; font-size:0.75rem;">${index + 1}</span>
+                    <strong style="color:${model.color}; font-size: 0.9rem;">${model.name}</strong> 
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);">(${model.id})</span>
+                </div>
+                <span class="chip-remove" style="cursor:pointer; font-size: 1.2rem; color:var(--text-secondary);" onclick="removeAIConvModel(${index})">&times;</span>
+            </div>
+            <textarea 
+                class="term-input aiconv-personality-input" 
+                data-index="${index}"
+                placeholder="Optional: Define ${model.name}'s personality or role here..." 
+                style="width:100%; min-height:40px; resize:vertical; font-size:0.8rem;"
+            >${model.personality}</textarea>
+        </div>
     `).join('');
+
+    container.querySelectorAll('.aiconv-personality-input').forEach(ta => {
+        ta.addEventListener('input', (e) => {
+            const idx = e.target.dataset.index;
+            if (aiconvSelectedModels[idx]) {
+                aiconvSelectedModels[idx].personality = e.target.value;
+            }
+        });
+    });
 }
 
 function removeAIConvModel(index) {
@@ -3755,14 +3780,23 @@ async function startAIConv() {
         return;
     }
 
+    let baseSystem = `The topic of this conversation is: ${topic}.\n\nParticipants:\n`;
+    for (const m of aiconvSelectedModels) {
+        baseSystem += `- ${m.name} [Model: ${m.id}]`;
+        if (m.personality) baseSystem += `\n  Role/Personality: ${m.personality}`;
+        baseSystem += "\n";
+    }
+    baseSystem += "\nPlease keep your responses concise, engaging, and stay in character.";
+
     // Reset State
     aiconvState.isRunning = true;
     aiconvState.isPaused = false;
     aiconvState.currentTurnIndex = 0;
     aiconvState.totalTurnsCompleted = 0;
     aiconvState.maxTurnsPerModel = maxMsgs;
-    aiconvState.messageHistory = [{ role: 'system', content: `The topic of this conversation is: ${topic}. Please keep responses concise and engaging.` }];
-    aiconvState.estTokens = 0;
+    aiconvState.messageHistory = [{ role: 'system', content: baseSystem }];
+    aiconvState.estInTokens = 0;
+    aiconvState.estOutTokens = 0;
     aiconvState.estCost = 0;
 
     // Update UI
@@ -3828,9 +3862,9 @@ async function runAIConvLoop() {
         const messagesContainer = document.getElementById('aiconv-messages');
         const loadingId = `aiconv-loading-${Date.now()}`;
         messagesContainer.insertAdjacentHTML('beforeend', `
-            <div class="message ai-message" id="${loadingId}">
+            <div class="message ai-message" id="${loadingId}" style="border-left: 4px solid ${currentModel.color};">
                 <div class="message-header">
-                    <span class="message-role">🎭 ${currentModel}</span>
+                    <span class="message-role" style="color: ${currentModel.color};">🎭 ${currentModel.name} <span style="font-size:0.8em; opacity:0.7;">(${currentModel.id})</span></span>
                 </div>
                 <div class="message-content">
                     <div class="typing-indicator">
@@ -3842,13 +3876,20 @@ async function runAIConvLoop() {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
         try {
+            // Inject strict persona instruction for this specific turn
+            const turnMessages = [...aiconvState.messageHistory];
+            turnMessages.push({
+                role: 'system',
+                content: `You are now speaking as ${currentModel.name}. Reply exclusively as ${currentModel.name}. Do not break character. Do not include your name at the start of your message.`
+            });
+
             // Hit backend
             const res = await fetch('/api/arena/aiconv/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model_id: currentModel,
-                    messages: aiconvState.messageHistory
+                    model_id: currentModel.id,
+                    messages: turnMessages
                 })
             });
 
@@ -3870,23 +3911,27 @@ async function runAIConvLoop() {
             const responseText = data.response;
             aiconvState.messageHistory.push({
                 role: 'assistant',
-                name: currentModel,
+                name: currentModel.id.replace(/[^a-zA-Z0-9_-]/g, '').substring(0, 64), // Safe name
                 content: responseText
             });
 
             // Update Tokens & Cost
             if (data.usage) {
-                aiconvState.estTokens += (data.usage.total_tokens || 0);
+                aiconvState.estInTokens += (data.usage.prompt_tokens || 0);
+                aiconvState.estOutTokens += (data.usage.completion_tokens || 0);
                 aiconvState.estCost += (data.usage.total_cost || 0);
             }
 
-            // Append to UI
+            // Append to UI (Parsing Markdown if marked is available, otherwise fallback to escapeHtml)
+            const htmlContent = (typeof marked !== 'undefined' && marked.parse) ? marked.parse(responseText) : escapeHtml(responseText);
+
             messagesContainer.insertAdjacentHTML('beforeend', `
-                <div class="message ai-message">
+                <div class="message ai-message" style="border-left: 4px solid ${currentModel.color}; background: var(--bg-tertiary);">
                     <div class="message-header">
-                        <span class="message-role" style="color: var(--primary);">🎭 ${currentModel}</span>
+                        <span class="message-role" style="color: ${currentModel.color}; font-weight: bold; font-size: 1.05rem;">🎭 ${currentModel.name}</span>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); margin-left: 0.5rem;">(${currentModel.id})</span>
                     </div>
-                    <div class="message-content" style="white-space: pre-wrap;">${escapeHtml(responseText)}</div>
+                    <div class="message-content markdown-body" style="padding-top: 0.5rem;">${htmlContent}</div>
                 </div>
             `);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -3929,17 +3974,19 @@ async function runAIConvLoop() {
 function updateAIConvUI() {
     const totalTarget = aiconvState.maxTurnsPerModel * aiconvSelectedModels.length;
 
-    // Static Stats
-    document.getElementById('aiconv-total-msgs').textContent = aiconvState.totalTurnsCompleted;
-    document.getElementById('aiconv-est-tokens').textContent = '~' + formatNumber(aiconvState.estTokens);
-    document.getElementById('aiconv-est-cost').textContent = formatCost(aiconvState.estCost);
+    // Live Tracker Detailed Stats
+    const inTokensEl = document.getElementById('aiconv-in-tokens');
+    const outTokensEl = document.getElementById('aiconv-out-tokens');
+    const liveTokensEl = document.getElementById('aiconv-live-tokens');
+    const liveCostEl = document.getElementById('aiconv-live-cost');
+    const progressEl = document.getElementById('aiconv-progress');
 
-    // Live Tracker
-    document.getElementById('aiconv-live-tokens').textContent = formatNumber(aiconvState.estTokens);
-    document.getElementById('aiconv-live-cost').textContent = formatCost(aiconvState.estCost);
-    document.getElementById('aiconv-progress').textContent = `${aiconvState.totalTurnsCompleted}/${totalTarget}`;
+    if (inTokensEl) inTokensEl.textContent = formatNumber(aiconvState.estInTokens || 0);
+    if (outTokensEl) outTokensEl.textContent = formatNumber(aiconvState.estOutTokens || 0);
+    if (liveTokensEl) liveTokensEl.textContent = formatNumber((aiconvState.estInTokens || 0) + (aiconvState.estOutTokens || 0));
+    if (liveCostEl) liveCostEl.textContent = formatCost(aiconvState.estCost || 0);
+    if (progressEl) progressEl.textContent = `${aiconvState.totalTurnsCompleted}/${totalTarget}`;
 }
-
 // ===== Global Event Delegation for Dynamic Dropdowns =====
 document.addEventListener('change', (e) => {
     // Arena Model Selector
@@ -3956,7 +4003,27 @@ document.addEventListener('change', (e) => {
     if (e.target && e.target.id === 'aiconv-model-add') {
         const modelId = e.target.value;
         if (modelId && typeof aiconvSelectedModels !== 'undefined') {
-            aiconvSelectedModels.push(modelId);
+            // Pick a random name
+            if (aiconvAvailableNames.length === 0) {
+                // Reset pool if exhausted
+                aiconvAvailableNames = [...aiconvUsedNames];
+                aiconvUsedNames = [];
+            }
+            const randIdx = Math.floor(Math.random() * aiconvAvailableNames.length);
+            const pickedName = aiconvAvailableNames.splice(randIdx, 1)[0];
+            aiconvUsedNames.push(pickedName);
+
+            // Pick a random color (HSL for readability)
+            const hue = Math.floor(Math.random() * 360);
+            const color = `hsl(${hue}, 70%, 65%)`;
+
+            aiconvSelectedModels.push({
+                id: modelId,
+                name: pickedName,
+                color: color,
+                personality: ''
+            });
+
             if (typeof renderAIConvChips === 'function') renderAIConvChips();
         }
         e.target.value = '';

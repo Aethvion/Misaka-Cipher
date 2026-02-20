@@ -343,26 +343,7 @@
                                 placeholder="E.g., Debate the ethics of AI consciousness..."></textarea>
                         </div>
 
-                        <div
-                            style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 4px; border: 1px solid var(--border);">
-                            <div style="display:flex; justify-content:space-between; margin-bottom: 0.25rem;">
-                                <span style="font-size:0.8rem; color:var(--text-secondary);">Total Messages:</span>
-                                <strong id="aiconv-total-msgs"
-                                    style="font-size:0.8rem; color:var(--primary);">0</strong>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom: 0.25rem;">
-                                <span style="font-size:0.8rem; color:var(--text-secondary);">Est. Tokens:</span>
-                                <strong id="aiconv-est-tokens"
-                                    style="font-size:0.8rem; color:var(--primary);">~0</strong>
-                            </div>
-                            <div style="display:flex; justify-content:space-between;">
-                                <span style="font-size:0.8rem; color:var(--text-secondary);">Est. Cost:</span>
-                                <strong id="aiconv-est-cost"
-                                    style="font-size:0.8rem; color:var(--success);">$0.000</strong>
-                            </div>
-                        </div>
-
-                        <div style="display:flex; gap: 0.5rem; flex-direction:column;">
+                        <div style="display:flex; gap: 0.5rem; flex-direction:column; margin-top: 1rem;">
                             <button id="aiconv-start-btn" class="action-btn primary" style="width:100%;">
                                 <i class="fas fa-play"></i> Start Conversation
                             </button>
@@ -380,18 +361,25 @@
 
                 <!-- AI Conv Chat -->
                 <div class="arena-chat-area aiconv-chat-area">
-                    <!-- Added header row for token tracking -->
+                    <!-- Added header row for detailed token tracking -->
                     <div
-                        style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-tertiary);">
+                        style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-tertiary); flex-wrap: wrap; gap: 0.5rem;">
                         <h3 style="margin: 0; font-size: 0.9rem; color: var(--primary);">Live Conversation</h3>
-                        <div style="font-size: 0.8rem; display: flex; gap: 1rem;">
-                            <span><i class="fas fa-coins" style="color:var(--text-secondary);"></i> <span
-                                    id="aiconv-live-tokens" style="font-weight:bold;">0</span> tkns</span>
-                            <span><i class="fas fa-dollar-sign" style="color:var(--text-secondary);"></i> <span
-                                    id="aiconv-live-cost"
+                        <div style="font-size: 0.8rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <span title="Input Tokens"><i class="fas fa-sign-in-alt"
+                                    style="color:var(--text-secondary);"></i> <span id="aiconv-in-tokens"
+                                    style="font-weight:bold;">0</span> in</span>
+                            <span title="Output Tokens"><i class="fas fa-sign-out-alt"
+                                    style="color:var(--text-secondary);"></i> <span id="aiconv-out-tokens"
+                                    style="font-weight:bold;">0</span> out</span>
+                            <span title="Total Tokens"><i class="fas fa-coins" style="color:var(--text-secondary);"></i>
+                                <span id="aiconv-live-tokens" style="font-weight:bold;">0</span> total</span>
+                            <span title="Estimated Cost"><i class="fas fa-dollar-sign"
+                                    style="color:var(--text-secondary);"></i> <span id="aiconv-live-cost"
                                     style="font-weight:bold; color:var(--success);">0.000</span></span>
-                            <span><i class="fas fa-exchange-alt" style="color:var(--text-secondary);"></i> <span
-                                    id="aiconv-progress" style="font-weight:bold;">0/0</span> msgs</span>
+                            <span title="Messages Completed/Total"><i class="fas fa-exchange-alt"
+                                    style="color:var(--text-secondary);"></i> <span id="aiconv-progress"
+                                    style="font-weight:bold;">0/0</span> msgs</span>
                         </div>
                     </div>
 
