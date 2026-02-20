@@ -368,7 +368,7 @@ class EpisodicMemoryStore:
                 
                 # Sort by timestamp and get oldest
                 memory_ids_with_time.sort(key=lambda x: x[1])
-                ids_to_remove = [mid for mid, _ in memory_ids_with_time[:to_removed]]
+                ids_to_remove = [mid for mid, _ in memory_ids_with_time[:to_remove]]
                 
                 # Delete
                 self.collection.delete(ids=ids_to_remove)

@@ -6,7 +6,7 @@ Agent spawning interface
 from cli_modules.utils import (
     console, clear_screen, print_header, print_menu, get_user_choice,
     get_text_input, format_trace_id, print_success, print_error,
-    print_key_value, pause, show_progress
+    print_key_value, pause, show_progress, confirm
 )
 from factory import AgentFactory, AgentSpec
 from utils.validators import ALLOWED_DOMAINS, ALLOWED_ACTIONS
