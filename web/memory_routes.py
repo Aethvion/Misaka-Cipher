@@ -47,17 +47,14 @@ async def get_memory_overview():
         episodic = get_episodic_memory()
         threads_memory = []
         
-        # Path to threads directory
+        # Path to threads directory in hierarchical workspace structure
         workspace = Path(__file__).parent.parent
-        threads_dir = workspace / "memory" / "storage" / "threads"
+        workspaces_dir = workspace / "memory" / "storage" / "workspaces"
         
-        if threads_dir.exists():
-            # Get all thread JSON files
-            thread_files = sorted(threads_dir.glob("thread-*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        if workspaces_dir.exists():
+            # Get all thread JSON files inside hierarchical folders
+            thread_files = sorted(workspaces_dir.glob("thread-*/thread-*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
             
-            # Path to tasks directory
-            tasks_dir = workspace / "memory" / "storage" / "tasks"
-
             for thread_file in thread_files:
                 try:
                     with open(thread_file, 'r') as f:
@@ -67,6 +64,9 @@ async def get_memory_overview():
                     thread_memories = []
                     
                     logger.info(f"Loading thread {thread_data.get('id')} with tasks: {task_ids}")
+                    
+                    # Dynamically get tasks_dir from the thread's own workspace folder
+                    tasks_dir = thread_file.parent / "tasks"
                     
                     # Fetch data for each task
                     for task_id in task_ids:

@@ -228,3 +228,5 @@
 }
 
 .term-error {
+    color: var(--error);
+}
