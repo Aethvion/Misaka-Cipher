@@ -1,0 +1,430 @@
+}
+
+.split-button .split-arrow-action {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+/* ===== Chat/Arena Dropdown ===== */
+.main-tab-dropdown {
+    position: relative;
+}
+
+.main-tab-dropdown .dropdown-arrow {
+    font-size: 1.2rem;
+    transition: transform 0.2s;
+}
+
+.main-tab-dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.tab-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    min-width: 160px;
+    z-index: 200;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+}
+
+.dropdown-category {
+    padding: 0.5rem 1rem 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+    border-bottom: 1px solid rgba(0, 217, 255, 0.1);
+    margin-bottom: 0.25rem;
+}
+
+.main-tab-dropdown.open .tab-dropdown-menu {
+    display: block;
+}
+
+.tab-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem 1rem;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.15s;
+}
+
+.tab-dropdown-item:hover {
+    background: rgba(0, 217, 255, 0.08);
+    color: var(--primary);
+}
+
+.tab-dropdown-item.active {
+    color: var(--primary);
+    background: rgba(0, 217, 255, 0.12);
+    border-left: 2px solid var(--primary);
+}
+
+/* ===== Arena Panel ===== */
+.arena-layout {
+    display: grid;
+    grid-template-columns: 230px 1fr 350px;
+    height: 100%;
+    gap: 0;
+}
+
+/* AI Conv uses 2 columns instead of 3 */
+.aiconv-layout {
+    grid-template-columns: 300px 1fr;
+}
+
+.arena-controls {
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border);
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.arena-section {
+    margin-bottom: 1.5rem;
+}
+
+.arena-section h3 {
+    font-size: 0.95rem;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.arena-hint {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.8rem;
+    line-height: 1.4;
+}
+
+.arena-model-selector .control-select {
+    width: 100%;
+    margin-bottom: 0.6rem;
+}
+
+.arena-model-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.arena-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.6rem;
+    background: rgba(0, 217, 255, 0.1);
+    border: 1px solid var(--primary);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--primary);
+    animation: slideIn 0.2s ease;
+}
+
+.arena-chip .chip-remove {
+    cursor: pointer;
+    opacity: 0.7;
+    font-size: 0.85rem;
+    transition: opacity 0.15s;
+}
+
+.arena-chip .chip-remove:hover {
+    opacity: 1;
+    color: var(--error);
+}
+
+/* Arena Chat Area */
+.arena-chat-area {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-secondary);
+    overflow: hidden;
+}
+
+.arena-responses {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-height: 0;
+}
+
+.arena-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-secondary);
+    text-align: center;
+    gap: 0.5rem;
+}
+
+.arena-placeholder p {
+    font-size: 0.9rem;
+}
+
+.arena-input-wrapper {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border);
+    align-items: flex-end;
+}
+
+.arena-input-wrapper .chat-input {
+    flex: 1;
+}
+
+/* Battle round */
+.arena-battle-round {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg-primary);
+}
+
+.arena-prompt-bar {
+    padding: 0.6rem 1rem;
+    background: rgba(0, 217, 255, 0.05);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.arena-prompt-bar strong {
+    color: var(--primary);
+}
+
+.arena-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 0.75rem;
+    padding: 0.75rem;
+}
+
+.arena-response-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.8rem;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.arena-response-card.winner {
+    border-color: var(--success);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.15);
+}
+
+.arena-response-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.arena-response-card .card-model {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--primary);
+}
+
+.arena-response-card .card-score {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.8rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+}
+
+.arena-response-card.winner .card-score {
+    background: rgba(0, 255, 136, 0.15);
+    color: var(--success);
+}
+
+.arena-response-card .card-badge {
+    position: absolute;
+    top: -8px;
+    right: 10px;
+    background: var(--success);
+    color: #000;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.action-winner-btn {
+    position: absolute;
+    top: -12px;
+    right: 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+}
+
+.action-winner-btn:hover {
+    background: var(--primary);
+    color: #000;
+    border-color: var(--primary);
+}
+
+.arena-response-card .card-body {
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.evaluator-reasoning {
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    font-size: 0.8rem;
+}
+
+.evaluator-reasoning summary {
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+    outline: none;
+}
+
+.evaluator-reasoning summary:hover {
+    color: var(--primary);
+}
+
+.evaluator-reasoning .reasoning-content {
+    margin-top: 0.5rem;
+    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.5rem;
+    border-radius: 4px;
+    line-height: 1.4;
+}
+
+.arena-response-card .card-provider {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-top: 0.4rem;
+}
+
+/* Arena Leaderboard */
+.arena-leaderboard-section {
+    background: var(--bg-primary);
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+}
+
+.arena-leaderboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.arena-leaderboard-header h3 {
+    font-size: 0.95rem;
+    color: var(--primary);
+    margin: 0;
+}
+
+#arena-leaderboard-table {
+    width: 100%;
+}
+
+#arena-leaderboard-table td,
+#arena-leaderboard-table th {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.82rem;
+}
+
+.win-rate-bar {
+    display: inline-block;
+    height: 4px;
+    background: var(--primary);
+    border-radius: 2px;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+    transition: width 0.3s ease;
+}
+
+/* Source badge */
+.source-badge {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 3px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.source-badge.chat {
+    background: rgba(0, 217, 255, 0.12);
+    color: var(--primary);
+}
+
+.source-badge.arena {
+    background: rgba(255, 0, 255, 0.12);
+    color: var(--accent);
+}
+
+.source-badge.agent {
+    background: rgba(0, 255, 136, 0.12);
+    color: var(--success);
+}
+
+/* Loading state */
+.arena-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.arena-loading .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);

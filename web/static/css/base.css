@@ -1,0 +1,220 @@
+/* Misaka Cipher - Nexus Portal Styles */
+/* Dark mode theme with cyberpunk aesthetics */
+:root {
+    --bg-primary: #0a0e1a;
+    --bg-secondary: #151a2b;
+    --bg-tertiary: #1e2538;
+    --primary: #00d9ff;
+    --accent: #ff00ff;
+    --success: #00ff88;
+    --error: #ff4466;
+    --warning: #ffaa00;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --border: rgba(0, 217, 255, 0.2);
+    --glow: 0 0 10px rgba(0, 217, 255, 0.5);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* Header */
+.header {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: visible;
+    position: relative;
+    z-index: 50;
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.7rem 1.5rem;
+    border-bottom: 1px solid rgba(0, 217, 255, 0.08);
+}
+
+.logo {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.3rem;
+    color: var(--primary);
+    text-shadow: var(--glow);
+    margin: 0;
+    letter-spacing: 2px;
+}
+
+.header-nav {
+    padding: 0 1rem;
+}
+
+
+
+.main-tabs {
+    display: flex;
+    gap: 0.25rem;
+    min-width: max-content;
+}
+
+.main-tab {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    padding: 0.65rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+    font-family: 'Inter', sans-serif;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.tab-icon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.main-tab:hover {
+    color: var(--primary);
+    background: rgba(0, 217, 255, 0.05);
+}
+
+.main-tab.active {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: rgba(0, 217, 255, 0.08);
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.compact-status {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.compact-status strong {
+    color: var(--primary);
+}
+
+.status-divider {
+    color: var(--border);
+    font-size: 0.75rem;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--error);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.status-dot.connected {
+    background: var(--success);
+}
+
+.status-text {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 217, 255, 0.25);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 217, 255, 0.45);
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 217, 255, 0.25) var(--bg-primary);
+}
+
+/* Main Container */
+.main-container {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+.main-tab-panel {
+    display: none;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.main-tab-panel.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Chat panel uses its own internal scroll */
+#chat-panel {
+    overflow: hidden;
+}
+
+/* 3-Column Layout (Chat Tab) */
+.three-column-layout {
+    display: grid;
+    grid-template-columns: 25% 50% 25%;
+    height: 100%;
+    gap: 0;
+}

@@ -38,7 +38,9 @@
         "planned": {
             "providers": [
                 "Anthropic",
-                "DeepSeek"
+                "DeepSeek",
+                "Moonshot AI",
+                "Alibaba"
             ],
             "infrastructure": [
                 "Local Model Support (Ollama)",

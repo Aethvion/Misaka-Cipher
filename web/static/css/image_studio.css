@@ -1,0 +1,145 @@
+    min-height: 39px;
+}
+
+.split-arrow-action .dropdown-arrow {
+    margin-left: 0;
+    /* Center the arrow */
+}
+
+/* --- Image Studio Panel --- */
+.image-studio-container {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+}
+
+.image-studio-viewer {
+    flex: 1;
+    background: #0d0d0d;
+    /* Very dark background for image viewing */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border-right: 1px solid var(--border);
+}
+
+.empty-state-viewer {
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.image-studio-sidebar {
+    width: 320px;
+    background: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+}
+
+.image-studio-sidebar .sidebar-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-tertiary);
+}
+
+.image-studio-sidebar .sidebar-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--primary);
+}
+
+.image-studio-sidebar .sidebar-content {
+    padding: 1rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.control-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.control-group textarea {
+    width: 100%;
+    resize: vertical;
+}
+
+/* --- Image Loading Overlay --- */
+.image-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(5px);
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(0, 217, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--primary);
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 1rem;
+}
+
+.loading-text {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--primary);
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* AI Conversations Typing Indicator */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+}
+
+.typing-indicator span {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--text-secondary);
+    animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+@keyframes typingBounce {
+
+    0%,
+    80%,
+    100% {
+        transform: scale(0);
+    }
+
+    40% {
+        transform: scale(1);
+    }
+}
