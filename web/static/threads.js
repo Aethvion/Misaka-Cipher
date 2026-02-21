@@ -124,7 +124,8 @@ async function createNewThread() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 thread_id: threadId,
-                title: title
+                title: title,
+                mode: threadMode
             })
         });
     } catch (e) {

@@ -212,6 +212,7 @@ async def debug_persistence():
 class ThreadCreateRequest(BaseModel):
     thread_id: str
     title: Optional[str] = None
+    mode: Optional[str] = "auto"
 
 
 @router.post("/thread/create")
@@ -219,7 +220,7 @@ async def create_thread(request: ThreadCreateRequest):
     """Explicitly create a new thread."""
     try:
         task_manager = get_task_queue_manager()
-        success = task_manager.create_thread(request.thread_id, request.title)
+        success = task_manager.create_thread(request.thread_id, request.title, request.mode)
         
         if not success:
             return {"status": "exists", "message": f"Thread {request.thread_id} already exists"}

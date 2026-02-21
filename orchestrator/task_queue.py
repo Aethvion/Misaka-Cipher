@@ -281,13 +281,14 @@ class TaskQueueManager:
         
         logger.info("Task Queue Manager stopped")
     
-    def create_thread(self, thread_id: str, title: str = None) -> bool:
+    def create_thread(self, thread_id: str, title: str = None, mode: str = "auto") -> bool:
         """
         Explicitly create a new thread.
         
         Args:
             thread_id: Thread ID
             title: Thread title
+            mode: Default mode for tasks
             
         Returns:
             True if created, False if already exists
@@ -298,6 +299,7 @@ class TaskQueueManager:
         self.threads[thread_id] = ChatThread(
             id=thread_id,
             title=title if title else f"Thread {thread_id}",
+            mode=mode,
             created_at=datetime.now()
         )
         self._save_thread(thread_id)
