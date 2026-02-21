@@ -3,52 +3,138 @@
         "name": "Misaka Cipher",
         "company": "Aethvion",
         "version": "0.0.1",
-        "last_sync": "2026-02-20",
+        "last_sync": "2026-02-21T12:00:00Z",
         "contact": "dev@misakacipher.com"
     },
     "roadmap": {
         "features": {
             "modes": [
-                "Chat",
-                "Arena Mode",
-                "AI Conversations"
+                {
+                    "name": "Interactive Chat",
+                    "desc": "Standard 1-on-1 interaction with cloud models."
+                },
+                {
+                    "name": "Arena Battle Mode",
+                    "desc": "Pit multiple LLMs against each other to compare logic and speed."
+                },
+                {
+                    "name": "AI Conversations",
+                    "desc": "Assign personas to multiple models and watch them interact autonomously about the starting prompt."
+                }
             ],
             "providers": [
-                "Gemini",
-                "OpenAI"
+                {
+                    "name": "Google AI (Gemini)",
+                    "desc": "Native support for Gemini models."
+                },
+                {
+                    "name": "OpenAI",
+                    "desc": "Native support for OpenAI models."
+                }
+            ],
+            "tooling": [
+                {
+                    "name": "Dynamic Tool Forge",
+                    "desc": "Create, test, and deploy custom tools for AI models on the fly."
+                },
+                {
+                    "name": "Python Package Manager",
+                    "desc": "Install and manage dependencies directly from the dashboard."
+                },
+                {
+                    "name": "Environment (.env) Manager",
+                    "desc": "Securely handle API keys and system variables without leaving the UI."
+                }
+            ],
+            "telemetry": [
+                {
+                    "name": "Live Token & Cost Tracking",
+                    "desc": "Real-time usage analytics and estimated cost calculation per provider."
+                },
+                {
+                    "name": "Hardware Vitals Monitoring",
+                    "desc": "Local telemetry for CPU, RAM, and system resource usage."
+                }
             ],
             "security": [
-                "Trace IDs",
-                "Intelligence Firewall"
+                {
+                    "name": "Intelligence Firewall",
+                    "desc": "Configurable safety filters and system-level prompt overrides."
+                },
+                {
+                    "name": "Trace IDs",
+                    "desc": "Unique identifiers for auditing and tracking multi-step LLM reasoning."
+                }
             ],
             "interface": [
-                "Web Dashboard",
-                "CLI"
+                {
+                    "name": "Web Dashboard",
+                    "desc": "A clean, responsive UI for managing all aspects of the Misaka node."
+                }
             ]
         },
         "wip": {
-            "providers": [
-                "Grok"
+            "modes": [
+                {
+                    "name": "Autonomous Agents",
+                    "desc": "Goal-oriented agents capable of multi-step planning and file manipulation."
+                },
+                {
+                    "name": "Image Generation Studio",
+                    "desc": "Integrated workspace for text-to-image synthesis."
+                }
             ],
-            "capabilities": [
-                "Image Generation",
-                "Autonomous Agents"
+            "providers": [
+                {
+                    "name": "xAI (Grok)",
+                    "desc": "Native support for Grok models."
+                }
+            ],
+            "research": [
+                {
+                    "name": "Advanced AI Conversations",
+                    "desc": "Advanced sandbox to study how AI traits shift through prolonged interaction, each person you add has its own traits, personality and memory which will change over time depending on the conversation partners and topics."
+                }
             ]
         },
         "planned": {
             "providers": [
-                "Anthropic",
-                "DeepSeek",
-                "Moonshot AI",
-                "Alibaba"
+                {
+                    "name": "Anthropic",
+                    "desc": "Native support for Anthropic models."
+                },
+                {
+                    "name": "DeepSeek",
+                    "desc": "Native support for DeepSeek models."
+                },
+                {
+                    "name": "OpenRouter",
+                    "desc": "Universal adapter to access hundreds of models with a single key."
+                }
             ],
             "infrastructure": [
-                "Local Model Support (Ollama)",
-                "vLLM Integration"
+                {
+                    "name": "Local Model Support (Ollama)",
+                    "desc": "Run uncensored, open-source models completely offline."
+                },
+                {
+                    "name": "vLLM Integration",
+                    "desc": "High-throughput serving for local large language models."
+                },
+                {
+                    "name": "Vector DB / RAG",
+                    "desc": "Drop-in document processing and semantic search capabilities."
+                }
             ],
-            "community": [
-                "Plugin System",
-                "Extended Documentation"
+            "interface": [
+                {
+                    "name": "Native Voice Interaction",
+                    "desc": "Speech-to-text and text-to-speech for hands-free operation."
+                },
+                {
+                    "name": "Dark/Light Theme Engine",
+                    "desc": "Customizable UI themes beyond the default styling."
+                }
             ]
         }
     }

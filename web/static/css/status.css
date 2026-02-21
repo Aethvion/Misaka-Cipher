@@ -22,7 +22,6 @@
 .status-container {
     padding: 0 1rem 2rem 1rem;
     max-width: 1400px;
-    margin: 0 auto;
 }
 
 .status-header-title {
@@ -249,6 +248,30 @@
     transform: none;
     box-shadow: none;
     color: var(--text);
+}
+
+.item-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.item-name {
+    font-weight: 500;
+}
+
+.item-desc {
+    display: none;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.4rem;
+    line-height: 1.4;
+    font-family: 'Inter', sans-serif;
+    opacity: 0.8;
+}
+
+.roadmap-tree.detailed-view .item-desc {
+    display: block;
+    animation: fadeIn 0.3s ease;
 }
 
 /* Custom Bullets */

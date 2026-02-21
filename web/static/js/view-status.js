@@ -91,17 +91,33 @@ async function loadSystemStatusTab() {
         const roadmap = roadmapData.roadmap || {};
         let html = '';
 
+        const renderItem = (item) => {
+            if (typeof item === 'string') {
+                return `<div class="roadmap-item"><div class="item-content"><div class="item-name">${item}</div></div></div>`;
+            } else if (item && item.name) {
+                return `
+                    <div class="roadmap-item">
+                        <div class="item-content">
+                            <div class="item-name">${item.name}</div>
+                            ${item.desc ? `<div class="item-desc">${item.desc}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            return '';
+        };
+
         const renderSection = (title, items, type) => {
             let itemsHtml = '';
 
             if (Array.isArray(items)) {
-                itemsHtml = items.map(item => `<div class="roadmap-item">${item}</div>`).join('');
+                itemsHtml = items.map(renderItem).join('');
             } else if (items && typeof items === 'object') {
                 for (const [category, list] of Object.entries(items)) {
                     const titleStr = category.toUpperCase();
                     itemsHtml += `<div class="roadmap-category" style="margin-top: 0.8rem;">
                         <div class="roadmap-category-title" style="font-size: 0.75rem; color: var(--primary); font-weight: bold; margin-bottom: 0.4rem; letter-spacing: 0.05em;">${titleStr}</div>
-                        ${(list || []).map(item => `<div class="roadmap-item">${item}</div>`).join('')}
+                        ${(list || []).map(renderItem).join('')}
                     </div>`;
                 }
             }
@@ -274,3 +290,18 @@ async function syncSystemTelemetry() {
         }
     }
 }
+
+window.toggleRoadmapView = function () {
+    const tree = document.querySelector('.roadmap-tree');
+    const btn = document.getElementById('roadmap-view-toggle');
+    if (!tree || !btn) return;
+
+    tree.classList.toggle('detailed-view');
+    const isDetailed = tree.classList.contains('detailed-view');
+
+    if (isDetailed) {
+        btn.innerHTML = '<i class="fas fa-bars"></i> Simple View';
+    } else {
+        btn.innerHTML = '<i class="fas fa-list"></i> Detailed View';
+    }
+};
