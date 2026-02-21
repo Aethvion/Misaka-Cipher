@@ -15,9 +15,7 @@ const advaiconvPersonChips = document.getElementById('advaiconv-person-chips');
 const advaiconvTopicInput = document.getElementById('advaiconv-topic');
 const advaiconvSpeedInput = document.getElementById('advaiconv-speed-input');
 const advaiconvContextInput = document.getElementById('advaiconv-context-input');
-const btnAdvaiconvStart = document.getElementById('advaiconv-start-btn');
-const btnAdvaiconvPause = document.getElementById('advaiconv-pause-btn');
-const btnAdvaiconvStop = document.getElementById('advaiconv-stop-btn');
+const btnAdvaiconvMain = document.getElementById('advaiconv-main-btn');
 const advaiconvMessagesContainer = document.getElementById('advaiconv-messages');
 const statusIndicator = document.getElementById('advaiconv-status-indicator');
 const btnNewPersona = document.getElementById('advaiconv-new-person-btn');
@@ -47,14 +45,8 @@ async function initAdvaiconv() {
         btnNewPersona.addEventListener('click', openPersonaModal);
     }
 
-    if (btnAdvaiconvStart) {
-        btnAdvaiconvStart.addEventListener('click', startSimulation);
-    }
-    if (btnAdvaiconvPause) {
-        btnAdvaiconvPause.addEventListener('click', pauseSimulation);
-    }
-    if (btnAdvaiconvStop) {
-        btnAdvaiconvStop.addEventListener('click', stopSimulation);
+    if (btnAdvaiconvMain) {
+        btnAdvaiconvMain.addEventListener('click', toggleSimulationState);
     }
 
     if (btnAdvaiconvNewThread) {
@@ -130,9 +122,12 @@ function renderThreads() {
             const dateSplit = t.updated_at ? t.updated_at.split('T') : ['Unknown', ''];
             const dateStr = dateSplit[0] + ' ' + (dateSplit[1] ? dateSplit[1].substring(0, 5) : '');
             html += `
-                <div class="advaiconv-thread-item ${isActive}" onclick="loadThread('${t.id}')">
-                    <span class="advaiconv-thread-title">${t.name || 'Unnamed Thread'}</span>
-                    <span class="advaiconv-thread-date">${dateStr}</span>
+                <div class="advaiconv-thread-item ${isActive}" onclick="loadThread('${t.id}')" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="flex:1; overflow:hidden;">
+                        <div class="advaiconv-thread-title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.name || 'Unnamed Thread'}</div>
+                        <div class="advaiconv-thread-date">${dateStr}</div>
+                    </div>
+                    <button onclick="event.stopPropagation(); deleteAdvaiconvThread('${t.id}')" class="icon-btn" title="Delete Thread" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; padding: 4px;"><i class="fas fa-trash"></i></button>
                 </div>
             `;
         }
@@ -173,6 +168,57 @@ async function loadThread(threadId) {
 }
 
 window.loadThread = loadThread;
+
+async function deleteAdvaiconvThread(threadId) {
+    if (!confirm('Are you sure you want to delete this thread?')) return;
+    try {
+        const res = await fetch(`/api/research/threads/${threadId}`, { method: 'DELETE' });
+        if (res.ok) {
+            allThreads = allThreads.filter(t => t.id !== threadId);
+            if (activeAdvaiconvThreadId === threadId) {
+                stopSimulation();
+                titleAdvaiconvThread.innerText = "New Simulation";
+                advaiconvMessagesContainer.innerHTML = `
+                    <div class="arena-placeholder" id="advaiconv-placeholder">
+                        <span class="tab-icon" style="font-size:3rem;">🧪</span>
+                        <p>Select subjects, configure the environment, and start the simulation!</p>
+                    </div>`;
+                document.getElementById('advaiconv-backend-view').innerHTML = `<div class="placeholder-text" style="text-align: center; margin-top: 2rem;">No backend logs yet. Start the simulation to see prompts and raw generations.</div>`;
+            }
+            renderThreads();
+        }
+    } catch (e) {
+        console.error("Failed to delete thread", e);
+    }
+}
+window.deleteAdvaiconvThread = deleteAdvaiconvThread;
+
+async function renameAdvaiconvThread() {
+    if (!activeAdvaiconvThreadId) {
+        alert("Please select or start a thread to rename it.");
+        return;
+    }
+    const currentName = titleAdvaiconvThread.innerText;
+    const newName = prompt("Enter new thread name:", currentName);
+    if (!newName || newName === currentName) return;
+
+    try {
+        const res = await fetch(`/api/research/threads/${activeAdvaiconvThreadId}/name`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newName })
+        });
+        if (res.ok) {
+            titleAdvaiconvThread.innerText = newName;
+            const t = allThreads.find(t => t.id === activeAdvaiconvThreadId);
+            if (t) t.name = newName;
+            renderThreads();
+        }
+    } catch (e) {
+        console.error("Failed to rename thread", e);
+    }
+}
+window.renameAdvaiconvThread = renameAdvaiconvThread;
 
 function generateModelOptionsHtml(selectedModelId) {
     if (Object.keys(advaiconvAvailableModels).length === 0) return '<option value="">auto</option>';
@@ -250,9 +296,114 @@ function renderActivePersonChips() {
     advaiconvPersonChips.innerHTML = html;
 }
 
-window.updatePersonaModel = function (personId, modelId) {
+window.updatePersonaModel = async function (personId, modelId) {
     const p = activePersonas.find(x => x.id === personId);
-    if (p) p.selectedModel = modelId;
+    if (p) {
+        p.selectedModel = modelId;
+        try {
+            await fetch(`/api/research/people/${personId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: modelId })
+            });
+        } catch (e) {
+            console.error("Failed to save persona model", e);
+        }
+    }
+}
+
+window.switchAdvaiconvView = function (view) {
+    document.querySelectorAll('.advaiconv-view-tab').forEach(bt => {
+        if (bt.dataset.view === view) {
+            bt.classList.add('active');
+            bt.style.background = 'var(--bg-secondary)';
+            bt.style.borderColor = 'var(--border)';
+            bt.style.color = 'var(--text-primary)';
+            bt.style.fontWeight = '500';
+        } else {
+            bt.classList.remove('active');
+            bt.style.background = 'transparent';
+            bt.style.borderColor = 'transparent';
+            bt.style.color = 'var(--text-secondary)';
+            bt.style.fontWeight = 'normal';
+        }
+    });
+
+    document.getElementById('advaiconv-messages').style.display = view === 'simulation' ? 'flex' : 'none';
+    document.getElementById('advaiconv-backend-view').style.display = view === 'backend' ? 'block' : 'none';
+    document.getElementById('advaiconv-people-view').style.display = view === 'people' ? 'block' : 'none';
+
+    if (view === 'backend') renderBackendView();
+    if (view === 'people') renderPeopleView();
+}
+
+async function renderBackendView() {
+    const container = document.getElementById('advaiconv-backend-view');
+    if (!activeAdvaiconvThreadId) {
+        container.innerHTML = `<div class="placeholder-text" style="text-align: center; margin-top: 2rem;">No backed thread loaded.</div>`;
+        return;
+    }
+
+    container.innerHTML = `<div class="placeholder-text" style="text-align: center; margin-top: 2rem;"><i class="fas fa-spinner fa-spin"></i> Loading raw logs...</div>`;
+
+    try {
+        const res = await fetch(`/api/research/threads/${activeAdvaiconvThreadId}`);
+        const data = await res.json();
+
+        if (!data.messages || data.messages.length === 0) {
+            container.innerHTML = `<div class="placeholder-text" style="text-align: center; margin-top: 2rem;">No backend logs yet. Start the simulation to see prompts and raw generations.</div>`;
+            return;
+        }
+
+        let html = '<div style="display:flex; flex-direction:column; gap: 1rem;">';
+        for (const m of data.messages) {
+            html += `
+                <div style="background: var(--bg-tertiary); padding: 1rem; border-radius: 6px; border: 1px solid var(--border); font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; overflow-x: auto;">
+                    <div style="color: var(--primary); margin-bottom: 0.5rem; font-weight: bold;">[${m.role.toUpperCase()}] ${m.name || ''}</div>
+                    <div style="color: var(--text-secondary);">${m.content}</div>
+                </div>
+            `;
+        }
+        html += '</div>';
+        container.innerHTML = html;
+        container.scrollTop = container.scrollHeight;
+    } catch (e) {
+        container.innerHTML = `<div class="placeholder-text" style="text-align: center; margin-top: 2rem; color: var(--danger);">Failed to load logs.</div>`;
+    }
+}
+
+function renderPeopleView() {
+    const container = document.getElementById('advaiconv-people-view');
+    if (activePersonas.length === 0) {
+        container.innerHTML = `<div class="placeholder-text" style="text-align: center; margin-top: 2rem;">No subjects in simulation.</div>`;
+        return;
+    }
+
+    let html = '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">';
+    for (const p of activePersonas) {
+        let traitsHtml = '';
+        for (const [k, v] of Object.entries(p.traits || {})) {
+            traitsHtml += `<span style="background: var(--bg-primary); padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; border: 1px solid var(--border);">${k}: ${v}</span>`;
+        }
+
+        html += `
+            <div style="background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem;">
+                <h4 style="margin: 0 0 0.5rem 0; color: var(--primary); font-size: 1.1rem;">${p.name} <span style="color:var(--text-secondary); font-size: 0.85rem; font-weight:normal;">(${p.gender})</span></h4>
+                <div style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Model: <strong>${p.selectedModel || 'auto'}</strong></div>
+                
+                <h5 style="margin: 0 0 0.4rem 0; font-size: 0.85rem; color: var(--text-primary);">Current Traits</h5>
+                <div style="display:flex; flex-wrap:wrap; gap: 0.4rem; margin-bottom: 1rem;">${traitsHtml}</div>
+                
+                <h5 style="margin: 0 0 0.4rem 0; font-size: 0.85rem; color: var(--text-primary);">Background</h5>
+                <p style="margin: 0 0 1rem 0; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;">${p.background}</p>
+                
+                <h5 style="margin: 0 0 0.4rem 0; font-size: 0.85rem; color: var(--text-primary);">Internal Memory</h5>
+                <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; padding: 0.5rem; background: var(--bg-primary); border-radius: 4px; font-style: italic;">${p.memory || 'No memory recorded.'}</p>
+            </div>
+        `;
+    }
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 async function notifySystemEvent(msg) {
@@ -326,6 +477,21 @@ async function startSimulation() {
     scheduleNextTurn();
 }
 
+function toggleSimulationState() {
+    if (advaiconvState === 'stopped' || advaiconvState === 'paused') {
+        if (!activeAdvaiconvThreadId && advaiconvState === 'stopped') {
+            startSimulation(); // New Simulation
+        } else {
+            // Contiune simulation if thread is already active but paused/stopped
+            advaiconvState = 'running';
+            updateControls();
+            scheduleNextTurn();
+        }
+    } else if (advaiconvState === 'running') {
+        pauseSimulation();
+    }
+}
+
 function pauseSimulation() {
     advaiconvState = 'paused';
     if (advaiconvInterval) clearTimeout(advaiconvInterval);
@@ -343,20 +509,22 @@ function updateControls() {
     statusIndicator.innerText = advaiconvState.toUpperCase();
     if (advaiconvState === 'running') {
         statusIndicator.style.color = 'var(--success)';
-        btnAdvaiconvStart.disabled = true;
-        btnAdvaiconvPause.disabled = false;
-        btnAdvaiconvStop.disabled = false;
-        // Don't disable person selection so we can dynamically add/remove while running/paused!
-    } else if (advaiconvState === 'paused') {
+        if (btnAdvaiconvMain) {
+            btnAdvaiconvMain.className = 'action-btn secondary';
+            btnAdvaiconvMain.innerHTML = '<i class="fas fa-pause"></i> Pause Simulation';
+        }
+    } else if (advaiconvState === 'paused' || (advaiconvState === 'stopped' && activeAdvaiconvThreadId)) {
         statusIndicator.style.color = 'var(--warning)';
-        btnAdvaiconvStart.disabled = false;
-        btnAdvaiconvPause.disabled = true;
-        btnAdvaiconvStop.disabled = false;
+        if (btnAdvaiconvMain) {
+            btnAdvaiconvMain.className = 'action-btn primary';
+            btnAdvaiconvMain.innerHTML = '<i class="fas fa-play"></i> Continue Simulation';
+        }
     } else {
         statusIndicator.style.color = 'var(--text-secondary)';
-        btnAdvaiconvStart.disabled = false;
-        btnAdvaiconvPause.disabled = true;
-        btnAdvaiconvStop.disabled = true;
+        if (btnAdvaiconvMain) {
+            btnAdvaiconvMain.className = 'action-btn primary';
+            btnAdvaiconvMain.innerHTML = '<i class="fas fa-play"></i> Start Simulation';
+        }
     }
 }
 

@@ -32,6 +32,15 @@ class PersonaCreate(BaseModel):
     traits: Dict[str, int]
     memory: str
     background: str
+    model: Optional[str] = None
+
+class PersonaUpdate(BaseModel):
+    name: Optional[str] = None
+    gender: Optional[str] = None
+    traits: Optional[Dict[str, int]] = None
+    memory: Optional[str] = None
+    background: Optional[str] = None
+    model: Optional[str] = None
 
 class ThreadCreate(BaseModel):
     name: str
@@ -75,6 +84,25 @@ async def delete_person(person_id: str):
         p.unlink()
         return {"success": True}
     raise HTTPException(404, "Person not found")
+
+@router.put("/people/{person_id}")
+async def update_person(person_id: str, req: PersonaUpdate):
+    p_file = PEOPLE_DIR / f"{person_id}.json"
+    if not p_file.exists():
+        raise HTTPException(404, "Person not found")
+        
+    with open(p_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        
+    update_data = req.dict(exclude_unset=True)
+    for k, v in update_data.items():
+        data[k] = v
+        
+    with open(p_file, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4)
+        
+    data['id'] = person_id
+    return data
 
 @router.get("/threads")
 async def get_threads():
@@ -141,6 +169,36 @@ async def get_thread(thread_id: str):
             snapshots = json.load(f)
             
     return {"meta": meta, "messages": messages, "snapshots": snapshots}
+
+@router.delete("/threads/{thread_id}")
+async def delete_thread(thread_id: str):
+    import shutil
+    t_dir = THREADS_DIR / thread_id
+    if t_dir.exists():
+        shutil.rmtree(t_dir)
+        return {"success": True}
+    raise HTTPException(404, "Thread not found")
+
+class ThreadNameUpdate(BaseModel):
+    name: str
+
+@router.put("/threads/{thread_id}/name")
+async def update_thread_name(thread_id: str, req: ThreadNameUpdate):
+    t_dir = THREADS_DIR / thread_id
+    meta_file = t_dir / "meta.json"
+    if not meta_file.exists():
+        raise HTTPException(404, "Thread not found")
+        
+    with open(meta_file, 'r', encoding='utf-8') as f:
+        meta = json.load(f)
+        
+    meta['name'] = req.name
+    meta['updated_at'] = datetime.utcnow().isoformat()
+    
+    with open(meta_file, 'w', encoding='utf-8') as f:
+        json.dump(meta, f, indent=4)
+        
+    return meta
 
 @router.post("/threads/{thread_id}/system_message")
 async def add_system_message(thread_id: str, req: SystemMessage):
