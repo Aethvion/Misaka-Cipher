@@ -16,7 +16,7 @@
 
 ---
 
-<img align="center" width="124px" src="https://raw.githubusercontent.com/Aethvion/Misaka-Cipher/refs/heads/main/assets/concept_icon.png?token=GHSAT0AAAAAADOWOOHABJJKEAAILOERGAQ62MW47WQ">
+<img align="center" width="124px" src="https://raw.githubusercontent.com/Aethvion/Misaka-Cipher/05a615dd1b52b86b08d1e218870935c1e8ba4fb6/assets/concept_icon.png?token=GHSAT0AAAAAADOWOOHB7BUXK3NHH2R35UFI2MZ5XRQ">
 
 ### ⚠️ Misaka Cipher STATUS: EXPERIMENTAL⚠️
 
