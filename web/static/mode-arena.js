@@ -196,16 +196,40 @@ async function sendArenaPrompt() {
             throw new Error(data.detail || 'Battle failed');
         }
 
-        // Replace the loading round with actual results
         const lastRound = responsesDiv.querySelector('.arena-battle-round:last-child');
         if (lastRound) {
             const cardsGrid = lastRound.querySelector('.arena-cards-grid');
+
+            // Store participants for manual win declaration
+            const participantIds = data.responses.map(r => r.model_id);
+            const needsManualEval = !document.getElementById('arena-evaluator').value;
+
             cardsGrid.innerHTML = data.responses.map(r => {
                 const isWinner = r.model_id === data.winner_id;
                 const scoreHtml = r.score !== null && r.score !== undefined
                     ? `<span class="card-score">${r.score}/10</span>`
                     : '';
-                const badgeHtml = isWinner ? '<span class="card-badge">🏆 Winner</span>' : '';
+
+                let badgeHtml = isWinner ? '<span class="card-badge">🏆 Winner</span>' : '';
+
+                // Add manual winner button if no evaluator was used
+                if (needsManualEval) {
+                    badgeHtml = `<button class="action-btn small action-winner-btn" 
+                                   onclick="declareArenaWinner('${r.model_id}', ${JSON.stringify(participantIds).replace(/"/g, '&quot;')}, this.closest('.arena-response-card'))">
+                                   🏆 Declare Winner
+                                 </button>`;
+                }
+
+                const htmlContent = (typeof marked !== 'undefined' && marked.parse)
+                    ? marked.parse(r.response)
+                    : escapeHtml(r.response);
+
+                const reasoningHtml = r.reasoning ? `
+                    <details class="evaluator-reasoning">
+                        <summary>View Evaluator Reasoning</summary>
+                        <div class="reasoning-content">${escapeHtml(r.reasoning)}</div>
+                    </details>
+                ` : '';
 
                 return `
                     <div class="arena-response-card ${isWinner ? 'winner' : ''}">
@@ -214,7 +238,8 @@ async function sendArenaPrompt() {
                             <span class="card-model">${r.model_id}</span>
                             ${scoreHtml}
                         </div>
-                        <div class="card-body">${escapeHtml(r.response)}</div>
+                        <div class="card-body">${htmlContent}</div>
+                        ${reasoningHtml}
                         <div class="card-provider">via ${r.provider}</div>
                     </div>
                 `;
@@ -235,6 +260,42 @@ async function sendArenaPrompt() {
                 <div class="card-body" style="color: var(--error);">Battle failed: ${escapeHtml(err.message)}</div>
             </div>`;
         }
+    }
+}
+
+async function declareArenaWinner(winnerId, participantIds, cardElement) {
+    try {
+        const res = await fetch('/api/arena/declare_winner', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                winner_model_id: winnerId,
+                participant_model_ids: participantIds
+            })
+        });
+
+        if (!res.ok) throw new Error('Failed to declare winner');
+        const data = await res.json();
+
+        // Update UI
+        if (data.leaderboard) {
+            renderArenaLeaderboard(data.leaderboard);
+        }
+
+        // Highlight winner card
+        const allCards = cardElement.parentElement.querySelectorAll('.arena-response-card');
+        allCards.forEach(c => {
+            c.classList.remove('winner');
+            const btn = c.querySelector('.action-winner-btn');
+            if (btn) btn.remove(); // Remove buttons after decision
+        });
+
+        cardElement.classList.add('winner');
+        const badgeHtml = '<span class="card-badge">🏆 Winner</span>';
+        cardElement.insertAdjacentHTML('afterbegin', badgeHtml);
+
+    } catch (err) {
+        console.error('Declare winner error:', err);
     }
 }
 

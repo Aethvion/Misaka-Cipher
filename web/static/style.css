@@ -2650,7 +2650,7 @@ input:checked+.slider:before {
 /* ===== Arena Panel ===== */
 .arena-layout {
     display: grid;
-    grid-template-columns: 260px 1fr 280px;
+    grid-template-columns: 230px 1fr 350px;
     height: 100%;
     gap: 0;
 }
@@ -2735,6 +2735,7 @@ input:checked+.slider:before {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    min-height: 0;
 }
 
 .arena-placeholder {
@@ -2849,12 +2850,57 @@ input:checked+.slider:before {
     letter-spacing: 0.5px;
 }
 
+.action-winner-btn {
+    position: absolute;
+    top: -12px;
+    right: 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+}
+
+.action-winner-btn:hover {
+    background: var(--primary);
+    color: #000;
+    border-color: var(--primary);
+}
+
 .arena-response-card .card-body {
     font-size: 0.88rem;
     line-height: 1.6;
     color: var(--text-primary);
     max-height: 300px;
     overflow-y: auto;
+}
+
+.evaluator-reasoning {
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+    font-size: 0.8rem;
+}
+
+.evaluator-reasoning summary {
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s;
+    outline: none;
+}
+
+.evaluator-reasoning summary:hover {
+    color: var(--primary);
+}
+
+.evaluator-reasoning .reasoning-content {
+    margin-top: 0.5rem;
+    color: var(--text-secondary);
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.5rem;
+    border-radius: 4px;
+    line-height: 1.4;
 }
 
 .arena-response-card .card-provider {

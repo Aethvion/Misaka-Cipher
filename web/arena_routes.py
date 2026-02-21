@@ -87,7 +87,7 @@ ORIGINAL PROMPT: {prompt}
             eval_prompt += f"--- RESPONSE {i+1} (Model: {r['model_id']}) ---\n{r['response']}\n\n"
 
     eval_prompt += """Score each response from 1-10 based on accuracy, helpfulness, clarity, and completeness.
-Respond ONLY with a JSON array of objects like: [{"model_id": "...", "score": N}]
+Respond ONLY with a JSON array of objects like: [{"model_id": "...", "score": N, "reasoning": "Quick logic on why this score was given"}]
 No other text. Just the JSON array."""
 
     try:
@@ -100,17 +100,19 @@ No other text. Just the JSON array."""
         )
 
         if eval_response.success:
-            # Parse scores from response
+            # Parse scores and reasoning from response
             content = eval_response.content.strip()
             # Try to extract JSON from response
             start = content.find('[')
             end = content.rfind(']') + 1
             if start >= 0 and end > start:
                 scores = json.loads(content[start:end])
-                score_map = {s["model_id"]: s["score"] for s in scores}
+                score_map = {s["model_id"]: s for s in scores}
                 for r in responses:
                     if r["model_id"] in score_map:
-                        r["score"] = score_map[r["model_id"]]
+                        eval_data = score_map[r["model_id"]]
+                        r["score"] = eval_data.get("score")
+                        r["reasoning"] = eval_data.get("reasoning")
     except Exception as e:
         logger.error(f"Evaluation failed: {e}")
 
@@ -193,6 +195,40 @@ async def clear_leaderboard():
     """Clear the arena leaderboard."""
     _save_leaderboard({"models": {}})
     return {"status": "success", "message": "Leaderboard cleared"}
+
+
+class DeclareWinnerRequest(BaseModel):
+    """Request to manually declare a winner."""
+    winner_model_id: str
+    participant_model_ids: List[str]
+
+
+@router.post("/declare_winner")
+async def declare_winner(request: DeclareWinnerRequest):
+    """Manually declare a winner when no evaluator was used."""
+    try:
+        leaderboard = _load_leaderboard()
+        models_data = leaderboard.get("models", {})
+
+        for mid in request.participant_model_ids:
+            if mid not in models_data:
+                models_data[mid] = {"wins": 0, "battles": 0}
+            models_data[mid]["battles"] += 1
+            if mid == request.winner_model_id:
+                models_data[mid]["wins"] += 1
+
+        leaderboard["models"] = models_data
+        _save_leaderboard(leaderboard)
+
+        return {
+            "status": "success", 
+            "winner_id": request.winner_model_id,
+            "leaderboard": models_data
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to declare winner: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class AIConvTurnRequest(BaseModel):
