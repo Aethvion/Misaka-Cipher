@@ -156,111 +156,245 @@ async function sendArenaPrompt() {
     const evalSelect = document.getElementById('arena-evaluator');
     const evaluatorModelId = evalSelect ? evalSelect.value : '';
 
-    // Show loading
     const responsesDiv = document.getElementById('arena-responses');
+
+    // Clear previous results
+    responsesDiv.innerHTML = '';
+
+    // Show loading grid and prompt bar
     const loadingHtml = `
-        <div class="arena-battle-round">
-            <div class="arena-prompt-bar"><strong>Prompt:</strong> ${escapeHtml(prompt)}</div>
-            <div class="arena-cards-grid">
-                ${arenaSelectedModels.map(id => `
-                    <div class="arena-response-card">
-                        <div class="card-header"><span class="card-model">${id}</span></div>
-                        <div class="card-body"><div class="arena-loading"><div class="spinner"></div> Generating...</div></div>
-                    </div>
-                `).join('')}
-            </div>
+        <div class="arena-prompt-bar" style="margin-bottom: 1rem; border-radius: 8px;"><strong>Prompt:</strong> ${escapeHtml(prompt)}</div>
+        <div class="arena-cards-grid" id="current-battle-cards">
+            ${arenaSelectedModels.map(id => `
+                <div class="arena-response-card">
+                    <div class="card-header"><span class="card-model">${id}</span></div>
+                    <div class="card-body"><div class="arena-loading"><div class="spinner"></div> Generating...</div></div>
+                </div>
+            `).join('')}
         </div>
     `;
-
-    // Remove placeholder if present
-    const placeholder = responsesDiv.querySelector('.arena-placeholder');
-    if (placeholder) placeholder.remove();
 
     responsesDiv.insertAdjacentHTML('beforeend', loadingHtml);
     responsesDiv.scrollTop = responsesDiv.scrollHeight;
 
+    let battleData = {
+        responses: [],
+        trace_id: null,
+        leaderboard: null
+    };
+
     try {
-        const res = await fetch('/api/arena/battle', {
+        const res = await fetch('/api/arena/battle_stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 prompt: prompt,
                 model_ids: arenaSelectedModels,
-                evaluator_model_id: evaluatorModelId || null
+                evaluator_model_id: null
             })
         });
 
-        const data = await res.json();
-
         if (!res.ok) {
-            throw new Error(data.detail || 'Battle failed');
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || 'Battle failed to start');
         }
 
-        const lastRound = responsesDiv.querySelector('.arena-battle-round:last-child');
-        if (lastRound) {
-            const cardsGrid = lastRound.querySelector('.arena-cards-grid');
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
 
-            // Store participants for manual win declaration
-            const participantIds = data.responses.map(r => r.model_id);
-            const needsManualEval = !document.getElementById('arena-evaluator').value;
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
 
-            cardsGrid.innerHTML = data.responses.map(r => {
-                const isWinner = r.model_id === data.winner_id;
-                const scoreHtml = r.score !== null && r.score !== undefined
-                    ? `<span class="card-score">${r.score}/10</span>`
-                    : '';
+            buffer += decoder.decode(value, { stream: true });
+            let lines = buffer.split('\n');
+            buffer = lines.pop(); // Keep incomplete line in buffer
 
-                let badgeHtml = isWinner ? '<span class="card-badge">🏆 Winner</span>' : '';
+            for (let line of lines) {
+                if (line.startsWith('data: ')) {
+                    const dataStr = line.substring(6).trim();
+                    if (!dataStr) continue;
 
-                // Add manual winner button if no evaluator was used
-                if (needsManualEval) {
-                    badgeHtml = `<button class="action-btn small action-winner-btn" 
-                                   onclick="declareArenaWinner('${r.model_id}', ${JSON.stringify(participantIds).replace(/"/g, '&quot;')}, this.closest('.arena-response-card'))">
-                                   🏆 Declare Winner
-                                 </button>`;
+                    try {
+                        const eventData = JSON.parse(dataStr);
+
+                        if (eventData.type === 'start') {
+                            battleData.trace_id = eventData.trace_id;
+                        }
+                        else if (eventData.type === 'result') {
+                            const result = eventData.data;
+                            battleData.responses.push(result);
+                            renderSingleBattleResponse(result, evaluatorModelId === '', arenaSelectedModels);
+                        }
+                        else if (eventData.type === 'complete') {
+                            battleData.leaderboard = eventData.leaderboard;
+                            if (battleData.leaderboard) {
+                                renderArenaLeaderboard(battleData.leaderboard);
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Error parsing stream event:", e, dataStr);
+                    }
                 }
-
-                const htmlContent = (typeof marked !== 'undefined' && marked.parse)
-                    ? marked.parse(r.response)
-                    : escapeHtml(r.response);
-
-                const reasoningHtml = r.reasoning ? `
-                    <details class="evaluator-reasoning">
-                        <summary>View Evaluator Reasoning</summary>
-                        <div class="reasoning-content">${escapeHtml(r.reasoning)}</div>
-                    </details>
-                ` : '';
-
-                return `
-                    <div class="arena-response-card ${isWinner ? 'winner' : ''}">
-                        ${badgeHtml}
-                        <div class="card-header">
-                            <span class="card-model">${r.model_id}</span>
-                            ${scoreHtml}
-                        </div>
-                        <div class="card-body">${htmlContent}</div>
-                        ${reasoningHtml}
-                        <div class="card-provider">via ${r.provider}</div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // Update leaderboard from response
-        if (data.leaderboard) {
-            renderArenaLeaderboard(data.leaderboard);
+            }
         }
 
     } catch (err) {
         console.error('Arena battle failed:', err);
-        const lastRound = responsesDiv.querySelector('.arena-battle-round:last-child');
-        if (lastRound) {
-            const cardsGrid = lastRound.querySelector('.arena-cards-grid');
-            cardsGrid.innerHTML = `<div class="arena-response-card" style="border-color: var(--error);">
+        const cardsGrid = document.getElementById('current-battle-cards');
+        if (cardsGrid) {
+            cardsGrid.innerHTML += `<div class="arena-response-card" style="border-color: var(--error); grid-column: 1 / -1;">
                 <div class="card-body" style="color: var(--error);">Battle failed: ${escapeHtml(err.message)}</div>
             </div>`;
         }
+        return;
     }
+
+    // Now proceed to evaluation if requested
+    if (evaluatorModelId && battleData) {
+        // Show evaluation loading
+        const cardsGrid = document.getElementById('current-battle-cards');
+        if (cardsGrid) {
+            cardsGrid.insertAdjacentHTML('afterend', `<div id="eval-loading" class="arena-prompt-bar" style="margin-top: 1rem; border-radius: 8px; text-align: center;"><div class="spinner" style="display:inline-block; vertical-align:middle; margin-right: 8px;"></div> Evaluating responses with ${evaluatorModelId}...</div>`);
+            responsesDiv.scrollTop = responsesDiv.scrollHeight;
+        }
+
+        try {
+            const evalRes = await fetch('/api/arena/evaluate_battle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    responses: battleData.responses,
+                    evaluator_model_id: evaluatorModelId,
+                    trace_id: battleData.trace_id
+                })
+            });
+
+            const evalData = await evalRes.json();
+
+            if (!evalRes.ok) {
+                throw new Error(evalData.detail || 'Evaluation failed');
+            }
+
+            const evalLoading = document.getElementById('eval-loading');
+            if (evalLoading) evalLoading.remove();
+
+            // Re-render responses with scores
+            renderBattleResponses(evalData, false);
+
+            if (evalData.leaderboard) {
+                renderArenaLeaderboard(evalData.leaderboard);
+            }
+
+        } catch (err) {
+            console.error('Evaluation failed:', err);
+            const evalLoading = document.getElementById('eval-loading');
+            if (evalLoading) evalLoading.innerHTML = `<span style="color: var(--error);">Evaluation failed: ${escapeHtml(err.message)}</span>`;
+        }
+    }
+}
+
+function renderSingleBattleResponse(r, needsManualEval, participantIds) {
+    const cardsGrid = document.getElementById('current-battle-cards');
+    if (!cardsGrid) return;
+
+    // Find the specific card for this model
+    const cards = Array.from(cardsGrid.querySelectorAll('.arena-response-card'));
+    const targetCard = cards.find(c => c.querySelector('.card-model').textContent === r.model_id);
+
+    if (!targetCard) return;
+
+    const isWinner = false; // Initial stream doesn't have winners yet
+    let scoreHtml = '';
+    let badgeHtml = '';
+
+    // Add manual winner button if no evaluator was used
+    if (needsManualEval) {
+        badgeHtml = `<button class="action-btn small action-winner-btn" 
+                       onclick="declareArenaWinner('${r.model_id}', ${JSON.stringify(participantIds).replace(/"/g, '&quot;')}, this.closest('.arena-response-card'))">
+                       🏆 Declare Winner
+                     </button>`;
+    }
+
+    let timeHtml = '';
+    if (r.time_ms) {
+        timeHtml = `<span class="card-time" style="font-size: 0.75rem; color: var(--text-secondary); margin-left: 8px; font-family: 'Fira Code', monospace;">⏱️ ${(r.time_ms / 1000).toFixed(2)}s</span>`;
+    }
+
+    const htmlContent = (typeof marked !== 'undefined' && marked.parse)
+        ? marked.parse(r.response)
+        : escapeHtml(r.response);
+
+    targetCard.innerHTML = `
+        ${badgeHtml}
+        <div class="card-header">
+            <div>
+                <span class="card-model">${r.model_id}</span>
+                ${timeHtml}
+            </div>
+            ${scoreHtml}
+        </div>
+        <div class="card-body">${htmlContent}</div>
+        <div class="card-provider">via ${r.provider}</div>
+    `;
+}
+
+function renderBattleResponses(data, needsManualEval) {
+    const cardsGrid = document.getElementById('current-battle-cards');
+    if (!cardsGrid) return;
+
+    const participantIds = data.responses.map(r => r.model_id);
+
+    cardsGrid.innerHTML = data.responses.map(r => {
+        const isWinner = r.model_id === data.winner_id;
+        const scoreHtml = r.score !== null && r.score !== undefined
+            ? `<span class="card-score">${r.score}/10</span>`
+            : '';
+
+        let badgeHtml = isWinner ? '<span class="card-badge">🏆 Winner</span>' : '';
+
+        // Add manual winner button if no evaluator was used
+        if (needsManualEval) {
+            badgeHtml = `<button class="action-btn small action-winner-btn" 
+                           onclick="declareArenaWinner('${r.model_id}', ${JSON.stringify(participantIds).replace(/"/g, '&quot;')}, this.closest('.arena-response-card'))">
+                           🏆 Declare Winner
+                         </button>`;
+        }
+
+        let timeHtml = '';
+        if (r.time_ms) {
+            timeHtml = `<span class="card-time" style="font-size: 0.75rem; color: var(--text-secondary); margin-left: 8px; font-family: 'Fira Code', monospace;">⏱️ ${(r.time_ms / 1000).toFixed(2)}s</span>`;
+        }
+
+        const htmlContent = (typeof marked !== 'undefined' && marked.parse)
+            ? marked.parse(r.response)
+            : escapeHtml(r.response);
+
+        const reasoningHtml = r.reasoning ? `
+            <details class="evaluator-reasoning">
+                <summary>View Evaluator Reasoning</summary>
+                <div class="reasoning-content">${escapeHtml(r.reasoning)}</div>
+            </details>
+        ` : '';
+
+        return `
+            <div class="arena-response-card ${isWinner ? 'winner' : ''}">
+                ${badgeHtml}
+                <div class="card-header">
+                    <div>
+                        <span class="card-model">${r.model_id}</span>
+                        ${timeHtml}
+                    </div>
+                    ${scoreHtml}
+                </div>
+                <div class="card-body">${htmlContent}</div>
+                ${reasoningHtml}
+                <div class="card-provider">via ${r.provider}</div>
+            </div>
+        `;
+    }).join('');
 }
 
 async function declareArenaWinner(winnerId, participantIds, cardElement) {

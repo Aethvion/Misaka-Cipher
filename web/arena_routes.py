@@ -9,7 +9,9 @@ import asyncio
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+import time
 
 from utils import get_logger
 
@@ -47,7 +49,8 @@ def _save_leaderboard(data: Dict[str, Any]) -> None:
 
 
 async def _call_model(provider_manager, prompt: str, model_id: str, trace_id: str):
-    """Call a single model and return result dict."""
+    """Call a single model and return result dict with timing."""
+    start_time = time.time()
     try:
         response = await asyncio.to_thread(
             provider_manager.call_with_failover,
@@ -56,21 +59,25 @@ async def _call_model(provider_manager, prompt: str, model_id: str, trace_id: st
             model=model_id,
             source="arena"
         )
+        end_time = time.time()
         return {
             "model_id": model_id,
             "response": response.content if response.success else f"Error: {response.error}",
             "provider": response.provider,
             "success": response.success,
-            "score": None
+            "score": None,
+            "time_ms": int((end_time - start_time) * 1000)
         }
     except Exception as e:
+        end_time = time.time()
         logger.error(f"Arena call failed for {model_id}: {e}")
         return {
             "model_id": model_id,
             "response": f"Error: {str(e)}",
             "provider": "unknown",
             "success": False,
-            "score": None
+            "score": None,
+            "time_ms": int((end_time - start_time) * 1000)
         }
 
 
@@ -119,68 +126,108 @@ No other text. Just the JSON array."""
     return responses
 
 
-@router.post("/battle")
-async def arena_battle(request: ArenaBattleRequest, req: Request):
-    """Run an arena battle: send prompt to multiple models, optionally evaluate."""
+@router.post("/battle_stream")
+async def arena_battle_stream(request: ArenaBattleRequest, req: Request):
+    """Run an arena battle and stream results back via Server-Sent Events as models finish."""
     if len(request.model_ids) < 2:
         raise HTTPException(status_code=400, detail="Need at least 2 models for a battle")
 
+    nexus = getattr(req.app.state, 'nexus', None)
+    if not nexus:
+        raise HTTPException(status_code=503, detail="System not initialized")
+    provider_manager = nexus.provider_manager
+
+    trace_id = f"ARENA_{uuid.uuid4().hex[:8]}"
+
+    async def event_generator():
+        # Yield initial state
+        yield f"data: {json.dumps({'type': 'start', 'trace_id': trace_id, 'prompt': request.prompt})}\n\n"
+        
+        # Start all tasks
+        tasks = [
+            asyncio.create_task(_call_model(provider_manager, request.prompt, model_id, trace_id))
+            for model_id in request.model_ids
+        ]
+        
+        responses = []
+        leaderboard = _load_leaderboard()
+        models_data = leaderboard.get("models", {})
+        
+        # Stream results as they complete using as_completed
+        for completed_task in asyncio.as_completed(tasks):
+            try:
+                result = await completed_task
+                responses.append(result)
+                
+                # Update battles count for this model early
+                if result["success"]:
+                    mid = result["model_id"]
+                    if mid not in models_data:
+                        models_data[mid] = {"wins": 0, "battles": 0}
+                    models_data[mid]["battles"] += 1
+                
+                # Yield this specific result
+                yield f"data: {json.dumps({'type': 'result', 'data': result})}\n\n"
+            except Exception as e:
+                logger.error(f"Error yielding task result: {e}")
+                
+        # Save updated battles counts
+        leaderboard["models"] = models_data
+        _save_leaderboard(leaderboard)
+        
+        # Yield final complete state with updated leaderboard
+        yield f"data: {json.dumps({'type': 'complete', 'responses': responses, 'leaderboard': models_data})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+class ArenaEvaluateRequest(BaseModel):
+    """Request to evaluate an already completed battle."""
+    prompt: str
+    responses: List[Dict[str, Any]]
+    evaluator_model_id: str
+    trace_id: str
+
+@router.post("/evaluate_battle")
+async def evaluate_battle(request: ArenaEvaluateRequest, req: Request):
+    """Evaluate an existing set of arena responses."""
     try:
         nexus = getattr(req.app.state, 'nexus', None)
         if not nexus:
             raise HTTPException(status_code=503, detail="System not initialized")
         provider_manager = nexus.provider_manager
 
-        trace_id = f"ARENA_{uuid.uuid4().hex[:8]}"
+        responses = await _evaluate_responses(
+            provider_manager, request.prompt, request.responses,
+            request.evaluator_model_id, request.trace_id
+        )
 
-        # Call all models in parallel
-        tasks = [
-            _call_model(provider_manager, request.prompt, model_id, trace_id)
-            for model_id in request.model_ids
-        ]
-        responses = await asyncio.gather(*tasks)
-
-        # Evaluate if evaluator is set
-        if request.evaluator_model_id:
-            responses = await _evaluate_responses(
-                provider_manager, request.prompt, list(responses),
-                request.evaluator_model_id, trace_id
-            )
-
-        # Determine winner (highest score, or None if no evaluator)
+        # Determine winner
         winner_id = None
-        if request.evaluator_model_id:
-            scored = [r for r in responses if r.get("score") is not None and r["success"]]
-            if scored:
-                winner = max(scored, key=lambda r: r["score"])
-                winner_id = winner["model_id"]
+        scored = [r for r in responses if r.get("score") is not None and r.get("success")]
+        if scored:
+            winner = max(scored, key=lambda r: r["score"])
+            winner_id = winner["model_id"]
 
-        # Update leaderboard
+        # Update wins in leaderboard
         leaderboard = _load_leaderboard()
         models_data = leaderboard.get("models", {})
 
-        for r in responses:
-            if not r["success"]:
-                continue
-            mid = r["model_id"]
-            if mid not in models_data:
-                models_data[mid] = {"wins": 0, "battles": 0}
-            models_data[mid]["battles"] += 1
-            if mid == winner_id:
-                models_data[mid]["wins"] += 1
-
-        leaderboard["models"] = models_data
-        _save_leaderboard(leaderboard)
+        if winner_id:
+            if winner_id not in models_data:
+                models_data[winner_id] = {"wins": 0, "battles": 0}
+            models_data[winner_id]["wins"] += 1
+            leaderboard["models"] = models_data
+            _save_leaderboard(leaderboard)
 
         return {
-            "trace_id": trace_id,
             "responses": list(responses),
             "winner_id": winner_id,
             "leaderboard": models_data
         }
 
     except Exception as e:
-        logger.error(f"Arena battle error: {e}", exc_info=True)
+        logger.error(f"Arena evaluation error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
