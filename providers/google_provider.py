@@ -51,14 +51,22 @@ class GoogleAIProvider(BaseProvider):
             active_model = model if model else self.config.model
             logger.debug(f"[{trace_id}] Generating with Google AI model {active_model}")
             
+            # Extract system prompt if provided
+            system_prompt = kwargs.pop('system_prompt', None)
+            
             # Use specific model instance if requested, otherwise default
-            if active_model != self.config.model:
-                 gen_model = genai.GenerativeModel(active_model)
+            if active_model != self.config.model or system_prompt:
+                 model_kwargs = {}
+                 if system_prompt:
+                     model_kwargs['system_instruction'] = system_prompt
+                 gen_model = genai.GenerativeModel(active_model, **model_kwargs)
             else:
                  gen_model = self.model
             
             # Remove 'model' from kwargs to prevent passing to generate_content
             kwargs.pop('model', None)
+            # Remove unsupported kwargs that might have been passed generically
+            kwargs.pop('json_mode', None)
             
             # Configure generation
             generation_config = {

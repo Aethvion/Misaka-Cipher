@@ -286,38 +286,39 @@ async function startSimulation() {
 
     if (advaiconvState === 'stopped') {
         const topic = advaiconvTopicInput.value.trim() || "Free conversation in a neutral environment.";
-        try {
-            // Create thread
-            const res = await fetch('/api/research/threads', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: "Simulation " + new Date().toLocaleTimeString(),
-                    topic: topic,
-                    participants: activePersonas.map(p => p.id)
-                })
-            });
-            const threadData = await res.json();
-            activeAdvaiconvThreadId = threadData.id;
-            titleAdvaiconvThread.innerText = threadData.name;
-            allThreads.unshift(threadData);
-            renderThreads();
-
-            // clear ui
-            if (document.getElementById('advaiconv-placeholder')) {
-                document.getElementById('advaiconv-placeholder').remove();
+        if (!activeAdvaiconvThreadId) {
+            try {
+                // Create thread
+                const res = await fetch('/api/research/threads', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: "Simulation " + new Date().toLocaleTimeString(),
+                        topic: topic,
+                        participants: activePersonas.map(p => p.id)
+                    })
+                });
+                const threadData = await res.json();
+                activeAdvaiconvThreadId = threadData.id;
+                titleAdvaiconvThread.innerText = threadData.name;
+                allThreads.unshift(threadData);
+                renderThreads();
+            } catch (e) {
+                console.error(e);
+                return;
             }
-            advaiconvMessagesContainer.innerHTML = '';
-
-            // Inject environment system prompt
-            await notifySystemEvent(`Environment Setup: ${topic}`);
-
-            currentSpeakerIndex = 0;
-
-        } catch (e) {
-            console.error(e);
-            return;
         }
+
+        // clear ui
+        if (document.getElementById('advaiconv-placeholder')) {
+            document.getElementById('advaiconv-placeholder').remove();
+        }
+        advaiconvMessagesContainer.innerHTML = '';
+
+        // Inject environment system prompt
+        await notifySystemEvent(`Environment Setup: ${topic}`);
+
+        currentSpeakerIndex = 0;
     }
 
     advaiconvState = 'running';

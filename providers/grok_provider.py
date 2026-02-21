@@ -52,10 +52,24 @@ class GrokProvider(BaseProvider):
             logger.debug(f"[{trace_id}] Generating with Grok model {active_model}")
             
             # Build request payload
+            # Extract system prompt if present
+            system_prompt = kwargs.pop('system_prompt', None)
+            
+            # Build messages
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+            
+            # Remove unsupported kwargs
+            kwargs.pop('model', None)
+            kwargs.pop('json_mode', None)
+            
             payload = {
                 "model": active_model,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": messages,
                 "temperature": temperature,
+                **kwargs
             }
             
             if max_tokens:

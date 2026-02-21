@@ -236,9 +236,14 @@ Format exactly like this:
 """
 
     # Build conversation context
-    # Get last N messages based on max_context
     context = ""
-    for m in messages[-req.max_context:] if req.max_context > 0 else messages:
+    # Safe historical slicing
+    history_to_use = messages
+    if req.max_context and req.max_context > 0:
+        if req.max_context < len(messages):
+            history_to_use = messages[-req.max_context:]
+
+    for m in history_to_use:
         role = m.get('role', '')
         if role == 'system':
             context += f"System Event: {m['content']}\n"
@@ -251,10 +256,11 @@ Format exactly like this:
     try:
         # Note: In Misaka-Cipher we call `call_with_failover` or similar depending on the manager
         response = await asyncio.to_thread(
-            pm.call,
+            pm.call_with_failover,
             prompt=prompt,
             system_prompt=system_prompt,
             model=req.model_id,
+            trace_id=uuid.uuid4().hex,
             source="research",
             json_mode=True # Hint if supported by pm
         )
@@ -325,5 +331,7 @@ Format exactly like this:
         }
         
     except Exception as e:
-        logger.error(f"Generate failed: {str(e)}")
-        raise HTTPException(500, f"Generation failed: {str(e)}")
+        import traceback
+        tb = traceback.format_exc()
+        logger.error(f"Generate failed: {str(e)}\n{tb}")
+        raise HTTPException(500, f"Generation failed: {str(e)}\nTraceback:\n{tb}")

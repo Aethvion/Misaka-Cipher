@@ -50,12 +50,18 @@ class OpenAIProvider(BaseProvider):
             # Use explicit model override or fall back to config
             active_model = model if model else self.config.model
             logger.debug(f"[{trace_id}] Generating with OpenAI model {active_model}")
+            # Extract system prompt if present
+            system_prompt = kwargs.pop('system_prompt', None)
             
             # Build messages
-            messages = [{"role": "user", "content": prompt}]
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
             
-            # Remove 'model' from kwargs if present to avoid duplicate
+            # Remove unsupported kwargs
             kwargs.pop('model', None)
+            kwargs.pop('json_mode', None)
             
             # Generate response
             response = self.client.chat.completions.create(
