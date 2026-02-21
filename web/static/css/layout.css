@@ -289,7 +289,7 @@
     align-items: center;
     padding: 1.5rem;
     border-bottom: 1px solid var(--border);
-    height: 80px;
+    height: 70px;
     flex-shrink: 0;
 }
 

@@ -49,16 +49,43 @@ def nexus_core_module(nexus: NexusCore):
             except ValueError:
                 print_error("Invalid temperature or max_tokens, using defaults")
         
+        from cli_modules.settings_module import load_settings
+        def _get_active_models():
+            settings = load_settings()
+            providers = settings.get("providers", {})
+            available = []
+            for prov_name, data in providers.items():
+                if prov_name in ['default', 'fallback_order']: continue
+                if data.get('enabled'):
+                    available.append(f"{prov_name} (default)")
+                    for m in data.get('models', []): available.append(f"{prov_name}/{m}")
+            return available if available else ["google_ai (fallback)"]
+        
+        console.print()
+        use_custom_model = confirm("Select specific model/provider?", default=False)
+        selected_model = None
+        if use_custom_model:
+            models = _get_active_models()
+            from cli_modules.utils import print_menu, get_user_choice, console
+            print_menu("Available Models", models, include_exit=True)
+            c = get_user_choice(len(models))
+            if c > 0:
+                selected_model = models[c-1]
+                # Strip (default) if present
+                selected_model = selected_model.replace(" (default)", "")
+                
         # Send request
         console.print()
         with show_progress("Sending request to Nexus Core...") as progress:
             progress.add_task("processing", total=None)
             
+            # Use route_hints if a specific model was selected to override the default Nexus router
             request = Request(
                 prompt=prompt,
                 request_type="generation",
                 temperature=temperature,
-                max_tokens=max_tokens
+                max_tokens=max_tokens,
+                route_hints={"model": selected_model} if selected_model else {}
             )
             
             response = nexus.route_request(request)
