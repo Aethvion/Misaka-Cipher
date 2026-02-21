@@ -267,3 +267,31 @@ async function loadInitialData() {
     if (typeof loadSystemStatus === 'function') setInterval(loadSystemStatus, 5000);
     if (typeof loadPackages === 'function') setInterval(loadPackages, 10000);
 }
+
+// ===== Global Modal Handlers =====
+
+function openCustomModal(htmlContent) {
+    let modalOverlay = document.getElementById('global-modal-overlay');
+    if (!modalOverlay) {
+        modalOverlay = document.createElement('div');
+        modalOverlay.id = 'global-modal-overlay';
+        modalOverlay.className = 'modal-overlay';
+        document.body.appendChild(modalOverlay);
+
+        // click outside to close
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeModal();
+        });
+    }
+
+    modalOverlay.innerHTML = htmlContent;
+    modalOverlay.style.display = 'flex';
+}
+
+function closeModal() {
+    const modalOverlay = document.getElementById('global-modal-overlay');
+    if (modalOverlay) {
+        modalOverlay.style.display = 'none';
+        modalOverlay.innerHTML = '';
+    }
+}

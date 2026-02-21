@@ -42,6 +42,7 @@
     <link rel="stylesheet" href="/static/css/preferences.css">
     <link rel="stylesheet" href="/static/css/status.css">
     <link rel="stylesheet" href="/static/css/image_studio.css">
+    <link rel="stylesheet" href="/static/css/adv_aiconv.css">
 </head>
 
 <body>
@@ -86,6 +87,9 @@
                                 class="tab-icon">🤖</span>Agent</button>
                         <button class="tab-dropdown-item" data-subtab="image"><span
                                 class="tab-icon">🎨</span>Image</button>
+                        <div class="dropdown-category">[Research]</div>
+                        <button class="tab-dropdown-item" data-subtab="advaiconv"><span
+                                class="tab-icon">🧪</span>Advanced AI Conversation</button>
                         <div class="dropdown-category">[Sandbox]</div>
                         <button class="tab-dropdown-item" data-subtab="arena"><span
                                 class="tab-icon">⚔️</span>Arena</button>
@@ -412,6 +416,83 @@
                         <div class="arena-placeholder" id="aiconv-placeholder">
                             <span class="tab-icon" style="font-size:3rem;">🎭</span>
                             <p>Select models, configure the topic, and start the conversation!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced AI Conversations Tab -->
+        <div class="main-tab-panel" id="advaiconv-panel">
+            <div class="arena-layout advaiconv-layout">
+                <!-- Advanced AI Conv Controls -->
+                <div class="arena-controls advaiconv-controls">
+                    <div class="arena-section">
+                        <h3>🧪 Research Subjects</h3>
+                        <p class="arena-hint">Select personas to participate in the simulation.</p>
+                        <div class="arena-model-selector">
+                            <select id="advaiconv-person-add" class="control-select">
+                                <option value="">+ Add Person...</option>
+                            </select>
+                            <button id="advaiconv-new-person-btn" class="action-btn secondary small"
+                                style="margin-top: 0.5rem; width: 100%;">Create New Persona</button>
+                            <div class="arena-model-chips" id="advaiconv-person-chips">
+                                <!-- person chips inserted by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="arena-section">
+                        <h3>⚙️ Configuration</h3>
+
+                        <div style="margin-bottom: 0.8rem;">
+                            <label
+                                style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.25rem;">Simulation
+                                Model</label>
+                            <select id="advaiconv-model-select" class="control-select" style="width:100%;">
+                                <!-- populated by JS -->
+                            </select>
+                        </div>
+
+                        <div style="margin-bottom: 0.8rem;">
+                            <label
+                                style="display:block; font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.25rem;">Environment
+                                / Topic</label>
+                            <textarea id="advaiconv-topic" class="chat-input"
+                                style="width:100%; min-height:80px; resize:vertical; font-size:0.85rem;"
+                                placeholder="E.g., You are locked in a room together..."></textarea>
+                        </div>
+
+                        <div style="display:flex; gap: 0.5rem; flex-direction:column; margin-top: 1rem;">
+                            <button id="advaiconv-start-btn" class="action-btn primary" style="width:100%;">
+                                <i class="fas fa-play"></i> Start Simulation
+                            </button>
+                            <div style="display:flex; gap: 0.5rem;">
+                                <button id="advaiconv-pause-btn" class="action-btn secondary" style="flex:1;" disabled>
+                                    <i class="fas fa-pause"></i> Pause
+                                </button>
+                                <button id="advaiconv-stop-btn" class="action-btn danger" style="flex:1;" disabled>
+                                    <i class="fas fa-stop"></i> Stop
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advanced AI Conv Chat -->
+                <div class="arena-chat-area advaiconv-chat-area">
+                    <div
+                        style="padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--bg-tertiary);">
+                        <h3 style="margin: 0; font-size: 0.9rem; color: var(--primary);">Live Simulation</h3>
+                        <div id="advaiconv-status-indicator"
+                            style="font-size: 0.8rem; font-weight: bold; color: var(--text-secondary);">IDLE</div>
+                    </div>
+
+                    <div class="chat-messages" id="advaiconv-messages"
+                        style="flex:1; overflow-y:auto; padding:1rem; background: var(--bg-primary);">
+                        <div class="arena-placeholder" id="advaiconv-placeholder">
+                            <span class="tab-icon" style="font-size:3rem;">🧪</span>
+                            <p>Select subjects, configure the environment, and start the simulation!</p>
                         </div>
                     </div>
                 </div>
@@ -928,6 +1009,7 @@
     <script src="/static/js/mode-image.js?v=1"></script>
     <script src="/static/js/mode-arena.js?v=1"></script>
     <script src="/static/js/mode-aiconv.js?v=1"></script>
+    <script src="/static/js/mode-adv-aiconv.js?v=1"></script>
     <script src="/static/js/mode-chat.js?v=1"></script>
 </body>
 

@@ -72,6 +72,10 @@ app.include_router(arena_router)
 from web.image_routes import router as image_router
 app.include_router(image_router)
 
+# Include research routes
+from web.advanced_aiconv_routes import router as adv_aiconv_router
+app.include_router(adv_aiconv_router)
+
 # Global instances (initialized on startup)
 orchestrator: Optional[MasterOrchestrator] = None
 nexus: Optional[NexusCore] = None

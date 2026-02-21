@@ -90,6 +90,12 @@
                     "desc": "Native support for Grok models."
                 }
             ],
+            "memory": [
+                {
+                    "name": "Conversation - Evolving Context",
+                    "desc": "Instead of passing the entire conversation history, the system will pass only the most relevant information to the model, which will evolve over time."
+                }
+            ],
             "research": [
                 {
                     "name": "Advanced AI Conversations",

@@ -1,0 +1,111 @@
+/* Advanced AI Conversation Specific Styles */
+.advaiconv-layout {
+    /* Inherits general structure from arena-layout in arena.css */
+}
+
+/* Trait rendering in chat bubbles */
+.trait-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+    padding-top: 0.4rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.trait-badge {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.trait-badge strong {
+    color: var(--primary);
+}
+
+.trait-tldr {
+    font-size: 0.8rem;
+    color: var(--accent);
+    margin-top: 0.4rem;
+    font-style: italic;
+    background: rgba(255, 0, 255, 0.05);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    border-left: 2px solid var(--accent);
+}
+
+/* Persona Chips in side panel */
+.person-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.person-chip:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 8px rgba(0, 217, 255, 0.1);
+}
+
+.person-chip-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.person-chip-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.person-chip-gender {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.person-chip-remove {
+    color: var(--error);
+    cursor: pointer;
+    padding: 0.2rem 0.5rem;
+    font-size: 1.1rem;
+}
+
+.person-chip-remove:hover {
+    color: #ff6688;
+}
+
+/* Modal overrides for Persona Creation */
+.persona-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+.persona-trait-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.persona-trait-row input[type="text"] {
+    flex: 1;
+}
+
+.persona-trait-row input[type="number"] {
+    width: 60px;
+    text-align: center;
+}
