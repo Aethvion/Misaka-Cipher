@@ -135,23 +135,6 @@
     border: 1px solid var(--primary);
 }
 
-.thread-title {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 0.25rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.thread-meta {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-}
-
 .thread-task-count {
     color: var(--text-secondary);
 }
@@ -297,4 +280,35 @@
     background: rgba(0, 217, 255, 0.1);
     border: 1px solid var(--primary);
     color: var(--primary);
+}
+
+/* ===== Panel Header (shared across all tab panels) ===== */
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    height: 80px;
+    flex-shrink: 0;
+}
+
+.panel-header h2 {
+    font-size: 1.5rem;
+    color: var(--primary);
+    margin: 0;
+}
+
+.panel-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* Borderless variant — used where the header blends into the page */
+.panel-header.borderless {
+    background: transparent;
+    border-bottom: none;
+    padding-bottom: 0;
 }

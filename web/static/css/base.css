@@ -211,14 +211,6 @@ body {
     overflow: hidden;
 }
 
-/* 3-Column Layout (Chat Tab) */
-.three-column-layout {
-    display: grid;
-    grid-template-columns: 25% 50% 25%;
-    height: 100%;
-    gap: 0;
-}
-
 /* Global Action Buttons */
 .action-btn {
     background: transparent;

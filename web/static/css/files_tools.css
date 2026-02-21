@@ -3,21 +3,6 @@
     padding: 1.5rem;
 }
 
-.panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    border-bottom: 1px solid var(--border);
-    height: 80px;
-}
-
-.panel-header h2 {
-    font-size: 1.5rem;
-    color: var(--primary);
-    margin: 0;
-}
-
 /* Consistent content padding for table panels */
 .tools-table-container,
 .packages-table-container {
