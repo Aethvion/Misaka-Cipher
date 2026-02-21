@@ -219,7 +219,7 @@ function renderProviderCards(registry) {
                     <td>
                         <div class="caps-cell model-caps-container">
                             ${capsHtml}
-                            <select class="cap-add-select" style="width: 80px; font-size: 0.8rem; padding: 2px;">
+                            <select class="cap-add-select term-select" style="width: 80px; font-size: 0.8rem; padding: 2px;">
                                 <option value="" disabled selected>+ Add</option>
                                 <option value="chat">Chat</option>
                                 <option value="analysis">Analysis</option>
@@ -338,7 +338,7 @@ function renderProviderCards(registry) {
                         <select class="model-suggestion-select" data-provider="${name}" style="display:none;">
                             ${suggestOptions}
                         </select>
-                        <button class="model-add-btn" data-provider="${name}">+ Add Model</button>
+                        <button class="model-add-btn action-btn primary" data-provider="${name}">+ Add Model</button>
                     </div>
                 </div>
             </div>

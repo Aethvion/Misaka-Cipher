@@ -1,6 +1,3 @@
-    transform: translateY(-1px);
-}
-
 .btn-primary:active {
     transform: translateY(0);
 }
@@ -157,4 +154,4 @@
     .usage-stat-row {
         grid-template-columns: repeat(2, 1fr);
     }
-
+}

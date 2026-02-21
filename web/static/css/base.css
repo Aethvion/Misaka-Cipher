@@ -218,3 +218,82 @@ body {
     height: 100%;
     gap: 0;
 }
+
+/* Global Action Buttons */
+.action-btn {
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+}
+
+.action-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--text-secondary);
+}
+
+.action-btn.primary {
+    background: rgba(0, 217, 255, 0.1);
+    color: var(--primary);
+    border-color: var(--primary);
+    font-weight: 500;
+}
+
+.action-btn.primary:hover:not(:disabled) {
+    background: rgba(0, 217, 255, 0.2);
+    box-shadow: 0 0 10px rgba(0, 217, 255, 0.3);
+}
+
+.action-btn.secondary {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+}
+
+.action-btn.secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+.action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Global Form Inputs */
+.term-input,
+.term-select,
+.chat-input {
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--primary);
+    border: 1px solid var(--border);
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.term-input:focus,
+.term-select:focus,
+.chat-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 8px rgba(0, 217, 255, 0.2);
+    background: rgba(0, 0, 0, 0.5);
+}
+
+textarea.term-input {
+    resize: vertical;
+}

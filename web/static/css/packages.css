@@ -1,6 +1,3 @@
-    color: var(--text-secondary);
-}
-
 .step-content pre {
     background: #000;
     margin: 0.5rem 0;
@@ -388,3 +385,4 @@ input:focus+.slider {
 
 input:checked+.slider:before {
     transform: translateX(26px);
+}
