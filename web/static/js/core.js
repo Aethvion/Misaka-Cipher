@@ -182,7 +182,7 @@ function switchMainTab(tabName, save = true) {
     // Update tab buttons
     document.querySelectorAll('.main-tab').forEach(tab => {
         if (tab.closest('.main-tab-dropdown')) {
-            const categories = ['chat', 'agent', 'image', 'arena', 'aiconv'];
+            const categories = ['chat', 'agent', 'image', 'arena', 'aiconv', 'advaiconv'];
             const isActive = categories.includes(tabName);
 
             if (tab.classList.contains('split-main-action')) {
@@ -196,6 +196,7 @@ function switchMainTab(tabName, save = true) {
                     if (tabName === 'image') { icon = '🎨'; label = 'Image'; }
                     if (tabName === 'arena') { icon = '⚔️'; label = 'Arena'; }
                     if (tabName === 'aiconv') { icon = '🎭'; label = 'AI Conv'; }
+                    if (tabName === 'advaiconv') { icon = '🧪'; label = 'Adv AI Conv'; }
                     tab.innerHTML = `<span class="tab-icon">${icon}</span>${label}`;
                 }
             } else if (tab.classList.contains('split-arrow-action')) {

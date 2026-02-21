@@ -12,18 +12,26 @@ let currentSpeakerIndex = 0;
 // Elements
 const advaiconvPersonSelect = document.getElementById('advaiconv-person-add');
 const advaiconvPersonChips = document.getElementById('advaiconv-person-chips');
-const advaiconvModelSelect = document.getElementById('advaiconv-model-select');
 const advaiconvTopicInput = document.getElementById('advaiconv-topic');
+const advaiconvSpeedInput = document.getElementById('advaiconv-speed-input');
+const advaiconvContextInput = document.getElementById('advaiconv-context-input');
 const btnAdvaiconvStart = document.getElementById('advaiconv-start-btn');
 const btnAdvaiconvPause = document.getElementById('advaiconv-pause-btn');
 const btnAdvaiconvStop = document.getElementById('advaiconv-stop-btn');
 const advaiconvMessagesContainer = document.getElementById('advaiconv-messages');
 const statusIndicator = document.getElementById('advaiconv-status-indicator');
 const btnNewPersona = document.getElementById('advaiconv-new-person-btn');
+const advaiconvThreadList = document.getElementById('advaiconv-thread-list');
+const btnAdvaiconvNewThread = document.getElementById('advaiconv-new-thread-btn');
+const titleAdvaiconvThread = document.getElementById('advaiconv-active-thread-title');
+
+let allThreads = [];
+let advaiconvAvailableModels = {}; // Grouped by provider
 
 async function initAdvaiconv() {
+    await fetchAdvaiconvModels();
     await fetchPersonas();
-    populateModelSelect();
+    await fetchThreads();
 
     // Bind Events
     if (advaiconvPersonSelect) {
@@ -48,6 +56,41 @@ async function initAdvaiconv() {
     if (btnAdvaiconvStop) {
         btnAdvaiconvStop.addEventListener('click', stopSimulation);
     }
+
+    if (btnAdvaiconvNewThread) {
+        btnAdvaiconvNewThread.addEventListener('click', () => {
+            stopSimulation();
+            activeAdvaiconvThreadId = null;
+            advaiconvMessagesContainer.innerHTML = `
+                <div class="arena-placeholder" id="advaiconv-placeholder">
+                    <span class="tab-icon" style="font-size:3rem;">🧪</span>
+                    <p>Select subjects, configure the environment, and start the simulation!</p>
+                </div>
+            `;
+            titleAdvaiconvThread.innerText = "New Simulation";
+            advaiconvTopicInput.value = "";
+            activePersonas = [];
+            renderActivePersonChips();
+            renderThreads();
+        });
+    }
+}
+
+async function fetchAdvaiconvModels() {
+    try {
+        const res = await fetch('/api/registry/models/chat');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        advaiconvAvailableModels = {};
+        for (const m of data.models || []) {
+            const prov = m.provider || 'unknown';
+            if (!advaiconvAvailableModels[prov]) advaiconvAvailableModels[prov] = [];
+            advaiconvAvailableModels[prov].push(m);
+        }
+    } catch (e) {
+        console.error("Failed to fetch models for Advaiconv", e);
+    }
 }
 
 async function fetchPersonas() {
@@ -66,17 +109,83 @@ async function fetchPersonas() {
     }
 }
 
-function populateModelSelect() {
-    if (!advaiconvModelSelect || !window.availableModels) return;
+async function fetchThreads() {
+    try {
+        const res = await fetch('/api/research/threads');
+        allThreads = await res.json();
+        renderThreads();
+    } catch (e) {
+        console.error("Failed to fetch threads", e);
+    }
+}
+
+function renderThreads() {
+    if (!advaiconvThreadList) return;
     let html = '';
-    for (const [provider, models] of Object.entries(window.availableModels)) {
+    if (allThreads.length === 0) {
+        html = '<div class="placeholder-text" style="padding: 0.5rem; font-size: 0.8rem;">No threads found.</div>';
+    } else {
+        for (const t of allThreads) {
+            const isActive = t.id === activeAdvaiconvThreadId ? 'active' : '';
+            const dateSplit = t.updated_at ? t.updated_at.split('T') : ['Unknown', ''];
+            const dateStr = dateSplit[0] + ' ' + (dateSplit[1] ? dateSplit[1].substring(0, 5) : '');
+            html += `
+                <div class="advaiconv-thread-item ${isActive}" onclick="loadThread('${t.id}')">
+                    <span class="advaiconv-thread-title">${t.name || 'Unnamed Thread'}</span>
+                    <span class="advaiconv-thread-date">${dateStr}</span>
+                </div>
+            `;
+        }
+    }
+    advaiconvThreadList.innerHTML = html;
+}
+
+async function loadThread(threadId) {
+    if (advaiconvState !== 'stopped') return;
+    try {
+        const res = await fetch(`/api/research/threads/${threadId}`);
+        const data = await res.json();
+        activeAdvaiconvThreadId = data.meta.id;
+        titleAdvaiconvThread.innerText = data.meta.name;
+        advaiconvTopicInput.value = data.meta.topic || "";
+
+        // Restore participants
+        activePersonas = [];
+        for (const pid of data.meta.participants || []) {
+            const p = allPersonas.find(x => x.id === pid);
+            if (p) activePersonas.push(p);
+        }
+        renderActivePersonChips();
+
+        // Render existing messages
+        advaiconvMessagesContainer.innerHTML = '';
+        for (const m of data.messages || []) {
+            let fallbackTraits = null;
+            const snap = (data.snapshots || []).find(s => s.message_id === m.id);
+            if (snap) fallbackTraits = snap.traits;
+            appendUiMessage(m, fallbackTraits);
+        }
+
+        renderThreads();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+window.loadThread = loadThread;
+
+function generateModelOptionsHtml(selectedModelId) {
+    if (Object.keys(advaiconvAvailableModels).length === 0) return '<option value="">auto</option>';
+    let html = '';
+    for (const [provider, models] of Object.entries(advaiconvAvailableModels)) {
         html += `<optgroup label="${provider}">`;
         for (const m of models) {
-            html += `<option value="${m.id}">${m.id}</option>`;
+            const s = m.id === selectedModelId ? 'selected' : '';
+            html += `<option value="${m.id}" ${s}>${m.id}</option>`;
         }
         html += `</optgroup>`;
     }
-    advaiconvModelSelect.innerHTML = html;
+    return html;
 }
 
 async function addPersonaToActive(personId) {
@@ -112,19 +221,38 @@ function renderActivePersonChips() {
 
     let html = '';
     for (const p of activePersonas) {
+        // default to first model if none selected
+        if (!p.selectedModel && Object.keys(advaiconvAvailableModels).length > 0) {
+            const firstProv = Object.keys(advaiconvAvailableModels)[0];
+            if (firstProv && advaiconvAvailableModels[firstProv].length > 0) {
+                p.selectedModel = advaiconvAvailableModels[firstProv][0].id;
+            }
+        }
+
+        const modelsHtml = generateModelOptionsHtml(p.selectedModel);
+
         html += `
             <div class="person-chip">
-                <div class="person-chip-info">
-                    <span class="person-chip-name">${p.name}</span>
-                    <span class="person-chip-gender">${p.gender}</span>
+                <div class="person-chip-info" style="flex:1;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span class="person-chip-name">${p.name} <span class="person-chip-gender">(${p.gender})</span></span>
+                        <span class="person-chip-remove" onclick="removePersonaFromActive('${p.id}')">
+                            <i class="fas fa-times"></i>
+                        </span>
+                    </div>
+                    <select class="persona-model-select" onchange="updatePersonaModel('${p.id}', this.value)">
+                        ${modelsHtml}
+                    </select>
                 </div>
-                <span class="person-chip-remove" onclick="removePersonaFromActive('${p.id}')">
-                    <i class="fas fa-times"></i>
-                </span>
             </div>
         `;
     }
     advaiconvPersonChips.innerHTML = html;
+}
+
+window.updatePersonaModel = function (personId, modelId) {
+    const p = activePersonas.find(x => x.id === personId);
+    if (p) p.selectedModel = modelId;
 }
 
 async function notifySystemEvent(msg) {
@@ -171,6 +299,9 @@ async function startSimulation() {
             });
             const threadData = await res.json();
             activeAdvaiconvThreadId = threadData.id;
+            titleAdvaiconvThread.innerText = threadData.name;
+            allThreads.unshift(threadData);
+            renderThreads();
 
             // clear ui
             if (document.getElementById('advaiconv-placeholder')) {
@@ -179,7 +310,7 @@ async function startSimulation() {
             advaiconvMessagesContainer.innerHTML = '';
 
             // Inject environment system prompt
-            await notifySystemEvent(`Environment: ${topic}`);
+            await notifySystemEvent(`Environment Setup: ${topic}`);
 
             currentSpeakerIndex = 0;
 
@@ -239,13 +370,16 @@ async function scheduleNextTurn() {
     appendUiMessage({ role: 'system', id: typingId, content: `${speaker.name} is thinking...` });
 
     try {
-        const selectedModel = advaiconvModelSelect.value;
+        const selectedModel = speaker.selectedModel || "auto";
+        const maxCxt = parseInt(advaiconvContextInput.value) || 20;
+
         const res = await fetch(`/api/research/threads/${activeAdvaiconvThreadId}/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 person_id: speaker.id,
-                model_id: selectedModel
+                model_id: selectedModel,
+                max_context: maxCxt
             })
         });
 
@@ -275,7 +409,8 @@ async function scheduleNextTurn() {
 
     if (advaiconvState === 'running') {
         currentSpeakerIndex = (currentSpeakerIndex + 1) % activePersonas.length;
-        advaiconvInterval = setTimeout(scheduleNextTurn, 2000); // 2 sec delay between turns
+        const delayMs = parseInt(advaiconvSpeedInput.value) || 2000;
+        advaiconvInterval = setTimeout(scheduleNextTurn, delayMs);
     }
 }
 

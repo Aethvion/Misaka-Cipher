@@ -1,6 +1,109 @@
 /* Advanced AI Conversation Specific Styles */
-.advaiconv-layout {
-    /* Inherits general structure from arena-layout in arena.css */
+.advaiconv-split-layout {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    height: 100%;
+    overflow: hidden;
+}
+
+.advaiconv-sidebar {
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.advaiconv-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.advaiconv-sidebar::-webkit-scrollbar-thumb {
+    background: var(--border);
+}
+
+.advaiconv-section {
+    border-bottom: 1px solid var(--border);
+    padding: 1rem;
+}
+
+.advaiconv-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+}
+
+.advaiconv-section-header h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.advaiconv-chat-area {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--bg-primary);
+    overflow: hidden;
+}
+
+.advaiconv-chat-header {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-tertiary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.advaiconv-status-badge {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.3rem 0.6rem;
+    border-radius: 12px;
+    letter-spacing: 0.5px;
+}
+
+.advaiconv-thread-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.advaiconv-thread-item {
+    padding: 0.5rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 0.3rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.advaiconv-thread-item:hover {
+    background: rgba(0, 217, 255, 0.05);
+}
+
+.advaiconv-thread-item.active {
+    background: rgba(0, 217, 255, 0.1);
+    color: var(--primary);
+    border-left: 3px solid var(--primary);
+}
+
+.advaiconv-thread-title {
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+}
+
+.advaiconv-thread-date {
+    font-size: 0.7rem;
+    opacity: 0.7;
 }
 
 /* Trait rendering in chat bubbles */
@@ -84,6 +187,17 @@
 
 .person-chip-remove:hover {
     color: #ff6688;
+}
+
+.persona-model-select {
+    width: 100%;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.4rem;
+    background: var(--bg-primary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    border-radius: 4px;
 }
 
 /* Modal overrides for Persona Creation */

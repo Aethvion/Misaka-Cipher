@@ -44,6 +44,7 @@ class SystemMessage(BaseModel):
 class GenerateRequest(BaseModel):
     person_id: str
     model_id: str
+    max_context: int = 20
 
 @router.get("/people")
 async def get_people():
@@ -235,9 +236,9 @@ Format exactly like this:
 """
 
     # Build conversation context
-    # Get last 20 messages for context
+    # Get last N messages based on max_context
     context = ""
-    for m in messages[-20:]:
+    for m in messages[-req.max_context:] if req.max_context > 0 else messages:
         role = m.get('role', '')
         if role == 'system':
             context += f"System Event: {m['content']}\n"
