@@ -122,7 +122,7 @@ function renderThreads() {
             const dateSplit = t.updated_at ? t.updated_at.split('T') : ['Unknown', ''];
             const dateStr = dateSplit[0] + ' ' + (dateSplit[1] ? dateSplit[1].substring(0, 5) : '');
             html += `
-                <div class="advaiconv-thread-item ${isActive}" onclick="loadThread('${t.id}')" style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="advaiconv-thread-item ${isActive}" onclick="loadThread('${t.id}')" style="display:flex; flex-direction:row; justify-content:space-between; align-items:center;">
                     <div style="flex:1; overflow:hidden;">
                         <div class="advaiconv-thread-title" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.name || 'Unnamed Thread'}</div>
                         <div class="advaiconv-thread-date">${dateStr}</div>
@@ -268,6 +268,9 @@ function renderActivePersonChips() {
     let html = '';
     for (const p of activePersonas) {
         // default to first model if none selected
+        if (!p.selectedModel && p.model) {
+            p.selectedModel = p.model;
+        }
         if (!p.selectedModel && Object.keys(advaiconvAvailableModels).length > 0) {
             const firstProv = Object.keys(advaiconvAvailableModels)[0];
             if (firstProv && advaiconvAvailableModels[firstProv].length > 0) {
@@ -332,9 +335,11 @@ window.switchAdvaiconvView = function (view) {
     document.getElementById('advaiconv-messages').style.display = view === 'simulation' ? 'flex' : 'none';
     document.getElementById('advaiconv-backend-view').style.display = view === 'backend' ? 'block' : 'none';
     document.getElementById('advaiconv-people-view').style.display = view === 'people' ? 'block' : 'none';
+    document.getElementById('advaiconv-statistics-view').style.display = view === 'statistics' ? 'block' : 'none';
 
     if (view === 'backend') renderBackendView();
     if (view === 'people') renderPeopleView();
+    if (view === 'statistics') renderStatisticsView();
 }
 
 async function renderBackendView() {
@@ -379,7 +384,14 @@ function renderPeopleView() {
         return;
     }
 
-    let html = '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">';
+    let html = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h4 style="margin:0; color:var(--text-primary);">Active Subjects Info</h4>
+            <button class="action-btn secondary xs-btn" onclick="refreshPeopleData()"><i class="fas fa-sync-alt"></i> Refresh Data</button>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+    `;
+
     for (const p of activePersonas) {
         let traitsHtml = '';
         for (const [k, v] of Object.entries(p.traits || {})) {
@@ -404,6 +416,100 @@ function renderPeopleView() {
     }
     html += '</div>';
     container.innerHTML = html;
+}
+
+function renderStatisticsView() {
+    const container = document.getElementById('advaiconv-statistics-view');
+    if (activePersonas.length === 0) {
+        container.innerHTML = `<div class="placeholder-text" style="text-align: center; margin-top: 2rem;">No subjects in simulation to generate statistics.</div>`;
+        return;
+    }
+
+    let html = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h4 style="margin:0; color:var(--text-primary);">Persona Divergence Statistics</h4>
+            <button class="action-btn secondary xs-btn" onclick="refreshPeopleData()"><i class="fas fa-sync-alt"></i> Refresh Data</button>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1rem;">
+    `;
+
+    for (const p of activePersonas) {
+        const totalMessages = p.message_count || 0;
+
+        // build visual bars for trait drift
+        let driftHtml = '';
+        const prevTraits = p.original_traits || p.traits || {};
+        const currTraits = p.traits || {};
+        const allKeys = new Set([...Object.keys(prevTraits), ...Object.keys(currTraits)]);
+
+        allKeys.forEach(k => {
+            const v1 = prevTraits[k] || 0;
+            const v2 = currTraits[k] || 0;
+            const MathAbs = Math.abs(v2 - v1);
+            let arrow = v2 > v1 ? '<i class="fas fa-arrow-up" style="color:var(--success);"></i>' : (v2 < v1 ? '<i class="fas fa-arrow-down" style="color:var(--danger);"></i>' : '<i class="fas fa-equals" style="color:var(--text-secondary);"></i>');
+
+            // max is 10 usually, if not we adapt 
+            const maxVal = 10;
+            const w1 = Math.min((v1 / maxVal) * 100, 100);
+            const w2 = Math.min((v2 / maxVal) * 100, 100);
+
+            driftHtml += `
+                <div style="margin-bottom: 0.5rem;">
+                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.2rem;">
+                        <span>${k}</span>
+                        <span>${arrow} ${v2} <span style="color:var(--text-secondary); font-size:0.75rem;">(Orig: ${v1})</span></span>
+                    </div>
+                    <!-- Combined tracking bar -->
+                    <div style="width: 100%; height: 6px; background: var(--bg-primary); border-radius: 3px; position:relative; margin-bottom: 2px;">
+                        <div style="position:absolute; left:0; top:0; height:100%; border-radius:3px; background:var(--text-secondary); opacity:0.5; width:${w1}%;"></div>
+                        <div style="position:absolute; left:0; top:0; height:100%; border-radius:3px; background:var(--primary); width:${w2}%; mix-blend-mode: screen;"></div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+            <div style="background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem;">
+                <h4 style="margin: 0 0 0.5rem 0; color: var(--primary); font-size: 1.1rem;">${p.name}</h4>
+                <div style="font-size: 0.9rem; color: var(--text-primary); margin-bottom: 1rem; display:flex; gap:1rem;">
+                    <div style="background:var(--bg-secondary); padding:0.5rem; border-radius:4px; flex:1; text-align:center;">
+                        <div style="font-size:1.5rem; font-weight:bold; color:var(--primary);">${totalMessages}</div>
+                        <div style="font-size:0.75rem; color:var(--text-secondary);">Messages Sent</div>
+                    </div>
+                </div>
+                
+                <h5 style="margin: 0 0 0.8rem 0; font-size: 0.85rem; color: var(--text-primary);">Trait Drifting</h5>
+                <div style="margin-bottom: 1.5rem;">
+                    ${driftHtml}
+                </div>
+                
+                <h5 style="margin: 0 0 0.4rem 0; font-size: 0.85rem; color: var(--text-primary);">Origin Snapshot</h5>
+                <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.3; padding: 0.5rem; background: var(--bg-primary); border-radius: 4px; border: 1px dashed var(--border);">
+                    <strong>Original Memory:</strong><br>
+                    ${p.original_memory || p.memory || 'No memory recorded at start.'}
+                </p>
+            </div>
+        `;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+window.refreshPeopleData = async function () {
+    await fetchPersonas();
+    for (let p of activePersonas) {
+        const up = allPersonas.find(x => x.id === p.id);
+        if (up) {
+            p.traits = up.traits;
+            p.memory = up.memory;
+            p.original_traits = up.original_traits;
+            p.original_memory = up.original_memory;
+            p.message_count = up.message_count;
+            p.model = up.model;
+        }
+    }
+    renderPeopleView();
+    renderStatisticsView();
 }
 
 async function notifySystemEvent(msg) {
@@ -634,7 +740,7 @@ function appendUiMessage(msg, traits = null) {
 function openPersonaModal() {
     // Standard modal logic hooking into main app
     const modalHtml = `
-        <div class="modal-dialog" style="max-width: 500px;">
+        <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
                 <h2>Create Research Persona</h2>
                 <button class="modal-close" onclick="closeModal()">&times;</button>

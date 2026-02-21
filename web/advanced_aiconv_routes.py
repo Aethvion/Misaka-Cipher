@@ -72,6 +72,9 @@ async def get_people():
 async def create_person(req: PersonaCreate):
     pid = uuid.uuid4().hex[:8]
     data = req.dict()
+    data['original_traits'] = data['traits'].copy()
+    data['original_memory'] = data['memory']
+    data['message_count'] = 0
     with open(PEOPLE_DIR / f"{pid}.json", 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=4)
     data['id'] = pid
@@ -343,6 +346,7 @@ Format exactly like this:
         # Update Person
         person['traits'] = new_traits
         person['memory'] = new_memory
+        person['message_count'] = person.get('message_count', 0) + 1
         with open(p_file, 'w', encoding='utf-8') as f:
             json.dump(person, f, indent=4)
             
