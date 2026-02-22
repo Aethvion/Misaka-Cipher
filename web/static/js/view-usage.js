@@ -329,12 +329,13 @@ function renderModelUsageTable(summary) {
     arr.sort((a, b) => b.cost - a.cost);
 
     if (!arr.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="placeholder-text">No usage recorded</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="placeholder-text">No usage recorded</td></tr>';
         return;
     }
 
     tbody.innerHTML = arr.map(m => `<tr>
         <td style="font-family: 'Fira Code', monospace; font-size: 0.85rem;">${m.model}</td>
+        <td>${formatNumber(m.calls || 0)}</td>
         <td>${formatNumber(m.prompt_tokens)}</td>
         <td>${formatNumber(m.completion_tokens)}</td>
         <td>${formatNumber(m.tokens)}</td>

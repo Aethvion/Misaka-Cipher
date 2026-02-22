@@ -45,20 +45,7 @@ class AethvionNamingValidator:
                 naming_config = config.get('naming_convention', {})
                 self.allowed_domains = naming_config.get('allowed_domains', [])
                 self.allowed_actions = naming_config.get('allowed_actions', [])
-                validation_config = naming_config.get('validation', {})
-                # Check user preferences for override
-                try:
-                    prefs_path = Path(__file__).parent.parent / "workspace" / "user_preferences.json"
-                    if prefs_path.exists():
-                        import json
-                        with open(prefs_path, 'r') as f:
-                            prefs = json.load(f)
-                            # Default to False if not set, or use the value if set
-                            self.strict_mode = prefs.get('validation', {}).get('strict_mode', False)
-                    else:
-                        self.strict_mode = False # Default to flexible if no prefs
-                except Exception:
-                    self.strict_mode = False # Fallback to flexible on error
+                self.strict_mode = False  # Disabled per user request
 
     
     def validate(self, name: str) -> Tuple[bool, Optional[str]]:
@@ -71,17 +58,9 @@ class AethvionNamingValidator:
         Returns:
             Tuple of (is_valid, error_message)
         """
-        # Re-read strict mode for dynamic updates (since it's cheap JSON read)
-        try:
-             prefs_path = Path(__file__).parent.parent / "workspace" / "user_preferences.json"
-             if prefs_path.exists():
-                 import json
-                 with open(prefs_path, 'r') as f:
-                     prefs = json.load(f)
-                     self.strict_mode = prefs.get('validation', {}).get('strict_mode', False)
-        except Exception:
-             pass # Keep existing value on error
-
+        # Strict mode checking disabled
+        self.strict_mode = False
+        
         # Check pattern
         if not self.PATTERN.match(name):
             return False, (

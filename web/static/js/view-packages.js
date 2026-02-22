@@ -457,11 +457,6 @@ setupPackageListeners = function () {
     searchInput.addEventListener('input', (e) => savePreference('package_filters.search', e.target.value));
 
     // Settings Tab Listeners
-    const strictMode = document.getElementById('setting-strict-mode');
-    if (strictMode) {
-        strictMode.addEventListener('change', (e) => savePreference('validation.strict_mode', e.target.checked));
-    }
-
     const settingHideSystem = document.getElementById('setting-hide-system-pkgs');
     if (settingHideSystem) {
         settingHideSystem.addEventListener('change', (e) => {
@@ -521,4 +516,4 @@ loadAllPackages = async function () {
             '<tr><td colspan="6" class="placeholder-text error">Error loading packages</td></tr>';
     }
 };
-
+

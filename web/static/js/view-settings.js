@@ -69,9 +69,6 @@ async function loadPreferences() {
     }
 
     // Apply Settings UI
-    const strictMode = document.getElementById('setting-strict-mode');
-    if (strictMode) strictMode.checked = prefs.get('validation.strict_mode', false);
-
     const hideSystem = document.getElementById('setting-hide-system-pkgs');
     if (hideSystem) hideSystem.checked = prefs.get('package_filters.hide_system', false);
 
@@ -735,7 +732,7 @@ async function loadEnvStatus() {
                             <button class="env-reveal-btn" title="Reveal key">­ƒæü</button>
                         </div>
                         <button class="env-save-key-btn btn-primary small" data-key="${k.name}">Save</button>
-                        <span class="env-key-status ${k.has_value ? 'set' : 'unset'}">${k.has_value ? 'Ô£ô Set' : 'ÔÜá Not set'}</span>
+                        <span class="env-key-status ${k.has_value ? 'set' : 'unset'}">${k.has_value ? 'Key Set' : 'Key Not Set'}</span>
                     </div>
                 `;
             }
