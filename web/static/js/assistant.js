@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // State
     let isAssistantEnabled = false;
     let messageHistory = [];
+    let currentEmotion = 'default';
 
     // Load initial settings
     async function loadAssistantSettings() {
@@ -59,13 +60,20 @@ document.addEventListener('DOMContentLoaded', () => {
         avatar.classList.remove('hidden');
     });
 
+    // Set Emotion Image
+    function setEmotion(emotion) {
+        currentEmotion = emotion;
+        const url = `/static/images/misakacipher/misakacipher_${emotion}.png`;
+        if (imgBubble) imgBubble.src = url;
+        if (imgDialog) imgDialog.src = url;
+    }
+
     // Winking Animation
     function triggerWink(duration = 1000) {
         if (imgBubble) imgBubble.src = IMG_WINK;
         if (imgDialog) imgDialog.src = IMG_WINK;
         setTimeout(() => {
-            if (imgBubble) imgBubble.src = IMG_DEFAULT;
-            if (imgDialog) imgDialog.src = IMG_DEFAULT;
+            setEmotion(currentEmotion); // Restore current emotion instead of default
         }, duration);
     }
 
@@ -148,9 +156,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (res.ok) {
                 const data = await res.json();
-                appendMessage('misaka', data.response, true);
-                messageHistory.push({ role: 'assistant', content: data.response });
-                triggerWink(1500); // Wink when responding!
+                let responseText = data.response;
+
+                // Parse emotion tag: [Emotion: <emotion>]
+                const emotionMatch = responseText.match(/\[Emotion:\s*([a-zA-Z0-9_]+)\]/i);
+                if (emotionMatch && emotionMatch[1]) {
+                    setEmotion(emotionMatch[1].toLowerCase());
+                    // Remove the tag from the text displayed to the user
+                    responseText = responseText.replace(emotionMatch[0], '').trim();
+                } else {
+                    setEmotion('default');
+                }
+
+                appendMessage('misaka', responseText, true);
+                messageHistory.push({ role: 'assistant', content: responseText }); // Save cleaned text
+
+                // Only wink if she's happy or default so it doesn't look weird when she's angry or crying
+                if (currentEmotion === 'default' || currentEmotion.startsWith('happy') || currentEmotion === 'wink') {
+                    triggerWink(1500);
+                }
             } else {
                 const err = await res.json();
                 appendMessage('system', `Error: ${err.detail || 'Failed to connect.'}`);
