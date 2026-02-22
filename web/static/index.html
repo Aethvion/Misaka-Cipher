@@ -1087,17 +1087,25 @@
         <div id="misaka-avatar" class="misaka-avatar">
             <img id="misaka-img" src="/static/images/misakacipher/misakacipher_default.png" alt="Misaka Cipher">
         </div>
-        <div id="misaka-chat-window" class="misaka-chat-window collapsed">
-            <div class="misaka-header">
-                <span class="misaka-title">Misaka Cipher</span>
-                <button id="misaka-close-btn" class="icon-btn xs-btn"><i class="fas fa-times"></i></button>
+        <div id="misaka-chat-window" class="misaka-dialog-window collapsed">
+            <div class="misaka-dialog-left">
+                <img id="misaka-img-dialog" src="/static/images/misakacipher/misakacipher_default.png"
+                    alt="Misaka Cipher Portrait">
             </div>
-            <div id="misaka-messages" class="misaka-messages">
-                <div class="misaka-message system">Operations Core online. What do you need?</div>
-            </div>
-            <div class="misaka-input-area">
-                <input type="text" id="misaka-input" placeholder="Ask Misaka..." autocomplete="off">
-                <button id="misaka-send-btn" class="send-button"><i class="fas fa-paper-plane"></i></button>
+            <div class="misaka-dialog-right">
+                <div class="misaka-dialog-header">
+                    <span class="misaka-title">Misaka Cipher</span>
+                    <button id="misaka-close-btn" class="icon-btn xs-btn" title="Close"><i
+                            class="fas fa-times"></i></button>
+                </div>
+                <div id="misaka-messages" class="misaka-dialog-messages">
+                    <div class="misaka-d-message system">Operations Core online. What do you need?</div>
+                </div>
+                <div class="misaka-dialog-input-area">
+                    <span class="user-prompt-indicator">></span>
+                    <input type="text" id="misaka-input" placeholder="Enter your command..." autocomplete="off">
+                    <button id="misaka-send-btn" class="send-button"><i class="fas fa-paper-plane"></i></button>
+                </div>
             </div>
         </div>
     </div>

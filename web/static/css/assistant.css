@@ -45,31 +45,67 @@
     pointer-events: none;
 }
 
-/* Chat Window */
-.misaka-chat-window {
-    width: 350px;
-    height: 450px;
+/* Hide Avatar completely when dialogue is active */
+.misaka-avatar.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0);
+}
+
+/* Dialog Window (Replaces standard Chat Window) */
+.misaka-dialog-window {
+    width: 650px;
+    height: 250px;
     background: rgba(10, 15, 20, 0.95);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 255, 204, 0.1);
+    border: 2px solid var(--primary);
+    border-radius: 4px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 255, 204, 0.15);
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     overflow: hidden;
     backdrop-filter: blur(10px);
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     transform-origin: bottom right;
 }
 
-.misaka-chat-window.collapsed {
+.misaka-dialog-window.collapsed {
     transform: scale(0);
     opacity: 0;
     pointer-events: none;
 }
 
-/* Header */
-.misaka-header {
-    padding: 12px 15px;
+/* Dialog Left Panel (Avatar Portrait) */
+.misaka-dialog-left {
+    width: 180px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--primary);
+    background: rgba(0, 255, 204, 0.05);
+    /* Subtle tint */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    overflow: hidden;
+}
+
+#misaka-img-dialog {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+}
+
+/* Dialog Right Panel (Content) */
+.misaka-dialog-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Dialog Header */
+.misaka-dialog-header {
+    padding: 8px 15px;
     background: rgba(0, 255, 204, 0.1);
     border-bottom: 1px solid var(--border);
     display: flex;
@@ -81,103 +117,108 @@
     font-family: 'Orbitron', sans-serif;
     color: var(--primary);
     font-weight: 700;
-    font-size: 1.1rem;
+    font-size: 1rem;
     letter-spacing: 1px;
 }
 
-/* Messages Area */
-.misaka-messages {
+/* Messages Area - Dialog Style */
+.misaka-dialog-messages {
     flex: 1;
     padding: 15px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 10px;
 }
 
-.misaka-messages::-webkit-scrollbar {
+.misaka-dialog-messages::-webkit-scrollbar {
     width: 6px;
 }
 
-.misaka-messages::-webkit-scrollbar-track {
+.misaka-dialog-messages::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.misaka-messages::-webkit-scrollbar-thumb {
-    background: var(--border-light);
+.misaka-dialog-messages::-webkit-scrollbar-thumb {
+    background: var(--primary);
     border-radius: 3px;
 }
 
-/* Individual Message Bubbles */
-.misaka-message {
-    max-width: 85%;
-    padding: 10px 14px;
-    border-radius: 10px;
-    font-size: 0.9rem;
-    line-height: 1.4;
+/* Individual Message Blocks */
+.misaka-d-message {
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+    line-height: 1.5;
     word-break: break-word;
+    font-family: 'Inter', sans-serif;
 }
 
-.misaka-message.user {
-    align-self: flex-end;
-    background: var(--bg-tertiary);
+.misaka-d-message.user {
+    color: var(--text-secondary);
+}
+
+.misaka-d-message.user::before {
+    content: "Commander: ";
+    color: var(--accent);
+    font-weight: bold;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.misaka-d-message.misaka {
     color: var(--text-primary);
-    border-bottom-right-radius: 2px;
-    border: 1px solid var(--border);
+    text-shadow: 0 0 2px rgba(0, 255, 204, 0.2);
 }
 
-.misaka-message.misaka {
-    align-self: flex-start;
-    background: rgba(0, 255, 204, 0.05);
-    color: var(--text-primary);
-    border-bottom-left-radius: 2px;
-    border: 1px solid rgba(0, 255, 204, 0.2);
+.misaka-d-message.misaka::before {
+    content: "Misaka: ";
+    color: var(--primary);
+    font-weight: bold;
+    font-family: 'Orbitron', sans-serif;
 }
 
-.misaka-message.system {
-    align-self: center;
-    background: transparent;
+.misaka-d-message.system {
     color: var(--text-secondary);
     font-style: italic;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     text-align: center;
-    border: none;
+    opacity: 0.7;
 }
 
 /* Input Area */
-.misaka-input-area {
-    padding: 12px;
+.misaka-dialog-input-area {
+    padding: 10px 15px;
     border-top: 1px solid var(--border);
     display: flex;
-    gap: 10px;
-    background: var(--bg-secondary);
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    align-items: center;
+}
+
+.user-prompt-indicator {
+    color: var(--accent);
+    font-family: 'Fira Code', monospace;
+    font-weight: bold;
 }
 
 #misaka-input {
     flex: 1;
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px 12px;
-    color: var(--text-primary);
-    font-family: 'Inter', sans-serif;
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-family: 'Fira Code', monospace;
     font-size: 0.9rem;
 }
 
 #misaka-input:focus {
     outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 5px rgba(0, 255, 204, 0.2);
 }
 
-/* Typing Indicator */
+#misaka-input::placeholder {
+    color: rgba(255, 102, 0, 0.4);
+}
+
+/* Typing Indicator inside dialog */
 .misaka-typing {
-    align-self: flex-start;
-    background: rgba(0, 255, 204, 0.05);
-    border: 1px solid rgba(0, 255, 204, 0.2);
-    padding: 10px 14px;
-    border-radius: 10px;
-    border-bottom-left-radius: 2px;
+    padding: 5px 0;
     display: flex;
     gap: 4px;
     align-items: center;
@@ -212,32 +253,37 @@
     }
 }
 
-/* Markdown Support inside bubbles */
-.misaka-message.misaka p {
-    margin: 0 0 8px 0;
+/* Markdown Support inside dialog bubbles */
+.misaka-d-message.misaka p {
+    display: inline;
 }
 
-.misaka-message.misaka p:last-child {
-    margin-bottom: 0;
+.misaka-d-message.misaka p:not(:last-child) {
+    margin-right: 5px;
 }
 
-.misaka-message.misaka code {
-    background: rgba(0, 0, 0, 0.3);
+.misaka-d-message.misaka code {
+    background: rgba(0, 0, 0, 0.4);
     padding: 2px 4px;
     border-radius: 3px;
+    color: var(--primary);
     font-family: 'Fira Code', monospace;
     font-size: 0.85em;
 }
 
-.misaka-message.misaka pre {
-    background: rgba(0, 0, 0, 0.5);
+.misaka-d-message.misaka pre {
+    background: rgba(0, 0, 0, 0.6);
     padding: 8px;
-    border-radius: 5px;
+    border-radius: 4px;
+    border-left: 2px solid var(--primary);
     overflow-x: auto;
     margin: 8px 0;
+    display: block;
+    /* Break out of inline flow */
 }
 
-.misaka-message.misaka pre code {
+.misaka-d-message.misaka pre code {
     background: transparent;
     padding: 0;
+    color: inherit;
 }

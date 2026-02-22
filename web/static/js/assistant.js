@@ -5,7 +5,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('misaka-assistant-container');
     const avatar = document.getElementById('misaka-avatar');
-    const img = document.getElementById('misaka-img');
+    const imgBubble = document.getElementById('misaka-img');
+    const imgDialog = document.getElementById('misaka-img-dialog');
     const chatWindow = document.getElementById('misaka-chat-window');
     const closeBtn = document.getElementById('misaka-close-btn');
     const messagesArea = document.getElementById('misaka-messages');
@@ -47,22 +48,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Toggle Chat Window
     avatar.addEventListener('click', () => {
-        chatWindow.classList.toggle('collapsed');
-        if (!chatWindow.classList.contains('collapsed')) {
-            input.focus();
-            scrollToBottom();
-        }
+        chatWindow.classList.remove('collapsed');
+        avatar.classList.add('hidden');
+        input.focus();
+        scrollToBottom();
     });
 
     closeBtn.addEventListener('click', () => {
         chatWindow.classList.add('collapsed');
+        avatar.classList.remove('hidden');
     });
 
     // Winking Animation
     function triggerWink(duration = 1000) {
-        img.src = IMG_WINK;
+        if (imgBubble) imgBubble.src = IMG_WINK;
+        if (imgDialog) imgDialog.src = IMG_WINK;
         setTimeout(() => {
-            img.src = IMG_DEFAULT;
+            if (imgBubble) imgBubble.src = IMG_DEFAULT;
+            if (imgDialog) imgDialog.src = IMG_DEFAULT;
         }, duration);
     }
 
@@ -74,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add message to UI
     function appendMessage(role, content, asMarkdown = false) {
         const div = document.createElement('div');
-        div.className = `misaka-message ${role}`;
+        div.className = `misaka-d-message ${role}`;
 
         if (asMarkdown && typeof marked !== 'undefined') {
             div.innerHTML = marked.parse(content);
@@ -185,6 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 container.classList.add('hidden');
                 chatWindow.classList.add('collapsed');
+                avatar.classList.remove('hidden');
             }
         }
     });

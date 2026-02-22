@@ -21,10 +21,5 @@
         "check_file_location": true,
         "min_file_size": 10,
         "min_content_length": 50
-    },
-    "assistant": {
-        "enabled": true,
-        "provider": "google_ai",
-        "model": "flash"
     }
 }
