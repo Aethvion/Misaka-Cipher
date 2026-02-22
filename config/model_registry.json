@@ -61,7 +61,6 @@
                         ],
                         "supports_negative_prompt": true,
                         "supports_seed": true,
-                        "steps_range": null,
                         "quality_options": [
                             "standard"
                         ]
@@ -128,7 +127,16 @@
                     "notes": "DALL-E 3 for image generation.",
                     "input_cost_per_1m_tokens": 0,
                     "output_cost_per_1m_tokens": 0,
-                    "description": "DALL-E 3 for image generation."
+                    "description": "DALL-E 3 for image generation.",
+                    "image_config": {
+                        "aspect_ratios": [],
+                        "resolutions": [],
+                        "supports_negative_prompt": false,
+                        "supports_seed": false,
+                        "quality_options": [
+                            "standard"
+                        ]
+                    }
                 }
             },
             "active": true,

@@ -75,6 +75,29 @@ async function loadPreferences() {
     const hideSystem = document.getElementById('setting-hide-system-pkgs');
     if (hideSystem) hideSystem.checked = prefs.get('package_filters.hide_system', false);
 
+    const assistantEnabled = document.getElementById('setting-assistant-enabled');
+    if (assistantEnabled) {
+        assistantEnabled.checked = prefs.get('assistant.enabled', true);
+
+        // Remove old listener if any to prevent duplicates (though loadPreferences is usually called once)
+        assistantEnabled.onchange = async (e) => {
+            await savePreference('assistant.enabled', e.target.checked);
+
+            // Dispatch event so assistant.js can pick it up immediately
+            window.dispatchEvent(new CustomEvent('assistantSettingsUpdated', {
+                detail: { enabled: e.target.checked }
+            }));
+        };
+    }
+
+    const assistantModel = document.getElementById('setting-assistant-model');
+    if (assistantModel) {
+        // The options will be populated by loadChatModels() later, but we can set up the change listener here
+        assistantModel.onchange = async (e) => {
+            await savePreference('assistant.model', e.target.value);
+        };
+    }
+
     if (typeof updateChatLayout === 'function') updateChatLayout();
 }
 
@@ -135,26 +158,44 @@ async function loadProviderSettings() {
 
 async function loadChatModels() {
     const select = document.getElementById('model-select');
-    if (!select) return;
+    const assistantSelect = document.getElementById('setting-assistant-model');
 
-    const currentVal = select.value;
+    if (!select && !assistantSelect) return;
+
+    const currentVal = select ? select.value : null;
     try {
         const res = await fetch('/api/registry/models/chat');
         if (!res.ok) throw new Error('Failed to load chat models');
         const data = await res.json();
 
         let html = '<option value="auto">Model: Auto</option>';
+        let assistantHtml = '';
+
         for (const m of data.models || []) {
             const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
                 ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
                 : '';
-            html += `<option value="${m.id}" title="${m.description || ''}">${m.id}${costHint}</option>`;
+            const option = `<option value="${m.id}" title="${m.description || ''}">${m.id}${costHint}</option>`;
+            html += option;
+            assistantHtml += option;
         }
-        select.innerHTML = html;
 
-        if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
-            select.value = currentVal;
+        if (select) {
+            select.innerHTML = html;
+            if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
+                select.value = currentVal;
+            }
         }
+
+        if (assistantSelect) {
+            assistantSelect.innerHTML = assistantHtml;
+            // Set value from preferences
+            const prefModel = prefs.get('assistant.model', 'gemini-2.0-flash');
+            if (assistantSelect.querySelector(`option[value="${prefModel}"]`)) {
+                assistantSelect.value = prefModel;
+            }
+        }
+
     } catch (err) {
         console.error('Error loading chat models:', err);
     }

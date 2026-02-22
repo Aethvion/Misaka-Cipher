@@ -267,6 +267,7 @@ async function loadInitialData() {
 
     if (typeof loadSystemStatus === 'function') setInterval(loadSystemStatus, 5000);
     if (typeof loadPackages === 'function') setInterval(loadPackages, 10000);
+    if (typeof loadHeaderStatus === 'function') setInterval(loadHeaderStatus, 15000);
 }
 
 // ===== Global Modal Handlers =====

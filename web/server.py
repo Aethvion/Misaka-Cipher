@@ -76,6 +76,10 @@ app.include_router(image_router)
 from web.advanced_aiconv_routes import router as adv_aiconv_router
 app.include_router(adv_aiconv_router)
 
+# Include assistant routes
+from web.assistant_routes import router as assistant_router
+app.include_router(assistant_router)
+
 # Global instances (initialized on startup)
 orchestrator: Optional[MasterOrchestrator] = None
 nexus: Optional[NexusCore] = None

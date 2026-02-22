@@ -43,6 +43,7 @@
     <link rel="stylesheet" href="/static/css/status.css">
     <link rel="stylesheet" href="/static/css/image_studio.css">
     <link rel="stylesheet" href="/static/css/adv_aiconv.css">
+    <link rel="stylesheet" href="/static/css/assistant.css">
 </head>
 
 <body>
@@ -973,6 +974,29 @@
                 </div>
 
                 <div class="setting-group">
+                    <h3>Misaka Assistant Configuration</h3>
+                    <div class="setting-item">
+                        <label class="switch">
+                            <input type="checkbox" id="setting-assistant-enabled">
+                            <span class="slider round"></span>
+                        </label>
+                        <div class="setting-label">
+                            <strong>Enable Persistent Assistant</strong>
+                            <span>Show the floating Misaka Cipher bubble on all pages.</span>
+                        </div>
+                    </div>
+                    <div class="setting-item" style="border-bottom: none;">
+                        <div class="setting-label" style="flex:1;">
+                            <strong>Assistant Core Model</strong>
+                            <span>Select the LLM that powers Misaka Cipher.</span>
+                        </div>
+                        <select id="setting-assistant-model" class="control-select" style="width: 250px;">
+                            <option value="flash">Loading models...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-group">
                     <h3>Provider Settings</h3>
                     <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
                         Configure AI providers, priorities, and retry budgets per step. Saved to
@@ -1058,6 +1082,26 @@
         </div>
     </main>
 
+    <!-- Floating Misaka Cipher Assistant -->
+    <div id="misaka-assistant-container" class="misaka-assistant-container hidden">
+        <div id="misaka-avatar" class="misaka-avatar">
+            <img id="misaka-img" src="/static/images/misakacipher/misakacipher_default.png" alt="Misaka Cipher">
+        </div>
+        <div id="misaka-chat-window" class="misaka-chat-window collapsed">
+            <div class="misaka-header">
+                <span class="misaka-title">Misaka Cipher</span>
+                <button id="misaka-close-btn" class="icon-btn xs-btn"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="misaka-messages" class="misaka-messages">
+                <div class="misaka-message system">Operations Core online. What do you need?</div>
+            </div>
+            <div class="misaka-input-area">
+                <input type="text" id="misaka-input" placeholder="Ask Misaka..." autocomplete="off">
+                <button id="misaka-send-btn" class="send-button"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <script src="/static/lib/marked.min.js"></script>
@@ -1081,6 +1125,7 @@
     <script src="/static/js/mode-aiconv.js?v=1"></script>
     <script src="/static/js/mode-adv-aiconv.js?v=2"></script>
     <script src="/static/js/mode-chat.js?v=1"></script>
+    <script src="/static/js/assistant.js?v=1"></script>
 </body>
 
 </html>
