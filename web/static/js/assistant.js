@@ -145,11 +145,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         showTyping();
 
+        // Gather current UI context
+        let activeTabId = 'unknown';
+        let activeTabName = 'Unknown Tab';
+        const activePanel = document.querySelector('.main-tab-panel:not([style*="display: none"])');
+        if (activePanel) {
+            activeTabId = activePanel.id;
+            const navBtn = document.querySelector(`.nav-btn.active`);
+            if (navBtn) {
+                activeTabName = navBtn.textContent.trim();
+            }
+        }
+
         try {
             const res = await fetch('/api/assistant/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: messageHistory })
+                body: JSON.stringify({
+                    messages: messageHistory,
+                    ui_context: {
+                        active_tab_id: activeTabId,
+                        active_tab_name: activeTabName
+                    }
+                })
             });
 
             removeTyping();

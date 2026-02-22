@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import uuid
 import json
+from pathlib import Path
 
 from providers.provider_manager import ProviderManager
 from workspace.preferences_manager import get_preferences_manager
@@ -16,14 +17,19 @@ class AssistantMessage(BaseModel):
     role: str
     content: str
 
+class UIContext(BaseModel):
+    active_tab_id: Optional[str] = None
+    active_tab_name: Optional[str] = None
+
 class AssistantChatRequest(BaseModel):
     messages: List[AssistantMessage]
+    ui_context: Optional[UIContext] = None
     
 class AssistantChatResponse(BaseModel):
     response: str
     model_id: str
     
-def _build_assistant_context() -> str:
+def _build_assistant_context(ui_context: Optional[Dict[str, Any]] = None, include_web_context: bool = False) -> str:
     """Builds the dynamic system prompt injected with live system data."""
     system_map = get_system_map()
     file_counts = get_file_counts()
@@ -55,6 +61,27 @@ angry, blushing, bored, crying, default, error, exhausted, happy_closedeyes_smil
 When the user asks about the project, use the statistics above to answer accurately. 
 Keep your responses concise, natural, and helpful. You are talking directly to the user (your creator/operator) through a floating chat bubble in the bottom right corner of their screen. 
 """
+
+    if include_web_context and ui_context:
+        tab_id = ui_context.get('active_tab_id', 'unknown')
+        tab_name = ui_context.get('active_tab_name', 'Unknown')
+        
+        # Load the documentation file
+        doc_content = ""
+        try:
+            doc_path = Path("documentation/ai/web_interface_context.md")
+            if doc_path.exists():
+                with open(doc_path, 'r', encoding='utf-8') as f:
+                    doc_content = f.read()
+        except Exception:
+            pass
+            
+        context += f"\n\nCURRENT UI CONTEXT:\n"
+        context += f"The user is currently viewing the '{tab_name}' tab (ID: {tab_id}).\n"
+        if doc_content:
+            context += f"If they ask 'what am I looking at' or 'how does this page work', use the following documentation to help them:\n"
+            context += f"<web_interface_docs>\n{doc_content}\n</web_interface_docs>\n"
+
     return context
 
 @router.post("/chat", response_model=AssistantChatResponse)
@@ -70,7 +97,9 @@ async def assistant_chat(request: AssistantChatRequest):
     target_model = assistant_config.get('model', 'flash')
     
     # Construct prompt
-    system_prompt = _build_assistant_context()
+    ui_dict = request.ui_context.dict() if request.ui_context else None
+    include_web = assistant_config.get('include_web_context', False)
+    system_prompt = _build_assistant_context(ui_context=ui_dict, include_web_context=include_web)
     
     # We will format the history into a single prompt for simple failover calling
     # If the provider supports structured chat history, we'd pass it. For BaseProvider generate(),

@@ -95,6 +95,14 @@ async function loadPreferences() {
         };
     }
 
+    const assistantContext = document.getElementById('setting-assistant-context');
+    if (assistantContext) {
+        assistantContext.checked = prefs.get('assistant.include_web_context', false);
+        assistantContext.onchange = async (e) => {
+            await savePreference('assistant.include_web_context', e.target.checked);
+        };
+    }
+
     if (typeof updateChatLayout === 'function') updateChatLayout();
 }
 
