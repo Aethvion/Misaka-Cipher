@@ -56,7 +56,7 @@ def nexus_core_module(nexus: NexusCore):
             available = []
             for prov_name, data in providers.items():
                 if prov_name in ['default', 'fallback_order']: continue
-                if data.get('enabled'):
+                if data.get('active'):
                     available.append(f"{prov_name} (default)")
                     for m in data.get('models', []): available.append(f"{prov_name}/{m}")
             return available if available else ["google_ai (fallback)"]
@@ -66,7 +66,7 @@ def nexus_core_module(nexus: NexusCore):
         selected_model = None
         if use_custom_model:
             models = _get_active_models()
-            from cli_modules.utils import print_menu, get_user_choice, console
+            from cli_modules.utils import print_menu, get_user_choice
             print_menu("Available Models", models, include_exit=True)
             c = get_user_choice(len(models))
             if c > 0:

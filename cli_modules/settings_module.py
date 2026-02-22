@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 # Load settings from file directly
-SETTINGS_FILE = Path("c:/Aethvion/Misaka-Cipher/config/settings.json")
+SETTINGS_FILE = Path("c:/Aethvion/Misaka-Cipher/config/model_registry.json")
 
 def load_settings():
     if not SETTINGS_FILE.exists():
@@ -26,7 +26,7 @@ def load_settings():
 def save_settings(data):
     try:
         with open(SETTINGS_FILE, 'w') as f:
-            json.dump(data, f, indent=2)
+            json.dump(data, f, indent=4)
         return True
     except Exception as e:
         print_error(f"Failed to save settings: {e}")
@@ -42,7 +42,7 @@ def show_providers_menu():
         providers = settings.get("providers", {})
         
         if not providers:
-            print_error("No providers found in settings.json")
+            print_error("No providers found in model_registry.json")
             input("\nPress Enter to return...")
             return
             
@@ -54,7 +54,7 @@ def show_providers_menu():
             if key in ['default', 'fallback_order']:
                 continue
             
-            status = "[green]Enabled[/green]" if data.get('enabled') else "[dim]Disabled[/dim]"
+            status = "[green]Enabled[/green]" if data.get('active') else "[dim]Disabled[/dim]"
             display = f"{key} - {status}"
             options.append(display)
             prov_list.append(key)
@@ -68,10 +68,10 @@ def show_providers_menu():
         selected_prov = prov_list[choice - 1]
         prov_data = providers[selected_prov]
         
-        # Toggle enabled state
-        current_state = prov_data.get('enabled', False)
+        # Toggle active state
+        current_state = prov_data.get('active', False)
         new_state = not current_state
-        prov_data['enabled'] = new_state
+        prov_data['active'] = new_state
         
         if save_settings(settings):
             action = "Enabled" if new_state else "Disabled"

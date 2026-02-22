@@ -11,6 +11,9 @@ from cli_modules.utils import (
 from memory import get_episodic_memory, get_knowledge_graph
 from rich.panel import Panel
 from rich.tree import Tree
+from rich.table import Table
+import json
+from pathlib import Path
 
 
 def memory_module():
@@ -27,7 +30,9 @@ def memory_module():
             "Semantic Search (Episodic Memory)",
             "Browse Knowledge Graph",
             "Trace_ID Lookup",
-            "Memory Statistics"
+            "Memory Statistics",
+            "Search Workspaces (Threads)",
+            "Search Advanced AI Conversations"
         ]
         
         print_menu("Memory Operations", options)
@@ -37,20 +42,17 @@ def memory_module():
             break
         
         if choice == 1:
-            # Semantic search
             _semantic_search(memory_store)
-        
         elif choice == 2:
-            # Knowledge graph browser
             _browse_knowledge_graph(kg)
-        
         elif choice == 3:
-            # Trace ID lookup
             _trace_lookup(memory_store, kg)
-        
         elif choice == 4:
-            # Stats
             _memory_stats(memory_store, kg)
+        elif choice == 5:
+            _search_workspaces()
+        elif choice == 6:
+            _search_aiconv()
 
 
 def _semantic_search(memory_store):
@@ -225,3 +227,140 @@ def _memory_stats(memory_store, kg):
         console.print(f"  • {node_type}: {count}")
     
     pause()
+
+def _search_workspaces():
+    clear_screen()
+    print_header("Workspace Threads")
+    workspaces_dir = Path("c:/Aethvion/Misaka-Cipher/memory/storage/workspaces")
+    if not workspaces_dir.exists():
+        print_error("Workspaces directory not found.")
+        pause()
+        return
+        
+    threads = []
+    t_paths = []
+    for d in workspaces_dir.iterdir():
+        if d.is_dir() and d.name.startswith("thread-"):
+            meta_file = d / f"{d.name}.json"
+            if meta_file.exists():
+                with open(meta_file, 'r') as f:
+                    meta = json.load(f)
+                    name = meta.get("title", 'Unnamed Thread')
+                    threads.append(f"{name} ({d.name})")
+                    t_paths.append(d)
+                    
+    if not threads:
+        print_error("No workspace threads found.")
+        pause()
+        return
+        
+    print_menu("Select Thread", threads)
+    c = get_user_choice(len(threads))
+    if c == 0: return
+    selected_dir = t_paths[c-1]
+    
+    meta_file = selected_dir / f"{selected_dir.name}.json"
+    meta = {}
+    if meta_file.exists():
+        with open(meta_file, 'r') as f:
+            meta = json.load(f)
+            
+    while True:
+        clear_screen()
+        print_header(f"Thread: {meta.get('title', 'Unknown')}")
+        print_key_value("ID", meta.get('id', selected_dir.name))
+        print_key_value("Mode", meta.get('mode', 'chat'))
+        print_key_value("Created", meta.get('created_at', 'Unknown'))
+        
+        tasks_dir = selected_dir / "tasks"
+        tasks = []
+        if tasks_dir.exists():
+            for f in tasks_dir.glob("*.json"):
+                with open(f, 'r', encoding='utf-8') as file:
+                    t = json.load(file)
+                    tasks.append(t)
+                    
+        console.print(f"\n[bold cyan]Found {len(tasks)} tasks/memory entries.[/bold cyan]")
+        search_q = get_text_input("\nSearch terms within this thread (or empty to list all, 'exit' to back)")
+        if search_q.lower() == 'exit': break
+        
+        table = Table(title="Task Entries")
+        table.add_column("Task ID")
+        table.add_column("Type")
+        table.add_column("Preview", overflow="fold")
+        
+        for t in sorted(tasks, key=lambda x: x.get('created_at', '')):
+            content = json.dumps(t)
+            if search_q.lower() in content.lower() or not search_q.strip():
+                task_type = t.get('task_type', 'unknown')
+                preview = str(t.get('input_data', {}))[:100] + "..."
+                table.add_row(t.get('id', '??')[:8], task_type, preview)
+                
+        console.print(table)
+        pause()
+
+def _search_aiconv():
+    clear_screen()
+    print_header("Advanced AI Conversations")
+    aiconv_dir = Path("c:/Aethvion/Misaka-Cipher/memory/storage/advancedaiconversation/threads")
+    if not aiconv_dir.exists():
+        print_error("Advanced AI Conversation memory directory not found.")
+        pause()
+        return
+        
+    threads = []
+    t_paths = []
+    for d in aiconv_dir.iterdir():
+        if d.is_dir():
+            meta_file = d / "meta.json"
+            if meta_file.exists():
+                with open(meta_file, 'r') as f:
+                    meta = json.load(f)
+                    name = meta.get("name", "Unnamed Thread")
+                    topic = meta.get("topic", "")
+                    threads.append(f"{name} | {topic}")
+                    t_paths.append(d)
+                    
+    if not threads:
+        print_error("No Advanced AI Conversation threads found.")
+        pause()
+        return
+        
+    print_menu("Select Simulation Thread", threads)
+    c = get_user_choice(len(threads))
+    if c == 0: return
+    selected_dir = t_paths[c-1]
+    
+    meta_file = selected_dir / "meta.json"
+    with open(meta_file, 'r') as f:
+        meta = json.load(f)
+        
+    while True:
+        clear_screen()
+        print_header(f"Simulation: {meta.get('name', 'Unknown')}")
+        print_key_value("Topic", meta.get('topic', 'N/A'))
+        print_key_value("Created", meta.get('created_at', 'Unknown'))
+        print_key_value("Participant IDs", ", ".join(meta.get('active_person_ids', [])))
+        
+        msg_file = selected_dir / "messages.json"
+        msgs = []
+        if msg_file.exists():
+            with open(msg_file, 'r', encoding='utf-8') as f:
+                msgs = json.load(f)
+                
+        console.print(f"\n[bold cyan]Found {len(msgs)} messages/memory entries.[/bold cyan]")
+        search_q = get_text_input("\nSearch terms within this simulation (or empty to display all, 'exit' to back)")
+        if search_q.lower() == 'exit': break
+        
+        table = Table(title="Simulation Messages")
+        table.add_column("Role")
+        table.add_column("Name")
+        table.add_column("Content", overflow="fold")
+        
+        for m in msgs:
+            content = m.get('content', '')
+            if search_q.lower() in content.lower() or search_q.lower() in m.get('name', '').lower() or not search_q.strip():
+                table.add_row(m.get('role', '??'), m.get('name', '??'), content[:100] + ("..." if len(content) > 100 else ""))
+                
+        console.print(table)
+        pause()

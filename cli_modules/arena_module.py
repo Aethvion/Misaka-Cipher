@@ -6,7 +6,7 @@ CLI interface for testing LLM models against each other
 from cli_modules.utils import (
     console, clear_screen, print_header, print_menu, get_user_choice,
     get_text_input, print_success, print_error, confirm, show_progress,
-    print_key_value
+    print_key_value, pause
 )
 from cli_modules.settings_module import load_settings
 from rich.panel import Panel
@@ -25,7 +25,7 @@ def _get_active_models():
     for prov_name, data in providers.items():
         if prov_name in ['default', 'fallback_order']:
             continue
-        if data.get('enabled'):
+        if data.get('active'):
             # Some providers have 'models' list, some are simple placeholders.
             # In a real setup, we query the NexusCore. For CLI simplicity, we mock generic options.
             available.append(f"{prov_name} (default)")

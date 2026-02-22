@@ -77,9 +77,7 @@ class MisakaCLI:
         
         options = [
             "Nexus Core - Direct AI Interaction",
-            "The Factory - Spawn Agents",
-            "The Forge - Generate Tools",
-            "The Memory Tier - Query Knowledge",
+            "Memory - Query & Search State",
             "Advanced AI Conversations - Research Lab",
             "LLM Arena - Model vs Model Battles",
             "Settings & Configuration",
@@ -117,30 +115,22 @@ class MisakaCLI:
                 nexus_core_module(self.nexus)
             
             elif choice == 2:
-                from cli_modules.factory_module import factory_module
-                factory_module(self.factory)
-            
-            elif choice == 3:
-                from cli_modules.forge_module import forge_module
-                forge_module(self.forge)
-            
-            elif choice == 4:
                 from cli_modules.memory_module import memory_module
                 memory_module()
                 
-            elif choice == 5:
+            elif choice == 3:
                 from cli_modules.research_module import research_module
                 research_module(self.nexus)
                 
-            elif choice == 6:
+            elif choice == 4:
                 from cli_modules.arena_module import arena_module
                 arena_module(self.nexus)
                 
-            elif choice == 7:
+            elif choice == 5:
                 from cli_modules.settings_module import settings_module
                 settings_module()
             
-            elif choice == 8:
+            elif choice == 6:
                 from cli_modules.system_module import show_system_status
                 show_system_status(self.nexus, self.factory, self.forge)
 

@@ -34,7 +34,7 @@ def _get_active_models():
     for prov_name, data in providers.items():
         if prov_name in ['default', 'fallback_order']:
             continue
-        if data.get('enabled'):
+        if data.get('active'):
             available.append(f"{prov_name} (default)")
             for m in data.get('models', []):
                 available.append(f"{prov_name}/{m}")
