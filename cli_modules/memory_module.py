@@ -6,7 +6,7 @@ Memory Tier query interface
 from cli_modules.utils import (
     console, clear_screen, print_header, print_menu, get_user_choice,
     get_text_input, print_table, print_key_value, pause, print_info,
-    print_warning, confirm
+    print_warning, confirm, print_error
 )
 from memory import get_episodic_memory, get_knowledge_graph
 from rich.panel import Panel
