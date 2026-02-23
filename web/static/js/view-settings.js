@@ -141,6 +141,14 @@ async function loadPreferences() {
         };
     }
 
+    const openBrowser = document.getElementById('setting-open-browser');
+    if (openBrowser) {
+        openBrowser.checked = prefs.get('system.open_browser_on_startup', true);
+        openBrowser.onchange = async (e) => {
+            await savePreference('system.open_browser_on_startup', e.target.checked);
+        };
+    }
+
     if (typeof updateChatLayout === 'function') updateChatLayout();
 }
 

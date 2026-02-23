@@ -10,6 +10,9 @@ Use --test flag to run verification tests
 import os
 import sys
 from pathlib import Path
+import time
+import webbrowser
+import threading
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -28,6 +31,14 @@ def run_cli():
     cli.main()
 
 
+def open_browser():
+    """Wait for server to start and then open browser."""
+    # Short delay to allow uvicorn to bind to port
+    time.sleep(2.0)
+    logger.info("Automatically opening dashboard at http://localhost:8000")
+    webbrowser.open("http://localhost:8000")
+
+
 def run_web_server():
     """Launch web dashboard with orchestrator."""
     print("\n" + "=" * 70)
@@ -38,6 +49,15 @@ def run_web_server():
     print("API documentation at: http://localhost:8000/docs\n")
     print("Press CTRL+C to stop the server\n")
     
+    # Auto-open browser if enabled in settings
+    try:
+        from workspace.preferences_manager import get_preferences_manager
+        prefs = get_preferences_manager()
+        if prefs.get('system.open_browser_on_startup', True):
+            threading.Thread(target=open_browser, daemon=True).start()
+    except Exception as e:
+        logger.debug(f"Could not auto-start browser: {e}")
+
     try:
         import uvicorn
         from web.server import app

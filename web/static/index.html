@@ -1083,6 +1083,32 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="setting-group system-section">
+                    <h3>System Configuration</h3>
+                    <div class="settings-foldout" id="foldout-system">
+                        <div class="foldout-trigger" onclick="toggleSettingsFoldout('foldout-system')">
+                            <span>General Settings</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="foldout-content">
+                            <div class="foldout-content-inner">
+                                <div class="setting-item">
+                                    <div class="label-with-desc">
+                                        <label for="setting-open-browser">Auto-Open Dashboard</label>
+                                        <span class="setting-desc">Automatically open http://localhost:8000 in your
+                                            browser on system startup.</span>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="setting-open-browser" checked>
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- System Status Panel -->

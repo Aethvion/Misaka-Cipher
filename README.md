@@ -125,12 +125,8 @@ Multi-tiered memory architecture for learning and context retention.
 git clone https://github.com/Aethvion/Misaka-Cipher.git
 cd Misaka-Cipher
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure API keys
-cp .env.example .env
-# Edit .env and add at least GOOGLE_AI_API_KEY
+# Run automated setup
+python setup.py
 ```
 
 ### Launch Options

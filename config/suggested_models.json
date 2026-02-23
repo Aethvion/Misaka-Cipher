@@ -38,6 +38,19 @@
             "description": "Latest Gemini 2.5 Pro. Complex reasoning and architecture."
         },
         {
+            "id": "gemini-3-flash-preview",
+            "tier": "fast",
+            "capabilities": [
+                "chat",
+                "analysis",
+                "code_generation",
+                "complex_reasoning"
+            ],
+            "input_cost": 0.5,
+            "output_cost": 3,
+            "description": "Latest Gemini 3 Flash. Fast model for routine tasks and verification."
+        },
+        {
             "id": "imagen-3.0-generate-002",
             "tier": "specialized",
             "capabilities": [

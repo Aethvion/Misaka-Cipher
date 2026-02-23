@@ -90,21 +90,21 @@ git clone https://github.com/Aethvion/Misaka-Cipher.git
 cd Misaka-Cipher
 ```
 
-### Step 2: Install Dependencies
+### Step 2: Automated Setup
 
 ```bash
-pip install -r requirements.txt
+python setup.py
 ```
+
+This utility will:
+- Check your Python version (3.10+ required)
+- Install all necessary dependencies from `requirements.txt` (including Memory Tier)
+- Configure your `.env` file (creates from `.env.example` if missing)
+- Initialize required system directories
 
 ### Step 3: Configure API Keys
 
-Create a `.env` file in the root directory:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and add your API keys:
+Open the `.env` file in the root directory and add your API keys:
 
 ```env
 # Required: At least one provider
@@ -115,22 +115,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 GROK_API_KEY=your_grok_api_key_here
 ```
 
-**Getting API Keys:**
-
-- **Google AI (Recommended)**: [Google AI Studio](https://makersuite.google.com/app/apikey)
-  - Free tier available
-  - Gemini 2.0 Flash is excellent for most tasks
-  - Gemini 1.5 Pro for complex reasoning
-
-- **OpenAI (Optional)**: [OpenAI Platform](https://platform.openai.com/api-keys)
-  - Paid only, but very capable
-  - GPT-4o for premium tasks
-
-- **xAI Grok (Optional)**: [xAI Console](https://console.x.ai/)
-  - Grok-3 Mini Fast is cost-effective
-  - Good alternative provider
-
-### Step 4: Verify Installation
+### Step 4: Verify Installation (Optional)
 
 ```bash
 python main.py --test
