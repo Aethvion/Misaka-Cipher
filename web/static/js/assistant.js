@@ -115,6 +115,9 @@ document.addEventListener('DOMContentLoaded', () => {
         messagesArea.appendChild(div);
         scrollToBottom();
 
+        // Apply target emotion immediately so it shows before typing begins
+        setEmotion(finalEmotion);
+
         if (typingSpeed <= 0) {
             setEmotion(finalEmotion);
             if (asMarkdown && typeof marked !== 'undefined') {
@@ -134,7 +137,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Typing animation
         const isNegative = ['angry', 'crying', 'pout', 'error', 'exhausted'].includes(finalEmotion);
-        const talkingFaces = ['default', 'happy_closedeyes_smilewithteeth', 'happy_closedeyes_widesmile', 'thinking', 'wink'];
+        let talkingFaces = ['default', 'happy_closedeyes_smilewithteeth', 'happy_closedeyes_widesmile', 'thinking', 'wink'];
+
+        // If a specific positive/neutral emotion is requested, weight it heavily in the talking animation
+        if (!isNegative && finalEmotion !== 'default') {
+            talkingFaces = [finalEmotion, finalEmotion, finalEmotion, 'happy_closedeyes_smilewithteeth', 'happy_closedeyes_widesmile'];
+        }
 
         // Parse the Markdown to HTML *before* typing so we don't expose raw markdown syntax
         let parsedHTML = content;
