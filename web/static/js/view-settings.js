@@ -142,7 +142,7 @@ async function loadGlobalSettings() {
         const response = await fetch('/api/settings');
         const settings = await response.json();
 
-        // Recursively flatten or pick important ones? 
+        // Recursively flatten or pick important ones?
         // For simplicity, we'll render output_validation and system blocks
         let html = '';
 
@@ -166,9 +166,9 @@ async function loadGlobalSettings() {
                     groupHtml += `
                         <div class="compact-item">
                             <div class="item-label">${key.replace(/_/g, ' ')}</div>
-                            <input type="${typeof value === 'number' ? 'number' : 'text'}" 
-                                class="global-setting-input control-input-small" 
-                                data-key="${prefix ? prefix + '.' + key : key}" 
+                            <input type="${typeof value === 'number' ? 'number' : 'text'}"
+                                class="global-setting-input control-input-small"
+                                data-key="${prefix ? prefix + '.' + key : key}"
                                 value="${value}">
                         </div>
                     `;
@@ -340,17 +340,19 @@ async function loadProviderSettings() {
             fetch('/api/registry/suggested')
         ]);
 
-        if (!regRes.ok) throw new Error('Failed to load registry');
-        _registryData = await regRes.json();
+        if (regRes.ok) _registryData = await regRes.json();
         if (sugRes.ok) _suggestedModels = await sugRes.json();
 
-        renderProviderCards(_registryData);
-        renderProfiles();
+        if (_registryData) {
+            renderProviderCards(_registryData);
+            renderProfiles();
+        }
         initProfileCreationButtons();
         loadChatModels();
         clearSettingsDirty();
     } catch (error) {
-        console.error('Error loading provider settings:', error);
+        console.error('Failed to load registry:', error);
+        showNotification('Failed to load provider settings.', 'error');
     }
 }
 
@@ -438,24 +440,32 @@ function renderProviderCards(registry) {
                             <tr>
                                 <th>Model ID</th>
                                 <th>Cost (In/Out)</th>
+                                <th>Capabilities</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${Object.entries(config.models || {}).map(([key, m]) => `
-                                <tr>
-                                    <td><input type="text" class="model-id-input-small" value="${typeof m === 'string' ? m : m.id}" data-key="${key}"></td>
-                                    <td>
-                                        <div class="cost-inputs">
-                                            <input type="number" step="0.01" class="model-cost-in" value="${m.input_cost_per_1m_tokens || 0}">
-                                            <input type="number" step="0.01" class="model-cost-out" value="${m.output_cost_per_1m_tokens || 0}">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <button class="btn-icon xs-btn del-model" data-key="${key}"><i class="fas fa-trash"></i></button>
-                                    </td>
-                                </tr>
-                            `).join('')}
+                             ${Object.entries(config.models || {}).map(([key, m]) => {
+            const modelId = typeof m === 'string' ? m : (m.id || key);
+            const caps = Array.isArray(m.capabilities) ? m.capabilities.join(', ') : '';
+            return `
+                                    <tr>
+                                        <td><input type="text" class="model-id-input-small" value="${modelId}" data-key="${key}"></td>
+                                        <td>
+                                            <div class="cost-inputs">
+                                                <input type="number" step="0.01" class="model-cost-in" value="${m.input_cost_per_1m_tokens || 0}">
+                                                <input type="number" step="0.01" class="model-cost-out" value="${m.output_cost_per_1m_tokens || 0}">
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="model-caps-input" value="${caps}" placeholder="chat, vision...">
+                                        </td>
+                                        <td>
+                                            <button class="btn-icon xs-btn del-model" data-key="${key}"><i class="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                 `;
+        }).join('')}
                         </tbody>
                     </table>
                     <div class="add-model-line">
@@ -489,35 +499,7 @@ function renderProviderCards(registry) {
     });
 
     container.querySelectorAll('.add-model-btn').forEach(btn => {
-        btn.onclick = () => {
-            const providerName = btn.dataset.provider;
-            const tbody = btn.closest('.provider-models-foldout').querySelector('tbody');
-            const newKey = `model_${Date.now()}`;
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><input type="text" class="model-id-input-small" value="new-model-id" data-key="${newKey}"></td>
-                <td>
-                    <div class="cost-inputs">
-                        <input type="number" step="0.01" class="model-cost-in" value="0">
-                        <input type="number" step="0.01" class="model-cost-out" value="0">
-                    </div>
-                </td>
-                <td>
-                    <button class="btn-icon xs-btn del-model" data-key="${newKey}"><i class="fas fa-trash"></i></button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-
-            // Re-bind listeners for the new row
-            tr.querySelector('input').onchange = () => markSettingsDirty();
-            tr.querySelector('.del-model').onclick = () => {
-                tr.remove();
-                markSettingsDirty();
-            };
-
-            markSettingsDirty();
-        };
+        btn.onclick = () => openAddModelModal(btn.dataset.provider);
     });
 
     container.querySelectorAll('.del-model').forEach(btn => {
@@ -552,11 +534,14 @@ async function saveProviderSettings() {
             const newId = input.value;
             const costIn = parseFloat(row.querySelector('.model-cost-in').value);
             const costOut = parseFloat(row.querySelector('.model-cost-out').value);
+            const capsRaw = row.querySelector('.model-caps-input').value;
+            const capabilities = capsRaw.split(',').map(c => c.trim()).filter(c => c !== '');
 
             prov.models[key] = {
                 id: newId,
                 input_cost_per_1m_tokens: costIn,
-                output_cost_per_1m_tokens: costOut
+                output_cost_per_1m_tokens: costOut,
+                capabilities: capabilities
             };
         });
     });
@@ -570,10 +555,13 @@ async function saveProviderSettings() {
         if (res.ok) {
             clearSettingsDirty();
             loadChatModels();
-            alert('Settings saved successfully.');
+            showNotification('Settings saved successfully.', 'success');
+        } else {
+            showNotification('Failed to save settings.', 'error');
         }
     } catch (e) {
         console.error('Save failed:', e);
+        showNotification('Failed to save settings.', 'error');
     }
 }
 
@@ -589,14 +577,16 @@ function renderProfiles() {
         const dictToUse = dict || {};
         for (const [name, models] of Object.entries(dictToUse)) {
             html += `
-                <div class="compact-profile-item">
+                <div class="profile-compact-item" data-name="${name}" data-type="${type}">
                     <div class="profile-main">
                         <span class="profile-name">${name === 'default' ? '⭐ default' : name}</span>
-                        <div class="profile-models-badges">
+                        <div class="profile-badges">
                             ${models.map(m => `<span class="model-badge">${m.split('/').pop()}</span>`).join('')}
                         </div>
                     </div>
                     <div class="profile-actions">
+                        <button class="action-btn xs-btn secondary move-up" title="Move Up"><i class="fas fa-arrow-up"></i></button>
+                        <button class="action-btn xs-btn secondary move-down" title="Move Down"><i class="fas fa-arrow-down"></i></button>
                         <button class="action-btn xs-btn secondary edit-profile" data-name="${name}" data-type="${type}"><i class="fas fa-edit"></i></button>
                         ${name !== 'default' ? `<button class="action-btn xs-btn danger del-profile" data-name="${name}" data-type="${type}"><i class="fas fa-trash"></i></button>` : ''}
                     </div>
@@ -614,6 +604,12 @@ function renderProfiles() {
                     await deleteProfile(b.dataset.name, b.dataset.type);
                 }
             };
+        });
+        container.querySelectorAll('.move-up').forEach(b => {
+            b.onclick = () => moveProfile(b.closest('.profile-compact-item'), 'up');
+        });
+        container.querySelectorAll('.move-down').forEach(b => {
+            b.onclick = () => moveProfile(b.closest('.profile-compact-item'), 'down');
         });
     };
 
@@ -665,7 +661,7 @@ async function editProfile(name, type) {
     document.getElementById('save-profile-btn').onclick = async () => {
         const checked = Array.from(document.querySelectorAll('#profile-model-list input:checked')).map(i => i.value);
         if (checked.length === 0) {
-            alert('Please select at least one model.');
+            showNotification('Please select at least one model.', 'warning');
             return;
         }
 
@@ -692,6 +688,9 @@ async function saveRegistry() {
         if (res.ok) {
             renderProfiles();
             loadChatModels();
+            showNotification('Profiles updated successfully.', 'success');
+        } else {
+            showNotification('Failed to save profiles.', 'error');
         }
     } catch (e) {
         console.error('Failed to save registry:', e);
@@ -710,18 +709,150 @@ function initProfileCreationButtons() {
     }
 }
 
-function createNewProfile(type) {
-    const name = prompt(`Enter new ${type} profile name:`);
-    if (!name || !name.trim()) return;
+async function createNewProfile(type) {
+    const name = prompt(`Enter name for new ${type} profile:`);
+    if (!name) return;
 
-    const profiles = type === 'chat' ? _registryData.profiles.chat_profiles : _registryData.profiles.agent_profiles;
-    if (profiles[name]) {
-        alert('Profile already exists.');
+    if (!_registryData.profiles) _registryData.profiles = { chat_profiles: {}, agent_profiles: {} };
+    const dict = type === 'chat' ? _registryData.profiles.chat_profiles : _registryData.profiles.agent_profiles;
+
+    if (dict[name]) {
+        showNotification('Profile name already exists.', 'warning');
         return;
     }
 
-    profiles[name] = [];
+    dict[name] = [];
+    await saveRegistry();
+    renderProfiles();
     editProfile(name, type);
+}
+
+// ===== Enhanced Add Model Modal =====
+
+async function openAddModelModal(providerName) {
+    if (!_suggestedModels || !_registryData) return;
+
+    const providerSuggested = _suggestedModels[providerName] || [];
+    const providerExisting = _registryData.providers[providerName]?.models || {};
+
+    const html = `
+        <div class="modal-content add-model-modal">
+            <div class="modal-header">
+                <h3>Add Model to ${providerName}</h3>
+                <button class="icon-btn xs-btn" onclick="closeModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-group">
+                    <label>Select from Suggested Models</label>
+                    <select id="suggested-model-select" class="control-input">
+                        <option value="">-- Select or choose Custom --</option>
+                        ${providerSuggested.map(m => `
+                            <option value="${m.id}" data-cost-in="${m.cost?.input || 0}" data-cost-out="${m.cost?.output || 0}" data-caps="${(m.capabilities || []).join(',')}">
+                                ${m.id} (${m.tier || 'custom'})
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+                <div class="divider">OR</div>
+                <div class="setting-group">
+                    <label>Custom Model ID</label>
+                    <input type="text" id="custom-model-id" class="control-input" placeholder="e.g. gpt-4-turbo">
+                </div>
+                <div class="cost-row-grid">
+                    <div class="setting-group">
+                        <label>Input Cost ($/1M)</label>
+                        <input type="number" step="0.01" id="new-model-cost-in" class="control-input" value="0">
+                    </div>
+                    <div class="setting-group">
+                        <label>Output Cost ($/1M)</label>
+                        <input type="number" step="0.01" id="new-model-cost-out" class="control-input" value="0">
+                    </div>
+                </div>
+                 <div class="setting-group">
+                    <label>Capabilities (comma separated)</label>
+                    <input type="text" id="new-model-caps" class="control-input" placeholder="chat, vision, search...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="action-btn secondary" onclick="closeModal()">Cancel</button>
+                <button id="confirm-add-model" class="action-btn">Add Model</button>
+            </div>
+        </div>
+    `;
+
+    openCustomModal(html);
+
+    const select = document.getElementById('suggested-model-select');
+    const customInput = document.getElementById('custom-model-id');
+    const costIn = document.getElementById('new-model-cost-in');
+    const costOut = document.getElementById('new-model-cost-out');
+    const capsInput = document.getElementById('new-model-caps');
+
+    select.onchange = () => {
+        if (select.value) {
+            const opt = select.options[select.selectedIndex];
+            customInput.value = select.value;
+            costIn.value = opt.dataset.costIn;
+            costOut.value = opt.dataset.costOut;
+            capsInput.value = opt.dataset.caps;
+        }
+    };
+
+    document.getElementById('confirm-add-model').onclick = () => {
+        const modelId = customInput.value.trim();
+        if (!modelId) {
+            showNotification('Model ID is required.', 'warning');
+            return;
+        }
+
+        const modelEntry = {
+            id: modelId,
+            input_cost_per_1m_tokens: parseFloat(costIn.value) || 0,
+            output_cost_per_1m_tokens: parseFloat(costOut.value) || 0,
+            capabilities: capsInput.value.split(',').map(c => c.trim()).filter(c => c !== '')
+        };
+
+        // Add to registry data
+        if (!_registryData.providers[providerName].models) {
+            _registryData.providers[providerName].models = {};
+        }
+        _registryData.providers[providerName].models[modelId] = modelEntry;
+
+        closeModal();
+        markSettingsDirty();
+        renderProviderCards(_registryData);
+        showNotification(`Model ${modelId} added (unsaved).`, 'info');
+    };
+}
+
+// ===== Profile Reordering =====
+
+async function moveProfile(element, direction) {
+    const name = element.dataset.name;
+    const type = element.dataset.type;
+    const profiles = type === 'chat' ? _registryData.profiles.chat_profiles : _registryData.profiles.agent_profiles;
+
+    const keys = Object.keys(profiles);
+    const index = keys.indexOf(name);
+
+    if (direction === 'up' && index > 0) {
+        [keys[index], keys[index - 1]] = [keys[index - 1], keys[index]];
+    } else if (direction === 'down' && index < keys.length - 1) {
+        [keys[index], keys[index + 1]] = [keys[index + 1], keys[index]];
+    } else {
+        return; // Already at boundary
+    }
+
+    // Rebuild the profile object to maintain order
+    const newProfiles = {};
+    keys.forEach(k => newProfiles[k] = profiles[k]);
+
+    if (type === 'chat') _registryData.profiles.chat_profiles = newProfiles;
+    else _registryData.profiles.agent_profiles = newProfiles;
+
+    await saveRegistry();
+    renderProfiles();
+    showNotification('Profile order updated.', 'success');
 }
 
 // Global initialization
@@ -731,21 +862,30 @@ window.addEventListener('DOMContentLoaded', () => {
     initSettingsSubNav();
 });
 
-function initSettingsSubNav() {
+async function initSettingsSubNav() {
     const navItems = document.querySelectorAll('.settings-nav-item');
     navItems.forEach(item => {
-        item.onclick = () => {
+        item.onclick = async () => {
             const subTab = item.dataset.settingsubtab;
-            switchSettingsSubTab(subTab);
+            await switchSettingsSubTab(subTab);
         };
     });
 
-    // Restore active sub-tab
-    const savedSubTab = localStorage.getItem('active_settings_subtab') || 'assistant';
-    switchSettingsSubTab(savedSubTab);
+    // Restore active sub-tab from server
+    try {
+        const response = await fetch('/api/preferences/get?key=active_settings_subtab');
+        let savedSubTab = 'assistant';
+        if (response.ok) {
+            const data = await response.json();
+            if (data.value) savedSubTab = data.value;
+        }
+        switchSettingsSubTab(savedSubTab, false);
+    } catch (e) {
+        switchSettingsSubTab('assistant', false);
+    }
 }
 
-function switchSettingsSubTab(subTab) {
+async function switchSettingsSubTab(subTab, save = true) {
     // Update nav items
     document.querySelectorAll('.settings-nav-item').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.settingsubtab === subTab);
@@ -756,5 +896,7 @@ function switchSettingsSubTab(subTab) {
         panel.classList.toggle('active', panel.id === `settings-panel-${subTab}`);
     });
 
-    localStorage.setItem('active_settings_subtab', subTab);
+    if (save && typeof savePreference === 'function') {
+        savePreference('active_settings_subtab', subTab);
+    }
 }

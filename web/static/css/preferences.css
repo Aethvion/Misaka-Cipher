@@ -472,12 +472,103 @@
 }
 
 .model-badge {
-    font-size: 0.65rem;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 1px 6px;
+    background: rgba(0, 217, 255, 0.1);
+    color: var(--primary);
+    padding: 0.15rem 0.6rem;
     border-radius: 4px;
+    font-size: 0.7rem;
+    border: 1px solid rgba(0, 217, 255, 0.2);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+}
+
+.capability-tag {
+    background: rgba(255, 255, 255, 0.05);
     color: var(--text-secondary);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.1rem 0.5rem;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.capability-tag:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.capability-tag.editable {
+    cursor: pointer;
+}
+
+/* ===== Notifications ===== */
+.notification-container {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    pointer-events: none;
+}
+
+.toast {
+    background: var(--bg-secondary);
+    color: var(--text);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 280px;
+    transform: translateX(120%);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    pointer-events: auto;
+    backdrop-filter: blur(10px);
+}
+
+.toast.show {
+    transform: translateX(0);
+}
+
+.toast.success {
+    border-left-color: var(--success);
+}
+
+.toast.error {
+    border-left-color: var(--error);
+}
+
+.toast.warning {
+    border-left-color: var(--warning);
+}
+
+.toast.info {
+    border-left-color: var(--primary);
+}
+
+.toast-icon {
+    font-size: 1.2rem;
+}
+
+.toast-content {
+    flex: 1;
+    font-size: 0.9rem;
+}
+
+.toast-close {
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.toast-close:hover {
+    opacity: 1;
 }
 
 /* Provider Compact List */

@@ -1,4 +1,3 @@
-// Misaka Cipher - System Status & Roadmap View
 // Handles interacting with the System Status and Roadmap data
 
 async function loadHeaderStatus() {
@@ -135,6 +134,11 @@ async function loadSystemStatusTab() {
         html += renderSection('FEATURES', roadmap.features || roadmap.working, 'working');
         html += renderSection('WORK IN PROGRESS', roadmap.wip, 'wip');
         html += renderSection('PLANNED', roadmap.planned, 'planned');
+
+        if (!html) {
+            console.warn('[StatusTab] Roadmap HTML is empty!');
+            html = '<div class="placeholder-text">No roadmap data available.</div>';
+        }
 
         container.innerHTML = html;
 

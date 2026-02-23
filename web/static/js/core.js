@@ -8,19 +8,20 @@ let agentsWs = null;
 let currentMainTab = 'chat';
 let prevChatArenaMode = 'chat'; // Used to resume chat/arena
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     initializeWebSockets();
     const refreshMemory = document.getElementById('refresh-memory-btn');
     if (refreshMemory) refreshMemory.addEventListener('click', loadMemoryData);
 
     initializeUI();
     initDevMode();
-    loadInitialData();
+    await loadInitialData();
 
-    // Restore persisted tab
-    const savedTab = localStorage.getItem('active_tab');
-    if (savedTab) {
-        switchMainTab(savedTab, false);
+    // Restore persisted tab from server
+    const response = await fetch('/api/preferences/get?key=active_tab');
+    if (response.ok) {
+        const data = await response.json();
+        if (data.value) switchMainTab(data.value, false);
     }
 });
 
@@ -184,8 +185,7 @@ function initializeUI() {
 function switchMainTab(tabName, save = true) {
     currentMainTab = tabName;
     if (save) {
-        localStorage.setItem('active_tab', tabName);
-        if (typeof savePreference === 'function') savePreference('active_tab', tabName);
+        savePreference('active_tab', tabName);
     }
 
     // Update tab buttons
@@ -259,6 +259,20 @@ function updateChatLayout() {
     if (agentsCol) agentsCol.style.display = showAgents ? 'flex' : 'none';
     layout.style.gridTemplateColumns = showAgents ? '15% 1fr 20%' : '15% 1fr';
 }
+
+// ===== Common Utilities =====
+
+function formatNumber(n) {
+    return new Intl.NumberFormat().format(n);
+}
+
+function formatCost(v) {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v);
+}
+
+// Attach to window
+window.formatNumber = formatNumber;
+window.formatCost = formatCost;
 
 // ===== Initial Data Rendering =====
 async function loadInitialData() {
@@ -336,7 +350,51 @@ function generateCategorizedModelOptions(data, type = 'chat', selectedId = null)
 }
 
 
-// ===== Global Modal Handlers =====
+// ===== Global Modal & Notification Handlers =====
+
+/**
+ * Shows a toast notification.
+ * @param {string} message - The message to display.
+ * @param {string} type - The type of notification (success, error, warning, info).
+ * @param {number} duration - Duration in ms (default 3000).
+ */
+function showNotification(message, type = 'info', duration = 3000) {
+    const container = document.getElementById('notification-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+
+    let icon = 'info-circle';
+    if (type === 'success') icon = 'check-circle';
+    if (type === 'error') icon = 'exclamation-circle';
+    if (type === 'warning') icon = 'exclamation-triangle';
+
+    toast.innerHTML = `
+        <div class="toast-icon"><i class="fas fa-${icon}"></i></div>
+        <div class="toast-content">${message}</div>
+        <div class="toast-close"><i class="fas fa-times"></i></div>
+    `;
+
+    container.appendChild(toast);
+
+    // Fade in
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    const close = () => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    };
+
+    toast.querySelector('.toast-close').onclick = close;
+
+    if (duration > 0) {
+        setTimeout(close, duration);
+    }
+}
+
+// Attach to window for global access
+window.showNotification = showNotification;
 
 function openCustomModal(htmlContent) {
     let modalOverlay = document.getElementById('global-modal-overlay');

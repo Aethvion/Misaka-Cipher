@@ -1074,122 +1074,125 @@
                             </div>
                         </div>
                     </div>
+                </div> <!-- closes settings-content-wrapper -->
+            </div> <!-- closes settings-dashboard -->
+        </div> <!-- closes main-tab-panel (settings) -->
+
+        <!-- System Status Panel -->
+        <div class="main-tab-panel" id="status-panel">
+            <div class="panel-header borderless">
+                <h2 class="status-header-title">Status</h2>
+
+                <div class="status-meta">
+                    <span id="system-name-display" class="meta-primary">Misaka Cipher</span>
+                    <span class="status-divider">::</span>
+                    <span id="system-company-display" class="meta-primary">Aethvion</span>
+                    <span class="status-divider">::</span>
+                    <span id="system-version-display" class="meta-primary">v1.2.0</span>
+                </div>
+                <div class="status-meta" style="margin-top: 0.5rem;">
+                    <a href="#" id="system-contact-display" class="meta-primary"
+                        style="text-decoration: none; font-size: 0.8rem;"></a>
                 </div>
             </div>
 
-            <!-- System Status Panel -->
-            <div class="main-tab-panel" id="status-panel">
-                <div class="panel-header borderless">
-                    <h2 class="status-header-title">Status</h2>
-
-                    <div class="status-meta">
-                        <span id="system-name-display" class="meta-primary">Misaka Cipher</span>
-                        <span class="status-divider">::</span>
-                        <span id="system-company-display" class="meta-primary">Aethvion</span>
-                        <span class="status-divider">::</span>
-                        <span id="system-version-display" class="meta-primary">v1.2.0</span>
-                    </div>
-                    <div class="status-meta" style="margin-top: 0.5rem;">
-                        <a href="#" id="system-contact-display" class="meta-primary"
-                            style="text-decoration: none; font-size: 0.8rem;"></a>
-                    </div>
+            <div class="status-container">
+                <!-- Realtime Vitals Section -->
+                <div class="section-label">REALTIME VITALS <span class="live-indicator">● LIVE</span></div>
+                <div id="realtime-info-grid" class="status-telemetry-grid">
+                    <!-- Populated by JS (CPU, RAM, Agents, Nexus) -->
                 </div>
 
-                <div class="status-container">
-                    <!-- Realtime Vitals Section -->
-                    <div class="section-label">REALTIME VITALS <span class="live-indicator">● LIVE</span></div>
-                    <div id="realtime-info-grid" class="status-telemetry-grid">
-                        <!-- Populated by JS (CPU, RAM, Agents, Nexus) -->
-                    </div>
-
-                    <!-- Local System Info Section -->
-                    <div class="section-header-row">
-                        <div class="section-label">LOCAL SYSTEM INFO</div>
-                        <div class="local-meta-right">
-                            <span class="last-update" style="margin-right: 1rem;">LAST SYNC: <span
-                                    id="telemetry-last-sync">--</span></span>
-                            <button id="sync-telemetry-btn" class="icon-btn xs-btn" title="Sync Local Info"
-                                onclick="syncSystemTelemetry()">
-                                <i class="fas fa-sync"></i> Sync
-                            </button>
-                        </div>
-                    </div>
-                    <div id="local-info-grid" class="status-telemetry-grid">
-                        <!-- Populated by JS (Project Size, DB Size, Tools) -->
-                    </div>
-
-                    <!-- Features Checklist -->
-                    <div class="section-header-row">
-                        <div class="section-label" style="margin-bottom: 0;">ROADMAP & FEATURES</div>
-                        <div class="local-meta-right" style="display: flex; align-items: center; gap: 1rem;">
-                            <span class="last-update" style="margin-right: 0;">UPDATED: <span
-                                    id="status-last-update">--</span></span>
-                            <button id="roadmap-view-toggle" class="action-btn secondary xs-btn"
-                                onclick="toggleRoadmapView()" style="display: flex; gap: 0.4rem; align-items: center;">
-                                <i class="fas fa-list"></i> Detailed View
-                            </button>
-                        </div>
-                    </div>
-                    <div class="roadmap-tree">
-                        <!-- Roadmap items injected via JS -->
-                        <div class="loading-placeholder">Loading system status...</div>
+                <!-- Local System Info Section -->
+                <div class="section-header-row">
+                    <div class="section-label">LOCAL SYSTEM INFO</div>
+                    <div class="local-meta-right">
+                        <span class="last-update" style="margin-right: 1rem;">LAST SYNC: <span
+                                id="telemetry-last-sync">--</span></span>
+                        <button id="sync-telemetry-btn" class="icon-btn xs-btn" title="Sync Local Info"
+                            onclick="syncSystemTelemetry()">
+                            <i class="fas fa-sync"></i> Sync
+                        </button>
                     </div>
                 </div>
-            </div>
-    </main>
+                <div id="local-info-grid" class="status-telemetry-grid">
+                    <!-- Populated by JS (Project Size, DB Size, Tools) -->
+                </div>
 
-    <!-- Floating Misaka Cipher Assistant -->
-    <div id="misaka-assistant-container" class="misaka-assistant-container hidden">
-        <div id="misaka-avatar" class="misaka-avatar">
-            <img id="misaka-img" src="/static/images/misakacipher/misakacipher_default.png" alt="Misaka Cipher">
-        </div>
-        <div id="misaka-chat-window" class="misaka-dialog-window collapsed">
-            <div class="misaka-dialog-left">
-                <img id="misaka-img-dialog" src="/static/images/misakacipher/misakacipher_default.png"
-                    alt="Misaka Cipher Portrait">
-            </div>
-            <div class="misaka-dialog-right">
-                <div class="misaka-dialog-header">
-                    <span class="misaka-title">Misaka Cipher</span>
-                    <button id="misaka-close-btn" class="icon-btn xs-btn" title="Close"><i
-                            class="fas fa-times"></i></button>
+                <!-- Features Checklist -->
+                <div class="section-header-row">
+                    <div class="section-label" style="margin-bottom: 0;">ROADMAP & FEATURES</div>
+                    <div class="local-meta-right" style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="last-update" style="margin-right: 0;">UPDATED: <span
+                                id="status-last-update">--</span></span>
+                        <button id="roadmap-view-toggle" class="action-btn secondary xs-btn"
+                            onclick="toggleRoadmapView()" style="display: flex; gap: 0.4rem; align-items: center;">
+                            <i class="fas fa-list"></i> Detailed View
+                        </button>
+                    </div>
                 </div>
-                <div id="misaka-messages" class="misaka-dialog-messages">
-                    <div class="misaka-d-message system">Operations Core online. What do you need?</div>
-                </div>
-                <div class="misaka-dialog-input-area">
-                    <span class="user-prompt-indicator">></span>
-                    <input type="text" id="misaka-input" placeholder="Enter your command..." autocomplete="off">
-                    <button id="misaka-send-btn" class="send-button"><i class="fas fa-paper-plane"></i></button>
+                <div class="roadmap-tree">
+                    <!-- Roadmap items injected via JS -->
+                    <div class="loading-placeholder">Loading system status...</div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-    <script src="/static/lib/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="/static/js/threads.js?v=4"></script>
-    <!-- Core & State Management -->
-    <script src="/static/js/core.js?v=2"></script>
+        <!-- System Notifications -->
+        <div id="notification-container" class="notification-container"></div>
 
-    <!-- Views (Passive Data Renderers) -->
-    <script src="/static/js/view-files.js?v=1"></script>
-    <script src="/static/js/view-memory.js?v=1"></script>
-    <script src="/static/js/view-tools.js?v=1"></script>
-    <script src="/static/js/view-packages.js?v=1"></script>
-    <script src="/static/js/view-usage.js?v=1"></script>
-    <script src="/static/js/view-status.js?v=1"></script>
-    <script src="/static/js/view-settings.js?v=2"></script>
+        <!-- Floating Misaka Cipher Assistant -->
+        <div id="misaka-assistant-container" class="misaka-assistant-container hidden">
+            <div id="misaka-avatar" class="misaka-avatar">
+                <img id="misaka-img" src="/static/images/misakacipher/misakacipher_default.png" alt="Misaka Cipher">
+            </div>
+            <div id="misaka-chat-window" class="misaka-dialog-window collapsed">
+                <div class="misaka-dialog-left">
+                    <img id="misaka-img-dialog" src="/static/images/misakacipher/misakacipher_default.png"
+                        alt="Misaka Cipher Portrait">
+                </div>
+                <div class="misaka-dialog-right">
+                    <div class="misaka-dialog-header">
+                        <span class="misaka-title">Misaka Cipher</span>
+                        <button id="misaka-close-btn" class="icon-btn xs-btn" title="Close"><i
+                                class="fas fa-times"></i></button>
+                    </div>
+                    <div id="misaka-messages" class="misaka-dialog-messages">
+                        <div class="misaka-d-message system">Operations Core online. What do you need?</div>
+                    </div>
+                    <div class="misaka-dialog-input-area">
+                        <span class="user-prompt-indicator">></span>
+                        <input type="text" id="misaka-input" placeholder="Enter your command..." autocomplete="off">
+                        <button id="misaka-send-btn" class="send-button"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <!-- Modes (Active Interactive Panels) -->
-    <script src="/static/js/mode-image.js?v=1"></script>
-    <script src="/static/js/mode-arena.js?v=2"></script>
-    <script src="/static/js/mode-aiconv.js?v=2"></script>
-    <script src="/static/js/mode-adv-aiconv.js?v=3"></script>
-    <script src="/static/js/mode-chat.js?v=1"></script>
-    <script src="/static/js/assistant.js?v=1"></script>
+        <!-- Scripts -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+        <script src="/static/lib/marked.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+        <script src="/static/js/threads.js?v=4"></script>
+        <!-- Core & State Management -->
+        <script src="/static/js/core.js?v=2"></script>
+
+        <!-- Views (Passive Data Renderers) -->
+        <script src="/static/js/view-files.js?v=1"></script>
+        <script src="/static/js/view-memory.js?v=1"></script>
+        <script src="/static/js/view-tools.js?v=1"></script>
+        <script src="/static/js/view-packages.js?v=1"></script>
+        <script src="/static/js/view-usage.js?v=1"></script>
+        <script src="/static/js/view-status.js?v=1"></script>
+        <script src="/static/js/view-settings.js?v=2"></script>
+
+        <!-- Modes (Active Interactive Panels) -->
+        <script src="/static/js/mode-image.js?v=1"></script>
+        <script src="/static/js/mode-arena.js?v=2"></script>
+        <script src="/static/js/mode-aiconv.js?v=2"></script>
+        <script src="/static/js/mode-adv-aiconv.js?v=3"></script>
+        <script src="/static/js/mode-chat.js?v=1"></script>
+        <script src="/static/js/assistant.js?v=1"></script>
 </body>
 
 </html>
