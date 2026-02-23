@@ -196,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const err = await res.json();
                 appendMessage('system', `Error: ${err.detail || 'Failed to connect.'}`);
+                setEmotion('error');
                 // Don't save failed attempts to context
                 messageHistory.pop();
             }
@@ -204,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Assistant chat error:", error);
             removeTyping();
             appendMessage('system', 'Connection error. Is the server running?');
+            setEmotion('error');
             messageHistory.pop();
         }
 
