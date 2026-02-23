@@ -229,54 +229,14 @@ async function loadChatModels() {
         if (!res.ok) throw new Error('Failed to load chat models');
         const data = await res.json();
 
-        // 1. Group Profiles
-        let chatProfilesHtml = `<optgroup label="Chat Profiles">`;
-        chatProfilesHtml += `<option value="auto">Auto (Complexity Routing)</option>`;
-        for (const [pName, pList] of Object.entries(data.chat_profiles || {})) {
-            chatProfilesHtml += `<option value="profile:chat:${pName}">Profile: ${pName}</option>`;
-        }
-        chatProfilesHtml += `</optgroup>`;
-
-        let agentProfilesHtml = `<optgroup label="Agent Profiles">`;
-        agentProfilesHtml += `<option value="auto">Auto (Complexity Routing)</option>`;
-        for (const [pName, pList] of Object.entries(data.agent_profiles || {})) {
-            agentProfilesHtml += `<option value="profile:agent:${pName}">Profile: ${pName}</option>`;
-        }
-        agentProfilesHtml += `</optgroup>`;
-
-        // 2. Group Models by Provider Object
-        const categorizedModels = {};
-        for (const m of data.models || []) {
-            if (!categorizedModels[m.provider]) {
-                categorizedModels[m.provider] = [];
-            }
-            categorizedModels[m.provider].push(m);
-        }
-
-        let modelsHtml = '';
-        const providerOrder = ['google_ai', 'openai', 'anthropic', 'grok', 'local'];
-
-        for (const p of providerOrder) {
-            if (!categorizedModels[p] || categorizedModels[p].length === 0) continue;
-
-            // Capitalize Provider Name for UI
-            const readableName = p === 'google_ai' ? 'Google AI' : p === 'openai' ? 'OpenAI' : p.charAt(0).toUpperCase() + p.slice(1);
-            modelsHtml += `<optgroup label="${readableName}">`;
-
-            for (const m of categorizedModels[p]) {
-                const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
-                    ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
-                    : '';
-                const option = `<option value="${m.id}" title="${m.description || ''}">${m.id}${costHint}</option>`;
-                modelsHtml += option;
-            }
-            modelsHtml += `</optgroup>`;
-        }
+        // Use shared utility from core.js
+        const chatOptions = generateCategorizedModelOptions(data, 'chat');
+        const agentOptions = generateCategorizedModelOptions(data, 'agent');
 
         // Apply to Selects
         if (select) {
             const currentVal = select.value;
-            select.innerHTML = chatProfilesHtml + modelsHtml;
+            select.innerHTML = chatOptions;
             if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
                 select.value = currentVal;
             }
@@ -284,14 +244,14 @@ async function loadChatModels() {
 
         if (agentSelect) {
             const currentVal = agentSelect.value;
-            agentSelect.innerHTML = agentProfilesHtml + modelsHtml;
+            agentSelect.innerHTML = agentOptions;
             if (currentVal && agentSelect.querySelector(`option[value="${currentVal}"]`)) {
                 agentSelect.value = currentVal;
             }
         }
 
         if (assistantSelect) {
-            assistantSelect.innerHTML = chatProfilesHtml + modelsHtml;
+            assistantSelect.innerHTML = chatOptions;
             const prefModel = prefs.get('assistant.model', 'gemini-2.0-flash');
             if (assistantSelect.querySelector(`option[value="${prefModel}"]`)) {
                 assistantSelect.value = prefModel;
@@ -302,6 +262,7 @@ async function loadChatModels() {
         console.error('Error loading chat models:', err);
     }
 }
+
 
 // ===== Profiles UI Implementation =====
 

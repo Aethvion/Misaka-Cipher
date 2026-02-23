@@ -81,47 +81,32 @@ async function loadArenaModels() {
         const res = await fetch('/api/registry/models/chat');
         if (!res.ok) return;
         const data = await res.json();
-        arenaAvailableModels = data.models || [];
+
+        // Use shared utility from core.js
+        const chatOptions = generateCategorizedModelOptions(data, 'chat');
 
         // Populate add-model dropdown
         const addSelect = document.getElementById('arena-model-add');
         if (addSelect) {
-            let html = '<option value="">+ Add Model...</option>';
-            for (const m of arenaAvailableModels) {
-                const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
-                    ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
-                    : '';
-                html += `<option value="${m.id}" title="${m.description || ''}">${m.id}${costHint}</option>`;
-            }
-            addSelect.innerHTML = html;
+            addSelect.innerHTML = '<option value="">+ Add Model...</option>' + chatOptions;
         }
 
         // Pre-populate AI Conv dropdown
         const aiconvSelect = document.getElementById('aiconv-model-add');
         if (aiconvSelect) {
-            let html = '<option value="">+ Add Model...</option>';
-            for (const m of arenaAvailableModels) {
-                const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
-                    ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
-                    : '';
-                html += `<option value="${m.id}" title="${m.description || ''}">${m.id}${costHint}</option>`;
-            }
-            aiconvSelect.innerHTML = html;
+            aiconvSelect.innerHTML = '<option value="">+ Add Model...</option>' + chatOptions;
         }
 
         // Populate evaluator dropdown
         const evalSelect = document.getElementById('arena-evaluator');
         if (evalSelect) {
-            let html = '<option value="">No Evaluator</option>';
-            for (const m of arenaAvailableModels) {
-                html += `<option value="${m.id}">${m.id}</option>`;
-            }
-            evalSelect.innerHTML = html;
+            evalSelect.innerHTML = '<option value="">No Evaluator</option>' + chatOptions;
         }
     } catch (err) {
         console.error('Failed to load arena models:', err);
     }
 }
+
 
 function renderArenaChips() {
     const container = document.getElementById('arena-model-chips');

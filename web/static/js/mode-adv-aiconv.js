@@ -24,7 +24,7 @@ const btnAdvaiconvNewThread = document.getElementById('advaiconv-new-thread-btn'
 const titleAdvaiconvThread = document.getElementById('advaiconv-active-thread-title');
 
 let allThreads = [];
-let advaiconvAvailableModels = {}; // Grouped by provider
+let advaiconvRegistryData = null;
 
 async function initAdvaiconv() {
     await fetchAdvaiconvModels();
@@ -72,14 +72,7 @@ async function fetchAdvaiconvModels() {
     try {
         const res = await fetch('/api/registry/models/chat');
         if (!res.ok) return;
-        const data = await res.json();
-
-        advaiconvAvailableModels = {};
-        for (const m of data.models || []) {
-            const prov = m.provider || 'unknown';
-            if (!advaiconvAvailableModels[prov]) advaiconvAvailableModels[prov] = [];
-            advaiconvAvailableModels[prov].push(m);
-        }
+        advaiconvRegistryData = await res.json();
     } catch (e) {
         console.error("Failed to fetch models for Advaiconv", e);
     }
@@ -221,17 +214,8 @@ async function renameAdvaiconvThread() {
 window.renameAdvaiconvThread = renameAdvaiconvThread;
 
 function generateModelOptionsHtml(selectedModelId) {
-    if (Object.keys(advaiconvAvailableModels).length === 0) return '<option value="">auto</option>';
-    let html = '';
-    for (const [provider, models] of Object.entries(advaiconvAvailableModels)) {
-        html += `<optgroup label="${provider}">`;
-        for (const m of models) {
-            const s = m.id === selectedModelId ? 'selected' : '';
-            html += `<option value="${m.id}" ${s}>${m.id}</option>`;
-        }
-        html += `</optgroup>`;
-    }
-    return html;
+    if (!advaiconvRegistryData) return '<option value="auto">auto</option>';
+    return generateCategorizedModelOptions(advaiconvRegistryData, 'chat', selectedModelId);
 }
 
 async function addPersonaToActive(personId) {
@@ -271,11 +255,8 @@ function renderActivePersonChips() {
         if (!p.selectedModel && p.model) {
             p.selectedModel = p.model;
         }
-        if (!p.selectedModel && Object.keys(advaiconvAvailableModels).length > 0) {
-            const firstProv = Object.keys(advaiconvAvailableModels)[0];
-            if (firstProv && advaiconvAvailableModels[firstProv].length > 0) {
-                p.selectedModel = advaiconvAvailableModels[firstProv][0].id;
-            }
+        if (!p.selectedModel && advaiconvRegistryData && advaiconvRegistryData.models && advaiconvRegistryData.models.length > 0) {
+            p.selectedModel = advaiconvRegistryData.models[0].id;
         }
 
         const modelsHtml = generateModelOptionsHtml(p.selectedModel);

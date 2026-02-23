@@ -270,6 +270,63 @@ async function loadInitialData() {
     if (typeof loadHeaderStatus === 'function') setInterval(loadHeaderStatus, 15000);
 }
 
+// ===== Common UI Utilities =====
+
+/**
+ * Generates HTML options string for a categorized model dropdown.
+ * @param {Object} data The registry data from /api/registry/models/{category}
+ * @param {String} type 'chat' or 'agent' for profile selection
+ * @param {String} selectedId Optional ID to mark as selected
+ * @returns {String} HTML string of <optgroup> and <option> tags
+ */
+function generateCategorizedModelOptions(data, type = 'chat', selectedId = null) {
+    if (!data) return '';
+
+    // 1. Group Profiles
+    let profilesHtml = `<optgroup label="${type === 'chat' ? 'Chat' : 'Agent'} Profiles">`;
+    const autoSelected = (selectedId === 'auto' || !selectedId) ? 'selected' : '';
+    profilesHtml += `<option value="auto" ${autoSelected}>Auto (Complexity Routing)</option>`;
+
+    const profiles = type === 'chat' ? (data.chat_profiles || {}) : (data.agent_profiles || {});
+    for (const [pName, pList] of Object.entries(profiles)) {
+        const val = `profile:${type}:${pName}`;
+        const s = val === selectedId ? 'selected' : '';
+        profilesHtml += `<option value="${val}" ${s}>Profile: ${pName}</option>`;
+    }
+    profilesHtml += `</optgroup>`;
+
+    // 2. Group Models by Provider
+    const categorizedModels = {};
+    for (const m of data.models || []) {
+        if (!categorizedModels[m.provider]) {
+            categorizedModels[m.provider] = [];
+        }
+        categorizedModels[m.provider].push(m);
+    }
+
+    let modelsHtml = '';
+    const providerOrder = ['google_ai', 'openai', 'anthropic', 'grok', 'local'];
+
+    for (const p of providerOrder) {
+        if (!categorizedModels[p] || categorizedModels[p].length === 0) continue;
+
+        const readableName = p === 'google_ai' ? 'Google AI' : p === 'openai' ? 'OpenAI' : p.charAt(0).toUpperCase() + p.slice(1);
+        modelsHtml += `<optgroup label="${readableName}">`;
+
+        for (const m of categorizedModels[p]) {
+            const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
+                ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
+                : '';
+            const s = m.id === selectedId ? 'selected' : '';
+            modelsHtml += `<option value="${m.id}" title="${m.description || ''}" ${s}>${m.id}${costHint}</option>`;
+        }
+        modelsHtml += `</optgroup>`;
+    }
+
+    return profilesHtml + modelsHtml;
+}
+
+
 // ===== Global Modal Handlers =====
 
 function openCustomModal(htmlContent) {
