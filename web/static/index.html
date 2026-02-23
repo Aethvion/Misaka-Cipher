@@ -210,15 +210,8 @@
                                     <i class="fas fa-plus"></i>
                                 </button>
 
-                                <select id="model-select" class="control-select" title="Select Model">
-                                    <option value="auto">Model: Auto</option>
-                                </select>
-
-                                <select id="agent-select" class="control-select" title="Select Agent Profile">
-                                    <option value="auto">Agent: Auto</option>
-                                    <option value="researcher">Researcher</option>
-                                    <option value="coder">Coder</option>
-                                    <option value="creative">Creative</option>
+                                <select id="model-select" class="control-select" title="Select Chat Profile / Model">
+                                    <option value="auto">Auto</option>
                                 </select>
                             </div>
 
@@ -997,10 +990,42 @@
                     </div>
                 </div>
 
-                <div class="setting-group">
+                <div class="setting-group profiles-section">
+                    <h3>Chat Profiles Configuration</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                        Create custom fallback priority lists for Chat operations. The first available and healthy model
+                        in the list will be used.
+                    </p>
+
+                    <div id="chat-profiles-container" class="profiles-container">
+                        <div class="loading-placeholder">Loading Chat Profiles...</div>
+                    </div>
+
+                    <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                        <button id="add-chat-profile-btn" class="action-btn secondary">+ Add Chat Profile</button>
+                    </div>
+                </div>
+
+                <div class="setting-group profiles-section">
+                    <h3>Agent Profiles Configuration</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                        Create custom fallback priority lists for Agent executions. The first available and healthy
+                        model in the list will be used.
+                    </p>
+
+                    <div id="agent-profiles-container" class="profiles-container">
+                        <div class="loading-placeholder">Loading Agent Profiles...</div>
+                    </div>
+
+                    <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                        <button id="add-agent-profile-btn" class="action-btn secondary">+ Add Agent Profile</button>
+                    </div>
+                </div>
+
+                <div class="setting-group providers-section">
                     <h3>Provider Settings</h3>
                     <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
-                        Configure AI providers, priorities, and retry budgets per step. Saved to
+                        Configure AI providers and endpoint settings. Enable or disable entire providers here. Saved to
                         <code>model_registry.json</code>.
                     </p>
 

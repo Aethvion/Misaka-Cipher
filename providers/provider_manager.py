@@ -76,42 +76,26 @@ class ProviderManager:
             
             registry_providers = registry.get('providers', {})
             
-            self.chat_priority_order = []
-            self.agent_priority_order = []
-            
-            # Temporary lists for sorting
-            chat_providers = []
-            agent_providers = []
-            
             self.model_to_provider_map = {}
             
             for name, reg_config in registry_providers.items():
                 if name in self.config:
-                    # Parse Chat Config
-                    chat_config = reg_config.get('chat_config', {})
-                    if chat_config.get('active', False):
-                        chat_providers.append((name, chat_config.get('priority', 99)))
-                        
-                    # Parse Agent Config
-                    agent_config = reg_config.get('agent_config', {})
-                    if agent_config.get('active', False):
-                        agent_providers.append((name, agent_config.get('priority', 99)))
-
                     # Build Model Map
                     models = reg_config.get('models', {})
-                    for model_key, model_data in models.items():
-                        model_id = model_data.get('id')
+                    for model_id, model_data in models.items():
                         if model_id:
                             self.model_to_provider_map[model_id] = name
 
-                    logger.info(f"Loaded registry overrides for {name}")
+                    logger.info(f"Loaded registry models for {name}")
             
-            # Sort and store
-            chat_providers.sort(key=lambda x: x[1])
-            self.chat_priority_order = [p[0] for p in chat_providers]
+            # Load Profiles
+            profiles = registry.get('profiles', {})
+            chat_profiles = profiles.get('chat_profiles', {})
+            agent_profiles = profiles.get('agent_profiles', {})
             
-            agent_providers.sort(key=lambda x: x[1])
-            self.agent_priority_order = [p[0] for p in agent_providers]
+            # Default profiles
+            self.chat_priority_order = chat_profiles.get('default', [])
+            self.agent_priority_order = agent_profiles.get('default', [])
             
             logger.info(f"Chat Priority: {self.chat_priority_order}")
             logger.info(f"Agent Priority: {self.agent_priority_order}")
@@ -119,8 +103,8 @@ class ProviderManager:
         except Exception as e:
             logger.error(f"Failed to load model registry overrides: {str(e)}")
             # Fallback to default behavior if failed
-            self.chat_priority_order = self.priority_order
-            self.agent_priority_order = self.priority_order
+            self.chat_priority_order = []
+            self.agent_priority_order = []
 
     def reload_config(self):
         """Reload configuration from disk and update active providers."""
@@ -216,118 +200,130 @@ class ProviderManager:
         **kwargs
     ) -> ProviderResponse:
         """
-        Call providers with automatic failover.
-        
-        Args:
-            prompt: Input prompt
-            trace_id: Trace ID for this request
-            temperature: Sampling temperature
-            max_tokens: Maximum tokens to generate
-            preferred_provider: Preferred provider to try first
-            model: Specific model ID to use (overrides ALL routing)
-            request_type: "generation" (Chat) or "agent_call" (Agent)
-            **kwargs: Additional provider-specific parameters
-            
-        Returns:
-            ProviderResponse from first successful provider
+        Call providers with automatic failover and profile-based routing.
         """
-        provider_order = []
-        
-        # 1. Specific Model Override
-        if model and model != "auto":
-            # Find which provider owns this model
-            # This is a bit inefficient, we might want a reverse lookup map later.
-            target_provider_name = None
-            
-            # Check registry first (if loaded)
-            # We don't have direct access to registry dict here easily without reloading.
-            # Let's check instantiated providers.
-            pass # We'll do it inside loop or map it.
-            
-            # Temporary Hack: Hardcoded mapping or search?
-            # Better: Provider classes should know their models?
-            # Or we look at config.
-            
-            # Let's try to find provider for the model
-            found_provider_name = None
-            for p_name, p_instance in self.providers.items():
-                # This check depends on provider implementation
-                # BaseProvider doesn't have list of models.
-                # But we can try to guess or use the registry if we cached it.
-                # For now, let's look at `model_registry.json` again? No, too slow.
-                # Let's assume we can pass the provider name if known, OR
-                # we iterate all providers and see who claims it?
-                pass
+        model_order = []
+        is_agent = request_type == "agent_call" or "agent" in request_type
 
-            # Update: The frontend sends model ID (e.g., 'gemini-2.0-flash').
-            # We need to find the provider for this ID.
-            # We'll reload registry map for lookup or cache it in __init__
-            # For now, let's just cheat and look at known prefixes or reload registry lightly?
-            # No, let's cache registry mapping in _load_registry_overrides.
+        # 1. Profile Routing & Specific Models
+        if model:
+            if model == "auto":
+                # Auto Complexity Routing
+                prompt_length = len(prompt)
+                is_complex = prompt_length > 2000 or "analyze" in prompt.lower() or "code" in prompt.lower()
+                
+                logger.info(f"[{trace_id}] AUTO mode selected. Complexity heuristic: {'COMPLEX' if is_complex else 'SIMPLE'}")
+                
+                # Fetch profiles dictionary
+                profiles = {}
+                if hasattr(self, 'registry') and isinstance(self.registry, dict):
+                    profiles = self.registry.get('profiles', {})
+                
+                if is_agent:
+                    agent_profiles = profiles.get('agent_profiles', {})
+                    if is_complex and 'complex' in agent_profiles:
+                        model_order = agent_profiles['complex'].copy()
+                    elif not is_complex and 'fast' in agent_profiles:
+                        model_order = agent_profiles['fast'].copy()
+                    else:
+                        model_order = self.agent_priority_order.copy()
+                else:
+                    chat_profiles = profiles.get('chat_profiles', {})
+                    if is_complex and 'complex' in chat_profiles:
+                        model_order = chat_profiles['complex'].copy()
+                    elif not is_complex and 'fast' in chat_profiles:
+                        model_order = chat_profiles['fast'].copy()
+                    else:
+                        model_order = self.chat_priority_order.copy()
             
-            if hasattr(self, 'model_to_provider_map'):
-                 target_provider_name = self.model_to_provider_map.get(model)
-            
-            if target_provider_name and target_provider_name in self.providers:
-                provider_order = [target_provider_name]
-                logger.info(f"[{trace_id}] Model '{model}' forced provider: {target_provider_name}")
+            elif model.startswith("profile:"):
+                # Profile selected from UI dropdown (e.g., profile:chat:default)
+                parts = model.split(":")
+                if len(parts) >= 3:
+                    p_type, p_name = parts[1], parts[2]
+                    profiles = {}
+                    if hasattr(self, 'registry') and isinstance(self.registry, dict):
+                        profiles = self.registry.get('profiles', {})
+                    
+                    target_dict = profiles.get(f"{p_type}_profiles", {})
+                    if p_name in target_dict:
+                        model_order = target_dict[p_name].copy()
+                        logger.info(f"[{trace_id}] Using Profile '{p_name}' ({p_type}): {model_order}")
+                    else:
+                        logger.warning(f"[{trace_id}] Requested profile '{p_name}' not found. Falling back to default.")
             else:
-                logger.warning(f"[{trace_id}] Model '{model}' not found in map, falling back to auto")
+                # Specific Model Override
+                model_order = [model]
+                logger.info(f"[{trace_id}] Specific Model requested: {model}")
         
-        # 2. Select Priority List based on Type
-        if not provider_order:
-            if request_type == "agent_call" or "agent" in request_type:
-                provider_order = self.agent_priority_order.copy()
-                logger.info(f"[{trace_id}] Using AGENT priority: {provider_order}")
+        # 2. Select Default Priority List if nothing else matched
+        if not model_order:
+            if is_agent:
+                model_order = self.agent_priority_order.copy()
+                logger.info(f"[{trace_id}] Using DEFAULT AGENT priority: {model_order}")
             else:
-                provider_order = self.chat_priority_order.copy()
-                logger.info(f"[{trace_id}] Using CHAT priority: {provider_order}")
+                model_order = self.chat_priority_order.copy()
+                logger.info(f"[{trace_id}] Using DEFAULT CHAT priority: {model_order}")
         
-        # 3. Apply Preferred Provider (if valid and in order)
-        if preferred_provider and preferred_provider in provider_order:
-            provider_order.remove(preferred_provider)
-            provider_order.insert(0, preferred_provider)
-            
+        # Ensure we have something
+        if not model_order:
+             logger.error(f"[{trace_id}] CRITICAL: No model routing order could be established.")
+             return ProviderResponse(
+                 content="", model="none", provider="none", trace_id=trace_id, 
+                 error="No model routing configured."
+             )
+
         last_error = None
         
-        # Check if ALL providers in the order are OFFLINE - if so, reset them
+        # Check if ALL mapped providers in the order are OFFLINE - if so, reset them
         # This prevents permanent lockout from temporary failures
+        mapped_providers = [
+            self.model_to_provider_map.get(m) for m in model_order 
+            if hasattr(self, 'model_to_provider_map')
+        ]
+        
         all_offline = all(
             self.providers.get(name) and self.providers[name].status == ProviderStatus.OFFLINE
-            for name in provider_order
-            if self.providers.get(name)
+            for name in mapped_providers
+            if name
         )
-        if all_offline and provider_order:
-            logger.warning(f"[{trace_id}] All providers are OFFLINE, resetting status to retry")
-            for name in provider_order:
+        if all_offline and mapped_providers:
+            logger.warning(f"[{trace_id}] All requested providers are OFFLINE, resetting status to retry")
+            for name in mapped_providers:
+                if not name: continue
                 provider = self.providers.get(name)
                 if provider:
                     provider._consecutive_failures = 0
                     provider._status = ProviderStatus.HEALTHY
         
-        # Try each provider in order
-        for provider_name in provider_order:
-            provider = self.providers.get(provider_name)
+        # Try each model in order
+        for model_id in model_order:
+            target_provider_name = None
+            if hasattr(self, 'model_to_provider_map'):
+                target_provider_name = self.model_to_provider_map.get(model_id)
+            
+            if not target_provider_name:
+                logger.warning(f"[{trace_id}] Skipping model '{model_id}', no mapped provider found.")
+                continue
+                
+            provider = self.providers.get(target_provider_name)
             if not provider:
                 continue
             
             # Skip if provider is offline
             if provider.status == ProviderStatus.OFFLINE:
-                logger.warning(f"[{trace_id}] Skipping offline provider: {provider_name}")
+                logger.warning(f"[{trace_id}] Skipping offline provider: {target_provider_name}")
                 continue
             
-            logger.info(f"[{trace_id}] Attempting request with provider: {provider_name}")
+            logger.info(f"[{trace_id}] Attempting request with model: {model_id} via {target_provider_name}")
             
             try:
-                # If a specific model was requested, pass it
-                current_model = model if (model and model != "auto") else None
-                
                 response = provider.generate(
                     prompt=prompt,
                     trace_id=trace_id,
                     temperature=temperature,
                     max_tokens=max_tokens,
-                    model=current_model, # Pass specific model if set
+                    model=model_id, # Pass specific model
                     **kwargs
                 )
                 
@@ -355,11 +351,11 @@ class ProviderManager:
                     return response
                 
                 last_error = response.error
-                logger.warning(f"[{trace_id}] Provider {provider_name} returned error: {last_error}")
+                logger.warning(f"[{trace_id}] Provider {target_provider_name} returned error: {last_error}")
                 
             except Exception as e:
                 last_error = str(e)
-                logger.error(f"[{trace_id}] Provider {provider_name} raised exception: {last_error}")
+                logger.error(f"[{trace_id}] Provider {target_provider_name} raised exception: {last_error}")
         
         # All providers failed
         logger.error(f"[{trace_id}] All providers failed. Last error: {last_error}")
@@ -403,14 +399,16 @@ class ProviderManager:
         }
 
     def get_global_max_retries(self) -> int:
-        """Get the maximum retries from the highest priority active provider."""
-        # Check Agent priority first as this is usually called by Factory
+        """Get the maximum retries from the primary provider."""
+        primary_model = None
         if hasattr(self, 'agent_priority_order') and self.agent_priority_order:
-             primary = self.agent_priority_order[0]
-             return self.config.get(primary, {}).get('max_retries', 3)
+             primary_model = self.agent_priority_order[0]
+        elif hasattr(self, 'chat_priority_order') and self.chat_priority_order:
+             primary_model = self.chat_priority_order[0]
              
-        if hasattr(self, 'chat_priority_order') and self.chat_priority_order:
-             primary = self.chat_priority_order[0]
-             return self.config.get(primary, {}).get('max_retries', 3)
-             
+        if primary_model and hasattr(self, 'model_to_provider_map'):
+             primary_provider = self.model_to_provider_map.get(primary_model)
+             if primary_provider:
+                 return self.config.get(primary_provider, {}).get('max_retries', 3)
+                 
         return 3

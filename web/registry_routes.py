@@ -324,10 +324,8 @@ async def get_chat_models():
 
         for provider_name, config in registry.get("providers", {}).items():
             models = config.get("models", {})
-            for model_key, model_info in models.items():
+            for model_id, model_info in models.items():
                 if isinstance(model_info, str):
-                    # Legacy format: just a model ID string
-                    chat_models.append({"id": model_info, "provider": provider_name})
                     continue
 
                 capabilities = model_info.get("capabilities", [])
@@ -336,7 +334,7 @@ async def get_chat_models():
                     continue
 
                 chat_models.append({
-                    "id": model_info.get("id", model_key),
+                    "id": model_info.get("id", model_id),
                     "provider": provider_name,
                     "capabilities": capabilities,
                     "input_cost_per_1m_tokens": model_info.get("input_cost_per_1m_tokens", 0),
@@ -344,9 +342,19 @@ async def get_chat_models():
                     "description": model_info.get("description", model_info.get("notes", "")),
                 })
 
+        # Add profile groups
+        profiles = registry.get("profiles", {})
+        chat_profiles = profiles.get("chat_profiles", {})
+        agent_profiles = profiles.get("agent_profiles", {})
+
         # Sort by model ID
         chat_models.sort(key=lambda m: m["id"])
-        return {"models": chat_models}
+        
+        return {
+            "models": chat_models, 
+            "chat_profiles": chat_profiles,
+            "agent_profiles": agent_profiles
+        }
     except Exception as e:
         logger.error(f"Failed to get chat models: {e}")
         raise HTTPException(status_code=500, detail=str(e))

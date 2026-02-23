@@ -190,6 +190,9 @@ async function loadProviderSettings() {
         }
 
         renderProviderCards(_registryData);
+        renderProfiles();
+        initProfileCreationButtons();
+
         loadChatModels();
         clearSettingsDirty();
     } catch (error) {
@@ -202,37 +205,78 @@ async function loadProviderSettings() {
 async function loadChatModels() {
     const select = document.getElementById('model-select');
     const assistantSelect = document.getElementById('setting-assistant-model');
+    const agentSelect = document.getElementById('agent-model-select');
 
-    if (!select && !assistantSelect) return;
+    if (!select && !assistantSelect && !agentSelect) return;
 
-    const currentVal = select ? select.value : null;
     try {
         const res = await fetch('/api/registry/models/chat');
         if (!res.ok) throw new Error('Failed to load chat models');
         const data = await res.json();
 
-        let html = '<option value="auto">Model: Auto</option>';
-        let assistantHtml = '';
+        // 1. Group Profiles
+        let chatProfilesHtml = `<optgroup label="Chat Profiles">`;
+        chatProfilesHtml += `<option value="auto">Auto (Complexity Routing)</option>`;
+        for (const [pName, pList] of Object.entries(data.chat_profiles || {})) {
+            chatProfilesHtml += `<option value="profile:chat:${pName}">Profile: ${pName}</option>`;
+        }
+        chatProfilesHtml += `</optgroup>`;
 
+        let agentProfilesHtml = `<optgroup label="Agent Profiles">`;
+        agentProfilesHtml += `<option value="auto">Auto (Complexity Routing)</option>`;
+        for (const [pName, pList] of Object.entries(data.agent_profiles || {})) {
+            agentProfilesHtml += `<option value="profile:agent:${pName}">Profile: ${pName}</option>`;
+        }
+        agentProfilesHtml += `</optgroup>`;
+
+        // 2. Group Models by Provider Object
+        const categorizedModels = {};
         for (const m of data.models || []) {
-            const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
-                ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
-                : '';
-            const option = `<option value="${m.id}" title="${m.description || ''}">${m.id}${costHint}</option>`;
-            html += option;
-            assistantHtml += option;
+            if (!categorizedModels[m.provider]) {
+                categorizedModels[m.provider] = [];
+            }
+            categorizedModels[m.provider].push(m);
         }
 
+        let modelsHtml = '';
+        const providerOrder = ['google_ai', 'openai', 'anthropic', 'grok', 'local'];
+
+        for (const p of providerOrder) {
+            if (!categorizedModels[p] || categorizedModels[p].length === 0) continue;
+
+            // Capitalize Provider Name for UI
+            const readableName = p === 'google_ai' ? 'Google AI' : p === 'openai' ? 'OpenAI' : p.charAt(0).toUpperCase() + p.slice(1);
+            modelsHtml += `<optgroup label="${readableName}">`;
+
+            for (const m of categorizedModels[p]) {
+                const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
+                    ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
+                    : '';
+                const option = `<option value="${m.id}" title="${m.description || ''}">${m.id}${costHint}</option>`;
+                modelsHtml += option;
+            }
+            modelsHtml += `</optgroup>`;
+        }
+
+        // Apply to Selects
         if (select) {
-            select.innerHTML = html;
+            const currentVal = select.value;
+            select.innerHTML = chatProfilesHtml + modelsHtml;
             if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
                 select.value = currentVal;
             }
         }
 
+        if (agentSelect) {
+            const currentVal = agentSelect.value;
+            agentSelect.innerHTML = agentProfilesHtml + modelsHtml;
+            if (currentVal && agentSelect.querySelector(`option[value="${currentVal}"]`)) {
+                agentSelect.value = currentVal;
+            }
+        }
+
         if (assistantSelect) {
-            assistantSelect.innerHTML = assistantHtml;
-            // Set value from preferences
+            assistantSelect.innerHTML = chatProfilesHtml + modelsHtml;
             const prefModel = prefs.get('assistant.model', 'gemini-2.0-flash');
             if (assistantSelect.querySelector(`option[value="${prefModel}"]`)) {
                 assistantSelect.value = prefModel;
@@ -241,6 +285,224 @@ async function loadChatModels() {
 
     } catch (err) {
         console.error('Error loading chat models:', err);
+    }
+}
+
+// ===== Profiles UI Implementation =====
+
+function renderProfiles() {
+    if (!_registryData) return;
+    const profilesObj = _registryData.profiles || { chat_profiles: {}, agent_profiles: {} };
+
+    _renderProfileBlock('chat-profiles-container', 'chat', profilesObj.chat_profiles);
+    _renderProfileBlock('agent-profiles-container', 'agent', profilesObj.agent_profiles);
+}
+
+function _renderProfileBlock(containerId, type, profilesDict) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (!profilesDict || Object.keys(profilesDict).length === 0) {
+        container.innerHTML = '<div class="placeholder-text" style="padding: 1rem;">No profiles configured. Valid fallback is required for Auto mode.</div>';
+        return;
+    }
+
+    let html = '';
+    for (const [pName, modelList] of Object.entries(profilesDict)) {
+        // Build model list items
+        let listHtml = '';
+        if (modelList.length === 0) {
+            listHtml = '<li class="placeholder-text" style="font-size:0.8rem; padding:4px;">Empty profile. Add models to define fallback priority.</li>';
+        } else {
+            modelList.forEach((modelId, idx) => {
+                listHtml += `
+                    <li class="profile-model-item" draggable="true" data-profile="${pName}" data-type="${type}" data-idx="${idx}">
+                        <span class="drag-handle">≡</span>
+                        <span class="model-id-label">${modelId}</span>
+                        <button class="btn-icon remove-model-btn" title="Remove from profile" data-profile="${pName}" data-type="${type}" data-idx="${idx}">x</button>
+                    </li>
+                `;
+            });
+        }
+
+        // Build Add Model Dropdown built from categorized models
+        let addOptions = '<option value="">+ Add Model to Profile</option>';
+        const categorizedModels = _getCategorizedModelsForSelect();
+        for (const [providerName, models] of Object.entries(categorizedModels)) {
+            addOptions += `<optgroup label="${providerName.toUpperCase()}">`;
+            models.forEach(m => {
+                addOptions += `<option value="${m.id}">${m.id}</option>`;
+            });
+            addOptions += `</optgroup>`;
+        }
+
+        html += `
+            <div class="profile-card" data-profile="${pName}" data-type="${type}">
+                <div class="profile-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <h4 style="margin:0; text-transform:capitalize;">
+                        ${pName === 'default' ? '⭐ Default (Auto)' : pName}
+                    </h4>
+                    ${pName !== 'default' ? `<button class="btn-icon delete-profile-btn" data-profile="${pName}" data-type="${type}" title="Delete Profile">🗑️</button>` : ''}
+                </div>
+                <div class="profile-body" style="padding: 10px; background: rgba(0,0,0,0.1); border-radius: 4px; border: 1px solid var(--border);">
+                    <ul class="profile-model-list" style="list-style:none; padding:0; margin:0 0 10px 0; min-height:30px;">
+                        ${listHtml}
+                    </ul>
+                    <div style="display:flex; gap:10px;">
+                        <select class="control-select add-model-to-profile-select" data-profile="${pName}" data-type="${type}" style="flex:1;">
+                            ${addOptions}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    container.innerHTML = html;
+    _attachProfileListeners(container, type);
+}
+
+function _getCategorizedModelsForSelect() {
+    if (!_registryData) return {};
+    const categorized = {};
+    for (const [pName, pConfig] of Object.entries(_registryData.providers || {})) {
+        if (!pConfig.models) continue;
+        categorized[pName] = [];
+        for (const [modelKey, modelObj] of Object.entries(pConfig.models)) {
+            let id = typeof modelObj === 'string' ? modelObj : modelObj.id;
+            categorized[pName].push({ id });
+        }
+    }
+    return categorized;
+}
+
+function _attachProfileListeners(container, type) {
+    // Delete Profile
+    container.querySelectorAll('.delete-profile-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const pName = e.target.dataset.profile;
+            if (confirm(`Delete profile '${pName}'?`)) {
+                delete _registryData.profiles[`${type}_profiles`][pName];
+                markSettingsDirty();
+                renderProfiles();
+            }
+        });
+    });
+
+    // Remove Model from Profile
+    container.querySelectorAll('.remove-model-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const pName = e.target.dataset.profile;
+            const idx = parseInt(e.target.dataset.idx);
+            _registryData.profiles[`${type}_profiles`][pName].splice(idx, 1);
+            markSettingsDirty();
+            renderProfiles();
+        });
+    });
+
+    // Add Model to Profile
+    container.querySelectorAll('.add-model-to-profile-select').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+            const val = e.target.value;
+            if (!val) return;
+            const pName = e.target.dataset.profile;
+            const targetProfileArray = _registryData.profiles[`${type}_profiles`][pName];
+
+            if (!targetProfileArray.includes(val)) {
+                targetProfileArray.push(val);
+                markSettingsDirty();
+                renderProfiles();
+            }
+            e.target.value = ""; // reset
+        });
+    });
+
+    // Drag and Drop implementation for sorting
+    let draggedItem = null;
+    let draggedIdx = null;
+
+    container.querySelectorAll('.profile-model-item').forEach(item => {
+        item.addEventListener('dragstart', function (e) {
+            draggedItem = this;
+            draggedIdx = parseInt(this.dataset.idx);
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+            setTimeout(() => this.classList.add('dragging'), 0);
+        });
+
+        item.addEventListener('dragend', function () {
+            this.classList.remove('dragging');
+            container.querySelectorAll('.profile-model-item').forEach(el => el.classList.remove('drag-over'));
+            draggedItem = null;
+        });
+
+        item.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('drag-over');
+            return false;
+        });
+
+        item.addEventListener('dragleave', function () {
+            this.classList.remove('drag-over');
+        });
+
+        item.addEventListener('drop', function (e) {
+            e.stopPropagation();
+            this.classList.remove('drag-over');
+            if (draggedItem !== this) {
+                const pName = this.dataset.profile;
+                const dropIdx = parseInt(this.dataset.idx);
+                const pList = _registryData.profiles[`${type}_profiles`][pName];
+
+                // Swap in array
+                const movedItem = pList.splice(draggedIdx, 1)[0];
+                pList.splice(dropIdx, 0, movedItem);
+
+                markSettingsDirty();
+                renderProfiles();
+            }
+            return false;
+        });
+    });
+}
+
+function initProfileCreationButtons() {
+    const addChatBtn = document.getElementById('add-chat-profile-btn');
+    const addAgentBtn = document.getElementById('add-agent-profile-btn');
+
+    if (addChatBtn) {
+        addChatBtn.addEventListener('click', () => {
+            const pName = prompt("Enter new Chat Profile name:");
+            if (pName && pName.trim() !== '') {
+                if (!_registryData.profiles) _registryData.profiles = { chat_profiles: {}, agent_profiles: {} };
+                if (!_registryData.profiles.chat_profiles) _registryData.profiles.chat_profiles = {};
+                if (!_registryData.profiles.chat_profiles[pName.trim()]) {
+                    _registryData.profiles.chat_profiles[pName.trim()] = [];
+                    markSettingsDirty();
+                    renderProfiles();
+                } else {
+                    alert("Profile name already exists.");
+                }
+            }
+        });
+    }
+
+    if (addAgentBtn) {
+        addAgentBtn.addEventListener('click', () => {
+            const pName = prompt("Enter new Agent Profile name:");
+            if (pName && pName.trim() !== '') {
+                if (!_registryData.profiles) _registryData.profiles = { chat_profiles: {}, agent_profiles: {} };
+                if (!_registryData.profiles.agent_profiles) _registryData.profiles.agent_profiles = {};
+                if (!_registryData.profiles.agent_profiles[pName.trim()]) {
+                    _registryData.profiles.agent_profiles[pName.trim()] = [];
+                    markSettingsDirty();
+                    renderProfiles();
+                } else {
+                    alert("Profile name already exists.");
+                }
+            }
+        });
     }
 }
 

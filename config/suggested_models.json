@@ -1,7 +1,6 @@
 {
     "google_ai": [
         {
-            "key": "flash",
             "id": "gemini-2.0-flash",
             "tier": "fast",
             "capabilities": [
@@ -15,7 +14,6 @@
             "description": "Free tier. Fast model for routine tasks and verification."
         },
         {
-            "key": "flash-lite",
             "id": "gemini-2.0-flash-lite",
             "tier": "fast",
             "capabilities": [
@@ -27,7 +25,6 @@
             "description": "Free tier. Lightest Gemini model, best for simple chat."
         },
         {
-            "key": "pro",
             "id": "gemini-2.5-pro-preview-05-06",
             "tier": "premium",
             "capabilities": [
@@ -41,7 +38,6 @@
             "description": "Latest Gemini 2.5 Pro. Complex reasoning and architecture."
         },
         {
-            "key": "imagen",
             "id": "imagen-3.0-generate-002",
             "tier": "specialized",
             "capabilities": [
@@ -72,7 +68,6 @@
     ],
     "openai": [
         {
-            "key": "mini",
             "id": "gpt-4o-mini",
             "tier": "fast",
             "capabilities": [
@@ -84,7 +79,6 @@
             "description": "Lightweight OpenAI model for simple tasks."
         },
         {
-            "key": "default",
             "id": "gpt-4o",
             "tier": "premium",
             "capabilities": [
@@ -97,7 +91,6 @@
             "description": "High-performance GPT-4o model."
         },
         {
-            "key": "o3-mini",
             "id": "o3-mini",
             "tier": "premium",
             "capabilities": [
@@ -111,7 +104,6 @@
             "description": "OpenAI o3-mini reasoning model."
         },
         {
-            "key": "dalle",
             "id": "dall-e-3",
             "tier": "specialized",
             "capabilities": [
@@ -143,7 +135,6 @@
     ],
     "grok": [
         {
-            "key": "default",
             "id": "grok-3-mini-fast",
             "tier": "fast",
             "capabilities": [
@@ -155,7 +146,6 @@
             "description": "xAI Grok-3 Mini Fast. Cheapest and fastest Grok model."
         },
         {
-            "key": "grok-3",
             "id": "grok-3",
             "tier": "premium",
             "capabilities": [
@@ -171,7 +161,6 @@
     ],
     "anthropic": [
         {
-            "key": "haiku",
             "id": "claude-3-5-haiku-latest",
             "tier": "fast",
             "capabilities": [
@@ -183,7 +172,6 @@
             "description": "Fast, affordable Claude model for simple tasks."
         },
         {
-            "key": "sonnet",
             "id": "claude-sonnet-4-20250514",
             "tier": "premium",
             "capabilities": [
@@ -197,7 +185,6 @@
             "description": "Claude Sonnet 4. Excellent for code and reasoning."
         },
         {
-            "key": "opus",
             "id": "claude-3-opus-latest",
             "tier": "premium",
             "capabilities": [
@@ -213,7 +200,6 @@
     ],
     "local": [
         {
-            "key": "llama3",
             "id": "llama3",
             "tier": "local",
             "capabilities": [
@@ -224,7 +210,6 @@
             "description": "Ollama/vLLM - no token cost, runs locally."
         },
         {
-            "key": "mistral",
             "id": "mistral",
             "tier": "local",
             "capabilities": [
@@ -236,7 +221,6 @@
             "description": "Mistral via Ollama - fast local inference."
         },
         {
-            "key": "codellama",
             "id": "codellama",
             "tier": "local",
             "capabilities": [

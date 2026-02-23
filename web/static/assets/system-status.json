@@ -3,8 +3,8 @@
         "name": "Misaka Cipher",
         "company": "Aethvion",
         "version": "0.0.1",
-        "last_sync": "2026-02-21",
-        "contact": "dev@misakacipher.com"
+        "last_sync": "2026-02-23",
+        "contact": "contact@misakacipher.com"
     },
     "roadmap": {
         "features": {
@@ -70,6 +70,12 @@
                 {
                     "name": "Web Dashboard",
                     "desc": "A clean, responsive UI for managing all aspects of the Misaka node."
+                }
+            ],
+            "assistant": [
+                {
+                    "name": "Misaka Cipher asistant window",
+                    "desc": "Can help you with your tasks and understanding Misaka Cipher and its features."
                 }
             ]
         },
