@@ -148,6 +148,21 @@ async function savePreference(key, value) {
     await prefs.set(key, value);
 }
 
+// ===== UI UI Utility =====
+
+function toggleSettingsFoldout(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    const isOpen = el.classList.contains('open');
+    if (isOpen) {
+        el.classList.remove('open');
+    } else {
+        el.classList.add('open');
+    }
+}
+
+
 // Ensure the UI calls prefs properly
 const originalSwitchMainTab = typeof switchMainTab === 'function' ? switchMainTab : function (t) { };
 window.switchMainTab = function (tabName, save = true) {

@@ -246,3 +246,61 @@
     opacity: 1;
     color: var(--error);
 }
+
+/* ===== Settings Foldouts ===== */
+.settings-foldout {
+    margin-top: 1rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.5rem;
+}
+
+.foldout-trigger {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    user-select: none;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.foldout-trigger:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--primary);
+}
+
+.foldout-trigger i {
+    transition: transform 0.3s ease;
+}
+
+.settings-foldout.open .foldout-trigger i {
+    transform: rotate(180deg);
+}
+
+.settings-foldout.open .foldout-trigger {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--primary);
+}
+
+.foldout-content {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 0.3s ease-out;
+    overflow: hidden;
+}
+
+.settings-foldout.open .foldout-content {
+    grid-template-rows: 1fr;
+}
+
+.foldout-content-inner {
+    min-height: 0;
+    padding: 1rem 0;
+}

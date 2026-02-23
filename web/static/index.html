@@ -931,181 +931,219 @@
                     </div>
                 </div>
 
-                <div class="setting-group">
-                    <h3>Misaka Assistant Configuration</h3>
-                    <div class="setting-item">
+                <div class="setting-group" id="group-assistant">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="margin: 0; border: none; padding: 0;">Misaka Assistant Configuration</h3>
                         <label class="switch">
                             <input type="checkbox" id="setting-assistant-enabled">
                             <span class="slider round"></span>
                         </label>
-                        <div class="setting-label">
-                            <strong>Enable Persistent Assistant</strong>
-                            <span>Show the floating Misaka Cipher bubble on all pages.</span>
-                        </div>
                     </div>
-                    <div class="setting-item" style="border-bottom: none;">
-                        <div class="setting-label" style="flex:1;">
-                            <strong>Assistant Core Model</strong>
-                            <span>Select the LLM that powers Misaka Cipher.</span>
+
+                    <div class="settings-foldout" id="foldout-assistant">
+                        <div class="foldout-trigger" onclick="toggleSettingsFoldout('foldout-assistant')">
+                            <span>Configuration</span>
+                            <i class="fas fa-chevron-down"></i>
                         </div>
-                        <select id="setting-assistant-model" class="control-select" style="width: 250px;">
-                            <option value="flash">Loading models...</option>
-                        </select>
-                    </div>
-                    <div class="setting-item" style="border-bottom: none;">
-                        <label class="switch">
-                            <input type="checkbox" id="setting-assistant-context">
-                            <span class="slider round"></span>
-                        </label>
-                        <div class="setting-label">
-                            <strong>Include: Web Interface Context</strong>
-                            <span>Provide Misaka with real-time awareness of which tab and page you are currently
-                                viewing.</span>
-                        </div>
-                    </div>
-                    <div class="setting-item" style="border-bottom: none;">
-                        <div class="setting-label" style="flex:1;">
-                            <strong>Typing Speed</strong>
-                            <span>Adjust the character display speed of Misaka's responses. Set to 0 for instant
-                                display.</span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="range" id="setting-assistant-typing-speed" min="0" max="100" value="20"
-                                style="width: 150px;">
-                            <span id="setting-assistant-typing-speed-val"
-                                style="width: 30px; text-align: right; font-family: 'Fira Code', monospace;">20</span>
-                        </div>
-                    </div>
-                    <div class="setting-item" style="border-bottom: none;">
-                        <div class="setting-label" style="flex:1;">
-                            <strong>Context History Limit</strong>
-                            <span>Number of past message pairs to send to the LLM (default 5).</span>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="range" id="setting-assistant-context-limit" min="1" max="20" value="5"
-                                style="width: 150px;">
-                            <span id="setting-assistant-context-limit-val"
-                                style="width: 30px; text-align: right; font-family: 'Fira Code', monospace;">5</span>
+                        <div class="foldout-content">
+                            <div class="foldout-content-inner">
+                                <div class="setting-item" style="border-bottom: none;">
+                                    <div class="setting-label" style="flex:1;">
+                                        <strong>Assistant Core Model</strong>
+                                        <span>Select the LLM that powers Misaka Cipher.</span>
+                                    </div>
+                                    <select id="setting-assistant-model" class="control-select" style="width: 250px;">
+                                        <option value="flash">Loading models...</option>
+                                    </select>
+                                </div>
+                                <div class="setting-item" style="border-bottom: none;">
+                                    <label class="switch">
+                                        <input type="checkbox" id="setting-assistant-context">
+                                        <span class="slider round"></span>
+                                    </label>
+                                    <div class="setting-label">
+                                        <strong>Include: Web Interface Context</strong>
+                                        <span>Provide Misaka with real-time awareness of which tab and page you are
+                                            currently viewing.</span>
+                                    </div>
+                                </div>
+                                <div class="setting-item" style="border-bottom: none;">
+                                    <div class="setting-label" style="flex:1;">
+                                        <strong>Typing Speed</strong>
+                                        <span>Adjust the character display speed of Misaka's responses. Set to 0 for
+                                            instant display.</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <input type="range" id="setting-assistant-typing-speed" min="0" max="100"
+                                            value="20" style="width: 150px;">
+                                        <span id="setting-assistant-typing-speed-val"
+                                            style="width: 30px; text-align: right; font-family: 'Fira Code', monospace;">20</span>
+                                    </div>
+                                </div>
+                                <div class="setting-item" style="border-bottom: none;">
+                                    <div class="setting-label" style="flex:1;">
+                                        <strong>Context History Limit</strong>
+                                        <span>Number of past message pairs to send to the LLM (default 5).</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <input type="range" id="setting-assistant-context-limit" min="1" max="20"
+                                            value="5" style="width: 150px;">
+                                        <span id="setting-assistant-context-limit-val"
+                                            style="width: 30px; text-align: right; font-family: 'Fira Code', monospace;">5</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="setting-group profiles-section">
                     <h3>Chat Profiles Configuration</h3>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
-                        Create custom fallback priority lists for Chat operations. The first available and healthy model
-                        in the list will be used.
-                    </p>
+                    <div class="settings-foldout" id="foldout-chat-profiles">
+                        <div class="foldout-trigger" onclick="toggleSettingsFoldout('foldout-chat-profiles')">
+                            <span>Manage Profiles</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="foldout-content">
+                            <div class="foldout-content-inner">
+                                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                                    Create custom fallback priority lists for Chat operations. The first available and
+                                    healthy model
+                                    in the list will be used.
+                                </p>
 
-                    <div id="chat-profiles-container" class="profiles-container">
-                        <div class="loading-placeholder">Loading Chat Profiles...</div>
-                    </div>
+                                <div id="chat-profiles-container" class="profiles-container">
+                                    <div class="loading-placeholder">Loading Chat Profiles...</div>
+                                </div>
 
-                    <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
-                        <button id="add-chat-profile-btn" class="action-btn secondary">+ Add Chat Profile</button>
+                                <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                                    <button id="add-chat-profile-btn" class="action-btn secondary">+ Add Chat
+                                        Profile</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="setting-group profiles-section">
                     <h3>Agent Profiles Configuration</h3>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
-                        Create custom fallback priority lists for Agent executions. The first available and healthy
-                        model in the list will be used.
-                    </p>
-
-                    <div id="agent-profiles-container" class="profiles-container">
-                        <div class="loading-placeholder">Loading Agent Profiles...</div>
-                    </div>
-
-                    <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
-                        <button id="add-agent-profile-btn" class="action-btn secondary">+ Add Agent Profile</button>
+                    <div class="settings-foldout" id="foldout-agent-profiles">
+                        <div class="foldout-trigger" onclick="toggleSettingsFoldout('foldout-agent-profiles')">
+                            <span>Manage Profiles</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="foldout-content">
+                            <div class="foldout-content-inner">
+                                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                                    Create custom fallback priority lists for Agent executions. The first available and
+                                    healthy model in the list will be used.
+                                </p>
+                                <div id="agent-profiles-container" class="profiles-container">
+                                    <div class="loading-placeholder">Loading Agent Profiles...</div>
+                                </div>
+                                <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                                    <button id="add-agent-profile-btn" class="action-btn secondary">+ Add Agent
+                                        Profile</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="setting-group providers-section">
-                    <h3>Provider Settings</h3>
-                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
-                        Configure AI providers and endpoint settings. Enable or disable entire providers here. Saved to
-                        <code>model_registry.json</code>.
-                    </p>
+                    <h3>Provider Configuration</h3>
+                    <div class="settings-foldout" id="foldout-providers">
+                        <div class="foldout-trigger" onclick="toggleSettingsFoldout('foldout-providers')">
+                            <span>Manage Providers</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="foldout-content">
+                            <div class="foldout-content-inner">
+                                <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                                    Configure AI providers and endpoint settings. Enable or disable entire providers
+                                    here. Saved to <code>model_registry.json</code>.
+                                </p>
 
-                    <!-- Unsaved indicator -->
-                    <div id="provider-unsaved-banner" class="unsaved-banner" style="display:none;">
-                        ⚠ Unsaved changes — click Save to apply
-                    </div>
+                                <!-- Unsaved indicator -->
+                                <div id="provider-unsaved-banner" class="unsaved-banner" style="display:none;">
+                                    ⚠ Unsaved changes — click Save to apply
+                                </div>
 
-                    <div id="provider-cards-container" class="provider-cards-grid">
-                        <div class="loading-placeholder">Loading providers...</div>
-                    </div>
-                    <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
-                        <button id="save-provider-settings" class="btn-primary">Save Provider Settings</button>
-                        <span id="provider-save-status" style="color: var(--accent); font-size: 0.85rem;"></span>
+                                <div id="provider-cards-container" class="provider-cards-grid">
+                                    <div class="loading-placeholder">Loading providers...</div>
+                                </div>
+                                <div style="margin-top: 1rem; display: flex; align-items: center; gap: 1rem;">
+                                    <button id="save-provider-settings" class="btn-primary">Save Provider
+                                        Configuration</button>
+                                    <span id="provider-save-status"
+                                        style="color: var(--accent); font-size: 0.85rem;"></span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        </div>
-        </div>
 
-        <!-- System Status Panel -->
-        <div class="main-tab-panel" id="status-panel">
-            <div class="panel-header borderless">
-                <h2 class="status-header-title">Status</h2>
+            <!-- System Status Panel -->
+            <div class="main-tab-panel" id="status-panel">
+                <div class="panel-header borderless">
+                    <h2 class="status-header-title">Status</h2>
 
-                <div class="status-meta">
-                    <span id="system-name-display" class="meta-primary">Misaka Cipher</span>
-                    <span class="status-divider">::</span>
-                    <span id="system-company-display" class="meta-primary">Aethvion</span>
-                    <span class="status-divider">::</span>
-                    <span id="system-version-display" class="meta-primary">v1.2.0</span>
-                </div>
-                <div class="status-meta" style="margin-top: 0.5rem;">
-                    <a href="#" id="system-contact-display" class="meta-primary"
-                        style="text-decoration: none; font-size: 0.8rem;"></a>
-                </div>
-            </div>
-
-            <div class="status-container">
-                <!-- Realtime Vitals Section -->
-                <div class="section-label">REALTIME VITALS <span class="live-indicator">● LIVE</span></div>
-                <div id="realtime-info-grid" class="status-telemetry-grid">
-                    <!-- Populated by JS (CPU, RAM, Agents, Nexus) -->
-                </div>
-
-                <!-- Local System Info Section -->
-                <div class="section-header-row">
-                    <div class="section-label">LOCAL SYSTEM INFO</div>
-                    <div class="local-meta-right">
-                        <span class="last-update" style="margin-right: 1rem;">LAST SYNC: <span
-                                id="telemetry-last-sync">--</span></span>
-                        <button id="sync-telemetry-btn" class="icon-btn xs-btn" title="Sync Local Info"
-                            onclick="syncSystemTelemetry()">
-                            <i class="fas fa-sync"></i> Sync
-                        </button>
+                    <div class="status-meta">
+                        <span id="system-name-display" class="meta-primary">Misaka Cipher</span>
+                        <span class="status-divider">::</span>
+                        <span id="system-company-display" class="meta-primary">Aethvion</span>
+                        <span class="status-divider">::</span>
+                        <span id="system-version-display" class="meta-primary">v1.2.0</span>
+                    </div>
+                    <div class="status-meta" style="margin-top: 0.5rem;">
+                        <a href="#" id="system-contact-display" class="meta-primary"
+                            style="text-decoration: none; font-size: 0.8rem;"></a>
                     </div>
                 </div>
-                <div id="local-info-grid" class="status-telemetry-grid">
-                    <!-- Populated by JS (Project Size, DB Size, Tools) -->
-                </div>
 
-                <!-- Features Checklist -->
-                <div class="section-header-row">
-                    <div class="section-label" style="margin-bottom: 0;">ROADMAP & FEATURES</div>
-                    <div class="local-meta-right" style="display: flex; align-items: center; gap: 1rem;">
-                        <span class="last-update" style="margin-right: 0;">UPDATED: <span
-                                id="status-last-update">--</span></span>
-                        <button id="roadmap-view-toggle" class="action-btn secondary xs-btn"
-                            onclick="toggleRoadmapView()" style="display: flex; gap: 0.4rem; align-items: center;">
-                            <i class="fas fa-list"></i> Detailed View
-                        </button>
+                <div class="status-container">
+                    <!-- Realtime Vitals Section -->
+                    <div class="section-label">REALTIME VITALS <span class="live-indicator">● LIVE</span></div>
+                    <div id="realtime-info-grid" class="status-telemetry-grid">
+                        <!-- Populated by JS (CPU, RAM, Agents, Nexus) -->
+                    </div>
+
+                    <!-- Local System Info Section -->
+                    <div class="section-header-row">
+                        <div class="section-label">LOCAL SYSTEM INFO</div>
+                        <div class="local-meta-right">
+                            <span class="last-update" style="margin-right: 1rem;">LAST SYNC: <span
+                                    id="telemetry-last-sync">--</span></span>
+                            <button id="sync-telemetry-btn" class="icon-btn xs-btn" title="Sync Local Info"
+                                onclick="syncSystemTelemetry()">
+                                <i class="fas fa-sync"></i> Sync
+                            </button>
+                        </div>
+                    </div>
+                    <div id="local-info-grid" class="status-telemetry-grid">
+                        <!-- Populated by JS (Project Size, DB Size, Tools) -->
+                    </div>
+
+                    <!-- Features Checklist -->
+                    <div class="section-header-row">
+                        <div class="section-label" style="margin-bottom: 0;">ROADMAP & FEATURES</div>
+                        <div class="local-meta-right" style="display: flex; align-items: center; gap: 1rem;">
+                            <span class="last-update" style="margin-right: 0;">UPDATED: <span
+                                    id="status-last-update">--</span></span>
+                            <button id="roadmap-view-toggle" class="action-btn secondary xs-btn"
+                                onclick="toggleRoadmapView()" style="display: flex; gap: 0.4rem; align-items: center;">
+                                <i class="fas fa-list"></i> Detailed View
+                            </button>
+                        </div>
+                    </div>
+                    <div class="roadmap-tree">
+                        <!-- Roadmap items injected via JS -->
+                        <div class="loading-placeholder">Loading system status...</div>
                     </div>
                 </div>
-                <div class="roadmap-tree">
-                    <!-- Roadmap items injected via JS -->
-                    <div class="loading-placeholder">Loading system status...</div>
-                </div>
             </div>
-        </div>
     </main>
 
     <!-- Floating Misaka Cipher Assistant -->
