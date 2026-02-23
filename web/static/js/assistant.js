@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // State
     let isAssistantEnabled = false;
+    let typingSpeed = 20; // Default typing speed
+    let contextHistoryLimit = 5; // Default pairs
     let messageHistory = [];
     let currentEmotion = 'default';
 
@@ -27,8 +29,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/preferences/get?key=assistant');
             if (res.ok) {
                 const data = await res.json();
-                if (data.value && data.value.enabled !== undefined) {
-                    isAssistantEnabled = data.value.enabled;
+                if (data.value) {
+                    isAssistantEnabled = data.value.enabled !== undefined ? data.value.enabled : true;
+                    typingSpeed = data.value.typing_speed !== undefined ? data.value.typing_speed : 20;
+                    contextHistoryLimit = data.value.context_limit !== undefined ? data.value.context_limit : 5;
                 } else {
                     isAssistantEnabled = true; // default
                 }
@@ -104,6 +108,96 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
     }
 
+    // Add typing effect message
+    function typeMessage(role, content, asMarkdown = false, finalEmotion = 'default') {
+        const div = document.createElement('div');
+        div.className = `misaka-d-message ${role}`;
+        messagesArea.appendChild(div);
+        scrollToBottom();
+
+        if (typingSpeed <= 0) {
+            setEmotion(finalEmotion);
+            if (asMarkdown && typeof marked !== 'undefined') {
+                div.innerHTML = marked.parse(content);
+            } else {
+                div.textContent = content;
+            }
+            if (asMarkdown && typeof hljs !== 'undefined') {
+                div.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+            }
+            if (finalEmotion === 'default' || finalEmotion.startsWith('happy') || finalEmotion === 'wink') {
+                triggerWink(1500);
+            }
+            scrollToBottom();
+            return Promise.resolve();
+        }
+
+        // Typing animation
+        const isNegative = ['angry', 'crying', 'pout', 'error', 'exhausted'].includes(finalEmotion);
+        const talkingFaces = ['default', 'happy_closedeyes_smilewithteeth', 'happy_closedeyes_widesmile', 'thinking', 'wink'];
+
+        // Parse the Markdown to HTML *before* typing so we don't expose raw markdown syntax
+        let parsedHTML = content;
+        if (asMarkdown && typeof marked !== 'undefined') {
+            parsedHTML = marked.parse(content);
+        }
+
+        let charIndex = 0;
+
+        return new Promise(resolve => {
+            const typeInterval = setInterval(() => {
+                if (charIndex >= parsedHTML.length) {
+                    clearInterval(typeInterval);
+                    setEmotion(finalEmotion);
+
+                    div.innerHTML = parsedHTML;
+
+                    if (asMarkdown && typeof hljs !== 'undefined') {
+                        div.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+                    }
+
+                    if (!isNegative && (finalEmotion === 'default' || finalEmotion.startsWith('happy') || finalEmotion === 'wink')) {
+                        triggerWink(1500);
+                    }
+
+                    scrollToBottom();
+                    resolve();
+                    return;
+                }
+
+                // Instantly advance past HTML tags so they are rendered as markup, not typed text
+                if (parsedHTML[charIndex] === '<') {
+                    while (charIndex < parsedHTML.length && parsedHTML[charIndex] !== '>') {
+                        charIndex++;
+                    }
+                }
+                charIndex++;
+
+                div.innerHTML = parsedHTML.substring(0, charIndex);
+                scrollToBottom();
+
+                // Calculate expression change interval based on message length (aim for 2-4 changes usually, max 6)
+                const numChanges = content.length < 50 ? 2 : content.length < 200 ? 3 : content.length < 500 ? 4 : 6;
+                const expressionInterval = Math.max(10, Math.floor(content.length / numChanges));
+
+                // Dynamic facial expressions while typing based on text length
+                if (charIndex % expressionInterval === 0 && charIndex < content.length - 5) {
+                    if (!isNegative) {
+                        let randomFace = talkingFaces[Math.floor(Math.random() * talkingFaces.length)];
+                        // Avoid picking the exact same face twice in a row to ensure visible movement
+                        while (randomFace === currentEmotion && talkingFaces.length > 1) {
+                            randomFace = talkingFaces[Math.floor(Math.random() * talkingFaces.length)];
+                        }
+                        setEmotion(randomFace);
+                    } else {
+                        setEmotion(charIndex % (expressionInterval * 2) === 0 ? 'pout' : finalEmotion);
+                    }
+                }
+
+            }, typingSpeed);
+        });
+    }
+
     // Add typing indicator
     function showTyping() {
         const div = document.createElement('div');
@@ -138,9 +232,10 @@ document.addEventListener('DOMContentLoaded', () => {
         appendMessage('user', text);
         messageHistory.push({ role: 'user', content: text });
 
-        // Keep history reasonably short to save tokens (e.g. last 10 pairs)
-        if (messageHistory.length > 20) {
-            messageHistory = messageHistory.slice(-20);
+        // Keep history reasonably short to save tokens (e.g. 5 pairs = 10 messages)
+        const maxMessages = contextHistoryLimit * 2;
+        if (messageHistory.length > maxMessages) {
+            messageHistory = messageHistory.slice(-maxMessages);
         }
 
         showTyping();
@@ -177,22 +272,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 let responseText = data.response;
 
                 // Parse emotion tag: [Emotion: <emotion>]
-                const emotionMatch = responseText.match(/\[Emotion:\s*([a-zA-Z0-9_]+)\]/i);
-                if (emotionMatch && emotionMatch[1]) {
-                    setEmotion(emotionMatch[1].toLowerCase());
-                    // Remove the tag from the text displayed to the user
-                    responseText = responseText.replace(emotionMatch[0], '').trim();
-                } else {
-                    setEmotion('default');
+                let targetEmotion = 'default';
+                // Globally replace ALL emotion tags so they don't leak into the typed response
+                const emotionRegex = /\[Emotion:\s*([a-zA-Z0-9_]+)\]/ig;
+                let match;
+                while ((match = emotionRegex.exec(responseText)) !== null) {
+                    targetEmotion = match[1].toLowerCase(); // capture the very last emotion tag specified
                 }
+                // Strip all tags out
+                responseText = responseText.replace(/\[Emotion:\s*[a-zA-Z0-9_]+\]/ig, '').trim();
 
-                appendMessage('misaka', responseText, true);
                 messageHistory.push({ role: 'assistant', content: responseText }); // Save cleaned text
-
-                // Only wink if she's happy or default so it doesn't look weird when she's angry or crying
-                if (currentEmotion === 'default' || currentEmotion.startsWith('happy') || currentEmotion === 'wink') {
-                    triggerWink(1500);
-                }
+                await typeMessage('misaka', responseText, true, targetEmotion);
             } else {
                 const err = await res.json();
                 appendMessage('system', `Error: ${err.detail || 'Failed to connect.'}`);
@@ -224,15 +315,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Listen for custom events to toggle visibility from settings
     window.addEventListener('assistantSettingsUpdated', (e) => {
-        if (e.detail && e.detail.enabled !== undefined) {
-            isAssistantEnabled = e.detail.enabled;
-            if (isAssistantEnabled) {
-                container.classList.remove('hidden');
-                triggerWink();
-            } else {
-                container.classList.add('hidden');
-                chatWindow.classList.add('collapsed');
-                avatar.classList.remove('hidden');
+        if (e.detail) {
+            if (e.detail.enabled !== undefined) {
+                isAssistantEnabled = e.detail.enabled;
+                if (isAssistantEnabled) {
+                    container.classList.remove('hidden');
+                    triggerWink();
+                } else {
+                    container.classList.add('hidden');
+                    chatWindow.classList.add('collapsed');
+                    avatar.classList.remove('hidden');
+                }
+            }
+            if (e.detail.typing_speed !== undefined) {
+                typingSpeed = e.detail.typing_speed;
+            }
+            if (e.detail.context_limit !== undefined) {
+                contextHistoryLimit = e.detail.context_limit;
             }
         }
     });

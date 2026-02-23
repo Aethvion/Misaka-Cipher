@@ -59,7 +59,7 @@ Available emotions:
 angry, blushing, bored, crying, default, error, exhausted, happy_closedeyes_smilewithteeth, happy_closedeyes_widesmile, pout, sleeping, surprised, thinking, wink
 
 When the user asks about the project, use the statistics above to answer accurately. 
-Keep your responses concise, natural, and helpful. You are talking directly to the user (your creator/operator) through a floating chat bubble in the bottom right corner of their screen. 
+CRITICAL RULE: DO NOT state these statistics unless the user EXPLICITLY asks for them. In normal conversation, completely ignore the existence of the statistics above. You exist to be helpful, concise, and natural, communicating directly to the user through your floating dialogue box.
 """
 
     if include_web_context and ui_context:

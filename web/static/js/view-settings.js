@@ -103,6 +103,44 @@ async function loadPreferences() {
         };
     }
 
+    const assistantTypingSpeed = document.getElementById('setting-assistant-typing-speed');
+    const assistantTypingVal = document.getElementById('setting-assistant-typing-speed-val');
+    if (assistantTypingSpeed && assistantTypingVal) {
+        const currentSpeed = prefs.get('assistant.typing_speed', 20);
+        assistantTypingSpeed.value = currentSpeed;
+        assistantTypingVal.textContent = currentSpeed;
+
+        assistantTypingSpeed.oninput = (e) => {
+            assistantTypingVal.textContent = e.target.value;
+        };
+        assistantTypingSpeed.onchange = async (e) => {
+            const val = parseInt(e.target.value, 10);
+            await savePreference('assistant.typing_speed', val);
+            window.dispatchEvent(new CustomEvent('assistantSettingsUpdated', {
+                detail: { typing_speed: val }
+            }));
+        };
+    }
+
+    const assistantContextLimit = document.getElementById('setting-assistant-context-limit');
+    const assistantContextLimitVal = document.getElementById('setting-assistant-context-limit-val');
+    if (assistantContextLimit && assistantContextLimitVal) {
+        const currentLimit = prefs.get('assistant.context_limit', 5);
+        assistantContextLimit.value = currentLimit;
+        assistantContextLimitVal.textContent = currentLimit;
+
+        assistantContextLimit.oninput = (e) => {
+            assistantContextLimitVal.textContent = e.target.value;
+        };
+        assistantContextLimit.onchange = async (e) => {
+            const val = parseInt(e.target.value, 10);
+            await savePreference('assistant.context_limit', val);
+            window.dispatchEvent(new CustomEvent('assistantSettingsUpdated', {
+                detail: { context_limit: val }
+            }));
+        };
+    }
+
     if (typeof updateChatLayout === 'function') updateChatLayout();
 }
 

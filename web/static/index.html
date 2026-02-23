@@ -970,6 +970,31 @@
                                 viewing.</span>
                         </div>
                     </div>
+                    <div class="setting-item" style="border-bottom: none;">
+                        <div class="setting-label" style="flex:1;">
+                            <strong>Typing Speed</strong>
+                            <span>Adjust the character display speed of Misaka's responses. Set to 0 for instant
+                                display.</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" id="setting-assistant-typing-speed" min="0" max="100" value="20"
+                                style="width: 150px;">
+                            <span id="setting-assistant-typing-speed-val"
+                                style="width: 30px; text-align: right; font-family: 'Fira Code', monospace;">20</span>
+                        </div>
+                    </div>
+                    <div class="setting-item" style="border-bottom: none;">
+                        <div class="setting-label" style="flex:1;">
+                            <strong>Context History Limit</strong>
+                            <span>Number of past message pairs to send to the LLM (default 5).</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="range" id="setting-assistant-context-limit" min="1" max="20" value="5"
+                                style="width: 150px;">
+                            <span id="setting-assistant-context-limit-val"
+                                style="width: 30px; text-align: right; font-family: 'Fira Code', monospace;">5</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="setting-group">
