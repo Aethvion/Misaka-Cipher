@@ -44,5 +44,5 @@ echo ====================================================
 echo    SETUP COMPLETE - MISAKA IS READY FOR RESEARCH
 echo ====================================================
 echo.
-echo You can now run Misaka using Run_Misaka.bat
+echo You can now run Misaka using Run_MisakaCipher.bat
 pause
