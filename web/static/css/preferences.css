@@ -258,13 +258,71 @@
 
 /* ===== Redesigned Settings Dashboard ===== */
 
-.settings-dashboard {
+.settings-dashboard.sidebar-layout {
     display: grid;
-    grid-template-columns: 1fr 1.5fr;
-    gap: 1.2rem;
-    padding: 1.2rem;
+    grid-template-columns: 220px 1fr;
+    gap: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.settings-sidebar {
+    background: var(--bg-tertiary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 1rem 0;
+    gap: 0.2rem;
+}
+
+.settings-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.8rem 1.5rem;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    border-left: 3px solid transparent;
+}
+
+.settings-nav-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--primary);
+}
+
+.settings-nav-item.active {
+    background: rgba(0, 217, 255, 0.05);
+    color: var(--primary);
+    border-left-color: var(--primary);
+}
+
+.settings-content-wrapper {
+    padding: 1.5rem;
     overflow-y: auto;
     height: 100%;
+}
+
+.settings-panel {
+    display: none;
+    animation: fadeIn 0.2s ease;
+}
+
+.settings-panel.active {
+    display: block;
+}
+
+.settings-dashboard.single-column {
+    display: flex;
+    flex-direction: column;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 .settings-column {
@@ -474,11 +532,11 @@
 }
 
 .provider-config-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 0.5rem;
     background: rgba(255, 255, 255, 0.02);
-    padding: 0.4rem;
+    padding: 0.6rem;
     border-radius: 4px;
 }
 
@@ -641,10 +699,8 @@
     color: var(--text);
 }
 
-/* Scrollable area for providers */
+/* Scrollable area for providers - now handled by wrapper */
 .scrollable {
-    max-height: 400px;
-    overflow-y: auto;
     padding-right: 0.5rem;
 }
 

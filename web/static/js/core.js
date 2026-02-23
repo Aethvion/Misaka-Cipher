@@ -16,6 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeUI();
     initDevMode();
     loadInitialData();
+
+    // Restore persisted tab
+    const savedTab = localStorage.getItem('active_tab');
+    if (savedTab) {
+        switchMainTab(savedTab, false);
+    }
 });
 
 // ===== WebSocket Management =====
@@ -177,7 +183,10 @@ function initializeUI() {
 
 function switchMainTab(tabName, save = true) {
     currentMainTab = tabName;
-    if (save && typeof savePreference === 'function') savePreference('active_tab', tabName);
+    if (save) {
+        localStorage.setItem('active_tab', tabName);
+        if (typeof savePreference === 'function') savePreference('active_tab', tabName);
+    }
 
     // Update tab buttons
     document.querySelectorAll('.main-tab').forEach(tab => {

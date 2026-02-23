@@ -214,7 +214,8 @@ let devModeActive = false;
 
 function initDevMode() {
     const btn = document.getElementById('btn-toggle-dev-mode');
-    if (!btn) return;
+    if (!btn || btn.dataset.initialized) return;
+    btn.dataset.initialized = 'true';
 
     btn.addEventListener('click', () => {
         devModeActive = !devModeActive;
@@ -487,6 +488,45 @@ function renderProviderCards(registry) {
         };
     });
 
+    container.querySelectorAll('.add-model-btn').forEach(btn => {
+        btn.onclick = () => {
+            const providerName = btn.dataset.provider;
+            const tbody = btn.closest('.provider-models-foldout').querySelector('tbody');
+            const newKey = `model_${Date.now()}`;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" class="model-id-input-small" value="new-model-id" data-key="${newKey}"></td>
+                <td>
+                    <div class="cost-inputs">
+                        <input type="number" step="0.01" class="model-cost-in" value="0">
+                        <input type="number" step="0.01" class="model-cost-out" value="0">
+                    </div>
+                </td>
+                <td>
+                    <button class="btn-icon xs-btn del-model" data-key="${newKey}"><i class="fas fa-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+
+            // Re-bind listeners for the new row
+            tr.querySelector('input').onchange = () => markSettingsDirty();
+            tr.querySelector('.del-model').onclick = () => {
+                tr.remove();
+                markSettingsDirty();
+            };
+
+            markSettingsDirty();
+        };
+    });
+
+    container.querySelectorAll('.del-model').forEach(btn => {
+        btn.onclick = () => {
+            btn.closest('tr').remove();
+            markSettingsDirty();
+        };
+    });
+
     const saveBtn = document.getElementById('save-provider-settings');
     if (saveBtn) saveBtn.onclick = saveProviderSettings;
 }
@@ -503,24 +543,21 @@ async function saveProviderSettings() {
         prov.chat_config = { active: item.querySelector('.chat-active-toggle').checked, priority: 1 };
         prov.agent_config = { active: item.querySelector('.agent-active-toggle').checked, priority: 1 };
 
-        // Model updates
+        // Model updates - Rebuild from scratch to handle additions/deletions
+        prov.models = {};
         const modelRows = item.querySelectorAll('tbody tr');
         modelRows.forEach(row => {
-            const key = row.querySelector('.model-id-input-small').dataset.key;
-            if (prov.models[key]) {
-                const m = prov.models[key];
-                const newId = row.querySelector('.model-id-input-small').value;
-                const costIn = parseFloat(row.querySelector('.model-cost-in').value);
-                const costOut = parseFloat(row.querySelector('.model-cost-out').value);
+            const input = row.querySelector('.model-id-input-small');
+            const key = input.dataset.key;
+            const newId = input.value;
+            const costIn = parseFloat(row.querySelector('.model-cost-in').value);
+            const costOut = parseFloat(row.querySelector('.model-cost-out').value);
 
-                if (typeof m === 'string') {
-                    prov.models[key] = { id: newId, input_cost_per_1m_tokens: costIn, output_cost_per_1m_tokens: costOut };
-                } else {
-                    m.id = newId;
-                    m.input_cost_per_1m_tokens = costIn;
-                    m.output_cost_per_1m_tokens = costOut;
-                }
-            }
+            prov.models[key] = {
+                id: newId,
+                input_cost_per_1m_tokens: costIn,
+                output_cost_per_1m_tokens: costOut
+            };
         });
     });
 
@@ -549,7 +586,8 @@ function renderProfiles() {
         if (!container) return;
 
         let html = '';
-        for (const [name, models] of Object.entries(dict)) {
+        const dictToUse = dict || {};
+        for (const [name, models] of Object.entries(dictToUse)) {
             html += `
                 <div class="compact-profile-item">
                     <div class="profile-main">
@@ -560,6 +598,7 @@ function renderProfiles() {
                     </div>
                     <div class="profile-actions">
                         <button class="action-btn xs-btn secondary edit-profile" data-name="${name}" data-type="${type}"><i class="fas fa-edit"></i></button>
+                        ${name !== 'default' ? `<button class="action-btn xs-btn danger del-profile" data-name="${name}" data-type="${type}"><i class="fas fa-trash"></i></button>` : ''}
                     </div>
                 </div>
             `;
@@ -567,7 +606,14 @@ function renderProfiles() {
         container.innerHTML = html || '<div class="placeholder-text">No profiles.</div>';
 
         container.querySelectorAll('.edit-profile').forEach(b => {
-            b.onclick = () => alert('Profile editing coming in next update. Current profiles are view-only in this compact mode.');
+            b.onclick = () => editProfile(b.dataset.name, b.dataset.type);
+        });
+        container.querySelectorAll('.del-profile').forEach(b => {
+            b.onclick = async () => {
+                if (confirm(`Delete ${type} profile "${b.dataset.name}"?`)) {
+                    await deleteProfile(b.dataset.name, b.dataset.type);
+                }
+            };
         });
     };
 
@@ -575,12 +621,140 @@ function renderProfiles() {
     render('agent-profiles-container', profiles.agent_profiles, 'agent');
 }
 
+async function editProfile(name, type) {
+    if (!_registryData) return;
+    const profiles = type === 'chat' ? _registryData.profiles.chat_profiles : _registryData.profiles.agent_profiles;
+    const selectedModels = profiles[name] || [];
+
+    // Get all available chat models
+    let allModels = [];
+    for (const [pName, pConfig] of Object.entries(_registryData.providers)) {
+        for (const [mKey, mVal] of Object.entries(pConfig.models)) {
+            allModels.push(mVal.id || mVal);
+        }
+    }
+
+    const html = `
+        <div class="modal-content profile-editor-modal">
+            <div class="modal-header">
+                <h3>Edit ${type === 'chat' ? 'Chat' : 'Agent'} Profile: ${name}</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-models-selection">
+                    <p class="section-hint">Select models to include in this profile. Sequence matters for fallback/routing.</p>
+                    <div class="selection-list" id="profile-model-list">
+                        ${allModels.map(m => `
+                            <label class="model-selection-item">
+                                <input type="checkbox" value="${m}" ${selectedModels.includes(m) ? 'checked' : ''}>
+                                <span>${m}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="action-btn secondary" onclick="closeModal()">Cancel</button>
+                <button class="action-btn primary" id="save-profile-btn">Save Changes</button>
+            </div>
+        </div>
+    `;
+
+    openCustomModal(html);
+
+    document.getElementById('save-profile-btn').onclick = async () => {
+        const checked = Array.from(document.querySelectorAll('#profile-model-list input:checked')).map(i => i.value);
+        if (checked.length === 0) {
+            alert('Please select at least one model.');
+            return;
+        }
+
+        profiles[name] = checked;
+        await saveRegistry();
+        closeModal();
+    };
+}
+
+async function deleteProfile(name, type) {
+    if (!_registryData) return;
+    const profiles = type === 'chat' ? _registryData.profiles.chat_profiles : _registryData.profiles.agent_profiles;
+    delete profiles[name];
+    await saveRegistry();
+}
+
+async function saveRegistry() {
+    try {
+        const res = await fetch('/api/registry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(_registryData)
+        });
+        if (res.ok) {
+            renderProfiles();
+            loadChatModels();
+        }
+    } catch (e) {
+        console.error('Failed to save registry:', e);
+    }
+}
+
 function initProfileCreationButtons() {
-    // Stubs for now
+    const addChatBtn = document.getElementById('add-chat-profile-btn');
+    const addAgentBtn = document.getElementById('add-agent-profile-btn');
+
+    if (addChatBtn) {
+        addChatBtn.onclick = () => createNewProfile('chat');
+    }
+    if (addAgentBtn) {
+        addAgentBtn.onclick = () => createNewProfile('agent');
+    }
+}
+
+function createNewProfile(type) {
+    const name = prompt(`Enter new ${type} profile name:`);
+    if (!name || !name.trim()) return;
+
+    const profiles = type === 'chat' ? _registryData.profiles.chat_profiles : _registryData.profiles.agent_profiles;
+    if (profiles[name]) {
+        alert('Profile already exists.');
+        return;
+    }
+
+    profiles[name] = [];
+    editProfile(name, type);
 }
 
 // Global initialization
 window.addEventListener('DOMContentLoaded', () => {
     loadPreferences();
     loadProviderSettings();
+    initSettingsSubNav();
 });
+
+function initSettingsSubNav() {
+    const navItems = document.querySelectorAll('.settings-nav-item');
+    navItems.forEach(item => {
+        item.onclick = () => {
+            const subTab = item.dataset.settingsubtab;
+            switchSettingsSubTab(subTab);
+        };
+    });
+
+    // Restore active sub-tab
+    const savedSubTab = localStorage.getItem('active_settings_subtab') || 'assistant';
+    switchSettingsSubTab(savedSubTab);
+}
+
+function switchSettingsSubTab(subTab) {
+    // Update nav items
+    document.querySelectorAll('.settings-nav-item').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.settingsubtab === subTab);
+    });
+
+    // Update panels
+    document.querySelectorAll('.settings-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === `settings-panel-${subTab}`);
+    });
+
+    localStorage.setItem('active_settings_subtab', subTab);
+}
