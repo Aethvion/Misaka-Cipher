@@ -465,10 +465,94 @@
     color: var(--primary);
 }
 
-.profile-models-badges {
+.compact-profile-item .profile-models-badges {
     display: flex;
     gap: 0.4rem;
     flex-wrap: wrap;
+    margin-top: 0.3rem;
+    pointer-events: none;
+    /* Let parent handle clicks */
+}
+
+/* Inline Profile Editor */
+.profile-editor-inline {
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--border);
+    display: none;
+    /* Toggled via JS */
+    animation: slideDown 0.3s ease;
+}
+
+.profile-editor-inline.active {
+    display: block;
+}
+
+.draggable-model-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+}
+
+.draggable-model-item {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+    gap: 0.8rem;
+    cursor: grab;
+    transition: all 0.2s;
+}
+
+.draggable-model-item:active {
+    cursor: grabbing;
+    background: rgba(0, 217, 255, 0.05);
+    border-color: var(--primary);
+}
+
+.draggable-model-item.dragging {
+    opacity: 0.4;
+    border-style: dashed;
+}
+
+.drag-handle {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: grab;
+}
+
+.draggable-model-item .model-name {
+    flex: 1;
+    font-size: 0.85rem;
+    font-family: 'Fira Code', monospace;
+}
+
+.model-registry-add {
+    display: flex;
+    gap: 0.6rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.6rem;
+    border-radius: 4px;
+    border: 1px dashed var(--border);
+}
+
+.model-registry-add select {
+    flex: 1;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .model-badge {

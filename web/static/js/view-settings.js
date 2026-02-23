@@ -580,15 +580,22 @@ function renderProfiles() {
                 <div class="profile-compact-item" data-name="${name}" data-type="${type}">
                     <div class="profile-main">
                         <span class="profile-name">${name === 'default' ? '⭐ default' : name}</span>
-                        <div class="profile-badges">
+                        <div class="profile-models-badges">
                             ${models.map(m => `<span class="model-badge">${m.split('/').pop()}</span>`).join('')}
                         </div>
                     </div>
                     <div class="profile-actions">
-                        <button class="action-btn xs-btn secondary move-up" title="Move Up"><i class="fas fa-arrow-up"></i></button>
-                        <button class="action-btn xs-btn secondary move-down" title="Move Down"><i class="fas fa-arrow-down"></i></button>
-                        <button class="action-btn xs-btn secondary edit-profile" data-name="${name}" data-type="${type}"><i class="fas fa-edit"></i></button>
-                        ${name !== 'default' ? `<button class="action-btn xs-btn danger del-profile" data-name="${name}" data-type="${type}"><i class="fas fa-trash"></i></button>` : ''}
+                        <button class="action-btn xs-btn secondary edit-profile" data-name="${name}" data-type="${type}" title="Edit Profile Models">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        ${name !== 'default' ? `
+                            <button class="action-btn xs-btn danger del-profile" data-name="${name}" data-type="${type}" title="Delete Profile">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                    <div class="profile-editor-inline" id="editor-${type}-${name.replace(/\s+/g, '-')}">
+                        <!-- Inline editor content injected here -->
                     </div>
                 </div>
             `;
@@ -596,8 +603,9 @@ function renderProfiles() {
         container.innerHTML = html || '<div class="placeholder-text">No profiles.</div>';
 
         container.querySelectorAll('.edit-profile').forEach(b => {
-            b.onclick = () => editProfile(b.dataset.name, b.dataset.type);
+            b.onclick = () => toggleProfileEditor(b.dataset.name, b.dataset.type, b);
         });
+
         container.querySelectorAll('.del-profile').forEach(b => {
             b.onclick = async () => {
                 if (confirm(`Delete ${type} profile "${b.dataset.name}"?`)) {
@@ -605,70 +613,113 @@ function renderProfiles() {
                 }
             };
         });
-        container.querySelectorAll('.move-up').forEach(b => {
-            b.onclick = () => moveProfile(b.closest('.profile-compact-item'), 'up');
-        });
-        container.querySelectorAll('.move-down').forEach(b => {
-            b.onclick = () => moveProfile(b.closest('.profile-compact-item'), 'down');
-        });
     };
 
     render('chat-profiles-container', profiles.chat_profiles, 'chat');
     render('agent-profiles-container', profiles.agent_profiles, 'agent');
 }
 
-async function editProfile(name, type) {
+function toggleProfileEditor(name, type, button) {
+    const item = button.closest('.profile-compact-item');
+    const editor = item.querySelector('.profile-editor-inline');
+    const isActive = editor.classList.toggle('active');
+
+    if (isActive) {
+        button.innerHTML = '<i class="fas fa-times"></i> Close';
+        button.classList.add('active');
+        renderInlineProfileEditor(editor, name, type);
+    } else {
+        button.innerHTML = '<i class="fas fa-edit"></i> Edit';
+        button.classList.remove('active');
+    }
+}
+
+function renderInlineProfileEditor(container, name, type) {
     if (!_registryData) return;
     const profiles = type === 'chat' ? _registryData.profiles.chat_profiles : _registryData.profiles.agent_profiles;
     const selectedModels = profiles[name] || [];
 
-    // Get all available chat models
+    // All available models from registry
     let allModels = [];
     for (const [pName, pConfig] of Object.entries(_registryData.providers)) {
         for (const [mKey, mVal] of Object.entries(pConfig.models)) {
-            allModels.push(mVal.id || mVal);
+            const mId = mVal.id || mVal;
+            if (!allModels.includes(mId)) allModels.push(mId);
         }
     }
 
-    const html = `
-        <div class="modal-content profile-editor-modal">
-            <div class="modal-header">
-                <h3>Edit ${type === 'chat' ? 'Chat' : 'Agent'} Profile: ${name}</h3>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
+    const renderList = () => {
+        const listHtml = selectedModels.map((m, index) => `
+            <div class="draggable-model-item" draggable="true" data-index="${index}">
+                <div class="drag-handle"><i class="fas fa-grip-lines"></i></div>
+                <div class="model-name">${m}</div>
+                <button class="icon-btn xs-btn danger remove-model" data-index="${index}">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="modal-body">
-                <div class="profile-models-selection">
-                    <p class="section-hint">Select models to include in this profile. Sequence matters for fallback/routing.</p>
-                    <div class="selection-list" id="profile-model-list">
-                        ${allModels.map(m => `
-                            <label class="model-selection-item">
-                                <input type="checkbox" value="${m}" ${selectedModels.includes(m) ? 'checked' : ''}>
-                                <span>${m}</span>
-                            </label>
-                        `).join('')}
-                    </div>
-                </div>
+        `).join('');
+
+        container.innerHTML = `
+            <div class="draggable-model-list">
+                ${listHtml || '<div class="placeholder-text">No models in this profile.</div>'}
             </div>
-            <div class="modal-footer">
-                <button class="action-btn secondary" onclick="closeModal()">Cancel</button>
-                <button class="action-btn primary" id="save-profile-btn">Save Changes</button>
+            <div class="model-registry-add">
+                <select class="control-input-small add-model-select">
+                    <option value="">-- Add Model to Profile --</option>
+                    ${allModels.filter(m => !selectedModels.includes(m)).map(m => `
+                        <option value="${m}">${m}</option>
+                    `).join('')}
+                </select>
+                <button class="action-btn xs-btn primary add-model-to-profile-btn">Add</button>
             </div>
-        </div>
-    `;
+            <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
+                <button class="action-btn xs-btn primary save-profile-inline-btn">Save Sequence</button>
+            </div>
+        `;
 
-    openCustomModal(html);
+        // Add Listeners
+        const list = container.querySelector('.draggable-model-list');
+        list.querySelectorAll('.draggable-model-item').forEach(item => {
+            item.ondragstart = (e) => {
+                e.dataTransfer.setData('text/plain', item.dataset.index);
+                item.classList.add('dragging');
+            };
+            item.ondragend = () => item.classList.remove('dragging');
+            item.ondragover = (e) => e.preventDefault();
+            item.ondrop = (e) => {
+                e.preventDefault();
+                const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                const toIndex = parseInt(item.dataset.index);
+                if (fromIndex !== toIndex) {
+                    const movedItem = selectedModels.splice(fromIndex, 1)[0];
+                    selectedModels.splice(toIndex, 0, movedItem);
+                    renderList();
+                }
+            };
+        });
 
-    document.getElementById('save-profile-btn').onclick = async () => {
-        const checked = Array.from(document.querySelectorAll('#profile-model-list input:checked')).map(i => i.value);
-        if (checked.length === 0) {
-            showNotification('Please select at least one model.', 'warning');
-            return;
-        }
+        container.querySelectorAll('.remove-model').forEach(b => {
+            b.onclick = () => {
+                selectedModels.splice(parseInt(b.dataset.index), 1);
+                renderList();
+            };
+        });
 
-        profiles[name] = checked;
-        await saveRegistry();
-        closeModal();
+        container.querySelector('.add-model-to-profile-btn').onclick = () => {
+            const sel = container.querySelector('.add-model-select');
+            if (sel.value) {
+                selectedModels.push(sel.value);
+                renderList();
+            }
+        };
+
+        container.querySelector('.save-profile-inline-btn').onclick = async () => {
+            profiles[name] = selectedModels;
+            await saveRegistry();
+        };
     };
+
+    renderList();
 }
 
 async function deleteProfile(name, type) {
