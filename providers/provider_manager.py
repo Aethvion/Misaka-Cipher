@@ -329,7 +329,7 @@ class ProviderManager:
                 
                 # Check if successful
                 if response.success:
-                    logger.info(f"[{trace_id}] Request successful with provider: {provider_name}")
+                    logger.info(f"[{trace_id}] Request successful with provider: {target_provider_name}")
                     
                     # Log usage
                     try:

@@ -712,7 +712,7 @@ class MasterOrchestrator:
             logger.error(f"Chat generation failed: {response.error}")
             return Response(
                 content=f"I encountered an error: {response.error}",
-                trace_id=request.trace_id,
+                trace_id=response.trace_id,
                 success=False,
                 error=response.error,
                 metadata={}

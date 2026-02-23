@@ -192,6 +192,26 @@ class GrokProvider(BaseProvider):
             self.record_failure()
             yield f"Error: {str(e)}"
     
+    def generate_image(
+        self,
+        prompt: str,
+        trace_id: str,
+        model: Optional[str] = None,
+        n: int = 1,
+        size: str = "1024x1024",
+        quality: str = "standard",
+        **kwargs
+    ) -> ProviderResponse:
+        """Grok does not currently support image generation."""
+        logger.warning(f"[{trace_id}] Grok does not support image generation")
+        return ProviderResponse(
+            content="",
+            model=model or self.config.model,
+            provider="grok",
+            trace_id=trace_id,
+            error="Grok does not support image generation"
+        )
+    
     def validate_credentials(self) -> bool:
         """Validate Grok API credentials."""
         try:
