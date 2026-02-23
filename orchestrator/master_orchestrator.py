@@ -341,96 +341,36 @@ class MasterOrchestrator:
                 
                 
                 elif action == "spawn_agent":
-                    # Circuit Breaker / Retry Loop
-                    max_retries = 3
-                    if self.nexus.provider_manager:
-                        max_retries = self.nexus.provider_manager.get_global_max_retries()
+                    if self.step_callback:
+                        self.step_callback({
+                            "type": "agent_step",
+                            "title": "Spawning Agent",
+                            "content": f"Deploying agent **{plan.agent_spec.name}** to execute task...",
+                            "trace_id": plan.trace_id,
+                            "status": "running"
+                        })
                     
-                    retry_count = 0
-                    success = False
-                    agent_result = None
+                    agent_result = self.call_factory(plan.agent_spec, plan.trace_id)
+                    success = agent_result.get('success', False)
+                    output = agent_result.get('output', '')
                     
-                    while retry_count < max_retries and not success:
-                        if retry_count > 0:
-                            if self.step_callback:
-                                self.step_callback({
-                                    "type": "agent_step",
-                                    "title": f"Agent Retry ({retry_count}/{max_retries})",
-                                    "content": f"Agent **{plan.agent_spec.name}** encountered an issue. Retrying...",
-                                    "trace_id": plan.trace_id,
-                                    "status": "running"
-                                })
-                        else:
-                            if self.step_callback:
-                                self.step_callback({
-                                    "type": "agent_step",
-                                    "title": "Spawning Agent",
-                                    "content": f"Deploying agent **{plan.agent_spec.name}** to execute task...",
-                                    "trace_id": plan.trace_id,
-                                    "status": "running"
-                                })
-                        
-                        # Add previous error to context if retrying
-                        if retry_count > 0 and agent_result:
-                            plan.agent_spec.context['instructions'] = (
-                                f"PREVIOUS ATTEMPT FAILED: {agent_result.get('error') or 'Verification failed'}. "
-                                "Please fix the issue and try again."
-                            )
-                        
-                        agent_result = self.call_factory(plan.agent_spec, plan.trace_id)
-                        
-                        # Check if agent execution failed
-                        if not agent_result.get('success'):
-                            # Agent failed - extract error and retry
-                            error_msg = agent_result.get('error', 'Unknown error')
-                            output = agent_result.get('output', '')
-                            
-                            logger.error(f"[{plan.trace_id}] Agent execution failed: {error_msg}")
-                            logger.error(f"[{plan.trace_id}] Agent output: {output[:500]}")
-                            
-                            retry_count += 1
-                            
-                            if retry_count < max_retries:
-                                logger.warning(f"[{plan.trace_id}] Retry triggered (Attempt {retry_count+1}/{max_retries})")
-                                # Add error context for next attempt
-                                plan.agent_spec.context['instructions'] = (
-                                    f"PREVIOUS ATTEMPT FAILED WITH ERROR: {error_msg}\n\n"
-                                    f"Previous output: {output}\n\n"
-                                    "Please analyze the error and try a different approach. "
-                                    "If the error is about missing tools or imports, use the tools that are available. "
-                                    "If you cannot complete the task, explain why clearly."
-                                )
-                                continue  # Retry immediately
-                            else:
-                                # Max retries reached
-                                logger.error(f"[{plan.trace_id}] Max retries reached. Agent failed permanently.")
-                                success = False
-                                break
-                        
-                        # Agent execution succeeded - now verify the output
-                        output = agent_result.get('output', '')
-                        success = False
-                        
+                    if success:
                         # 1. Check for File Creation
                         potential_files = re.findall(r'[\w\-\.]+\.[a-zA-Z]{2,4}', output)
-                        verified_files = set() # Use set to avoid duplicates
+                        verified_files = set()
                         
                         for fname in potential_files:
-                            # Limit search to workspace to avoid scanning entire system if misconfigured
                             found = list(WORKSPACE_ROOT.rglob(fname))
                             for path in found:
                                 if path.is_file():
                                     verified_files.add(path)
                         
                         if verified_files:
-                            success = True
                             links_msg = "\n\n**Verified Output Files:**\n"
-                            # Sort for consistent output
                             for vf in sorted(list(verified_files)):
                                 relative_path = vf.relative_to(WORKSPACE_ROOT)
                                 try:
                                     domain = relative_path.parts[0]
-                                    # Handle case where file is in root of workspace
                                     if relative_path.name == domain:
                                         filename = relative_path.name
                                         links_msg += f"- [{filename}](/api/workspace/files/{filename})\n"
@@ -441,52 +381,14 @@ class MasterOrchestrator:
                                     links_msg += f"- {filename}\n"
                             
                             agent_result['output'] = output + links_msg
-                            break  # Success - exit retry loop
-                            
-                        # 2. Check for Execution Output (Code)
-                        elif "EXECUTION OUTPUT" in output and "Code execution failed" not in output:
-                            success = True
-                            break  # Success - exit retry loop
-                        
-                        # 3. Simple text success legacy fallback
-                        elif "created and saved" in output.lower() and "successfully" in output.lower():
-                            success = True
-                            break  # Success - exit retry loop
-                        
-                        # 4. No success indicators found
-                        else:
-                            logger.warning(f"[{plan.trace_id}] Verification Failed: No files created or code executed.")
-                            retry_count += 1
-                            
-                            if retry_count < max_retries:
-                                logger.warning(f"[{plan.trace_id}] Retry triggered (Attempt {retry_count+1}/{max_retries})")
-                                plan.agent_spec.context['instructions'] = (
-                                    f"PREVIOUS ATTEMPT DID NOT PRODUCE VERIFIABLE OUTPUT.\n\n"
-                                    f"Previous output: {output}\n\n"
-                                    "Please ensure you either:\n"
-                                    "1. Create and save a file to the workspace\n"
-                                    "2. Execute code that produces clear output\n"
-                                    "3. Provide a clear success message\n"
-                                    "If you cannot complete the task, explain why clearly."
-                                )
-                            else:
-                                logger.error(f"[{plan.trace_id}] Max retries reached. Verification failed.")
-                                success = False
-                                break
-                    
                     
                     agents_spawned.append(agent_result.get('agent_name', 'unknown'))
-                    # REMOVED: response_parts.append(f"✓ Spawned agent: {agent_result.get('agent_name')}")
                     
                     # Format response based on success/failure
                     if success:
-                        # Success - show the output
-                        # REMOVED: response_parts.append(f"\n**Result:**\n{agent_result.get('output', 'No output')}")
                         response_parts.append(agent_result.get('output', 'No output'))
                     else:
-                        # Failure - show concise error summary
                         error_msg = agent_result.get('error', 'Unknown error')
-                        output = agent_result.get('output', '')
                         
                         # Extract file and line number from traceback if available
                         traceback_match = re.search(r'File "([^"]+)", line (\d+)', output)
@@ -494,18 +396,16 @@ class MasterOrchestrator:
                         if traceback_match:
                             file_path = traceback_match.group(1)
                             line_num = traceback_match.group(2)
-                            # Get just the filename
                             file_name = file_path.split('\\')[-1] if '\\' in file_path else file_path.split('/')[-1]
                             location = f" in `{file_name}` line {line_num}"
                         
-                        # Extract the actual error type and message
                         error_type_match = re.search(r'(\w+Error): (.+?)(?:\n|$)', output)
                         error_detail = ""
                         if error_type_match:
                             error_detail = f": {error_type_match.group(1)} - {error_type_match.group(2)}"
                         
                         response_parts.append(
-                            f"\n**Status:** ❌ Unsuccessful after {retry_count} attempt(s)\n"
+                            f"\n**Status:** ❌ Unsuccessful\n"
                             f"**Error{location}**{error_detail}\n\n"
                             f"<details>\n<summary>View full error details</summary>\n\n"
                             f"```\n{output}\n```\n</details>"
@@ -527,6 +427,7 @@ class MasterOrchestrator:
                             "trace_id": plan.trace_id,
                             "status": status
                         })
+
                 
                 elif action == "query_memory":
                     memory_results = self.query_memory(plan.memory_query, plan.trace_id)

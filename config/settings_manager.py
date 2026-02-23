@@ -18,9 +18,8 @@ class SettingsManager:
     Manages system settings and user preferences.
     
     Handles:
-    - Retry configuration (max attempts, model selection)
-    - Provider preferences
     - Output validation rules
+    - System settings (browser startup)
     - Settings persistence
     """
     
@@ -47,24 +46,14 @@ class SettingsManager:
     def _get_default_settings(self) -> Dict[str, Any]:
         """Get default settings."""
         return {
-            "retry": {
-                "max_attempts": 3,
-                "enable_validation": True,
-                "model_tiers": {
-                    "attempt_1": "google_ai",
-                    "attempt_2": "google_ai",
-                    "attempt_3": "google_ai"
-                }
-            },
-            "providers": {
-                "default": "google_ai",
-                "fallback_order": ["google_ai", "openai", "local"]
-            },
             "output_validation": {
                 "check_file_content": True,
                 "check_file_location": True,
                 "min_file_size": 10,
                 "min_content_length": 50
+            },
+            "system": {
+                "open_browser_on_startup": True
             }
         }
     
@@ -124,32 +113,6 @@ class SettingsManager:
         # Set value
         target[keys[-1]] = value
         return self.save_settings()
-    
-    # Convenience methods
-    
-    def get_max_retry_attempts(self) -> int:
-        """Get maximum retry attempts."""
-        return self.get("retry.max_attempts", 3)
-    
-    def get_validation_enabled(self) -> bool:
-        """Check if output validation is enabled."""
-        return self.get("retry.enable_validation", True)
-    
-    def get_model_for_attempt(self, attempt: int) -> Optional[str]:
-        """
-        Get model to use for specific retry attempt.
-        
-        Args:
-            attempt: Attempt number (1-indexed)
-            
-        Returns:
-            Model name or None
-        """
-        return self.get(f"retry.model_tiers.attempt_{attempt}")
-    
-    def get_default_provider(self) -> str:
-        """Get default provider."""
-        return self.get("providers.default", "google_ai")
     
     def get_min_content_length(self) -> int:
         """Get minimum expected content length for validation."""

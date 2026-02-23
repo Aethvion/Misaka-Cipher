@@ -18,9 +18,7 @@ logger = get_logger(__name__)
 
 class ProviderManager:
     """
-    Manages multiple LLM providers with automatic failover.
-    
-    Priority: Google AI (Primary) → OpenAI (Fallback) → Grok (Tertiary)
+    Manages multiple LLM providers with profile-based routing.
     """
     
     PROVIDER_CLASSES = {
@@ -163,12 +161,10 @@ class ProviderManager:
                     api_key=config.get('api_key_env', ''),
                     endpoint=config.get('endpoint', ''),
                     timeout=config.get('timeout', 30),
-                    max_retries=config.get('max_retries', 3),
                     fallback_models=config.get('fallback_models', [])
                 )
                 
                 self.providers[name] = provider_class(provider_config)
-                # self.priority_order.append(name) # Legacy
                 
                 logger.info(f"Initialized provider: {name}")
                 
@@ -398,17 +394,3 @@ class ProviderManager:
             'agent_priority': getattr(self, 'agent_priority_order', [])
         }
 
-    def get_global_max_retries(self) -> int:
-        """Get the maximum retries from the primary provider."""
-        primary_model = None
-        if hasattr(self, 'agent_priority_order') and self.agent_priority_order:
-             primary_model = self.agent_priority_order[0]
-        elif hasattr(self, 'chat_priority_order') and self.chat_priority_order:
-             primary_model = self.chat_priority_order[0]
-             
-        if primary_model and hasattr(self, 'model_to_provider_map'):
-             primary_provider = self.model_to_provider_map.get(primary_model)
-             if primary_provider:
-                 return self.config.get(primary_provider, {}).get('max_retries', 3)
-                 
-        return 3
