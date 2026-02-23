@@ -152,11 +152,27 @@ def _load_registry() -> Dict[str, Any]:
     try:
         if REGISTRY_PATH.exists():
             with open(REGISTRY_PATH, 'r') as f:
-                return json.load(f)
-        return {"providers": {}, "routing_strategy": {}}
+                data = json.load(f)
+                # Ensure basic structure
+                if "providers" not in data: data["providers"] = {}
+                if "profiles" not in data: data["profiles"] = {"chat_profiles": {}, "agent_profiles": {}}
+                return data
+        
+        # Return default structure if file doesn't exist
+        return {
+            "providers": {}, 
+            "profiles": {
+                "chat_profiles": {
+                    "default": ["gemini-2.0-flash"]
+                }, 
+                "agent_profiles": {
+                    "default": ["gemini-2.0-flash"]
+                }
+            }
+        }
     except Exception as e:
         logger.error(f"Failed to load model registry: {e}")
-        return {"providers": {}, "routing_strategy": {}}
+        return {"providers": {}, "profiles": {"chat_profiles": {}, "agent_profiles": {}}}
 
 
 def _save_registry(data: Dict[str, Any]) -> None:
@@ -188,6 +204,82 @@ async def update_registry(updates: Dict[str, Any], request: Request):
         return {"status": "success", "registry": updates}
     except Exception as e:
         logger.error(f"Failed to update registry: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/available_types")
+async def get_available_types():
+    """Get list of supported provider types."""
+    return ["google_ai", "openai", "grok", "local"]
+
+
+@router.post("/providers")
+async def add_provider(provider_data: Dict[str, Any], request: Request):
+    """Add a new supported provider to the registry by type."""
+    try:
+        provider_type = provider_data.get("type")
+        if not provider_type:
+            raise HTTPException(status_code=400, detail="Provider 'type' is required")
+        
+        supported_types = ["google_ai", "openai", "grok", "local"]
+        if provider_type not in supported_types:
+            raise HTTPException(status_code=400, detail=f"Unsupported provider type: {provider_type}")
+            
+        registry = _load_registry()
+        providers = registry.get("providers", {})
+        
+        if provider_type in providers:
+            raise HTTPException(status_code=409, detail=f"Provider '{provider_type}' already exists")
+            
+        # Default templates
+        defaults = {
+            "google_ai": {
+                "name": "Google AI",
+                "api_key_env": "GOOGLE_AI_API_KEY",
+                "active": True,
+                "chat_config": {"active": True, "priority": 1},
+                "agent_config": {"active": True, "priority": 1},
+                "models": {}
+            },
+            "openai": {
+                "name": "OpenAI",
+                "api_key_env": "OPENAI_API_KEY",
+                "active": True,
+                "chat_config": {"active": True, "priority": 1},
+                "agent_config": {"active": False, "priority": 1},
+                "models": {}
+            },
+            "grok": {
+                "name": "xAI Grok",
+                "api_key_env": "GROK_API_KEY",
+                "active": True,
+                "chat_config": {"active": True, "priority": 1},
+                "agent_config": {"active": False, "priority": 1},
+                "models": {}
+            },
+            "local": {
+                "name": "Local AI",
+                "api_key_env": "",
+                "active": False,
+                "chat_config": {"active": False, "priority": 1},
+                "agent_config": {"active": False, "priority": 1},
+                "models": {}
+            }
+        }
+        
+        providers[provider_type] = defaults[provider_type]
+        registry["providers"] = providers
+        _save_registry(registry)
+        
+        if hasattr(request.app.state, 'nexus'):
+            request.app.state.nexus.reload_config()
+            
+        logger.info(f"Added provider type '{provider_type}' to registry")
+        return {"status": "success", "provider": providers[provider_type]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to add provider: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

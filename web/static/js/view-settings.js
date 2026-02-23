@@ -348,11 +348,85 @@ async function loadProviderSettings() {
             renderProfiles();
         }
         initProfileCreationButtons();
-        loadChatModels();
-        clearSettingsDirty();
+        initProviderCreationButtons();
+
+        const pSaveBtn = document.getElementById('save-provider-settings');
+        if (pSaveBtn) pSaveBtn.onclick = saveProviderSettings;
     } catch (error) {
         console.error('Failed to load registry:', error);
         showNotification('Failed to load provider settings.', 'error');
+    }
+}
+
+function initProviderCreationButtons() {
+    const btn = document.getElementById('add-provider-btn');
+    if (btn) {
+        btn.onclick = toggleAddProviderInline;
+    }
+}
+
+async function toggleAddProviderInline() {
+    const container = document.getElementById('inline-add-provider');
+    if (!container) return;
+
+    if (container.style.display === 'block') {
+        container.style.display = 'none';
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/registry/available_types');
+        const types = await res.json();
+
+        // Filter out already added providers
+        const existing = Object.keys(_registryData?.providers || {});
+        const available = types.filter(t => !existing.includes(t));
+
+        if (available.length === 0) {
+            showNotification('All supported provider types have already been added.', 'info');
+            return;
+        }
+
+        container.style.display = 'block';
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin: 0; font-size: 0.9rem; color: var(--primary);">Add Supported Provider</h4>
+                    <button class="icon-btn xs-btn" onclick="document.getElementById('inline-add-provider').style.display='none'"><i class="fas fa-times"></i></button>
+                </div>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <select id="new-provider-type-select" class="control-select" style="flex: 1;">
+                        ${available.map(t => `<option value="${t}">${t.replace('_', ' ').toUpperCase()}</option>`).join('')}
+                    </select>
+                    <button class="action-btn primary xs-btn" id="confirm-add-provider-inline">Add</button>
+                </div>
+                <p class="section-hint" style="margin: 0;">Selecting a type will add the provider with default system configuration.</p>
+            </div>
+        `;
+
+        document.getElementById('confirm-add-provider-inline').onclick = async () => {
+            const type = document.getElementById('new-provider-type-select').value;
+            try {
+                const addRes = await fetch('/api/registry/providers', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type })
+                });
+
+                if (addRes.ok) {
+                    showNotification(`Provider added successfully.`, 'success');
+                    container.style.display = 'none';
+                    await loadProviderSettings(); // Refresh
+                } else {
+                    const data = await addRes.json();
+                    showNotification(data.detail || 'Failed to add provider.', 'error');
+                }
+            } catch (e) {
+                showNotification('Error connecting to server.', 'error');
+            }
+        };
+    } catch (e) {
+        console.error('Failed to load available types:', e);
     }
 }
 
@@ -499,7 +573,7 @@ function renderProviderCards(registry) {
     });
 
     container.querySelectorAll('.add-model-btn').forEach(btn => {
-        btn.onclick = () => openAddModelModal(btn.dataset.provider);
+        btn.onclick = () => addModelRowInline(btn.dataset.provider);
     });
 
     container.querySelectorAll('.del-model').forEach(btn => {
@@ -511,6 +585,36 @@ function renderProviderCards(registry) {
 
     const saveBtn = document.getElementById('save-provider-settings');
     if (saveBtn) saveBtn.onclick = saveProviderSettings;
+}
+
+function addModelRowInline(providerName) {
+    const providerItem = document.querySelector(`.compact-provider-item[data-provider="${providerName}"]`);
+    if (!providerItem) return;
+
+    const tbody = providerItem.querySelector('tbody');
+    const foldout = providerItem.querySelector('.provider-models-foldout');
+    foldout.style.display = 'block';
+
+    const tempId = 'new-' + Date.now();
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td><input type="text" class="model-id-input-small" value="" data-key="${tempId}" placeholder="model-id"></td>
+        <td>
+            <div class="cost-inputs">
+                <input type="number" step="0.01" class="model-cost-in" value="0">
+                <input type="number" step="0.01" class="model-cost-out" value="0">
+            </div>
+        </td>
+        <td>
+            <input type="text" class="model-caps-input" value="" placeholder="chat, vision...">
+        </td>
+        <td>
+            <button class="btn-icon xs-btn del-model" onclick="this.closest('tr').remove(); markSettingsDirty();"><i class="fas fa-trash"></i></button>
+        </td>
+    `;
+    tbody.appendChild(row);
+    markSettingsDirty();
+    row.querySelector('input').focus();
 }
 
 async function saveProviderSettings() {

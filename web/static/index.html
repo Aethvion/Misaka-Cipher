@@ -1021,15 +1021,24 @@
                                     <i class="fas fa-server"></i>
                                     <span>AI Provider Access</span>
                                 </div>
-                                <button id="save-provider-settings" class="action-btn xs-btn primary"
-                                    title="Save Provider Config">
-                                    <i class="fas fa-save"></i>
-                                </button>
+                                <div class="header-actions">
+                                    <button id="add-provider-btn" class="action-btn xs-btn" title="Add New Provider">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <button id="save-provider-settings" class="action-btn xs-btn primary"
+                                        title="Save Provider Config">
+                                        <i class="fas fa-save"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div id="provider-unsaved-banner" class="unsaved-banner" style="display:none;">
                                 ⚠ Unsaved changes
                             </div>
                             <div class="card-content scrollable">
+                                <div id="inline-add-provider" class="inline-form-container"
+                                    style="display:none; margin-bottom: 1rem; padding: 0.8rem; border: 1px dashed var(--border); border-radius: 6px;">
+                                    <!-- Inline form injected by JS -->
+                                </div>
                                 <div id="provider-cards-container" class="provider-list-compact">
                                     <div class="loading-placeholder">Loading providers...</div>
                                 </div>
