@@ -3,7 +3,7 @@ Misaka Cipher - Forge Module
 Tool generation interface
 """
 
-from cli_modules.utils import (
+from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, get_text_input,
     format_trace_id, print_success, print_error, print_warning,
     print_key_value, pause, show_progress, confirm

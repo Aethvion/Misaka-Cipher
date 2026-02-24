@@ -22,14 +22,14 @@ from forge import ToolForge
 from orchestrator import MasterOrchestrator
 from utils import get_logger
 from config.settings_manager import get_settings_manager
-from web.package_routes import router as package_router
-from web.task_routes import router as task_router
-from web.tool_routes import router as tool_router
-from web.memory_routes import router as memory_router
-from web.registry_routes import router as registry_router
-from web.usage_routes import router as usage_router
-from web.arena_routes import router as arena_router
-from web.settings_routes import router as settings_router
+from .package_routes import router as package_router
+from .task_routes import router as task_router
+from .tool_routes import router as tool_router
+from .memory_routes import router as memory_router
+from .registry_routes import router as registry_router
+from .usage_routes import router as usage_router
+from .arena_routes import router as arena_router
+from .settings_routes import router as settings_router
 
 logger = get_logger(__name__)
 
@@ -74,15 +74,15 @@ app.include_router(arena_router)
 app.include_router(settings_router)
 
 # Include image routes
-from web.image_routes import router as image_router
+from .image_routes import router as image_router
 app.include_router(image_router)
 
 # Include research routes
-from web.advanced_aiconv_routes import router as adv_aiconv_router
+from .advanced_aiconv_routes import router as adv_aiconv_router
 app.include_router(adv_aiconv_router)
 
 # Include assistant routes
-from web.assistant_routes import router as assistant_router
+from .assistant_routes import router as assistant_router
 app.include_router(assistant_router)
 
 # Global instances (initialized on startup)
@@ -440,7 +440,7 @@ async def sync_system_telemetry():
         project_size = 0
         db_size = 0
         try:
-            root_dir = Path(__file__).parent.parent
+            root_dir = Path(__file__).parent.parent.parent.parent
             for path in root_dir.rglob('*'):
                 if path.is_file():
                     size = path.stat().st_size

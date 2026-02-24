@@ -3,7 +3,7 @@ Misaka Cipher - Nexus Core Module
 Direct AI interaction through Nexus Core
 """
 
-from cli_modules.utils import (
+from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, get_text_input,
     format_trace_id, print_success, print_error, print_key_value,
     confirm, pause, show_progress
@@ -49,7 +49,7 @@ def nexus_core_module(nexus: NexusCore):
             except ValueError:
                 print_error("Invalid temperature or max_tokens, using defaults")
         
-        from cli_modules.settings_module import load_settings
+        from core.interfaces.cli_modules.settings_module import load_settings
         def _get_active_models():
             settings = load_settings()
             providers = settings.get("providers", {})
@@ -66,7 +66,7 @@ def nexus_core_module(nexus: NexusCore):
         selected_model = None
         if use_custom_model:
             models = _get_active_models()
-            from cli_modules.utils import print_menu, get_user_choice
+            from core.interfaces.cli_modules.utils import print_menu, get_user_choice
             print_menu("Available Models", models, include_exit=True)
             c = get_user_choice(len(models))
             if c > 0:

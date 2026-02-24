@@ -48,7 +48,7 @@ async def get_memory_overview():
         threads_memory = []
         
         # Path to threads directory in hierarchical workspace structure
-        workspace = Path(__file__).parent.parent
+        workspace = Path(__file__).parent.parent.parent.parent
         workspaces_dir = workspace / "memory" / "storage" / "workspaces"
         
         if workspaces_dir.exists():

@@ -3,12 +3,12 @@ Misaka Cipher - Research Module
 CLI interface for Advanced AI Conversations
 """
 
-from cli_modules.utils import (
+from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, print_menu, get_user_choice,
     get_text_input, print_success, print_error, confirm, show_progress,
     pause
 )
-from cli_modules.settings_module import load_settings
+from core.interfaces.cli_modules.settings_module import load_settings
 from rich.panel import Panel
 from rich.table import Table
 import asyncio

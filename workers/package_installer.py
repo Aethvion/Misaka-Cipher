@@ -127,7 +127,7 @@ class PackageInstallerWorker:
         try:
             # Import here to avoid circular dependency
             import asyncio
-            from web.server import manager, main_event_loop
+            from core.interfaces.dashboard.server import manager, main_event_loop
             
             if not main_event_loop:
                 return

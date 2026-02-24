@@ -60,7 +60,7 @@ def run_web_server():
 
     try:
         import uvicorn
-        from web.server import app
+        from core.interfaces.dashboard.server import app
         
         uvicorn.run(
             app,

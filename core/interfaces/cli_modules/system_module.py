@@ -3,7 +3,7 @@ Misaka Cipher - System Status Module
 Displays system diagnostics and health information
 """
 
-from cli_modules.utils import (
+from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, print_table,
     print_key_value, print_success, print_warning, pause
 )

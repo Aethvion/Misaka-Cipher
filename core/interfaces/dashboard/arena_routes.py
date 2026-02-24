@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/arena", tags=["arena"])
 
-DATA_DIR = Path(__file__).parent.parent / "data"
+DATA_DIR = Path(__file__).parent.parent.parent.parent / "data"
 LEADERBOARD_FILE = DATA_DIR / "arena_leaderboard.json"
 
 

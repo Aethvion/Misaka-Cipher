@@ -3,7 +3,7 @@ Misaka Cipher - Settings Module
 CLI module for managing providers and configuring the Model Registry
 """
 
-from cli_modules.utils import (
+from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, print_menu, get_user_choice,
     print_success, print_error, confirm, print_key_value
 )
