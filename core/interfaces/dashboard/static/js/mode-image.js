@@ -129,12 +129,12 @@ async function loadImageModels() {
     let html = '';
     const models = [];
 
-    // Find all models with image_generation capability
+    // Find all models with 'image' capability tag
     for (const [providerName, config] of Object.entries(_registryData.providers)) {
         if (!config.models) continue;
         for (const [key, info] of Object.entries(config.models)) {
             const caps = info.capabilities || [];
-            if (caps.includes('image_generation')) {
+            if (caps.includes('image') || caps.includes('image_generation')) {
                 models.push({
                     key: key,
                     id: info.id || key,

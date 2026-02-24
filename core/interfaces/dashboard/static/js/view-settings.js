@@ -430,6 +430,94 @@ async function toggleAddProviderInline() {
     }
 }
 
+// Available capability tags
+const AVAILABLE_CAPS = ['chat', 'image'];
+
+/**
+ * Renders the inner HTML of a caps table cell.
+ * Returns a string with .caps-cell div containing pills and a + button.
+ */
+function renderCapsTd(caps = []) {
+    const pills = caps.map(c => `
+        <span class="cap-tag" data-cap="${c}" title="Click to remove">
+            ${c}<span class="cap-remove">✕</span>
+        </span>
+    `).join('');
+    return `<div class="caps-cell" style="position:relative;">${pills}<button class="add-cap-btn" title="Add capability">+</button></div>`;
+}
+
+/**
+ * Attaches interactive listeners to a .caps-cell element.
+ * Handles clicking + to show dropdown, clicking tag to remove, clicking dropdown item to add.
+ */
+function initCapsTd(cell) {
+    if (!cell || cell._capsInited) return;
+    cell._capsInited = true;
+
+    // Remove existing tag on click
+    cell.addEventListener('click', (e) => {
+        const tag = e.target.closest('.cap-tag');
+        if (tag) {
+            tag.remove();
+            markSettingsDirty();
+            return;
+        }
+
+        // + button clicked
+        const addBtn = e.target.closest('.add-cap-btn');
+        if (addBtn) {
+            // Close any open dropdowns first
+            document.querySelectorAll('.cap-dropdown').forEach(d => d.remove());
+
+            const currentCaps = Array.from(cell.querySelectorAll('.cap-tag')).map(t => t.dataset.cap);
+            const available = AVAILABLE_CAPS.filter(c => !currentCaps.includes(c));
+
+            if (available.length === 0) {
+                showNotification('All capabilities already added.', 'info');
+                return;
+            }
+
+            const dropdown = document.createElement('div');
+            dropdown.className = 'cap-dropdown';
+            dropdown.innerHTML = available.map(c =>
+                `<div class="cap-dropdown-item" data-cap="${c}">${c}</div>`
+            ).join('');
+
+            // Position below the button
+            cell.style.position = 'relative';
+            cell.appendChild(dropdown);
+
+            // Select capability from dropdown
+            dropdown.addEventListener('click', (de) => {
+                const item = de.target.closest('.cap-dropdown-item');
+                if (!item) return;
+                const cap = item.dataset.cap;
+                dropdown.remove();
+
+                // Insert tag before the + button
+                const pill = document.createElement('span');
+                pill.className = 'cap-tag';
+                pill.dataset.cap = cap;
+                pill.title = 'Click to remove';
+                pill.innerHTML = `${cap}<span class="cap-remove">✕</span>`;
+                cell.insertBefore(pill, addBtn);
+                markSettingsDirty();
+            });
+
+            // Close on outside click
+            setTimeout(() => {
+                document.addEventListener('click', function closeDropdown(ev) {
+                    if (!dropdown.contains(ev.target)) {
+                        dropdown.remove();
+                        document.removeEventListener('click', closeDropdown);
+                    }
+                });
+            }, 0);
+            e.stopPropagation();
+        }
+    });
+}
+
 async function loadChatModels() {
     const selects = [
         document.getElementById('model-select'),
@@ -521,7 +609,7 @@ function renderProviderCards(registry) {
                         <tbody>
                              ${Object.entries(config.models || {}).map(([key, m]) => {
             const modelId = typeof m === 'string' ? m : (m.id || key);
-            const caps = Array.isArray(m.capabilities) ? m.capabilities.join(', ') : '';
+            const caps = Array.isArray(m.capabilities) ? m.capabilities : [];
             return `
                                     <tr>
                                         <td><input type="text" class="model-id-input-small" value="${key}" data-key="${key}"></td>
@@ -531,9 +619,7 @@ function renderProviderCards(registry) {
                                                 <input type="number" step="0.01" class="model-cost-out" value="${m.output_cost_per_1m_tokens || 0}">
                                             </div>
                                         </td>
-                                        <td>
-                                            <input type="text" class="model-caps-input" value="${caps}" placeholder="chat, vision...">
-                                        </td>
+                                        <td>${renderCapsTd(caps)}</td>
                                         <td>
                                             <button class="btn-icon xs-btn del-model" data-key="${key}"><i class="fas fa-trash"></i></button>
                                         </td>
@@ -561,6 +647,7 @@ function renderProviderCards(registry) {
     });
 
     container.querySelectorAll('input').forEach(i => i.onchange = () => markSettingsDirty());
+    container.querySelectorAll('.caps-cell').forEach(cell => initCapsTd(cell));
     container.querySelectorAll('.chat-active-toggle, .agent-active-toggle').forEach(t => {
         t.onchange = (e) => {
             const item = e.target.closest('.compact-provider-item');
@@ -595,7 +682,6 @@ function addModelRowInline(providerName) {
     const foldout = providerItem.querySelector('.provider-models-foldout');
     foldout.style.display = 'block';
 
-    const tempId = 'new-' + Date.now();
     const row = document.createElement('tr');
     row.innerHTML = `
         <td><input type="text" class="model-id-input-small" value="" data-key="" placeholder="model-id"></td>
@@ -605,14 +691,13 @@ function addModelRowInline(providerName) {
                 <input type="number" step="0.01" class="model-cost-out" value="0">
             </div>
         </td>
-        <td>
-            <input type="text" class="model-caps-input" value="" placeholder="chat, vision...">
-        </td>
+        <td>${renderCapsTd([])}</td>
         <td>
             <button class="btn-icon xs-btn del-model" onclick="this.closest('tr').remove(); markSettingsDirty();"><i class="fas fa-trash"></i></button>
         </td>
     `;
     tbody.appendChild(row);
+    initCapsTd(row.querySelector('.caps-cell'));
     markSettingsDirty();
     row.querySelector('input').focus();
 }
@@ -639,8 +724,11 @@ async function saveProviderSettings() {
 
             const costIn = parseFloat(row.querySelector('.model-cost-in').value);
             const costOut = parseFloat(row.querySelector('.model-cost-out').value);
-            const capsRaw = row.querySelector('.model-caps-input').value;
-            const capabilities = capsRaw.split(',').map(c => c.trim()).filter(c => c !== '');
+            // Read capabilities from tag pills
+            const capsCell = row.querySelector('.caps-cell');
+            const capabilities = capsCell
+                ? Array.from(capsCell.querySelectorAll('.cap-tag')).map(t => t.dataset.cap)
+                : [];
 
             prov.models[modelName] = {
                 input_cost_per_1m_tokens: costIn,

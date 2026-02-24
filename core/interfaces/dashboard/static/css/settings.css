@@ -304,3 +304,129 @@
     min-height: 0;
     padding: 1rem 0;
 }
+
+/* ===== Capability Tag System ===== */
+.caps-cell {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 120px;
+}
+
+.cap-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.15s, transform 0.1s;
+    border: 1px solid transparent;
+}
+
+.cap-tag:hover {
+    opacity: 0.75;
+    transform: scale(0.95);
+}
+
+.cap-tag[data-cap="chat"] {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: rgba(0, 212, 255, 0.4);
+    color: var(--primary);
+}
+
+.cap-tag[data-cap="image"] {
+    background: rgba(178, 0, 255, 0.15);
+    border-color: rgba(178, 0, 255, 0.4);
+    color: #b200ff;
+}
+
+.cap-tag .cap-remove {
+    opacity: 0.6;
+    font-size: 0.65rem;
+    line-height: 1;
+}
+
+/* + Add Tag Button */
+.add-cap-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    border: 1px dashed var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+
+.add-cap-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Dropdown for capability selection */
+.cap-dropdown {
+    position: absolute;
+    z-index: 200;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.3rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 100px;
+}
+
+.cap-dropdown-item {
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.cap-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.cap-dropdown-item[data-cap="chat"] {
+    color: var(--primary);
+}
+
+.cap-dropdown-item[data-cap="image"] {
+    color: #b200ff;
+}
+
+/* Widen cost inputs in model table */
+.cost-inputs {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
+}
+
+.cost-inputs input[type="number"] {
+    width: 50px;
+    height: 20px;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
