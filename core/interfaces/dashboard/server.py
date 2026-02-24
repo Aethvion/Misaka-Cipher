@@ -92,6 +92,14 @@ factory: Optional[AgentFactory] = None
 forge: Optional[ToolForge] = None
 main_event_loop = None
 
+# Startup tracking
+startup_status = {
+    "initialized": False,
+    "status": "Starting...",
+    "progress": 0,
+    "error": None
+}
+
 # WebSocket connection manager
 class ConnectionManager:
     """Manages WebSocket connections."""
@@ -192,13 +200,11 @@ class MemorySearchRequest(BaseModel):
 # Startup/Shutdown events
 @app.on_event("startup")
 async def startup_event():
-    """Initialize system on startup."""
-    global orchestrator, nexus, factory, forge, main_event_loop
-    
-    logger.info("Initializing Misaka Cipher Web Server...")
-    
+    """Trigger background initialization."""
+    global main_event_loop
     main_event_loop = asyncio.get_running_loop()
     
+    # Initialize logging streamer immediately
     root_logger = logging.getLogger()
     ws_handler = WebSocketLogHandler()
     ws_handler.setLevel(logging.INFO)
@@ -206,20 +212,37 @@ async def startup_event():
     ws_handler.setFormatter(formatter)
     root_logger.addHandler(ws_handler)
     
-    logger.info("✓ WebSocket Log Streamer attached")
+    # Start background initialization
+    asyncio.create_task(initialize_system_background())
+
+async def initialize_system_background():
+    """Heavily initialization of components in the background."""
+    global orchestrator, nexus, factory, forge, startup_status
     
     try:
+        startup_status["status"] = "Initializing Nexus Core..."
+        startup_status["progress"] = 10
+        logger.info("Initializing Misaka Cipher Web Server...")
+        
         nexus = NexusCore()
         nexus.initialize()
         app.state.nexus = nexus
+        startup_status["status"] = "Nexus Core Ready"
+        startup_status["progress"] = 30
         logger.info("✓ Nexus Core initialized")
         
+        startup_status["status"] = "Spawning Agent Factory..."
+        startup_status["progress"] = 40
         factory = AgentFactory(nexus)
         logger.info("✓ Factory initialized")
         
+        startup_status["status"] = "Assembling Tool Forge..."
+        startup_status["progress"] = 50
         forge = ToolForge(nexus)
         logger.info("✓ Forge initialized")
         
+        startup_status["status"] = "Synchronizing Orchestrator..."
+        startup_status["progress"] = 60
         orchestrator = MasterOrchestrator(nexus, factory, forge)
         
         def broadcast_step_callback(step_data: Dict):
@@ -230,23 +253,27 @@ async def startup_event():
                 )
         
         orchestrator.set_step_callback(broadcast_step_callback)
-        logger.info("✓ Master Orchestrator initialized (with step broadcasting)")
+        logger.info("✓ Master Orchestrator initialized")
         
+        startup_status["status"] = "Connecting Workers..."
+        startup_status["progress"] = 80
         from workers.package_installer import get_installer_worker
         installer_worker = get_installer_worker()
         installer_worker.start()
-        logger.info("✓ Package Installer Worker started")
         
         from orchestrator.task_queue import get_task_queue_manager
         task_manager = get_task_queue_manager(orchestrator, max_workers=4)
         await task_manager.start()
-        logger.info("✓ Task Queue Manager started (4 workers)")
         
+        startup_status["status"] = "All systems operational"
+        startup_status["progress"] = 100
+        startup_status["initialized"] = True
         logger.info("Misaka Cipher Web Server ready!")
         
     except Exception as e:
         logger.error(f"Startup failed: {str(e)}", exc_info=True)
-        raise
+        startup_status["error"] = str(e)
+        startup_status["status"] = "Startup Failed"
 
 
 @app.on_event("shutdown")
@@ -390,6 +417,12 @@ async def chat(message: ChatMessage):
         if isinstance(e, HTTPException): raise e
         logger.error(f"Chat endpoint error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/system/startup-status")
+async def get_startup_status():
+    """Get system initialization status."""
+    return startup_status
 
 
 @app.get("/api/system/status")

@@ -9,6 +9,9 @@ let currentMainTab = 'chat';
 let prevChatArenaMode = 'chat'; // Used to resume chat/arena
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Start polling startup status
+    await pollStartupStatus();
+
     initializeWebSockets();
     const refreshMemory = document.getElementById('refresh-memory-btn');
     if (refreshMemory) refreshMemory.addEventListener('click', loadMemoryData);
@@ -24,6 +27,57 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (data.value) switchMainTab(data.value, false);
     }
 });
+
+/**
+ * Polls the system startup status and updates the splash screen.
+ */
+async function pollStartupStatus() {
+    const splash = document.getElementById('startup-splash');
+    const progressBar = document.getElementById('splash-progress');
+    const statusText = document.getElementById('splash-status-text');
+
+    if (!splash) return;
+
+    return new Promise((resolve) => {
+        const checkStatus = async () => {
+            try {
+                const response = await fetch('/api/system/startup-status');
+                if (response.ok) {
+                    const data = await response.json();
+
+                    if (progressBar) progressBar.style.width = `${data.progress}%`;
+                    if (statusText) statusText.textContent = data.status;
+
+                    if (data.initialized) {
+                        // All systems go!
+                        setTimeout(() => {
+                            splash.classList.add('fade-out');
+                            setTimeout(() => {
+                                splash.style.display = 'none';
+                                resolve();
+                            }, 800);
+                        }, 500);
+                        return;
+                    }
+
+                    if (data.error) {
+                        if (statusText) {
+                            statusText.textContent = `CRITICAL ERROR: ${data.error}`;
+                            statusText.style.color = 'var(--error)';
+                        }
+                        return; // Stop polling on hard error
+                    }
+                }
+            } catch (err) {
+                console.warn("Startup status fetch failed, retrying...", err);
+            }
+            // Poll again in 500ms
+            setTimeout(checkStatus, 500);
+        };
+
+        checkStatus();
+    });
+}
 
 // ===== WebSocket Management =====
 

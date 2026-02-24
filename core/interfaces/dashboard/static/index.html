@@ -26,7 +26,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/base.css?v=startup">
     <link rel="stylesheet" href="/static/css/layout.css">
     <link rel="stylesheet" href="/static/css/chat.css">
     <link rel="stylesheet" href="/static/css/files_tools.css">
@@ -46,6 +46,25 @@
 </head>
 
 <body>
+    <!-- Startup Splash Screen -->
+    <div id="startup-splash" class="startup-splash">
+        <div class="splash-content">
+            <div class="misaka-character-container">
+                <img src="/static/misakacipher/expressions/misakacipher_default.png" alt="Misaka Cipher"
+                    class="splash-misaka">
+                <div class="splash-eyes-overlay"></div>
+            </div>
+            <h1 class="splash-logo">MISAKA CIPHER</h1>
+            <div class="splash-status-container">
+                <div class="splash-loader-bar">
+                    <div id="splash-progress" class="splash-progress"></div>
+                </div>
+                <p id="splash-status-text" class="splash-status-text">INITIALIZING SYSTEM...</p>
+            </div>
+            <div class="splash-version">BUILD v1.0.0-NEXUS</div>
+        </div>
+    </div>
+
     <!-- Header -->
     <header class="header">
         <div class="header-top">
@@ -1185,7 +1204,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
         <script src="/static/js/threads.js?v=4"></script>
         <!-- Core & State Management -->
-        <script src="/static/js/core.js?v=2"></script>
+        <script src="/static/js/core.js?v=startup"></script>
 
         <!-- Views (Passive Data Renderers) -->
         <script src="/static/js/view-files.js?v=1"></script>

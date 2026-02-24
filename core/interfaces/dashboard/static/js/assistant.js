@@ -119,7 +119,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setEmotion(finalEmotion);
 
         if (typingSpeed <= 0) {
-            setEmotion(finalEmotion);
             if (asMarkdown && typeof marked !== 'undefined') {
                 div.innerHTML = marked.parse(content);
             } else {
@@ -135,74 +134,80 @@ document.addEventListener('DOMContentLoaded', () => {
             return Promise.resolve();
         }
 
-        // Typing animation
+        // Typing animation state
         const isNegative = ['angry', 'crying', 'pout', 'error', 'exhausted'].includes(finalEmotion);
         let talkingFaces = ['default', 'happy_closedeyes_smilewithteeth', 'happy_closedeyes_widesmile', 'thinking', 'wink'];
 
-        // If a specific positive/neutral emotion is requested, weight it heavily in the talking animation
         if (!isNegative && finalEmotion !== 'default') {
             talkingFaces = [finalEmotion, finalEmotion, finalEmotion, 'happy_closedeyes_smilewithteeth', 'happy_closedeyes_widesmile'];
         }
 
-        // Parse the Markdown to HTML *before* typing so we don't expose raw markdown syntax
-        let parsedHTML = content;
+        // Pre-render the HTML if needed
+        let sourceContainer = document.createElement('div');
         if (asMarkdown && typeof marked !== 'undefined') {
-            parsedHTML = marked.parse(content);
+            sourceContainer.innerHTML = marked.parse(content);
+        } else {
+            sourceContainer.textContent = content;
         }
 
-        let charIndex = 0;
+        // Calculate expression change logic
+        const totalChars = sourceContainer.textContent.length;
+        const numChanges = totalChars < 50 ? 2 : totalChars < 200 ? 3 : totalChars < 500 ? 4 : 6;
+        const expressionInterval = Math.max(10, Math.floor(totalChars / numChanges));
+        let processedChars = 0;
 
-        return new Promise(resolve => {
-            const typeInterval = setInterval(() => {
-                if (charIndex >= parsedHTML.length) {
-                    clearInterval(typeInterval);
-                    setEmotion(finalEmotion);
+        // Recursive reveal function
+        async function revealNodes(source, target) {
+            for (const node of Array.from(source.childNodes)) {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    const text = node.textContent;
+                    const textNode = document.createTextNode('');
+                    target.appendChild(textNode);
 
-                    div.innerHTML = parsedHTML;
+                    for (let i = 0; i < text.length; i++) {
+                        textNode.textContent += text[i];
+                        processedChars++;
 
-                    if (asMarkdown && typeof hljs !== 'undefined') {
-                        div.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
-                    }
-
-                    if (!isNegative && (finalEmotion === 'default' || finalEmotion.startsWith('happy') || finalEmotion === 'wink')) {
-                        triggerWink(1500);
-                    }
-
-                    scrollToBottom();
-                    resolve();
-                    return;
-                }
-
-                // Instantly advance past HTML tags so they are rendered as markup, not typed text
-                if (parsedHTML[charIndex] === '<') {
-                    while (charIndex < parsedHTML.length && parsedHTML[charIndex] !== '>') {
-                        charIndex++;
-                    }
-                }
-                charIndex++;
-
-                div.innerHTML = parsedHTML.substring(0, charIndex);
-                scrollToBottom();
-
-                // Calculate expression change interval based on message length (aim for 2-4 changes usually, max 6)
-                const numChanges = content.length < 50 ? 2 : content.length < 200 ? 3 : content.length < 500 ? 4 : 6;
-                const expressionInterval = Math.max(10, Math.floor(content.length / numChanges));
-
-                // Dynamic facial expressions while typing based on text length
-                if (charIndex % expressionInterval === 0 && charIndex < content.length - 5) {
-                    if (!isNegative) {
-                        let randomFace = talkingFaces[Math.floor(Math.random() * talkingFaces.length)];
-                        // Avoid picking the exact same face twice in a row to ensure visible movement
-                        while (randomFace === currentEmotion && talkingFaces.length > 1) {
-                            randomFace = talkingFaces[Math.floor(Math.random() * talkingFaces.length)];
+                        // Scroll and expressions
+                        scrollToBottom();
+                        if (processedChars % expressionInterval === 0 && processedChars < totalChars - 5) {
+                            if (!isNegative) {
+                                let randomFace = talkingFaces[Math.floor(Math.random() * talkingFaces.length)];
+                                while (randomFace === currentEmotion && talkingFaces.length > 1) {
+                                    randomFace = talkingFaces[Math.floor(Math.random() * talkingFaces.length)];
+                                }
+                                setEmotion(randomFace);
+                            } else {
+                                setEmotion(processedChars % (expressionInterval * 2) === 0 ? 'pout' : finalEmotion);
+                            }
                         }
-                        setEmotion(randomFace);
-                    } else {
-                        setEmotion(charIndex % (expressionInterval * 2) === 0 ? 'pout' : finalEmotion);
-                    }
-                }
 
-            }, typingSpeed);
+                        // Wait for typing delay
+                        await new Promise(r => setTimeout(r, typingSpeed));
+                    }
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    const clone = node.cloneNode(false); // shallow clone
+                    target.appendChild(clone);
+                    await revealNodes(node, clone);
+                }
+            }
+        }
+
+        return new Promise(async (resolve) => {
+            await revealNodes(sourceContainer, div);
+
+            // Cleanup / Finale
+            setEmotion(finalEmotion);
+            if (asMarkdown && typeof hljs !== 'undefined') {
+                div.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+            }
+
+            if (!isNegative && (finalEmotion === 'default' || finalEmotion.startsWith('happy') || finalEmotion === 'wink')) {
+                triggerWink(1500);
+            }
+
+            scrollToBottom();
+            resolve();
         });
     }
 

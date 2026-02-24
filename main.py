@@ -34,7 +34,7 @@ def run_cli():
 def open_browser():
     """Wait for server to start and then open browser."""
     # Short delay to allow uvicorn to bind to port
-    time.sleep(2.0)
+    time.sleep(0.5)
     logger.info("Automatically opening dashboard at http://localhost:8000")
     webbrowser.open("http://localhost:8000")
 
