@@ -183,7 +183,8 @@ async def startup_event():
 
 async def initialize_system_background():
     """Heavy initialization of components in the background."""
-    global orchestrator, nexus, factory, forge, startup_status
+    # No global keywords needed here as we only mutate startup_status
+    # and delegate assignments to perform_blocking_init.
     
     try:
         # Step 1: Resource Imports (CPU bound, moved to thread later if needed, but routers are fast)
@@ -239,7 +240,7 @@ async def initialize_system_background():
 
 def perform_blocking_init():
     """Perform CPU-heavy synchronous initializations."""
-    global nexus, factory, forge, orchestrator, startup_status
+    global nexus, factory, forge, orchestrator
     
     try:
         # Lazy imports for heavy core components
