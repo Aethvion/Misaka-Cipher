@@ -29,7 +29,7 @@ class AssistantChatResponse(BaseModel):
     response: str
     model_id: str
     
-def _build_assistant_context(ui_context: Optional[Dict[str, Any]] = None, include_web_context: bool = False) -> str:
+def _build_assistant_context(include_web_context: bool = False, allow_dashboard_control: bool = False) -> str:
     """Builds the dynamic system prompt injected with live system data."""
     system_map = get_system_map()
     file_counts = get_file_counts()
@@ -62,25 +62,39 @@ When the user asks about the project, use the statistics above to answer accurat
 CRITICAL RULE: DO NOT state these statistics unless the user EXPLICITLY asks for them. In normal conversation, completely ignore the existence of the statistics above. You exist to be helpful, concise, and natural, communicating directly to the user through your floating dialogue box.
 """
 
-    if include_web_context and ui_context:
-        tab_id = ui_context.get('active_tab_id', 'unknown')
-        tab_name = ui_context.get('active_tab_name', 'Unknown')
+    if include_web_context:
+        # Read active tab from user preferences (authoritative source)
+        try:
+            prefs = get_preferences_manager()
+            active_tab = prefs.get('active_tab', 'chat')
+        except Exception:
+            active_tab = 'unknown'
         
-        # Load the documentation file
+        # Load the dashboard context documentation
         doc_content = ""
         try:
-            doc_path = Path("documentation/ai/web_interface_context.md")
+            doc_path = Path("documentation/ai/dashboard_interface_context.md")
             if doc_path.exists():
                 with open(doc_path, 'r', encoding='utf-8') as f:
                     doc_content = f.read()
         except Exception:
             pass
             
-        context += f"\n\nCURRENT UI CONTEXT:\n"
-        context += f"The user is currently viewing the '{tab_name}' tab (ID: {tab_id}).\n"
+        context += f"\n\nCURRENT DASHBOARD CONTEXT:\n"
+        context += f"The user is currently viewing the '{active_tab}' tab.\n"
         if doc_content:
-            context += f"If they ask 'what am I looking at' or 'how does this page work', use the following documentation to help them:\n"
-            context += f"<web_interface_docs>\n{doc_content}\n</web_interface_docs>\n"
+            context += f"Use the following dashboard documentation to answer questions about the interface:\n"
+            context += f"<dashboard_docs>\n{doc_content}\n</dashboard_docs>\n"
+
+    if allow_dashboard_control:
+        context += """
+
+DASHBOARD CONTROL:
+You have the ability to navigate the user to a different tab on the dashboard.
+To switch to a tab, include a switch command in your response like this: [SwitchTab: tab_id]
+Valid tab IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings
+Only use this when the user EXPLICITLY asks to go somewhere (e.g. 'take me to settings', 'open the arena') or when it is clearly the most helpful action.
+"""
 
     return context
 
@@ -96,10 +110,10 @@ async def assistant_chat(request: AssistantChatRequest):
     # Get the designated model from settings, or fallback to flash
     target_model = assistant_config.get('model', 'flash')
     
-    # Construct prompt
-    ui_dict = request.ui_context.dict() if request.ui_context else None
+    # Construct prompt - read web context and dashboard control from prefs
     include_web = assistant_config.get('include_web_context', False)
-    system_prompt = _build_assistant_context(ui_context=ui_dict, include_web_context=include_web)
+    allow_dash_control = assistant_config.get('allow_dashboard_control', False)
+    system_prompt = _build_assistant_context(include_web_context=include_web, allow_dashboard_control=allow_dash_control)
     
     # We will format the history into a single prompt for simple failover calling
     # If the provider supports structured chat history, we'd pass it. For BaseProvider generate(),

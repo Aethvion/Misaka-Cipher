@@ -292,11 +292,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 while ((match = emotionRegex.exec(responseText)) !== null) {
                     targetEmotion = match[1].toLowerCase(); // capture the very last emotion tag specified
                 }
-                // Strip all tags out
+                // Strip all emotion tags out
                 responseText = responseText.replace(/\[Emotion:\s*[a-zA-Z0-9_]+\]/ig, '').trim();
+
+                // Parse dashboard tab switch: [SwitchTab: tab_id]
+                const switchTabRegex = /\[SwitchTab:\s*([a-zA-Z0-9_-]+)\]/ig;
+                let switchMatch;
+                let switchTarget = null;
+                while ((switchMatch = switchTabRegex.exec(responseText)) !== null) {
+                    switchTarget = switchMatch[1].toLowerCase();
+                }
+                // Strip all SwitchTab tags from display text
+                responseText = responseText.replace(/\[SwitchTab:\s*[a-zA-Z0-9_-]+\]/ig, '').trim();
 
                 messageHistory.push({ role: 'assistant', content: responseText }); // Save cleaned text
                 await typeMessage('misaka', responseText, true, targetEmotion);
+
+                // Execute tab switch AFTER message display
+                if (switchTarget) {
+                    switchDashboardTab(switchTarget);
+                }
             } else {
                 const err = await res.json();
                 appendMessage('system', `Error: ${err.detail || 'Failed to connect.'}`);
@@ -352,3 +367,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize
     loadAssistantSettings();
 });
+
+/**
+ * Navigate the dashboard to a specific tab by its ID.
+ * Mirrors the app's own tab switching logic.
+ */
+function switchDashboardTab(tabId) {
+    // Map tabId to the nav button data-tab attribute and trigger a click
+    const navBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+    if (navBtn) {
+        navBtn.click();
+        return;
+    }
+    // Try matching by tab panel id (tab-<tabId>)
+    const panel = document.getElementById(`tab-${tabId}`);
+    if (panel && typeof switchTab === 'function') {
+        switchTab(tabId);
+        return;
+    }
+    console.warn(`[Assistant] Could not switch to tab: ${tabId}`);
+}

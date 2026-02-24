@@ -84,6 +84,14 @@ async function loadPreferences() {
         };
     }
 
+    const assistantDashControl = document.getElementById('setting-assistant-dashboard-control');
+    if (assistantDashControl) {
+        assistantDashControl.checked = prefs.get('assistant.allow_dashboard_control', false);
+        assistantDashControl.onchange = async (e) => {
+            await savePreference('assistant.allow_dashboard_control', e.target.checked);
+        };
+    }
+
     const assistantTypingSpeed = document.getElementById('setting-assistant-typing-speed');
     const assistantTypingVal = document.getElementById('setting-assistant-typing-speed-val');
     if (assistantTypingSpeed && assistantTypingVal) {
