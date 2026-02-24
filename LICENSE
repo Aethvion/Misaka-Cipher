@@ -1,3 +1,17 @@
+IMPORTANT: SEPARATION OF LICENSES
+
+1. SOFTWARE CODE:
+The source code of this project (Python, JavaScript, HTML, CSS) is licensed under the MIT License below.
+
+2. ASSETS AND ARTWORK:
+The character assets, images, audio files, and "Misaka Cipher" intellectual property located in:
+   - 'web/static/misakacipher'
+   - 'assets/misakacipher'
+
+are NOT covered by this MIT License. They are proprietary and licensed under the terms found in the 'ASSET_LICENSE' file included in this repository.
+
+--------------------------------------------------------------------------
+
 MIT License
 
 Copyright (c) 2026 Aethvion
