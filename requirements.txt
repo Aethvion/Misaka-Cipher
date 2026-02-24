@@ -2,7 +2,7 @@
 # Python dependencies
 
 # Google AI
-google-generativeai>=0.3.0
+google-genai>=1.0.0
 
 # OpenAI
 openai>=1.0.0

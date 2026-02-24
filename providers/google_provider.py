@@ -5,7 +5,8 @@ Google Generative AI (Gemini) implementation
 
 import os
 from typing import Iterator, Optional
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
 from utils.logger import get_logger
 
@@ -28,10 +29,8 @@ class GoogleAIProvider(BaseProvider):
         if not api_key:
             logger.error(f"Google AI API key not found in environment: {config.api_key}")
         
-        genai.configure(api_key=api_key)
-        
-        # Initialize model
-        self.model = genai.GenerativeModel(config.model)
+        # New SDK uses a client-based approach
+        self.client = genai.Client(api_key=api_key)
         
         logger.info(f"Initialized Google AI provider with model: {config.model}")
     
@@ -46,40 +45,30 @@ class GoogleAIProvider(BaseProvider):
     ) -> ProviderResponse:
         """Generate response using Google AI."""
         try:
-            # For Google AI, the model is bound at init time via genai.GenerativeModel.
-            # The model param is accepted to prevent kwargs conflicts.
             active_model = model if model else self.config.model
             logger.debug(f"[{trace_id}] Generating with Google AI model {active_model}")
             
             # Extract system prompt if provided
             system_prompt = kwargs.pop('system_prompt', None)
             
-            # Use specific model instance if requested, otherwise default
-            if active_model != self.config.model or system_prompt:
-                 model_kwargs = {}
-                 if system_prompt:
-                     model_kwargs['system_instruction'] = system_prompt
-                 gen_model = genai.GenerativeModel(active_model, **model_kwargs)
-            else:
-                 gen_model = self.model
-            
-            # Remove 'model' from kwargs to prevent passing to generate_content
-            kwargs.pop('model', None)
-            # Remove unsupported kwargs that might have been passed generically
-            kwargs.pop('json_mode', None)
-            
             # Configure generation
-            generation_config = {
+            config_params = {
                 'temperature': temperature,
             }
             if max_tokens:
-                generation_config['max_output_tokens'] = max_tokens
+                config_params['max_output_tokens'] = max_tokens
+            if system_prompt:
+                config_params['system_instruction'] = system_prompt
             
-            # Generate response
-            response = gen_model.generate_content(
-                prompt,
-                generation_config=generation_config,
-                **kwargs
+            # Remove unsupported kwargs
+            kwargs.pop('json_mode', None)
+            kwargs.pop('model', None)
+
+            # Generate response via client
+            response = self.client.models.generate_content(
+                model=active_model,
+                contents=prompt,
+                config=types.GenerateContentConfig(**config_params)
             )
             
             # Record success
@@ -89,9 +78,9 @@ class GoogleAIProvider(BaseProvider):
             
             # Extract usage
             usage_meta = {
-                'prompt_token_count': getattr(response.usage_metadata, 'prompt_token_count', None),
-                'candidates_token_count': getattr(response.usage_metadata, 'candidates_token_count', None),
-                'total_tokens': getattr(response.usage_metadata, 'total_token_count', None)
+                'prompt_token_count': response.usage_metadata.prompt_token_count if response.usage_metadata else None,
+                'candidates_token_count': response.usage_metadata.candidates_token_count if response.usage_metadata else None,
+                'total_tokens': response.usage_metadata.total_token_count if response.usage_metadata else None
             } if hasattr(response, 'usage_metadata') and response.usage_metadata else {}
 
             return ProviderResponse(
@@ -101,14 +90,7 @@ class GoogleAIProvider(BaseProvider):
                 trace_id=trace_id,
                 metadata={
                     'model': active_model,
-                    'finish_reason': response.candidates[0].finish_reason.name if response.candidates else None,
-                    'safety_ratings': [
-                        {
-                            'category': rating.category.name,
-                            'probability': rating.probability.name
-                        }
-                        for rating in response.candidates[0].safety_ratings
-                    ] if response.candidates else [],
+                    'finish_reason': response.candidates[0].finish_reason if response.candidates else None,
                     'usage': usage_meta
                 }
             )
@@ -138,18 +120,17 @@ class GoogleAIProvider(BaseProvider):
             logger.debug(f"[{trace_id}] Streaming with Google AI model {self.config.model}")
             
             # Configure generation
-            generation_config = {
+            config_params = {
                 'temperature': temperature,
             }
             if max_tokens:
-                generation_config['max_output_tokens'] = max_tokens
+                config_params['max_output_tokens'] = max_tokens
             
             # Stream response
-            response = self.model.generate_content(
-                prompt,
-                generation_config=generation_config,
-                stream=True,
-                **kwargs
+            response = self.client.models.generate_content_stream(
+                model=self.config.model,
+                contents=prompt,
+                config=types.GenerateContentConfig(**config_params)
             )
             
             for chunk in response:
@@ -169,7 +150,7 @@ class GoogleAIProvider(BaseProvider):
         """Validate Google AI API credentials."""
         try:
             # Try to list models as a validation check
-            list(genai.list_models())
+            self.client.models.list(config={'page_size': 1})
             return True
         except Exception as e:
             logger.warning(f"Google AI credential validation failed: {str(e)}")
@@ -190,45 +171,23 @@ class GoogleAIProvider(BaseProvider):
             active_model = model if model else "imagen-3.0-generate-002"
             logger.debug(f"[{trace_id}] Generating image with Google AI model {active_model}")
 
-            # Get image model
-            # Note: This requires a version of google-generativeai that supports Imagen
-            try:
-                from google.generativeai import ImageGenerationModel
-                img_model = ImageGenerationModel(active_model, api_key=self.config.api_key)
-            except ImportError:
-                 return ProviderResponse(
-                    content="",
-                    model=active_model,
-                    provider="google_ai",
-                    trace_id=trace_id,
-                    error="Google Generative AI SDK does not support ImageGenerationModel. Please update the package."
-                )
-
-            # Map aspect ratio parameters
-            # app.js sends 'aspect_ratios' as list, need to pick one or default.
-            # But the API arg here is `aspect_ratio` (string).
-            # The kwargs might contain 'aspect_ratio' from the frontend if we passed it.
             aspect_ratio = kwargs.get('aspect_ratio', '1:1')
 
-            # Generate
-            response = img_model.generate_images(
+            # Generate via new SDK
+            response = self.client.models.generate_image(
+                model=active_model,
                 prompt=prompt,
-                number_of_images=n,
-                aspect_ratio=aspect_ratio,
-                safety_filter="block_only_high",
+                config=types.GenerateImageConfig(
+                    number_of_images=n,
+                    aspect_ratio=aspect_ratio,
+                    safety_filter="BLOCK_ONLY_HIGH"
+                )
             )
-            
-            # The response.images are PIL Images. 
-            # We will pass them in metadata to be saved by the route handler.
-            # We can't pickle them easily if we were passing across processes, but within same process it's fine.
-            # Alternatively, convert to bytes here.
             
             import io
             image_bytes_list = []
-            for img in response.images:
-                img_byte_arr = io.BytesIO()
-                img.save(img_byte_arr, format='PNG')
-                image_bytes_list.append(img_byte_arr.getvalue())
+            for img in response.generated_images:
+                image_bytes_list.append(img.image.image_bytes)
 
             self.record_success()
             logger.info(f"[{trace_id}] Successfully generated {len(image_bytes_list)} images with Google AI")
