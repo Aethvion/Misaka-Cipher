@@ -3,7 +3,9 @@ Version 1.0
 
 1. DEFINITIONS
 "Assets" refers to all image files, audio files, 3D models, and character definitions 
-(specifically the character "Misaka Cipher") located in the 'web/static' and 'assets' directories.
+(specifically the character "Misaka Cipher") located in the following directories:
+   - 'web/static/misakacipher'
+   - 'assets/misakacipher'
 
 2. LICENSE GRANT
 The Assets are licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License (CC BY-NC-ND 4.0).
