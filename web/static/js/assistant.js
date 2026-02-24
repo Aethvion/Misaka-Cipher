@@ -13,8 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const input = document.getElementById('misaka-input');
     const sendBtn = document.getElementById('misaka-send-btn');
 
-    const IMG_DEFAULT = '/static/images/misakacipher/misakacipher_default.png';
-    const IMG_WINK = '/static/images/misakacipher/misakacipher_wink.png';
+    const IMG_DEFAULT = '/static/misakacipher/expressions/misakacipher_default.png';
+    const IMG_WINK = '/static/misakacipher/expressions/misakacipher_wink.png';
 
     // State
     let isAssistantEnabled = false;
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set Emotion Image
     function setEmotion(emotion) {
         currentEmotion = emotion;
-        const url = `/static/images/misakacipher/misakacipher_${emotion}.png`;
+        const url = `/static/misakacipher/expressions/misakacipher_${emotion}.png`;
         if (imgBubble) imgBubble.src = url;
         if (imgDialog) imgDialog.src = url;
     }
