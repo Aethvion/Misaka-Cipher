@@ -370,20 +370,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Navigate the dashboard to a specific tab by its ID.
- * Mirrors the app's own tab switching logic.
+ * Calls the global switchMainTab from core.js.
  */
 function switchDashboardTab(tabId) {
-    // Map tabId to the nav button data-tab attribute and trigger a click
-    const navBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
-    if (navBtn) {
-        navBtn.click();
-        return;
+    if (typeof switchMainTab === 'function') {
+        switchMainTab(tabId);
+    } else {
+        console.warn(`[Assistant] switchMainTab not available, cannot switch to: ${tabId}`);
     }
-    // Try matching by tab panel id (tab-<tabId>)
-    const panel = document.getElementById(`tab-${tabId}`);
-    if (panel && typeof switchTab === 'function') {
-        switchTab(tabId);
-        return;
-    }
-    console.warn(`[Assistant] Could not switch to tab: ${tabId}`);
 }
