@@ -9,8 +9,8 @@ let currentMainTab = 'chat';
 let prevChatArenaMode = 'chat'; // Used to resume chat/arena
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Start polling startup status
-    await pollStartupStatus();
+    // Start polling startup status (non-blocking)
+    pollStartupStatus();
 
     initializeWebSockets();
     const refreshMemory = document.getElementById('refresh-memory-btn');

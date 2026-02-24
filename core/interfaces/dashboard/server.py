@@ -16,20 +16,8 @@ import logging
 import sys
 from datetime import datetime
 
-from nexus_core import NexusCore
-from factory import AgentFactory
-from forge import ToolForge
-from orchestrator import MasterOrchestrator
 from utils import get_logger
 from config.settings_manager import get_settings_manager
-from .package_routes import router as package_router
-from .task_routes import router as task_router
-from .tool_routes import router as tool_router
-from .memory_routes import router as memory_router
-from .registry_routes import router as registry_router
-from .usage_routes import router as usage_router
-from .arena_routes import router as arena_router
-from .settings_routes import router as settings_router
 
 logger = get_logger(__name__)
 
@@ -49,53 +37,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include package management routes
-app.include_router(package_router)
+# --- INSTANT ACCESSIBILITY SECTION ---
+STATIC_DIR = Path(__file__).parent / "static"
 
-# Include task queue routes
-app.include_router(task_router)
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    """Serve the main dashboard page instantly."""
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
+    return HTMLResponse("<h1>Misaka Cipher Dashboard</h1><p>index.html not found</p>")
 
-# Include tool registry routes
-app.include_router(tool_router)
+# Mount static files immediately
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# Include memory routes
-app.include_router(memory_router)
-
-# Include registry routes
-app.include_router(registry_router)
-
-# Include usage routes
-app.include_router(usage_router)
-
-# Include arena routes
-app.include_router(arena_router)
-
-# Include settings routes
-app.include_router(settings_router)
-
-# Include image routes
-from .image_routes import router as image_router
-app.include_router(image_router)
-
-# Include research routes
-from .advanced_aiconv_routes import router as adv_aiconv_router
-app.include_router(adv_aiconv_router)
-
-# Include assistant routes
-from .assistant_routes import router as assistant_router
-app.include_router(assistant_router)
-
-# Global instances (initialized on startup)
-orchestrator: Optional[MasterOrchestrator] = None
-nexus: Optional[NexusCore] = None
-factory: Optional[AgentFactory] = None
-forge: Optional[ToolForge] = None
+# Global instances (initialized on startup in background)
+orchestrator = None
+nexus = None
+factory = None
+forge = None
 main_event_loop = None
 
 # Startup tracking
 startup_status = {
     "initialized": False,
-    "status": "Starting...",
+    "status": "Starting Server...",
     "progress": 0,
     "error": None
 }
@@ -216,45 +182,41 @@ async def startup_event():
     asyncio.create_task(initialize_system_background())
 
 async def initialize_system_background():
-    """Heavily initialization of components in the background."""
+    """Heavy initialization of components in the background."""
     global orchestrator, nexus, factory, forge, startup_status
     
     try:
-        startup_status["status"] = "Initializing Nexus Core..."
-        startup_status["progress"] = 10
-        logger.info("Initializing Misaka Cipher Web Server...")
+        # Step 1: Resource Imports (CPU bound, moved to thread later if needed, but routers are fast)
+        from .package_routes import router as package_router
+        from .task_routes import router as task_router
+        from .tool_routes import router as tool_router
+        from .memory_routes import router as memory_router
+        from .registry_routes import router as registry_router
+        from .usage_routes import router as usage_router
+        from .arena_routes import router as arena_router
+        from .settings_routes import router as settings_router
+        from .image_routes import router as image_router
+        from .advanced_aiconv_routes import router as adv_aiconv_router
+        from .assistant_routes import router as assistant_router
         
-        nexus = NexusCore()
-        nexus.initialize()
-        app.state.nexus = nexus
-        startup_status["status"] = "Nexus Core Ready"
-        startup_status["progress"] = 30
-        logger.info("✓ Nexus Core initialized")
+        # Immediate Router Inclusion (Sync but fast)
+        app.include_router(package_router)
+        app.include_router(task_router)
+        app.include_router(tool_router)
+        app.include_router(memory_router)
+        app.include_router(registry_router)
+        app.include_router(usage_router)
+        app.include_router(arena_router)
+        app.include_router(settings_router)
+        app.include_router(image_router)
+        app.include_router(adv_aiconv_router)
+        app.include_router(assistant_router)
+
+        # Step 2: Offload Heavy Component Initialization to a Thread
+        # This keeps the FastAPI event loop free to serve requests.
+        await asyncio.to_thread(perform_blocking_init)
         
-        startup_status["status"] = "Spawning Agent Factory..."
-        startup_status["progress"] = 40
-        factory = AgentFactory(nexus)
-        logger.info("✓ Factory initialized")
-        
-        startup_status["status"] = "Assembling Tool Forge..."
-        startup_status["progress"] = 50
-        forge = ToolForge(nexus)
-        logger.info("✓ Forge initialized")
-        
-        startup_status["status"] = "Synchronizing Orchestrator..."
-        startup_status["progress"] = 60
-        orchestrator = MasterOrchestrator(nexus, factory, forge)
-        
-        def broadcast_step_callback(step_data: Dict):
-            if main_event_loop:
-                asyncio.run_coroutine_threadsafe(
-                    manager.broadcast(step_data, "chat"),
-                    main_event_loop
-                )
-        
-        orchestrator.set_step_callback(broadcast_step_callback)
-        logger.info("✓ Master Orchestrator initialized")
-        
+        # Step 3: Start Workers (Must happen on event loop for async workers)
         startup_status["status"] = "Connecting Workers..."
         startup_status["progress"] = 80
         from workers.package_installer import get_installer_worker
@@ -275,6 +237,56 @@ async def initialize_system_background():
         startup_status["error"] = str(e)
         startup_status["status"] = "Startup Failed"
 
+def perform_blocking_init():
+    """Perform CPU-heavy synchronous initializations."""
+    global nexus, factory, forge, orchestrator, startup_status
+    
+    try:
+        # Lazy imports for heavy core components
+        from nexus_core import NexusCore
+        from factory import AgentFactory
+        from forge import ToolForge
+        from orchestrator import MasterOrchestrator
+
+        startup_status["status"] = "Initializing Nexus Core..."
+        startup_status["progress"] = 15
+        logger.info("Initializing Misaka Cipher Web Server...")
+        
+        nexus = NexusCore()
+        nexus.initialize()
+        app.state.nexus = nexus
+        startup_status["status"] = "Nexus Core Ready"
+        startup_status["progress"] = 40
+        logger.info("✓ Nexus Core initialized")
+        
+        startup_status["status"] = "Spawning Agent Factory..."
+        startup_status["progress"] = 50
+        factory = AgentFactory(nexus)
+        logger.info("✓ Factory initialized")
+        
+        startup_status["status"] = "Assembling Tool Forge..."
+        startup_status["progress"] = 60
+        forge = ToolForge(nexus)
+        logger.info("✓ Forge initialized")
+        
+        startup_status["status"] = "Synchronizing Orchestrator..."
+        startup_status["progress"] = 70
+        orchestrator = MasterOrchestrator(nexus, factory, forge)
+        
+        def broadcast_step_callback(step_data: Dict):
+            if main_event_loop:
+                asyncio.run_coroutine_threadsafe(
+                    manager.broadcast(step_data, "chat"),
+                    main_event_loop
+                )
+        
+        orchestrator.set_step_callback(broadcast_step_callback)
+        logger.info("✓ Master Orchestrator initialized")
+        
+    except Exception as e:
+        logger.error(f"Blocking init failed: {e}")
+        raise
+
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -282,10 +294,7 @@ async def shutdown_event():
     logger.info("Shutting down Misaka Cipher Web Server...")
 
 
-# Static files (dashboard)
-static_dir = Path(__file__).parent / "static"
-if static_dir.exists():
-    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+# Static mounting moved to Instant Accessibility section
 
 
 # Preferences API
@@ -342,23 +351,7 @@ async def set_preference(key: str, update: PreferenceUpdate):
 
 
 # Routes
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    """Serve main dashboard."""
-    index_file = static_dir / "index.html"
-    if index_file.exists():
-        return FileResponse(index_file)
-    else:
-        return HTMLResponse("""
-        <html>
-            <head><title>Misaka Cipher</title></head>
-            <body>
-                <h1>Misaka Cipher - Nexus Portal</h1>
-                <p>Dashboard under construction. Static files not found.</p>
-                <p>API available at: <a href="/docs">/docs</a></p>
-            </body>
-        </html>
-        """)
+# Root route already defined in Instant Accessibility section
 
 
 @app.get("/health")
