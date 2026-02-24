@@ -524,7 +524,7 @@ function renderProviderCards(registry) {
             const caps = Array.isArray(m.capabilities) ? m.capabilities.join(', ') : '';
             return `
                                     <tr>
-                                        <td><input type="text" class="model-id-input-small" value="${modelId}" data-key="${key}"></td>
+                                        <td><input type="text" class="model-id-input-small" value="${key}" data-key="${key}"></td>
                                         <td>
                                             <div class="cost-inputs">
                                                 <input type="number" step="0.01" class="model-cost-in" value="${m.input_cost_per_1m_tokens || 0}">
@@ -598,7 +598,7 @@ function addModelRowInline(providerName) {
     const tempId = 'new-' + Date.now();
     const row = document.createElement('tr');
     row.innerHTML = `
-        <td><input type="text" class="model-id-input-small" value="" data-key="${tempId}" placeholder="model-id"></td>
+        <td><input type="text" class="model-id-input-small" value="" data-key="" placeholder="model-id"></td>
         <td>
             <div class="cost-inputs">
                 <input type="number" step="0.01" class="model-cost-in" value="0">
@@ -634,15 +634,15 @@ async function saveProviderSettings() {
         const modelRows = item.querySelectorAll('tbody tr');
         modelRows.forEach(row => {
             const input = row.querySelector('.model-id-input-small');
-            const key = input.dataset.key;
-            const newId = input.value;
+            const modelName = input.value.trim();
+            if (!modelName) return; // Skip empty names
+
             const costIn = parseFloat(row.querySelector('.model-cost-in').value);
             const costOut = parseFloat(row.querySelector('.model-cost-out').value);
             const capsRaw = row.querySelector('.model-caps-input').value;
             const capabilities = capsRaw.split(',').map(c => c.trim()).filter(c => c !== '');
 
-            prov.models[key] = {
-                id: newId,
+            prov.models[modelName] = {
                 input_cost_per_1m_tokens: costIn,
                 output_cost_per_1m_tokens: costOut,
                 capabilities: capabilities
@@ -747,8 +747,7 @@ function renderInlineProfileEditor(container, name, type) {
     let allModels = [];
     for (const [pName, pConfig] of Object.entries(_registryData.providers)) {
         for (const [mKey, mVal] of Object.entries(pConfig.models)) {
-            const mId = mVal.id || mVal;
-            if (!allModels.includes(mId)) allModels.push(mId);
+            if (!allModels.includes(mKey)) allModels.push(mKey);
         }
     }
 
@@ -961,7 +960,6 @@ async function openAddModelModal(providerName) {
         }
 
         const modelEntry = {
-            id: modelId,
             input_cost_per_1m_tokens: parseFloat(costIn.value) || 0,
             output_cost_per_1m_tokens: parseFloat(costOut.value) || 0,
             capabilities: capsInput.value.split(',').map(c => c.trim()).filter(c => c !== '')

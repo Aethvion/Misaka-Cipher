@@ -177,10 +177,24 @@ def _load_registry() -> Dict[str, Any]:
 
 def _save_registry(data: Dict[str, Any]) -> None:
     """Save model registry to disk."""
+    # Fail-safe: Strip redundant 'id' and 'key' fields from model objects before saving
+    if "providers" in data:
+        for provider in data["providers"].values():
+            if "models" in provider:
+                cleaned_models = {}
+                for model_key, model_info in provider["models"].items():
+                    if isinstance(model_info, dict):
+                        # Clean the model info object
+                        cleaned_info = {k: v for k, v in model_info.items() if k not in ["id", "key"]}
+                        cleaned_models[model_key] = cleaned_info
+                    else:
+                        cleaned_models[model_key] = model_info
+                provider["models"] = cleaned_models
+
     REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(REGISTRY_PATH, 'w') as f:
         json.dump(data, f, indent=4)
-    logger.info("Model registry saved to disk")
+    logger.info("Model registry saved to disk (cleaned)")
 
 
 @router.get("")
@@ -426,7 +440,7 @@ async def get_chat_models():
                     continue
 
                 chat_models.append({
-                    "id": model_info.get("id", model_id),
+                    "id": model_id,
                     "provider": provider_name,
                     "capabilities": capabilities,
                     "input_cost_per_1m_tokens": model_info.get("input_cost_per_1m_tokens", 0),
