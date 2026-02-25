@@ -465,3 +465,87 @@ async def get_chat_models():
         logger.error(f"Failed to get chat models: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ===== Auto Routing Configuration =====
+
+def _get_chat_model_ids(registry: Dict[str, Any]) -> Dict[str, Dict]:
+    """Return all models with 'chat' capability: {model_id: {description, provider}}."""
+    result = {}
+    for provider_name, config in registry.get("providers", {}).items():
+        for model_id, model_info in config.get("models", {}).items():
+            if not isinstance(model_info, dict):
+                continue
+            caps = model_info.get("capabilities", [])
+            if "chat" in caps:
+                result[model_id] = {
+                    "description": model_info.get("description", ""),
+                    "provider": provider_name,
+                }
+    return result
+
+
+def _seed_auto_routing(registry: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure auto_routing contains all chat models. Missing entries are added (enabled=True).
+    Models that lose their 'chat' capability are NOT auto-removed (user may re-add it)."""
+    chat_models = _get_chat_model_ids(registry)
+    auto = registry.setdefault("auto_routing", {})
+
+    for profile_type in ("chat", "agent"):
+        profile = auto.setdefault(profile_type, {})
+        profile.setdefault("route_picker", next(iter(chat_models), ""))
+        pool = profile.setdefault("models", {})
+        for model_id in chat_models:
+            if model_id not in pool:
+                pool[model_id] = {"enabled": True}
+
+    return registry
+
+
+@router.get("/auto-routing")
+async def get_auto_routing():
+    """Get the auto routing config, seeding any new chat-capable models that are missing."""
+    try:
+        registry = _load_registry()
+        registry = _seed_auto_routing(registry)
+        # Persist any newly seeded models
+        _save_registry(registry)
+
+        # Enrich response with descriptions from provider models
+        chat_models = _get_chat_model_ids(registry)
+        auto = registry.get("auto_routing", {})
+
+        enriched = {}
+        for profile_type in ("chat", "agent"):
+            profile = auto.get(profile_type, {})
+            pool = profile.get("models", {})
+            enriched_pool = {}
+            for model_id, cfg in pool.items():
+                enriched_pool[model_id] = {
+                    **cfg,
+                    "description": chat_models.get(model_id, {}).get("description", ""),
+                    "provider": chat_models.get(model_id, {}).get("provider", ""),
+                }
+            enriched[profile_type] = {
+                "route_picker": profile.get("route_picker", ""),
+                "models": enriched_pool,
+            }
+
+        return {"auto_routing": enriched, "all_chat_models": list(chat_models.keys())}
+    except Exception as e:
+        logger.error(f"Failed to get auto routing config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/auto-routing")
+async def save_auto_routing(data: Dict[str, Any], request: Request):
+    """Save auto routing config (route_picker + model toggles per profile type)."""
+    try:
+        registry = _load_registry()
+        registry["auto_routing"] = data.get("auto_routing", registry.get("auto_routing", {}))
+        _save_registry(registry)
+        if hasattr(request.app.state, 'nexus'):
+            request.app.state.nexus.reload_config()
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Failed to save auto routing config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

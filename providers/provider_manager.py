@@ -39,6 +39,7 @@ class ProviderManager:
         self.config = {}
         self.model_to_provider_map: Dict[str, str] = {}
         self.model_descriptor_map: Dict[str, Dict] = {}
+        self.auto_routing_config: Dict = {}
         
         # Load configuration
         if config_path is None:
@@ -102,6 +103,9 @@ class ProviderManager:
             # Default profiles
             self.chat_priority_order = chat_profiles.get('default', [])
             self.agent_priority_order = agent_profiles.get('default', [])
+
+            # Load Auto Routing config
+            self.auto_routing_config = registry.get('auto_routing', {})
             
             logger.info(f"Chat Priority: {self.chat_priority_order}")
             logger.info(f"Agent Priority: {self.agent_priority_order}")
@@ -112,6 +116,7 @@ class ProviderManager:
             self.chat_priority_order = []
             self.agent_priority_order = []
             self.model_descriptor_map = {}
+            self.auto_routing_config = {}
 
     def reload_config(self):
         """Reload configuration from disk and update active providers."""
@@ -213,33 +218,53 @@ class ProviderManager:
         # 1. Profile Routing & Specific Models
         if model:
             if model == "auto":
-                # Description-aware Auto Complexity Routing
-                logger.info(f"[{trace_id}] AUTO mode: selecting best model via description matching")
+                # Description-aware Auto Complexity Routing using configured profile
+                logger.info(f"[{trace_id}] AUTO mode: description-aware routing")
 
-                # Collect candidate pool from configured profile or descriptor map
-                candidate_pool = self.agent_priority_order.copy() if is_agent else self.chat_priority_order.copy()
-                if not candidate_pool:
-                    cap_key = 'chat' if not is_agent else 'chat'
+                profile_type = 'agent' if is_agent else 'chat'
+                auto_profile = self.auto_routing_config.get(profile_type, {})
+
+                # Build candidate pool from enabled models in auto_routing config
+                pool_config = auto_profile.get('models', {})
+                if pool_config:
                     candidate_pool = [
-                        mid for mid, info in getattr(self, 'model_descriptor_map', {}).items()
-                        if cap_key in info.get('capabilities', []) or not info.get('capabilities')
+                        mid for mid, cfg in pool_config.items()
+                        if cfg.get('enabled', True) and mid in self.model_to_provider_map
+                    ]
+                else:
+                    # Fallback: use default profile order
+                    candidate_pool = (
+                        self.agent_priority_order.copy() if is_agent
+                        else self.chat_priority_order.copy()
+                    )
+
+                if not candidate_pool:
+                    logger.warning(f"[{trace_id}] AUTO: no enabled models in pool, using full descriptor map")
+                    candidate_pool = [
+                        mid for mid, info in self.model_descriptor_map.items()
+                        if 'chat' in info.get('capabilities', [])
                     ]
 
-                # Build descriptor lines for the router prompt
+                # Configured route picker (falls back to first candidate)
+                configured_picker = auto_profile.get('route_picker', '')
+                route_picker = configured_picker if configured_picker in self.model_to_provider_map else (
+                    candidate_pool[0] if candidate_pool else None
+                )
+
+                # Build descriptor lines
                 descriptor_lines = []
                 for mid in candidate_pool:
-                    info = getattr(self, 'model_descriptor_map', {}).get(mid, {})
+                    info = self.model_descriptor_map.get(mid, {})
                     desc = info.get('description', '').strip()
-                    if desc:
-                        descriptor_lines.append(f"- {mid}: {desc}")
-                    else:
-                        descriptor_lines.append(f"- {mid}")
+                    descriptor_lines.append(f"- {mid}: {desc}" if desc else f"- {mid}")
 
-                if len(descriptor_lines) > 1 and any(': ' in l for l in descriptor_lines):
-                    # Use a pinned fast model to route - use the first candidate to avoid recursion
-                    routing_model = candidate_pool[0]
+                chosen = None
+                if route_picker and len(candidate_pool) > 1 and any(': ' in l for l in descriptor_lines):
                     routing_prompt = (
-                        f"You are a model router. Pick the single best model for the user's message.\n"
+                        f"You are a model router. The user wants to send a message to the best-fit AI model.\n"
+                        f"Select the single best model from the list below for the user's message.\n"
+                        f"You may also use natural language hints in the message like 'use the most complex model', "
+                        f"'use a claude model', or 'use the fastest model' — respect those if present.\n"
                         f"Return ONLY the exact model ID, nothing else. No quotes, no explanation.\n\n"
                         f"Available models:\n" + "\n".join(descriptor_lines) + "\n\n"
                         f"User message (first 800 chars): {prompt[:800]}"
@@ -249,31 +274,32 @@ class ProviderManager:
                             prompt=routing_prompt,
                             trace_id=f"{trace_id}-router",
                             temperature=0.0,
-                            model=routing_model,
+                            model=route_picker,
                             request_type="generation",
                             source="auto_router"
                         )
                         if routing_response.success:
-                            chosen = routing_response.content.strip().strip('"').strip("'").split()[0]
-                            if chosen in candidate_pool:
-                                logger.info(f"[{trace_id}] AUTO router chose: '{chosen}'")
-                                model_order = [chosen] + [m for m in candidate_pool if m != chosen]
+                            raw = routing_response.content.strip().strip('"').strip("'").split()[0]
+                            if raw in candidate_pool:
+                                chosen = raw
+                                logger.info(f"[{trace_id}] AUTO router ({route_picker}) chose: '{chosen}'")
                             else:
-                                logger.warning(f"[{trace_id}] AUTO router returned unknown model '{chosen}', using full pool")
-                                model_order = candidate_pool
+                                logger.warning(f"[{trace_id}] Router returned unknown model '{raw}', using pool order")
                         else:
-                            logger.warning(f"[{trace_id}] AUTO router call failed, using full pool")
-                            model_order = candidate_pool
+                            logger.warning(f"[{trace_id}] Router call failed, using pool order")
                     except Exception as router_err:
-                        logger.error(f"[{trace_id}] AUTO router exception: {router_err}, falling back to full pool")
-                        model_order = candidate_pool
+                        logger.error(f"[{trace_id}] Router exception: {router_err}")
+
+                if chosen:
+                    model_order = [chosen] + [m for m in candidate_pool if m != chosen]
                 else:
-                    # No descriptions available - fall back to simple heuristic
-                    is_complex = len(prompt) > 2000 or any(
-                        kw in prompt.lower() for kw in ["analyze", "code", "architecture", "complex", "explain in detail"]
-                    )
-                    logger.info(f"[{trace_id}] AUTO heuristic fallback ({'COMPLEX' if is_complex else 'SIMPLE'}): using full pool order")
                     model_order = candidate_pool
+
+                # Store routing metadata for downstream trace capture
+                kwargs['_auto_routing_meta'] = {
+                    'route_picker': route_picker or '',
+                    'routed_to': chosen or (candidate_pool[0] if candidate_pool else ''),
+                }
 
             
             elif model.startswith("profile:"):
@@ -370,11 +396,16 @@ class ProviderManager:
                 # Check if successful
                 if response.success:
                     logger.info(f"[{trace_id}] Request successful with provider: {target_provider_name}")
-                    
+
                     # Log usage
                     try:
                         from workspace.usage_tracker import get_usage_tracker
                         tracker = get_usage_tracker()
+                        # Attach auto-routing metadata if present
+                        extra_meta = kwargs.pop('_auto_routing_meta', None) or {}
+                        log_meta = {**(response.metadata or {}), **extra_meta}
+                        if extra_meta:
+                            log_meta['routed_model'] = model_id
                         tracker.log_api_call(
                             provider=response.provider,
                             model=response.model,
@@ -382,12 +413,12 @@ class ProviderManager:
                             response_content=response.content,
                             trace_id=trace_id,
                             success=True,
-                            metadata=response.metadata or {},
+                            metadata=log_meta,
                             source=source
                         )
                     except Exception as usage_err:
                         logger.debug(f"[{trace_id}] Usage tracking failed (non-critical): {usage_err}")
-                    
+
                     return response
                 
                 last_error = response.error

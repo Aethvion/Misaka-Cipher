@@ -1152,7 +1152,100 @@ async function switchSettingsSubTab(subTab, save = true) {
         panel.classList.toggle('active', panel.id === `settings-panel-${subTab}`);
     });
 
+    if (subTab === 'profiles') {
+        loadRoutingProfiles();
+    }
+
     if (save && typeof savePreference === 'function') {
         savePreference('active_settings_subtab', subTab);
+    }
+}
+
+// ===== Auto Routing Profile Management =====
+
+let _autoRoutingData = null;
+
+async function loadRoutingProfiles() {
+    try {
+        const res = await fetch('/api/registry/auto-routing');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        _autoRoutingData = data.auto_routing;
+        const allModels = data.all_chat_models || [];
+        renderAutoRoutingProfile('chat', _autoRoutingData.chat, allModels);
+        renderAutoRoutingProfile('agent', _autoRoutingData.agent, allModels);
+    } catch (e) {
+        console.error('Failed to load auto routing profiles:', e);
+    }
+}
+
+function renderAutoRoutingProfile(type, profile, allModels) {
+    const pickerSelect = document.getElementById(`auto-routing-${type}-picker`);
+    const modelList = document.getElementById(`auto-routing-${type}-models`);
+    if (!pickerSelect || !modelList) return;
+
+    const currentPicker = profile?.route_picker || '';
+    const pool = profile?.models || {};
+
+    // Populate route picker dropdown
+    pickerSelect.innerHTML = allModels.map(mid =>
+        `<option value="${mid}" ${mid === currentPicker ? 'selected' : ''}>${mid}</option>`
+    ).join('');
+
+    // Populate model toggle list
+    if (Object.keys(pool).length === 0) {
+        modelList.innerHTML = '<div class="placeholder-text">No chat models configured.</div>';
+        return;
+    }
+
+    modelList.innerHTML = Object.entries(pool).map(([modelId, cfg]) => {
+        const enabled = cfg.enabled !== false;
+        const desc = cfg.description || '';
+        const provider = cfg.provider || '';
+        return `
+            <div class="routing-model-item" data-model="${modelId}" data-type="${type}">
+                <label class="switch small">
+                    <input type="checkbox" class="routing-model-toggle" data-model="${modelId}" ${enabled ? 'checked' : ''}>
+                    <span class="slider round"></span>
+                </label>
+                <div class="routing-model-info">
+                    <span class="routing-model-id">${modelId}</span>
+                    ${provider ? `<span class="routing-model-provider">${provider}</span>` : ''}
+                    ${desc ? `<span class="routing-model-desc">${desc}</span>` : ''}
+                </div>
+            </div>`;
+    }).join('');
+}
+
+async function saveAutoRoutingProfile(type) {
+    if (!_autoRoutingData) return;
+
+    const pickerSelect = document.getElementById(`auto-routing-${type}-picker`);
+    const modelList = document.getElementById(`auto-routing-${type}-models`);
+    if (!pickerSelect || !modelList) return;
+
+    const routePicker = pickerSelect.value;
+    const models = {};
+    modelList.querySelectorAll('.routing-model-item').forEach(item => {
+        const modelId = item.dataset.model;
+        const toggle = item.querySelector('.routing-model-toggle');
+        models[modelId] = { enabled: toggle ? toggle.checked : true };
+    });
+
+    _autoRoutingData[type] = { route_picker: routePicker, models };
+
+    try {
+        const res = await fetch('/api/registry/auto-routing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auto_routing: _autoRoutingData })
+        });
+        if (res.ok) {
+            showNotification(`Auto Routing (${type}) saved.`, 'success');
+        } else {
+            showNotification('Failed to save auto routing config.', 'error');
+        }
+    } catch (e) {
+        showNotification('Network error saving auto routing.', 'error');
     }
 }

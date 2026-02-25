@@ -1108,6 +1108,59 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Card: Auto Routing - Chat -->
+                        <div class="setting-card" id="card-auto-routing-chat" style="margin-top: 1.2rem;">
+                            <div class="card-header">
+                                <div class="header-title">
+                                    <i class="fas fa-random"></i>
+                                    <span>Auto Routing — Chat</span>
+                                </div>
+                                <button class="action-btn xs-btn" onclick="saveAutoRoutingProfile('chat')">Save</button>
+                            </div>
+                            <div class="card-content">
+                                <div class="compact-item" style="margin-bottom:1rem;">
+                                    <div class="item-label">
+                                        <span>Route Picker</span>
+                                        <i class="fas fa-info-circle tooltip-trigger"
+                                            title="The model used to decide which model to route to. Should be fast and cheap."></i>
+                                    </div>
+                                    <select id="auto-routing-chat-picker" class="control-select"></select>
+                                </div>
+                                <div class="routing-section-label">Model Pool <span class="routing-hint">Toggle models
+                                        to include / exclude from Auto routing</span></div>
+                                <div id="auto-routing-chat-models" class="routing-model-list">
+                                    <div class="loading-placeholder">Loading...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card: Auto Routing - Agent -->
+                        <div class="setting-card" id="card-auto-routing-agent" style="margin-top: 1.2rem;">
+                            <div class="card-header">
+                                <div class="header-title">
+                                    <i class="fas fa-random"></i>
+                                    <span>Auto Routing — Agent</span>
+                                </div>
+                                <button class="action-btn xs-btn"
+                                    onclick="saveAutoRoutingProfile('agent')">Save</button>
+                            </div>
+                            <div class="card-content">
+                                <div class="compact-item" style="margin-bottom:1rem;">
+                                    <div class="item-label">
+                                        <span>Route Picker</span>
+                                        <i class="fas fa-info-circle tooltip-trigger"
+                                            title="The fast model used to decide which agent model to use."></i>
+                                    </div>
+                                    <select id="auto-routing-agent-picker" class="control-select"></select>
+                                </div>
+                                <div class="routing-section-label">Model Pool <span class="routing-hint">Toggle models
+                                        to include / exclude from Auto routing</span></div>
+                                <div id="auto-routing-agent-models" class="routing-model-list">
+                                    <div class="loading-placeholder">Loading...</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div> <!-- closes settings-content-wrapper -->
             </div> <!-- closes settings-dashboard -->
