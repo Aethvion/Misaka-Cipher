@@ -1,0 +1,25 @@
+{
+    "providers": {},
+    "profiles": {
+        "chat_profiles": {
+            "default": [
+                "gemini-2.0-flash"
+            ]
+        },
+        "agent_profiles": {
+            "default": [
+                "gemini-2.0-flash"
+            ]
+        }
+    },
+    "auto_routing": {
+        "chat": {
+            "route_picker": "",
+            "models": {}
+        },
+        "agent": {
+            "route_picker": "",
+            "models": {}
+        }
+    }
+}

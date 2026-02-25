@@ -5,7 +5,7 @@ API endpoints for managing system settings (config/settings.json)
 
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
-from config.settings_manager import get_settings_manager
+from core.config.settings_manager import get_settings_manager
 from core.utils import get_logger
 
 logger = get_logger(__name__)

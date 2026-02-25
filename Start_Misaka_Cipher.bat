@@ -1,4 +1,15 @@
 @echo off
+SETLOCAL
+
+:: Window always-open guarantee:
+:: When double-clicked, MISAKA_LAUNCHED is undefined.
+:: We re-launch this same script inside `cmd /k` which holds the window open
+:: until the user explicitly closes it — regardless of errors or crashes.
+if not defined MISAKA_LAUNCHED (
+    set MISAKA_LAUNCHED=1
+    cmd /k ""%~f0""
+    exit
+)
 TITLE Misaka Cipher — Aethvion Systems
 SET PROJECT_DIR=%~dp0
 cd /d "%PROJECT_DIR%"
@@ -14,7 +25,7 @@ python --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Python is not installed or not in PATH.
     echo         Install Python 3.10+ from https://python.org
-    pause & exit /b 1
+    goto :FAIL
 )
 
 for /f "tokens=2 delims= " %%v in ('python --version 2^>^&1') do set PY_VER=%%v
@@ -26,7 +37,7 @@ if not exist ".venv\Scripts\activate.bat" (
     python -m venv .venv
     if %errorlevel% neq 0 (
         echo [ERROR] Failed to create virtual environment.
-        pause & exit /b 1
+        goto :FAIL
     )
     echo [OK]  Virtual environment created.
 ) else (
@@ -39,12 +50,13 @@ call ".venv\Scripts\activate.bat"
 python -c "import fastapi" >nul 2>&1
 if %errorlevel% neq 0 (
     echo [SETUP] Installing dependencies from pyproject.toml...
-    python -m pip install --upgrade pip --quiet
-    pip install -e ".[memory]" --quiet
+    python -m pip install --upgrade pip
+    pip install -e ".[memory]"
     if %errorlevel% neq 0 (
-        echo [ERROR] Dependency installation failed.
-        echo         Run:  pip install -e ".[memory]"  manually to see errors.
-        pause & exit /b 1
+        echo.
+        echo [ERROR] Dependency installation failed — see output above.
+        echo         Common fix: make sure Python 3.10+ is in PATH and try again.
+        goto :FAIL
     )
     echo [OK]  Dependencies installed.
 ) else (
@@ -84,10 +96,25 @@ echo         Press CTRL+C to stop.
 echo.
 
 python -m core.main %*
+set MAIN_EXIT=%errorlevel%
 
-:: ── 7. Crash guard ────────────────────────────────────────────
-if %errorlevel% neq 0 (
+:: ── 7. Result ────────────────────────────────────────────────
+if %MAIN_EXIT% neq 0 (
     echo.
-    echo [ERROR] Misaka Cipher encountered a fatal error (exit code %errorlevel%).
-    pause
+    echo [ERROR] Misaka Cipher crashed (exit code %MAIN_EXIT%).
+    echo         Scroll up to find the error, then fix it and re-run.
+    goto :FAIL
 )
+goto :END
+
+:FAIL
+echo.
+echo ============================================================
+echo  Something went wrong. Read the error above, then close.
+echo ============================================================
+echo.
+pause
+EXIT /B 1
+
+:END
+pause

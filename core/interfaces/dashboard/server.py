@@ -17,7 +17,7 @@ import sys
 from datetime import datetime
 
 from core.utils import get_logger
-from config.settings_manager import get_settings_manager
+from core.config.settings_manager import get_settings_manager
 
 logger = get_logger(__name__)
 
