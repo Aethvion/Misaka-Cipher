@@ -37,6 +37,8 @@ class ProviderManager:
         self.providers: Dict[str, BaseProvider] = {}
         self.priority_order: List[str] = []
         self.config = {}
+        self.model_to_provider_map: Dict[str, str] = {}
+        self.model_descriptor_map: Dict[str, Dict] = {}
         
         # Load configuration
         if config_path is None:
@@ -78,11 +80,17 @@ class ProviderManager:
             
             for name, reg_config in registry_providers.items():
                 if name in self.config:
-                    # Build Model Map
+                    # Build Model Map (model_id -> provider_name)
                     models = reg_config.get('models', {})
                     for model_id, model_data in models.items():
                         if model_id:
                             self.model_to_provider_map[model_id] = name
+                            # Also store full descriptor for Auto routing
+                            self.model_descriptor_map[model_id] = {
+                                'provider': name,
+                                'description': model_data.get('description', '') if isinstance(model_data, dict) else '',
+                                'capabilities': model_data.get('capabilities', []) if isinstance(model_data, dict) else [],
+                            }
 
                     logger.info(f"Loaded registry models for {name}")
             
@@ -103,6 +111,7 @@ class ProviderManager:
             # Fallback to default behavior if failed
             self.chat_priority_order = []
             self.agent_priority_order = []
+            self.model_descriptor_map = {}
 
     def reload_config(self):
         """Reload configuration from disk and update active providers."""
@@ -204,33 +213,68 @@ class ProviderManager:
         # 1. Profile Routing & Specific Models
         if model:
             if model == "auto":
-                # Auto Complexity Routing
-                prompt_length = len(prompt)
-                is_complex = prompt_length > 2000 or "analyze" in prompt.lower() or "code" in prompt.lower()
-                
-                logger.info(f"[{trace_id}] AUTO mode selected. Complexity heuristic: {'COMPLEX' if is_complex else 'SIMPLE'}")
-                
-                # Fetch profiles dictionary
-                profiles = {}
-                if hasattr(self, 'registry') and isinstance(self.registry, dict):
-                    profiles = self.registry.get('profiles', {})
-                
-                if is_agent:
-                    agent_profiles = profiles.get('agent_profiles', {})
-                    if is_complex and 'complex' in agent_profiles:
-                        model_order = agent_profiles['complex'].copy()
-                    elif not is_complex and 'fast' in agent_profiles:
-                        model_order = agent_profiles['fast'].copy()
+                # Description-aware Auto Complexity Routing
+                logger.info(f"[{trace_id}] AUTO mode: selecting best model via description matching")
+
+                # Collect candidate pool from configured profile or descriptor map
+                candidate_pool = self.agent_priority_order.copy() if is_agent else self.chat_priority_order.copy()
+                if not candidate_pool:
+                    cap_key = 'chat' if not is_agent else 'chat'
+                    candidate_pool = [
+                        mid for mid, info in getattr(self, 'model_descriptor_map', {}).items()
+                        if cap_key in info.get('capabilities', []) or not info.get('capabilities')
+                    ]
+
+                # Build descriptor lines for the router prompt
+                descriptor_lines = []
+                for mid in candidate_pool:
+                    info = getattr(self, 'model_descriptor_map', {}).get(mid, {})
+                    desc = info.get('description', '').strip()
+                    if desc:
+                        descriptor_lines.append(f"- {mid}: {desc}")
                     else:
-                        model_order = self.agent_priority_order.copy()
+                        descriptor_lines.append(f"- {mid}")
+
+                if len(descriptor_lines) > 1 and any(': ' in l for l in descriptor_lines):
+                    # Use a pinned fast model to route - use the first candidate to avoid recursion
+                    routing_model = candidate_pool[0]
+                    routing_prompt = (
+                        f"You are a model router. Pick the single best model for the user's message.\n"
+                        f"Return ONLY the exact model ID, nothing else. No quotes, no explanation.\n\n"
+                        f"Available models:\n" + "\n".join(descriptor_lines) + "\n\n"
+                        f"User message (first 800 chars): {prompt[:800]}"
+                    )
+                    try:
+                        routing_response = self.call_with_failover(
+                            prompt=routing_prompt,
+                            trace_id=f"{trace_id}-router",
+                            temperature=0.0,
+                            model=routing_model,
+                            request_type="generation",
+                            source="auto_router"
+                        )
+                        if routing_response.success:
+                            chosen = routing_response.content.strip().strip('"').strip("'").split()[0]
+                            if chosen in candidate_pool:
+                                logger.info(f"[{trace_id}] AUTO router chose: '{chosen}'")
+                                model_order = [chosen] + [m for m in candidate_pool if m != chosen]
+                            else:
+                                logger.warning(f"[{trace_id}] AUTO router returned unknown model '{chosen}', using full pool")
+                                model_order = candidate_pool
+                        else:
+                            logger.warning(f"[{trace_id}] AUTO router call failed, using full pool")
+                            model_order = candidate_pool
+                    except Exception as router_err:
+                        logger.error(f"[{trace_id}] AUTO router exception: {router_err}, falling back to full pool")
+                        model_order = candidate_pool
                 else:
-                    chat_profiles = profiles.get('chat_profiles', {})
-                    if is_complex and 'complex' in chat_profiles:
-                        model_order = chat_profiles['complex'].copy()
-                    elif not is_complex and 'fast' in chat_profiles:
-                        model_order = chat_profiles['fast'].copy()
-                    else:
-                        model_order = self.chat_priority_order.copy()
+                    # No descriptions available - fall back to simple heuristic
+                    is_complex = len(prompt) > 2000 or any(
+                        kw in prompt.lower() for kw in ["analyze", "code", "architecture", "complex", "explain in detail"]
+                    )
+                    logger.info(f"[{trace_id}] AUTO heuristic fallback ({'COMPLEX' if is_complex else 'SIMPLE'}): using full pool order")
+                    model_order = candidate_pool
+
             
             elif model.startswith("profile:"):
                 # Profile selected from UI dropdown (e.g., profile:chat:default)

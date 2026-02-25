@@ -611,6 +611,7 @@ function renderProviderCards(registry) {
                                 <th>Model ID</th>
                                 <th>Cost (In/Out)</th>
                                 <th>Capabilities</th>
+                                <th>Description</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -618,6 +619,7 @@ function renderProviderCards(registry) {
                              ${Object.entries(config.models || {}).map(([key, m]) => {
             const modelId = typeof m === 'string' ? m : (m.id || key);
             const caps = Array.isArray(m.capabilities) ? m.capabilities : [];
+            const desc = (typeof m === 'object' && m.description) ? m.description : '';
             return `
                                     <tr>
                                         <td><input type="text" class="model-id-input-small" value="${key}" data-key="${key}"></td>
@@ -628,6 +630,7 @@ function renderProviderCards(registry) {
                                             </div>
                                         </td>
                                         <td>${renderCapsTd(caps)}</td>
+                                        <td><input type="text" class="model-desc-input" value="${desc.replace(/"/g, '&quot;')}" placeholder="Best for..."></td>
                                         <td>
                                             <button class="btn-icon xs-btn del-model" data-key="${key}"><i class="fas fa-trash"></i></button>
                                         </td>
@@ -700,6 +703,7 @@ function addModelRowInline(providerName) {
             </div>
         </td>
         <td>${renderCapsTd([])}</td>
+        <td><input type="text" class="model-desc-input" value="" placeholder="Best for..."></td>
         <td>
             <button class="btn-icon xs-btn del-model" onclick="this.closest('tr').remove(); markSettingsDirty();"><i class="fas fa-trash"></i></button>
         </td>
@@ -737,11 +741,14 @@ async function saveProviderSettings() {
             const capabilities = capsCell
                 ? Array.from(capsCell.querySelectorAll('.cap-tag')).map(t => t.dataset.cap)
                 : [];
+            const descInput = row.querySelector('.model-desc-input');
+            const description = descInput ? descInput.value.trim() : '';
 
             prov.models[modelName] = {
                 input_cost_per_1m_tokens: costIn,
                 output_cost_per_1m_tokens: costOut,
-                capabilities: capabilities
+                capabilities: capabilities,
+                ...(description ? { description } : {})
             };
         });
     });
