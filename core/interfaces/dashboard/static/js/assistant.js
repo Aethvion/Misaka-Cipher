@@ -302,15 +302,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 while ((switchMatch = switchTabRegex.exec(responseText)) !== null) {
                     switchTarget = switchMatch[1].toLowerCase();
                 }
-                // Strip all SwitchTab tags from display text
+
+                // Parse dashboard sub-tab switch: [SwitchSubTab: subtab_id]
+                const switchSubTabRegex = /\[SwitchSubTab:\s*([a-zA-Z0-9_-]+)\]/ig;
+                let subMatch;
+                let switchSubTarget = null;
+                while ((subMatch = switchSubTabRegex.exec(responseText)) !== null) {
+                    switchSubTarget = subMatch[1].toLowerCase();
+                }
+
+                // Strip all Switch tags from display text
                 responseText = responseText.replace(/\[SwitchTab:\s*[a-zA-Z0-9_-]+\]/ig, '').trim();
+                responseText = responseText.replace(/\[SwitchSubTab:\s*[a-zA-Z0-9_-]+\]/ig, '').trim();
 
                 messageHistory.push({ role: 'assistant', content: responseText }); // Save cleaned text
                 await typeMessage('misaka', responseText, true, targetEmotion);
 
                 // Execute tab switch AFTER message display
-                if (switchTarget) {
-                    switchDashboardTab(switchTarget);
+                if (switchSubTarget) {
+                    // Mapping sub-tabs to their parent main tabs
+                    const settingsSubTabs = ['assistant', 'system', 'env', 'providers', 'profiles'];
+                    if (settingsSubTabs.includes(switchSubTarget)) {
+                        if (typeof ensureTabAndSubTab === 'function') {
+                            ensureTabAndSubTab('settings', switchSubTarget);
+                        }
+                    }
+                } else if (switchTarget) {
+                    if (typeof switchDashboardTab === 'function') {
+                        switchDashboardTab(switchTarget);
+                    }
                 }
             } else {
                 const err = await res.json();

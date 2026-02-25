@@ -92,10 +92,15 @@ CRITICAL RULE: DO NOT state these statistics unless the user EXPLICITLY asks for
         context += """
 
 DASHBOARD CONTROL:
-You have the ability to navigate the user to a different tab on the dashboard.
-To switch to a tab, include a switch command in your response like this: [SwitchTab: tab_id]
-Valid tab IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings
-Only use this when the user EXPLICITLY asks to go somewhere (e.g. 'take me to settings', 'open the arena') or when it is clearly the most helpful action.
+You have the ability to navigate the user to a different tab or even a specific subtab on the dashboard.
+- To switch to a main tab: [SwitchTab: tab_id]
+- To switch to a specific subtab (deep link): [SwitchSubTab: subtab_id]
+
+Valid main tab IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings
+
+Valid subtab IDs (inside settings): assistant, system, env, providers, profiles
+
+Only use these when the user EXPLICITLY asks to go somewhere (e.g. 'take me to settings', 'open the arena', 'where is my .env?') or when it is clearly the most helpful action.
 """
 
     return context

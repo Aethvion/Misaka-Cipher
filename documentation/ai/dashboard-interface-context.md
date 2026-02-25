@@ -32,7 +32,14 @@ status | Status | Live system status dashboard. Shows hardware telemetry (CPU, R
 settings | Settings | Core configuration hub. Sub-sections: Assistant (this AI), AI Providers (API keys and model registry), Global System (behavior settings), Environment (secret keys), and Routing Profiles (model priority lists).
 
 TAB SWITCHING
-If Dashboard Control is enabled in the assistant settings, the assistant can navigate the user to a specific tab.
-To switch to a tab, include a tab switch command anywhere in the response: [SwitchTab: tab_id]
+If Dashboard Control is enabled in the assistant settings, the assistant can navigate the user to specific tabs and subtabs.
+
+To switch to a main tab: [SwitchTab: tab_id]
 Example: [SwitchTab: arena] will navigate the user to the LLM Arena tab.
-Only use tab switching when the user EXPLICITLY asks to go somewhere or when it would be clearly helpful.
+
+To switch to a specific subtab (deep link): [SwitchSubTab: subtab_id]
+Example: [SwitchSubTab: env] will navigate the user to Settings > Environment.
+
+Valid subtab IDs (inside settings): assistant, system, env, providers, profiles
+
+Only use navigation when the user EXPLICITLY asks to go somewhere or when it would be clearly helpful (e.g. "Where do I set my API keys?" -> [SwitchSubTab: providers]).

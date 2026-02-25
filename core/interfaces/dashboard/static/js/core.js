@@ -303,6 +303,27 @@ function switchMainTab(tabName, save = true) {
     updateChatLayout();
 }
 
+/**
+ * Ensures a specific main tab is active, and then optionally switches to a subtab.
+ * @param {string} mainTab - The ID of the main tab (e.g., 'settings').
+ * @param {string} [subTab] - The ID of the subtab (e.g., 'env').
+ */
+function ensureTabAndSubTab(mainTab, subTab = null) {
+    if (currentMainTab !== mainTab) {
+        switchMainTab(mainTab);
+    }
+
+    if (subTab) {
+        if (mainTab === 'settings' && typeof window.switchSettingsSubTab === 'function') {
+            window.switchSettingsSubTab(subTab);
+        }
+        // Add other subtab handlers here if needed (e.g., for 'files' or 'tools')
+    }
+}
+
+// Attach to window
+window.ensureTabAndSubTab = ensureTabAndSubTab;
+
 function updateChatLayout() {
     const layout = document.querySelector('.three-column-layout');
     if (!layout) return;

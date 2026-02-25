@@ -1161,6 +1161,9 @@ async function switchSettingsSubTab(subTab, save = true) {
     }
 }
 
+// Attach to window
+window.switchSettingsSubTab = switchSettingsSubTab;
+
 // ===== Auto Routing Profile Management =====
 
 let _autoRoutingData = null;
