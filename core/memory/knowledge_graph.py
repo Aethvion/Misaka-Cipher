@@ -4,7 +4,8 @@ NetworkX-based relationship mapping for domains, tools, agents, and trace IDs
 """
 
 import json
-import networkx as nx
+# heavy import moved to lazy loading
+# import networkx as nx
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Set
 from datetime import datetime
@@ -41,7 +42,8 @@ class KnowledgeGraph:
         self.storage_path = Path(storage_path)
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # Initialize graph
+        # Lazy import networkx
+        import networkx as nx
         self.graph = nx.MultiDiGraph()
         
         # Load existing graph if available

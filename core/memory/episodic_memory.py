@@ -7,7 +7,9 @@ import yaml
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-from sentence_transformers import SentenceTransformer
+from datetime import datetime, timedelta
+# heavy import moved to lazy loading
+# from sentence_transformers import SentenceTransformer
 
 from .memory_spec import EpisodicMemory, generate_memory_id
 from core.utils import get_logger
@@ -46,7 +48,7 @@ class EpisodicMemoryStore:
             logger.info("Episodic Memory is disabled")
             return
         
-        # Lazy imports (ChromaDB)
+        # Lazy imports (ChromaDB & SentenceTransformers)
         import chromadb
         from chromadb.config import Settings
         
@@ -82,6 +84,7 @@ class EpisodicMemoryStore:
             import os
             os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = '60'  # 60 second timeout
             
+            from sentence_transformers import SentenceTransformer
             self.embedding_model = SentenceTransformer(model_name)
             logger.info(f"Embedding model loaded (dim: {self.embedding_model.get_sentence_embedding_dimension()})")
             
@@ -91,6 +94,7 @@ class EpisodicMemoryStore:
             
             try:
                 # Try with local_files_only flag
+                from sentence_transformers import SentenceTransformer
                 self.embedding_model = SentenceTransformer(model_name, local_files_only=True)
                 logger.info("Loaded embedding model from local cache")
             except:

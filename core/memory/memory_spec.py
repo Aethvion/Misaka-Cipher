@@ -101,3 +101,7 @@ def generate_insight_id(session_number: int = 1) -> str:
     """Generate unique insight ID."""
     date = datetime.now().strftime("%Y%m%d")
     return f"MCINS-{date}-SESSION{session_number}"
+
+
+# Alias for backward compatibility and CI checks
+EpisodicEntry = EpisodicMemory

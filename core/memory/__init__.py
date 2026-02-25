@@ -3,7 +3,7 @@ Misaka Cipher - Memory Package
 Persistent intelligence and knowledge management
 """
 
-from .memory_spec import EpisodicMemory, CoreInsight, generate_memory_id, generate_insight_id
+from .memory_spec import EpisodicMemory, EpisodicEntry, CoreInsight, generate_memory_id, generate_insight_id
 from .episodic_memory import EpisodicMemoryStore, get_episodic_memory
 from .knowledge_graph import KnowledgeGraph, get_knowledge_graph
 from .summarization import Heartbeat, get_heartbeat
@@ -11,6 +11,7 @@ from .summarization import Heartbeat, get_heartbeat
 __all__ = [
     # Specifications
     'EpisodicMemory',
+    'EpisodicEntry',
     'CoreInsight',
     'generate_memory_id',
     'generate_insight_id',
