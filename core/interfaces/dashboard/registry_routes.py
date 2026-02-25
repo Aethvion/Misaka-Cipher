@@ -163,10 +163,10 @@ def _load_registry() -> Dict[str, Any]:
             "providers": {}, 
             "profiles": {
                 "chat_profiles": {
-                    "default": ["gemini-2.0-flash"]
+                    "default": []
                 }, 
                 "agent_profiles": {
-                    "default": ["gemini-2.0-flash"]
+                    "default": []
                 }
             }
         }
