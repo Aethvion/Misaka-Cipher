@@ -1,4 +1,4 @@
-
+﻿
 import sys
 import os
 import asyncio
@@ -8,8 +8,8 @@ from pathlib import Path
 # Add project root to path
 sys.path.append(os.getcwd())
 
-from orchestrator.task_queue import TaskQueueManager, get_task_queue_manager
-from orchestrator.task_models import ChatThread, Task
+from core.orchestrator.task_queue import TaskQueueManager, get_task_queue_manager
+from core.orchestrator.task_models import ChatThread, Task
 
 # Mock orchestrator for init
 class MockOrchestrator:

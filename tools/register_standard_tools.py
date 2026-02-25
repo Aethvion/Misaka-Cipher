@@ -1,4 +1,4 @@
-
+﻿
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -7,7 +7,7 @@ from datetime import datetime
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
-from forge.tool_registry import ToolRegistry
+from core.forge.tool_registry import ToolRegistry
 
 # Initialize registry
 registry = ToolRegistry()

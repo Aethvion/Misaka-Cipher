@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Generic Agent
 General-purpose agent for executing prompts and code
 """
@@ -204,7 +204,7 @@ class GenericAgent(BaseAgent):
             def wrapper(*args, **kwargs):
                 try:
                     # Increment usage
-                    from forge import get_tool_registry
+                    from core.forge import get_tool_registry
                     registry = get_tool_registry()
                     registry.increment_usage(tool_name)
                 except Exception as e:

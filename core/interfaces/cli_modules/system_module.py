@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - System Status Module
 Displays system diagnostics and health information
 """
@@ -7,10 +7,10 @@ from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, print_table,
     print_key_value, print_success, print_warning, pause
 )
-from nexus_core import NexusCore
-from factory import AgentFactory
-from forge import ToolForge
-from memory import get_episodic_memory, get_knowledge_graph
+from core.nexus_core import NexusCore
+from core.factory import AgentFactory
+from core.forge import ToolForge
+from core.memory import get_episodic_memory, get_knowledge_graph
 from rich.panel import Panel
 from rich.columns import Columns
 from rich.text import Text

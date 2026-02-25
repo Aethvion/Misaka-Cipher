@@ -1,8 +1,8 @@
-import asyncio
+﻿import asyncio
 import shutil
 from pathlib import Path
-from orchestrator.task_queue import TaskQueueManager, Task
-from orchestrator.task_models import ChatThread
+from core.orchestrator.task_queue import TaskQueueManager, Task
+from core.orchestrator.task_models import ChatThread
 
 # Mock Orchestrator
 class MockOrchestrator:

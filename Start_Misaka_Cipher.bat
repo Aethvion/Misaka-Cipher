@@ -67,11 +67,14 @@ if not exist ".env" (
 )
 
 :: ── 5. Required directories ───────────────────────────────────
-if not exist "logs"                           mkdir logs
-if not exist "outputfiles"                    mkdir outputfiles
-if not exist "memory\storage\workspaces"      mkdir memory\storage\workspaces
-if not exist "memory\storage\graphs"          mkdir memory\storage\graphs
-if not exist "tools\generated"                mkdir tools\generated
+if not exist "data"                              mkdir data
+if not exist "data\logs"                         mkdir data\logs
+if not exist "data\outputfiles"                  mkdir data\outputfiles
+if not exist "data\memory"                       mkdir data\memory
+if not exist "data\memory\storage"               mkdir data\memory\storage
+if not exist "data\memory\storage\workspaces"    mkdir data\memory\storage\workspaces
+if not exist "data\memory\storage\graphs"        mkdir data\memory\storage\graphs
+if not exist "tools\generated"                   mkdir tools\generated
 
 :: ── 6. Launch ─────────────────────────────────────────────────
 echo.

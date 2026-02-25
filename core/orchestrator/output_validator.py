@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Output Validator
 Validates agent outputs to ensure they match user intent
 """
@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
-from utils import get_logger
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 

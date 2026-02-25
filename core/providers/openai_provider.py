@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - OpenAI Provider
 OpenAI GPT implementation (fallback provider)
 """
@@ -7,7 +7,7 @@ import os
 from typing import Iterator, Optional
 from openai import OpenAI
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
-from utils.logger import get_logger
+from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

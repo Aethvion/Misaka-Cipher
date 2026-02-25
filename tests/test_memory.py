@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Memory Tier Complete Test
 Test all memory components: Episodic Memory, Knowledge Graph, Heartbeat
 """
@@ -12,13 +12,13 @@ env_path = Path(__file__).parent / '.env'
 if env_path.exists():
     load_dotenv(env_path)
 
-from memory import (
+from core.memory import (
     EpisodicMemory, CoreInsight,
     generate_memory_id, generate_insight_id,
     get_episodic_memory, get_knowledge_graph, get_heartbeat
 )
-from nexus_core import NexusCore
-from utils import get_logger
+from core.nexus_core import NexusCore
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 

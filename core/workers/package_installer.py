@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Package Installer Worker
 Background worker for async package installation
 """
@@ -7,7 +7,7 @@ import time
 import threading
 from typing import List, Dict, Any
 from pathlib import Path
-from utils import get_logger
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -81,7 +81,7 @@ class PackageInstallerWorker:
             List of successfully installed package names
         """
         try:
-            from workspace.package_manager import get_package_manager
+            from core.workspace.package_manager import get_package_manager
             package_manager = get_package_manager()
             
             # Get approved packages (not yet installed)

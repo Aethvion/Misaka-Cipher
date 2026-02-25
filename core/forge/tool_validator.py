@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Tool Validator
 Validates generated tools for syntax, imports, and basic functionality
 """
@@ -11,7 +11,7 @@ from pathlib import Path
 from dataclasses import dataclass
 
 from .tool_spec import ToolSpec
-from utils import get_logger
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -165,7 +165,7 @@ class ToolValidator:
             context: Context where the package is needed
         """
         try:
-            from workspace.package_manager import get_package_manager
+            from core.workspace.package_manager import get_package_manager
             package_manager = get_package_manager()
             
             # Request the package

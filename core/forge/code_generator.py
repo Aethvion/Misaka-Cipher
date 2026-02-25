@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Code Generator
 Template-based Python code generation for tools
 """
@@ -7,7 +7,7 @@ from typing import Dict, Any
 from pathlib import Path
 
 from .tool_spec import ToolSpec, ParameterSpec
-from utils import get_logger
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 

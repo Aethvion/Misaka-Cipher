@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Nexus Core Module
 Direct AI interaction through Nexus Core
 """
@@ -8,7 +8,7 @@ from core.interfaces.cli_modules.utils import (
     format_trace_id, print_success, print_error, print_key_value,
     confirm, pause, show_progress
 )
-from nexus_core import NexusCore, Request
+from core.nexus_core import NexusCore, Request
 from rich.panel import Panel
 from rich.markdown import Markdown
 

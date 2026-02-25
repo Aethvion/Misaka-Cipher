@@ -1,7 +1,7 @@
-import os
+﻿import os
 import json
 from pathlib import Path
-from workspace.usage_tracker import get_usage_tracker
+from core.workspace.usage_tracker import get_usage_tracker
 
 PROJECT_ROOT = Path("c:/Aethvion/Misaka-Cipher")
 EXCLUDE_DIRS = {'.git', 'node_modules', '.venv', 'venv', '__pycache__', '.gemini', 'data'}

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Settings Manager
 Manages system configuration and user preferences
 """
@@ -6,7 +6,7 @@ Manages system configuration and user preferences
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional
-from utils import get_logger
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 

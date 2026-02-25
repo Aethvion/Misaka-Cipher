@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Main Entry Point
 M.I.S.A.K.A.: Multitask Intelligence & Strategic Analysis Kernel Architecture
 
@@ -20,7 +20,7 @@ env_path = ROOT / '.env'
 if env_path.exists():
     load_dotenv(env_path)
 
-from utils import get_logger
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -50,7 +50,7 @@ def run_web_server():
 
     # Auto-open browser if enabled in settings
     try:
-        from workspace.preferences_manager import get_preferences_manager
+        from core.workspace.preferences_manager import get_preferences_manager
         prefs = get_preferences_manager()
         if prefs.get('system.open_browser_on_startup', True):
             threading.Thread(target=open_browser, daemon=True).start()

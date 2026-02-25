@@ -1,4 +1,4 @@
-
+﻿
 import sys
 import asyncio
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 # Add project root
 sys.path.append(str(Path(__file__).parent.parent))
 
-from memory import get_episodic_memory
+from core.memory import get_episodic_memory
 
 async def remove_manual_memory():
     store = get_episodic_memory()

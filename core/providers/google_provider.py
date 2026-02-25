@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Google AI Provider
 Google Generative AI (Gemini) implementation
 """
@@ -8,7 +8,7 @@ from typing import Iterator, Optional
 from google import genai
 from google.genai import types
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
-from utils.logger import get_logger
+from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

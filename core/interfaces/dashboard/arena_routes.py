@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Arena Routes
 API endpoints for the Arena Mode (model comparison battles)
 """
@@ -13,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import time
 
-from utils import get_logger
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 

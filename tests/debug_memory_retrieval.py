@@ -1,4 +1,4 @@
-
+﻿
 import sys
 from pathlib import Path
 import logging
@@ -6,8 +6,8 @@ import logging
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent))
 
-from memory.episodic_memory import get_episodic_memory
-from utils import get_logger
+from core.memory.episodic_memory import get_episodic_memory
+from core.utils import get_logger
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)

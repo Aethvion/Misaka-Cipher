@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Grok Provider
 xAI Grok implementation (tertiary fallback provider)
 """
@@ -7,7 +7,7 @@ import os
 import requests
 from typing import Iterator, Optional
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
-from utils.logger import get_logger
+from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

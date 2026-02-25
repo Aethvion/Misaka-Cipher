@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Task Queue Manager
 Manages async task execution with worker pool
 """
@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 import json
 from pathlib import Path
-from utils import get_logger, generate_trace_id
+from core.utils import get_logger, generate_trace_id
 from tools.standard.file_ops import WORKSPACE_ROOT
 from .task_models import Task, TaskStatus, ChatThread
 
@@ -146,7 +146,7 @@ class TaskWorker:
 
                     # Attach usage data (models used, tokens, costs) from usage tracker
                     try:
-                        from workspace.usage_tracker import get_usage_tracker
+                        from core.workspace.usage_tracker import get_usage_tracker
                         tracker = get_usage_tracker()
                         usage = tracker.get_usage_by_trace_id(task.id)
                         if usage:

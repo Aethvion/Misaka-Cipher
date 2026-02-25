@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for model selection logic with split chat/agent configurations.
 Tests verify:
 1. Priority list separation (chat vs agent)
@@ -15,8 +15,8 @@ import json
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from providers.provider_manager import ProviderManager, ProviderStatus, ProviderConfig
-from providers.base_provider import ProviderResponse
+from core.providers.provider_manager import ProviderManager, ProviderStatus, ProviderConfig
+from core.providers.base_provider import ProviderResponse
 
 
 class MockProvider:

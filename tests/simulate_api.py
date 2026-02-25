@@ -1,12 +1,12 @@
-import asyncio
+﻿import asyncio
 import json
 import traceback
 from datetime import datetime
 
 # Import project modules
 try:
-    from orchestrator.task_queue import TaskQueueManager, Task
-    from orchestrator.task_models import ChatThread
+    from core.orchestrator.task_queue import TaskQueueManager, Task
+    from core.orchestrator.task_models import ChatThread
 except ImportError:
     print("Error importing project modules. Adjust PYTHONPATH.")
     traceback.print_exc()

@@ -1,4 +1,4 @@
-
+﻿
 import sys
 import asyncio
 from pathlib import Path
@@ -8,8 +8,8 @@ import json
 # Add project root
 sys.path.append(str(Path(__file__).parent.parent))
 
-from memory import get_episodic_memory
-from memory.memory_spec import EpisodicMemory
+from core.memory import get_episodic_memory
+from core.memory.memory_spec import EpisodicMemory
 
 async def test_persistence():
     print("--- Memory Persistence Check ---")

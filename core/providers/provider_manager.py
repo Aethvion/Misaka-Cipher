@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Provider Manager
 Orchestrates multi-provider failover and routing
 """
@@ -11,7 +11,7 @@ from .base_provider import BaseProvider, ProviderResponse, ProviderConfig, Provi
 from .google_provider import GoogleAIProvider
 from .openai_provider import OpenAIProvider
 from .grok_provider import GrokProvider
-from utils.logger import get_logger
+from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -430,7 +430,7 @@ class ProviderManager:
 
                     # Log usage
                     try:
-                        from workspace.usage_tracker import get_usage_tracker
+                        from core.workspace.usage_tracker import get_usage_tracker
                         tracker = get_usage_tracker()
                         # Attach auto-routing metadata if this was an AUTO routed call
                         log_meta = {**(response.metadata or {}), **auto_routing_meta}

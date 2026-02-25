@@ -1,11 +1,11 @@
-"""
+﻿"""
 Misaka Cipher - Package Management API Routes
 FastAPI routes for package management operations
 """
 
 from fastapi import APIRouter, HTTPException
 from datetime import datetime
-from utils import get_logger
+from core.utils import get_logger
 
 logger = get_logger("web.package_routes")
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/packages", tags=["packages"])
 @router.get("/all")
 async def get_all_packages():
     """Get all packages (pending, approved, installed, denied)."""
-    from workspace.package_manager import get_package_manager
+    from core.workspace.package_manager import get_package_manager
     
     try:
         manager = get_package_manager()
@@ -30,7 +30,7 @@ async def get_all_packages():
 @router.get("/pending")
 async def get_pending_packages():
     """Get all pending package requests with metadata."""
-    from workspace.package_manager import get_package_manager
+    from core.workspace.package_manager import get_package_manager
     
     try:
         manager = get_package_manager()
@@ -57,7 +57,7 @@ async def get_pending_packages():
 @router.get("/installed")
 async def get_installed_packages():
     """Get all installed packages."""
-    from workspace.package_manager import get_package_manager
+    from core.workspace.package_manager import get_package_manager
     
     try:
         manager = get_package_manager()
@@ -77,7 +77,7 @@ async def get_installed_packages():
 @router.get("/denied")
 async def get_denied_packages():
     """Get all denied packages."""
-    from workspace.package_manager import get_package_manager
+    from core.workspace.package_manager import get_package_manager
     
     try:
         manager = get_package_manager()
@@ -92,7 +92,7 @@ async def get_denied_packages():
 @router.post("/approve/{package_name}")
 async def approve_package(package_name: str):
     """Approve and install a package."""
-    from workspace.package_manager import get_package_manager
+    from core.workspace.package_manager import get_package_manager
     
     try:
         manager = get_package_manager()
@@ -113,7 +113,7 @@ async def approve_package(package_name: str):
 @router.post("/deny/{package_name}")
 async def deny_package(package_name: str):
     """Deny a package request."""
-    from workspace.package_manager import get_package_manager
+    from core.workspace.package_manager import get_package_manager
     
     try:
         manager = get_package_manager()
@@ -130,7 +130,7 @@ async def deny_package(package_name: str):
 @router.get("/info/{package_name}")
 async def get_package_info(package_name: str):
     """Get detailed information about a package from PyPI."""
-    from workspace.package_intelligence import get_package_intelligence
+    from core.workspace.package_intelligence import get_package_intelligence
     
     try:
         intelligence = get_package_intelligence()
@@ -167,7 +167,7 @@ async def get_package_info(package_name: str):
 @router.post("/sync")
 async def sync_packages():
     """Sync installed packages with package manager."""
-    from workspace.package_manager import get_package_manager
+    from core.workspace.package_manager import get_package_manager
     
     try:
         manager = get_package_manager()
@@ -181,7 +181,7 @@ async def sync_packages():
 @router.post("/uninstall/{package_name}")
 async def uninstall_package(package_name: str):
     """Uninstall a package."""
-    from workspace.package_manager import get_package_manager
+    from core.workspace.package_manager import get_package_manager
     
     try:
         manager = get_package_manager()
@@ -200,7 +200,7 @@ async def uninstall_package(package_name: str):
 @router.post("/retry/{package_name}")
 async def retry_package(package_name: str):
     """Retry a failed or uninstalled package."""
-    from workspace.package_manager import get_package_manager
+    from core.workspace.package_manager import get_package_manager
     
     try:
         manager = get_package_manager()

@@ -1,4 +1,4 @@
-
+﻿
 import sys
 import asyncio
 from pathlib import Path
@@ -7,8 +7,8 @@ from datetime import datetime
 # Add project root
 sys.path.append(str(Path(__file__).parent.parent))
 
-from memory import get_episodic_memory
-from memory.memory_spec import EpisodicMemory
+from core.memory import get_episodic_memory
+from core.memory.memory_spec import EpisodicMemory
 
 async def inject_memory():
     store = get_episodic_memory()

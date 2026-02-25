@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Base Agent
 Abstract base class for all agents
 """
@@ -10,8 +10,8 @@ import time
 
 from .agent_spec import AgentSpec
 from .agent_result import AgentResult
-from nexus_core import NexusCore, Request
-from utils import get_logger, get_trace_manager
+from core.nexus_core import NexusCore, Request
+from core.utils import get_logger, get_trace_manager
 
 
 class BaseAgent(ABC):
@@ -78,8 +78,8 @@ class BaseAgent(ABC):
         
         try:
             # Import here to avoid circular dependencies
-            from memory import get_knowledge_graph, get_episodic_memory
-            from workspace import get_workspace_manager
+            from core.memory import get_knowledge_graph, get_episodic_memory
+            from core.workspace import get_workspace_manager
             
             # Get workspace manager
             workspace_manager = get_workspace_manager()
@@ -95,7 +95,7 @@ class BaseAgent(ABC):
             
             # Fetch full tool details
             # Import tool registry to get file_path
-            from forge import get_tool_registry
+            from core.forge import get_tool_registry
             registry = get_tool_registry()
             
             tools_full = []

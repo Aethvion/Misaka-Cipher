@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Memory Module
 Memory Tier query interface
 """
@@ -8,7 +8,7 @@ from core.interfaces.cli_modules.utils import (
     get_text_input, print_table, print_key_value, pause, print_info,
     print_warning, confirm, print_error
 )
-from memory import get_episodic_memory, get_knowledge_graph
+from core.memory import get_episodic_memory, get_knowledge_graph
 from rich.panel import Panel
 from rich.tree import Tree
 from rich.table import Table

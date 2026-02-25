@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Main CLI Interface
 Interactive command-line interface for Misaka Cipher system
 """
@@ -15,9 +15,9 @@ from core.interfaces.cli_modules.forge_module import forge_module
 from core.interfaces.cli_modules.memory_module import memory_module
 
 from core.nexus_core import NexusCore
-from factory import AgentFactory
-from forge import ToolForge
-from utils import get_logger
+from core.factory import AgentFactory
+from core.forge import ToolForge
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -55,7 +55,7 @@ class MisakaCLI:
 
             # Memory Tier initializes lazily
             console.print("  • The Memory Tier...", end="")
-            from memory import get_episodic_memory, get_knowledge_graph
+            from core.memory import get_episodic_memory, get_knowledge_graph
             get_episodic_memory()
             get_knowledge_graph()
             console.print(" [bold green]✓[/bold green]")

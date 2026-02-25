@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - FastAPI Web Server
 REST API and WebSocket server for web dashboard
 """
@@ -16,7 +16,7 @@ import logging
 import sys
 from datetime import datetime
 
-from utils import get_logger
+from core.utils import get_logger
 from config.settings_manager import get_settings_manager
 
 logger = get_logger(__name__)
@@ -224,7 +224,7 @@ async def initialize_system_background():
         installer_worker = get_installer_worker()
         installer_worker.start()
         
-        from orchestrator.task_queue import get_task_queue_manager
+        from core.orchestrator.task_queue import get_task_queue_manager
         task_manager = get_task_queue_manager(orchestrator, max_workers=4)
         await task_manager.start()
         
@@ -244,10 +244,10 @@ def perform_blocking_init():
     
     try:
         # Lazy imports for heavy core components
-        from nexus_core import NexusCore
-        from factory import AgentFactory
-        from forge import ToolForge
-        from orchestrator import MasterOrchestrator
+        from core.nexus_core import NexusCore
+        from core.factory import AgentFactory
+        from core.forge import ToolForge
+        from core.orchestrator import MasterOrchestrator
 
         startup_status["status"] = "Initializing Nexus Core..."
         startup_status["progress"] = 15
@@ -307,7 +307,7 @@ class PreferenceUpdate(BaseModel):
 async def get_preferences():
     """Get all user preferences."""
     try:
-        from workspace.preferences_manager import get_preferences_manager
+        from core.workspace.preferences_manager import get_preferences_manager
         prefs = get_preferences_manager()
         return prefs.get_all()
     except Exception as e:
@@ -318,7 +318,7 @@ async def get_preferences():
 async def get_preference_value(key: str):
     """Get a specific preference value."""
     try:
-        from workspace.preferences_manager import get_preferences_manager
+        from core.workspace.preferences_manager import get_preferences_manager
         prefs = get_preferences_manager()
         value = prefs.get(key)
         return {"key": key, "value": value}
@@ -330,7 +330,7 @@ async def get_preference_value(key: str):
 async def update_preferences(updates: Dict[str, Any]):
     """Update multiple preferences."""
     try:
-        from workspace.preferences_manager import get_preferences_manager
+        from core.workspace.preferences_manager import get_preferences_manager
         prefs = get_preferences_manager()
         prefs.update(updates)
         return {"status": "success", "preferences": prefs.get_all()}
@@ -342,7 +342,7 @@ async def update_preferences(updates: Dict[str, Any]):
 async def set_preference(key: str, update: PreferenceUpdate):
     """Set a specific preference key."""
     try:
-        from workspace.preferences_manager import get_preferences_manager
+        from core.workspace.preferences_manager import get_preferences_manager
         prefs = get_preferences_manager()
         prefs.set(update.key, update.value)
         return {"status": "success", "key": key, "value": update.value}
@@ -377,7 +377,7 @@ async def chat(message: ChatMessage):
         raise HTTPException(status_code=53, detail="Orchestrator not initialized")
     
     try:
-        from orchestrator.task_queue import get_task_queue_manager
+        from core.orchestrator.task_queue import get_task_queue_manager
         task_manager = get_task_queue_manager()
         thread_id = message.thread_id or "default"
         
@@ -439,7 +439,7 @@ async def get_system_status():
         except ImportError: pass
             
         try:
-            from workspace.usage_tracker import get_usage_tracker
+            from core.workspace.usage_tracker import get_usage_tracker
             tracker = get_usage_tracker()
             usage_today = tracker.get_today_summary()
         except ImportError:
@@ -534,7 +534,7 @@ async def search_memory(request: MemorySearchRequest):
 async def list_workspace_files(domain: Optional[str] = None):
     """List workspace files."""
     try:
-        from workspace import get_workspace_manager
+        from core.workspace import get_workspace_manager
         workspace = get_workspace_manager()
         outputs = workspace.list_outputs(domain=domain)
         return {"count": len(outputs), "files": [output.to_dict() for output in outputs]}
@@ -547,7 +547,7 @@ async def list_workspace_files(domain: Optional[str] = None):
 async def download_workspace_file(domain: str, filename: str):
     """Download workspace file."""
     try:
-        from workspace import get_workspace_manager
+        from core.workspace import get_workspace_manager
         workspace = get_workspace_manager()
         file_path = workspace.get_output_path(domain, filename)
         if not file_path.exists():
@@ -563,7 +563,7 @@ async def download_workspace_file(domain: str, filename: str):
 async def get_trace_details(trace_id: str):
     """Get trace details."""
     try:
-        from memory import get_episodic_memory
+        from core.memory import get_episodic_memory
         episodic = get_episodic_memory()
         memories = episodic.get_by_trace_id(trace_id)
         if not memories:

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Content Scanner
 Analyzes content for restricted patterns and security threats
 """
@@ -8,7 +8,7 @@ import hashlib
 from typing import List, Tuple, Dict, Optional
 from dataclasses import dataclass
 from enum import Enum
-from utils.logger import get_logger
+from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

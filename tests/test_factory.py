@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Factory Test Script
 Test The Factory agent spawning system
 """
@@ -12,9 +12,9 @@ env_path = Path(__file__).parent / '.env'
 if env_path.exists():
     load_dotenv(env_path)
 
-from nexus_core import NexusCore
-from factory import AgentFactory, AgentSpec, get_template
-from utils import get_logger
+from core.nexus_core import NexusCore
+from core.factory import AgentFactory, AgentSpec, get_template
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 

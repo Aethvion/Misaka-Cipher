@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Memory API Routes
 FastAPI routes for memory management and visualization
 """
@@ -9,8 +9,8 @@ from pathlib import Path
 import json
 import asyncio
 
-from utils import get_logger
-from memory import get_episodic_memory, get_knowledge_graph
+from core.utils import get_logger
+from core.memory import get_episodic_memory, get_knowledge_graph
 
 logger = get_logger("web.memory_routes")
 

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Factory Module
 Agent spawning interface
 """
@@ -8,8 +8,8 @@ from core.interfaces.cli_modules.utils import (
     get_text_input, format_trace_id, print_success, print_error,
     print_key_value, pause, show_progress, confirm
 )
-from factory import AgentFactory, AgentSpec
-from utils.validators import ALLOWED_DOMAINS, ALLOWED_ACTIONS
+from core.factory import AgentFactory, AgentSpec
+from core.utils.validators import ALLOWED_DOMAINS, ALLOWED_ACTIONS
 from rich.panel import Panel
 from rich.syntax import Syntax
 

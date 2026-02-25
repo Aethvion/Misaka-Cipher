@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Forge Test Script
 Test The Forge tool generation system
 """
@@ -12,9 +12,9 @@ env_path = Path(__file__).parent / '.env'
 if env_path.exists():
     load_dotenv(env_path)
 
-from nexus_core import NexusCore
-from forge import ToolForge
-from utils import get_logger
+from core.nexus_core import NexusCore
+from core.forge import ToolForge
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 

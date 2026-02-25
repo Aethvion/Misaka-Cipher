@@ -141,38 +141,41 @@ Open [http://localhost:8000](http://localhost:8000) after launch.
 Misaka-Cipher/
 ├── Start_Misaka_Cipher.bat     # One-click install + launch
 ├── pyproject.toml              # All dependencies + project metadata
-├── main.py                     # Shim → core/main.py
-├── cli.py                      # Shim → core/cli.py
 ├── nexus_core.py               # Shim → core/nexus_core.py
 │
-├── core/                       # 🎛️ Core modules
+├── core/                       # All Python source code
 │   ├── main.py                 # Entry point (web / CLI / test modes)
 │   ├── cli.py                  # Interactive CLI interface
-│   ├── nexus_core.py           # Central orchestration hub [SINGLE POINT OF ENTRY]
+│   ├── nexus_core.py           # Central orchestration hub
+│   ├── system_retrieval.py
+│   │
+│   ├── config/                 # Configuration files (YAML/JSON)
+│   ├── factory/                # Agent spawning engine
+│   ├── forge/                  # Tool generation pipeline
+│   ├── memory/                 # Episodic memory + knowledge graph
+│   ├── orchestrator/           # Master orchestrator + task queue
+│   ├── providers/              # Google / OpenAI / Grok adapters
+│   ├── security/               # Intelligence Firewall
+│   ├── workers/                # Background workers
+│   ├── workspace/              # Usage tracker, package manager
 │   └── interfaces/
-│       ├── dashboard/          # Web dashboard (FastAPI server + static files)
+│       ├── dashboard/          # Web dashboard (FastAPI + static files)
 │       └── cli_modules/        # CLI module implementations
 │
-├── documentation/              # 📚 Docs
-│   ├── human/
-│   │   ├── readme-overview.md
-│   │   └── getting-started.md
-│   └── ai/
-│       ├── system-spec.md
-│       ├── agent-mission.md
-│       ├── evolution-logic.md
-│       └── dashboard-interface-context.md
+├── data/                       # Runtime data — never committed
+│   ├── logs/                   # Application logs
+│   ├── memory/storage/         # ChromaDB vector store + graph files
+│   ├── outputfiles/            # AI-generated output files
+│   └── workspace/              # packages.json, user_preferences.json
 │
-├── config/                     # ⚙️ Configuration files
-├── orchestrator/               # 🎯 Master orchestrator + task queue
-├── factory/                    # 🏭 Agent spawning
-├── forge/                      # ⚒️ Tool generation
-├── memory/                     # 🧠 ChromaDB + knowledge graph
-├── providers/                  # 🔌 Google / OpenAI / Grok
-├── security/                   # 🛡️ Intelligence Firewall
-├── tools/                      # 🔧 Standard + AI-generated tools
-├── workspace/                  # 📂 Usage tracker, package manager
-└── outputfiles/                # AI output directory
+├── tools/                      # Tool registry
+│   ├── standard/               # Built-in tools
+│   └── generated/              # AI-forged tools (gitignored)
+│
+├── tests/                      # Test suite
+└── documentation/              # Docs
+    ├── human/                  # User-facing guides
+    └── ai/                     # Machine-readable specs
 ```
 
 ---

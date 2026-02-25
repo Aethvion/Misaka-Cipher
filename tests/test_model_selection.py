@@ -1,9 +1,9 @@
-
+﻿
 import pytest
 import asyncio
 from unittest.mock import MagicMock, patch
-from providers.provider_manager import ProviderManager, ProviderStatus, ProviderConfig
-from nexus_core import Request
+from core.providers.provider_manager import ProviderManager, ProviderStatus, ProviderConfig
+from core.nexus_core import Request
 
 # Mock classes for testing
 class MockProvider:

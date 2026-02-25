@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Intent Analyzer
 Classifies user messages into actionable intents
 """
@@ -6,8 +6,8 @@ Classifies user messages into actionable intents
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional, Dict, List, Any
-from nexus_core import NexusCore, Request
-from utils import get_logger
+from core.nexus_core import NexusCore, Request
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 

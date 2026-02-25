@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Task Queue API Routes
 REST API endpoints for task queue management
 """
@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from orchestrator.task_queue import get_task_queue_manager
+from core.orchestrator.task_queue import get_task_queue_manager
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 

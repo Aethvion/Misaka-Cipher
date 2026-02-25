@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Agent Factory
 Core spawning engine for creating transient worker agents
 """
@@ -11,9 +11,9 @@ from .agent_spec import AgentSpec
 from .base_agent import BaseAgent
 from .generic_agent import GenericAgent
 from .agent_registry import get_agent_registry
-from nexus_core import NexusCore
-from utils import get_logger, get_trace_manager, validate_tool_name
-from workspace import get_workspace_manager
+from core.nexus_core import NexusCore
+from core.utils import get_logger, get_trace_manager, validate_tool_name
+from core.workspace import get_workspace_manager
 
 logger = get_logger(__name__)
 

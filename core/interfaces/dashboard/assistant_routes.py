@@ -1,14 +1,14 @@
-from fastapi import APIRouter, HTTPException
+﻿from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import uuid
 import json
 from pathlib import Path
 
-from providers.provider_manager import ProviderManager
-from workspace.preferences_manager import get_preferences_manager
+from core.providers.provider_manager import ProviderManager
+from core.workspace.preferences_manager import get_preferences_manager
 from core.system_retrieval import get_file_counts, get_project_size, get_token_usage, get_system_map
-from utils.logger import get_logger
+from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/assistant", tags=["assistant"])

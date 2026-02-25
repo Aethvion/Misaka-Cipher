@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Registry Routes
 API endpoints for managing the Model Registry (config/model_registry.json)
 """
@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Request
 
-from utils import get_logger
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 

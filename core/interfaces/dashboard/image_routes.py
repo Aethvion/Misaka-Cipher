@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Image Generation Routes
 API endpoints for image generation via LLM providers
 """
@@ -10,9 +10,9 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-from providers import ProviderManager
-from workspace import get_workspace_manager
-from utils import get_logger
+from core.providers import ProviderManager
+from core.workspace import get_workspace_manager
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 

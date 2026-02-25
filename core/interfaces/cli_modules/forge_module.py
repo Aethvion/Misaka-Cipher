@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Forge Module
 Tool generation interface
 """
@@ -8,7 +8,7 @@ from core.interfaces.cli_modules.utils import (
     format_trace_id, print_success, print_error, print_warning,
     print_key_value, pause, show_progress, confirm
 )
-from forge import ToolForge
+from core.forge import ToolForge
 from rich.panel import Panel
 from rich.syntax import Syntax
 

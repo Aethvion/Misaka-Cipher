@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Tool Validator
 Validates generated tools for security and compliance
 """
@@ -7,7 +7,7 @@ import ast
 from typing import Tuple, List, Set
 from pathlib import Path
 
-from utils import get_logger, validate_tool_name
+from core.utils import get_logger, validate_tool_name
 
 logger = get_logger(__name__)
 

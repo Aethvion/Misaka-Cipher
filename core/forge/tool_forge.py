@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Tool Forge
 Core tool generation engine
 """
@@ -12,8 +12,8 @@ from .tool_spec import ToolSpec, ParameterSpec
 from .tool_registry import get_tool_registry
 from .code_generator import CodeGenerator
 from .tool_validator import ToolValidator, ValidationResult
-from nexus_core import NexusCore, Request
-from utils import get_logger, get_trace_manager
+from core.nexus_core import NexusCore, Request
+from core.utils import get_logger, get_trace_manager
 
 logger = get_logger(__name__)
 
@@ -251,7 +251,7 @@ class ToolForge:
             # Register package usage
             if validation.detected_imports:
                 try:
-                    from workspace.package_manager import get_package_manager
+                    from core.workspace.package_manager import get_package_manager
                     pm = get_package_manager()
                     for pkg in validation.detected_imports:
                         pm.register_usage(pkg)
@@ -329,7 +329,7 @@ class ToolForge:
             ToolSpec extracted from description
         """
         # Load allowed domains and actions from config
-        from utils.validators import ALLOWED_DOMAINS, ALLOWED_ACTIONS
+        from core.utils.validators import ALLOWED_DOMAINS, ALLOWED_ACTIONS
         
         analysis_prompt = f"""Analyze this tool request and extract structured information.
 
@@ -438,7 +438,7 @@ Return ONLY valid JSON in this exact format:
         """
         # Query available packages from PackageManager
         try:
-            from workspace.package_manager import get_package_manager
+            from core.workspace.package_manager import get_package_manager
             package_manager = get_package_manager()
             installed_packages = package_manager.get_installed_packages()
             available_packages = list(installed_packages.keys())
@@ -674,7 +674,7 @@ Do NOT include the function definition line.
         """
         try:
             # Import here to avoid circular dependencies
-            from memory import (
+            from core.memory import (
                 get_episodic_memory,
                 get_knowledge_graph,
                 EpisodicMemory,

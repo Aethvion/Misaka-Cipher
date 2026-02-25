@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Usage Routes
 API endpoints for the Usage Dashboard
 """
@@ -6,7 +6,7 @@ API endpoints for the Usage Dashboard
 from fastapi import APIRouter, HTTPException
 from typing import Optional
 
-from utils import get_logger
+from core.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/usage", tags=["usage"])
 async def get_usage_summary():
     """Get aggregated usage statistics."""
     try:
-        from workspace.usage_tracker import get_usage_tracker
+        from core.workspace.usage_tracker import get_usage_tracker
         tracker = get_usage_tracker()
         return tracker.get_summary()
     except Exception as e:
@@ -29,7 +29,7 @@ async def get_usage_summary():
 async def get_usage_history(limit: int = 100):
     """Get recent usage entries."""
     try:
-        from workspace.usage_tracker import get_usage_tracker
+        from core.workspace.usage_tracker import get_usage_tracker
         tracker = get_usage_tracker()
         return {"entries": tracker.get_history(limit=limit)}
     except Exception as e:
@@ -41,7 +41,7 @@ async def get_usage_history(limit: int = 100):
 async def get_hourly_breakdown(hours: int = 24):
     """Get hourly token/call breakdown for charts."""
     try:
-        from workspace.usage_tracker import get_usage_tracker
+        from core.workspace.usage_tracker import get_usage_tracker
         tracker = get_usage_tracker()
         return {"hours": tracker.get_hourly_breakdown(hours=hours)}
     except Exception as e:
@@ -53,7 +53,7 @@ async def get_hourly_breakdown(hours: int = 24):
 async def get_cost_by_model():
     """Get cost breakdown by model for chart data."""
     try:
-        from workspace.usage_tracker import get_usage_tracker
+        from core.workspace.usage_tracker import get_usage_tracker
         tracker = get_usage_tracker()
         return tracker.get_cost_by_model()
     except Exception as e:
@@ -65,7 +65,7 @@ async def get_cost_by_model():
 async def get_tokens_by_model():
     """Get token breakdown by model for chart data."""
     try:
-        from workspace.usage_tracker import get_usage_tracker
+        from core.workspace.usage_tracker import get_usage_tracker
         tracker = get_usage_tracker()
         return tracker.get_tokens_by_model()
     except Exception as e:
@@ -77,7 +77,7 @@ async def get_tokens_by_model():
 async def get_tool_usage():
     """Get tool usage statistics from the tool registry."""
     try:
-        from forge.tool_registry import get_tool_registry
+        from core.forge.tool_registry import get_tool_registry
         registry = get_tool_registry()
         tools = registry.list_tools()
 

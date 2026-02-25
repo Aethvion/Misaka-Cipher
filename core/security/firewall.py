@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Intelligence Firewall
 Pre-flight scanning and routing for sensitive content
 """
@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 from .scanner import ContentScanner, ScanResult, ScanAction
 from .router import RequestRouter, RoutingDecision
-from utils.logger import get_logger
+from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
