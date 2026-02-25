@@ -448,10 +448,10 @@ async def get_system_status():
         return {
             "nexus": status,
             "factory": {
-                "active_agents": factory.registry.get_active_count(),
-                "total_agents": len(factory.registry.get_all_agents())
+                "active_agents": factory.registry.get_active_count() if factory else 0,
+                "total_agents": len(factory.registry.get_all_agents()) if factory else 0
             },
-            "forge": {"total_tools": len(forge.registry.list_tools())},
+            "forge": {"total_tools": len(forge.registry.list_tools()) if forge else 0},
             "vitals": vitals,
             "usage_today": usage_today
         }

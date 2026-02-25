@@ -82,11 +82,26 @@ if not exist ".env" (
 if not exist "data"                              mkdir data
 if not exist "data\logs"                         mkdir data\logs
 if not exist "data\outputfiles"                  mkdir data\outputfiles
+if not exist "data\config"                       mkdir data\config
 if not exist "data\memory"                       mkdir data\memory
 if not exist "data\memory\storage"               mkdir data\memory\storage
 if not exist "data\memory\storage\workspaces"    mkdir data\memory\storage\workspaces
 if not exist "data\memory\storage\graphs"        mkdir data\memory\storage\graphs
 if not exist "tools\generated"                   mkdir tools\generated
+
+:: ── 5.1 Configuration Setup ──────────────────────────────────
+if not exist "core\config\security.yaml" (
+    if exist "core\config\security.yaml.example" (
+        copy "core\config\security.yaml.example" "core\config\security.yaml" >nul
+        echo [OK]    Created security.yaml from template.
+    )
+)
+if not exist "data\config\model_registry.json" (
+    if exist "data\config\model_registry.json.example" (
+        copy "data\config\model_registry.json.example" "data\config\model_registry.json" >nul
+        echo [OK]    Created model_registry.json from template.
+    )
+)
 
 :: ── 6. Launch ─────────────────────────────────────────────────
 echo.

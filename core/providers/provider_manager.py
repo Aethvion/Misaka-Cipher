@@ -106,23 +106,10 @@ class ProviderManager:
             self.chat_priority_order = chat_profiles.get('default', [])
             self.agent_priority_order = agent_profiles.get('default', [])
 
-            # Load Auto Routing config — seed from model_descriptor_map if not yet configured
-            raw_auto = registry.get('auto_routing', {})
-            if raw_auto:
-                self.auto_routing_config = raw_auto
-            else:
-                # Auto-seed: all chat-capable models enabled, first chat model as picker
-                chat_models = [
-                    mid for mid, info in self.model_descriptor_map.items()
-                    if 'chat' in info.get('capabilities', [])
-                ]
-                default_picker = chat_models[0] if chat_models else ''
-                seeded_pool = {mid: {'enabled': True} for mid in chat_models}
-                self.auto_routing_config = {
-                    'chat': {'route_picker': default_picker, 'models': seeded_pool},
-                    'agent': {'route_picker': default_picker, 'models': seeded_pool},
-                }
-                logger.info(f"[AUTO ROUTING] No config found — seeded {len(chat_models)} models, picker: '{default_picker}'")
+            # Load Auto Routing config
+            self.auto_routing_config = registry.get('auto_routing', {})
+            if not self.auto_routing_config:
+                logger.warning("[AUTO ROUTING] No configuration found in registry")
 
             logger.info(f"Chat Priority: {self.chat_priority_order}")
             logger.info(f"Agent Priority: {self.agent_priority_order}")

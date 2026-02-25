@@ -1,0 +1,21 @@
+{
+    "providers": {},
+    "profiles": {
+        "chat_profiles": {
+            "default": []
+        },
+        "agent_profiles": {
+            "default": []
+        }
+    },
+    "auto_routing": {
+        "chat": {
+            "route_picker": "",
+            "models": {}
+        },
+        "agent": {
+            "route_picker": "",
+            "models": {}
+        }
+    }
+}
