@@ -104,9 +104,24 @@ class ProviderManager:
             self.chat_priority_order = chat_profiles.get('default', [])
             self.agent_priority_order = agent_profiles.get('default', [])
 
-            # Load Auto Routing config
-            self.auto_routing_config = registry.get('auto_routing', {})
-            
+            # Load Auto Routing config — seed from model_descriptor_map if not yet configured
+            raw_auto = registry.get('auto_routing', {})
+            if raw_auto:
+                self.auto_routing_config = raw_auto
+            else:
+                # Auto-seed: all chat-capable models enabled, first chat model as picker
+                chat_models = [
+                    mid for mid, info in self.model_descriptor_map.items()
+                    if 'chat' in info.get('capabilities', [])
+                ]
+                default_picker = chat_models[0] if chat_models else ''
+                seeded_pool = {mid: {'enabled': True} for mid in chat_models}
+                self.auto_routing_config = {
+                    'chat': {'route_picker': default_picker, 'models': seeded_pool},
+                    'agent': {'route_picker': default_picker, 'models': seeded_pool},
+                }
+                logger.info(f"[AUTO ROUTING] No config found — seeded {len(chat_models)} models, picker: '{default_picker}'")
+
             logger.info(f"Chat Priority: {self.chat_priority_order}")
             logger.info(f"Agent Priority: {self.agent_priority_order}")
                     
@@ -215,6 +230,9 @@ class ProviderManager:
         model_order = []
         is_agent = request_type == "agent_call" or "agent" in request_type
 
+        # Extract auto-routing metadata placeholder (set later if AUTO mode runs)
+        auto_routing_meta: dict = {}
+
         # 1. Profile Routing & Specific Models
         if model:
             if model == "auto":
@@ -295,8 +313,8 @@ class ProviderManager:
                 else:
                     model_order = candidate_pool
 
-                # Store routing metadata for downstream trace capture
-                kwargs['_auto_routing_meta'] = {
+                # Capture routing metadata as a local (NOT in kwargs — would leak to provider.generate)
+                auto_routing_meta = {
                     'route_picker': route_picker or '',
                     'routed_to': chosen or (candidate_pool[0] if candidate_pool else ''),
                 }
@@ -401,10 +419,9 @@ class ProviderManager:
                     try:
                         from workspace.usage_tracker import get_usage_tracker
                         tracker = get_usage_tracker()
-                        # Attach auto-routing metadata if present
-                        extra_meta = kwargs.pop('_auto_routing_meta', None) or {}
-                        log_meta = {**(response.metadata or {}), **extra_meta}
-                        if extra_meta:
+                        # Attach auto-routing metadata if this was an AUTO routed call
+                        log_meta = {**(response.metadata or {}), **auto_routing_meta}
+                        if auto_routing_meta:
                             log_meta['routed_model'] = model_id
                         tracker.log_api_call(
                             provider=response.provider,

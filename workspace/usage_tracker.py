@@ -141,6 +141,12 @@ class UsageTracker:
             "source": source
         }
 
+        # Persist routing metadata if present (route_picker + routed_to from auto routing)
+        if metadata.get("route_picker"):
+            entry["routing_model"] = metadata["route_picker"]
+        if metadata.get("routed_to"):
+            entry["routed_model"] = metadata["routed_to"]
+
         self._log.append(entry)
         self._save_log()
 
@@ -266,6 +272,9 @@ class UsageTracker:
         total_input_cost = 0.0
         total_output_cost = 0.0
 
+        routing_model = None
+        routed_model = None
+
         for entry in calls:
             ic, oc, c = self._compute_entry_costs(entry)
             m = entry.get("model", "unknown")
@@ -285,7 +294,13 @@ class UsageTracker:
             models_used[m]["input_cost"] += ic
             models_used[m]["output_cost"] += oc
 
-        return {
+            # Capture routing metadata (first entry that has it wins)
+            if not routing_model and entry.get("routing_model"):
+                routing_model = entry["routing_model"]
+            if not routed_model and entry.get("routed_model"):
+                routed_model = entry["routed_model"]
+
+        result = {
             "api_calls": len(calls),
             "models_used": models_used,
             "total_prompt_tokens": total_prompt,
@@ -295,6 +310,11 @@ class UsageTracker:
             "total_output_cost": round(total_output_cost, 6),
             "total_cost": round(total_input_cost + total_output_cost, 6),
         }
+        if routing_model:
+            result["routing_model"] = routing_model
+        if routed_model:
+            result["routed_model"] = routed_model
+        return result
 
     def get_cost_by_model(self) -> Dict[str, Any]:
         """Get cost breakdown by model for chart data."""

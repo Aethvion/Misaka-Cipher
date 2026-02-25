@@ -313,6 +313,9 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
                             <div style="margin-top: 0.3rem;"><strong>Worker:</strong> ${taskData.worker_id || 'N/A'}</div>
                             <div style="margin-top: 0.3rem;"><strong>Model:</strong> ${taskData.result?.model_id || taskData.metadata?.model_id || 'N/A'}</div>
                             <div style="margin-top: 0.3rem;"><strong>Mode:</strong> ${taskData.metadata?.mode || 'N/A'}</div>
+                            <div style="margin-top: 0.3rem;"><strong>Model Selection:</strong> ${taskData.metadata?.model_id === 'auto' ? '⚡ Auto Routing' : (taskData.metadata?.model_id || 'Default')}</div>
+                            ${taskData.result?.usage?.routing_model ? `<div style="margin-top: 0.3rem;"><strong>Route Picker:</strong> ${taskData.result.usage.routing_model}</div>` : ''}
+                            ${taskData.result?.usage?.routed_model ? `<div style="margin-top: 0.3rem;"><strong>Routed To:</strong> <span style="color: var(--primary);">${taskData.result.usage.routed_model}</span></div>` : ''}
                             
                             <!-- Standard Actions Info -->
                             ${taskData.result?.actions_taken?.length > 0 ? `<div style="margin-top: 0.3rem;"><strong>Actions:</strong> ${taskData.result.actions_taken.join(', ')}</div>` : ''}
@@ -665,8 +668,8 @@ async function sendMessage() {
             body: JSON.stringify({
                 prompt: message,
                 thread_id: messageThreadId,
-                thread_title: threads[messageThreadId]?.title, // Send title to ensure backend has it
-                model_id: (modelId && modelId !== 'auto') ? modelId : null
+                thread_title: threads[messageThreadId]?.title,
+                model_id: modelId || 'auto'  // Always send a value; 'auto' triggers routing
             })
         });
 
