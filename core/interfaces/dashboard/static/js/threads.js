@@ -311,11 +311,12 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
                                 <span><strong>Time:</strong> ${taskData.result?.execution_time?.toFixed(2) || '0.00'}s</span>
                             </div>
                             <div style="margin-top: 0.3rem;"><strong>Worker:</strong> ${taskData.worker_id || 'N/A'}</div>
-                            <div style="margin-top: 0.3rem;"><strong>Model:</strong> ${taskData.result?.model_id || taskData.metadata?.model_id || 'N/A'}</div>
+                            <div style="margin-top: 0.3rem;"><strong>Model:</strong> ${taskData.result?.model_id || taskData.metadata?.actual_model || 'N/A'}</div>
                             <div style="margin-top: 0.3rem;"><strong>Mode:</strong> ${taskData.metadata?.mode || 'N/A'}</div>
-                            <div style="margin-top: 0.3rem;"><strong>Model Selection:</strong> ${taskData.metadata?.model_id === 'auto' ? '⚡ Auto Routing' : (taskData.metadata?.model_id || 'Default')}</div>
-                            ${taskData.result?.usage?.routing_model ? `<div style="margin-top: 0.3rem;"><strong>Route Picker:</strong> ${taskData.result.usage.routing_model}</div>` : ''}
-                            ${taskData.result?.usage?.routed_model ? `<div style="margin-top: 0.3rem;"><strong>Routed To:</strong> <span style="color: var(--primary);">${taskData.result.usage.routed_model}</span></div>` : ''}
+                            <div style="margin-top: 0.3rem;"><strong>Model Selection:</strong> ${taskData.metadata?.selected_model === 'auto' ? '⚡ Auto Routing' : (taskData.metadata?.selected_model || 'Default')}</div>
+                            ${(taskData.result?.usage?.routing_model || taskData.metadata?.routing_model) ? `<div style="margin-top: 0.3rem;"><strong>Route Picker:</strong> ${taskData.result?.usage?.routing_model || taskData.metadata?.routing_model}</div>` : ''}
+                            ${(taskData.result?.usage?.routed_model || taskData.metadata?.routed_model) ? `<div style="margin-top: 0.3rem;"><strong>Routed To:</strong> <span style="color: var(--primary);">${taskData.result?.usage?.routed_model || taskData.metadata?.routed_model}</span></div>` : ''}
+                            ${(taskData.result?.usage?.routing_reason || taskData.metadata?.routing_reason) ? `<div style="margin-top: 0.5rem; padding: 0.4rem 0.6rem; background: rgba(0,212,255,0.06); border-left: 3px solid var(--primary); border-radius: 4px; font-style: italic; font-size: 0.78rem; color: var(--text-secondary);">🧠 ${taskData.result?.usage?.routing_reason || taskData.metadata?.routing_reason}</div>` : ''}
                             
                             <!-- Standard Actions Info -->
                             ${taskData.result?.actions_taken?.length > 0 ? `<div style="margin-top: 0.3rem;"><strong>Actions:</strong> ${taskData.result.actions_taken.join(', ')}</div>` : ''}

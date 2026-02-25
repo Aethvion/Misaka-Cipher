@@ -146,6 +146,8 @@ class UsageTracker:
             entry["routing_model"] = metadata["route_picker"]
         if metadata.get("routed_to"):
             entry["routed_model"] = metadata["routed_to"]
+        if metadata.get("routing_reason"):
+            entry["routing_reason"] = metadata["routing_reason"]
 
         self._log.append(entry)
         self._save_log()
@@ -274,6 +276,7 @@ class UsageTracker:
 
         routing_model = None
         routed_model = None
+        routing_reason = None
 
         for entry in calls:
             ic, oc, c = self._compute_entry_costs(entry)
@@ -299,6 +302,8 @@ class UsageTracker:
                 routing_model = entry["routing_model"]
             if not routed_model and entry.get("routed_model"):
                 routed_model = entry["routed_model"]
+            if not routing_reason and entry.get("routing_reason"):
+                routing_reason = entry["routing_reason"]
 
         result = {
             "api_calls": len(calls),
@@ -314,6 +319,8 @@ class UsageTracker:
             result["routing_model"] = routing_model
         if routed_model:
             result["routed_model"] = routed_model
+        if routing_reason:
+            result["routing_reason"] = routing_reason
         return result
 
     def get_cost_by_model(self) -> Dict[str, Any]:

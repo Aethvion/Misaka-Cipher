@@ -277,13 +277,15 @@ class ProviderManager:
                     descriptor_lines.append(f"- {mid}: {desc}" if desc else f"- {mid}")
 
                 chosen = None
+                routing_reason = ''
                 if route_picker and len(candidate_pool) > 1 and any(': ' in l for l in descriptor_lines):
                     routing_prompt = (
                         f"You are a model router. The user wants to send a message to the best-fit AI model.\n"
                         f"Select the single best model from the list below for the user's message.\n"
                         f"You may also use natural language hints in the message like 'use the most complex model', "
                         f"'use a claude model', or 'use the fastest model' — respect those if present.\n"
-                        f"Return ONLY the exact model ID, nothing else. No quotes, no explanation.\n\n"
+                        f"Return ONLY valid JSON with exactly two fields, no markdown, no code fences:\n"
+                        f"{{\"model\": \"<exact_model_id_from_list>\", \"reason\": \"<one sentence why>\"}}\n\n"
                         f"Available models:\n" + "\n".join(descriptor_lines) + "\n\n"
                         f"User message (first 800 chars): {prompt[:800]}"
                     )
@@ -297,12 +299,22 @@ class ProviderManager:
                             source="auto_router"
                         )
                         if routing_response.success:
-                            raw = routing_response.content.strip().strip('"').strip("'").split()[0]
-                            if raw in candidate_pool:
-                                chosen = raw
-                                logger.info(f"[{trace_id}] AUTO router ({route_picker}) chose: '{chosen}'")
+                            raw_content = routing_response.content.strip()
+                            # Try JSON parse first
+                            try:
+                                import json as _json
+                                parsed = _json.loads(raw_content)
+                                raw_model = str(parsed.get('model', '')).strip().strip('"').split()[0]
+                                routing_reason = str(parsed.get('reason', '')).strip()
+                            except Exception:
+                                # Fallback: treat as plain model ID string
+                                raw_model = raw_content.strip('\"').strip("'").split()[0]
+                                routing_reason = ''
+                            if raw_model in candidate_pool:
+                                chosen = raw_model
+                                logger.info(f"[{trace_id}] AUTO router ({route_picker}) chose: '{chosen}' reason: '{routing_reason}'")
                             else:
-                                logger.warning(f"[{trace_id}] Router returned unknown model '{raw}', using pool order")
+                                logger.warning(f"[{trace_id}] Router returned unknown model '{raw_model}', using pool order")
                         else:
                             logger.warning(f"[{trace_id}] Router call failed, using pool order")
                     except Exception as router_err:
@@ -317,6 +329,7 @@ class ProviderManager:
                 auto_routing_meta = {
                     'route_picker': route_picker or '',
                     'routed_to': chosen or (candidate_pool[0] if candidate_pool else ''),
+                    'routing_reason': routing_reason,
                 }
 
             

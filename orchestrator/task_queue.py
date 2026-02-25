@@ -123,7 +123,7 @@ class TaskWorker:
                                 context_prompt = f"Chat History:\n{history_str}\n\nCurrent Message:\n{task.prompt}"
                                 logger.info(f"[{task.id}] Injected context ({len(history_tasks)//2} turns)")
 
-                    model_id = task.metadata.get('model_id')
+                    model_id = task.metadata.get('selected_model')
                     
                     # Use lambda to pass mode argument since run_in_executor only takes args for the callable
                     result = await loop.run_in_executor(
@@ -151,16 +151,23 @@ class TaskWorker:
                         usage = tracker.get_usage_by_trace_id(task.id)
                         if usage:
                             result_dict['usage'] = usage
+                            # Surface routing fields into task metadata for memory JSON
+                            if usage.get('routing_model'):
+                                task.metadata['routing_model'] = usage['routing_model']
+                            if usage.get('routed_model'):
+                                task.metadata['routed_model'] = usage['routed_model']
+                            if usage.get('routing_reason'):
+                                task.metadata['routing_reason'] = usage['routing_reason']
                     except Exception as usage_err:
                         logger.debug(f"[{task.id}] Usage tracking for task failed (non-critical): {usage_err}")
                     
                     # Update task with result
                     task.status = TaskStatus.COMPLETED
                     task.result = result_dict
-                    
-                    # Update metadata with actual model used (important for Auto mode)
+
+                    # Record actual model used — keep separate from selected_model to avoid duplication
                     if result.model_id:
-                        task.metadata['model_id'] = result.model_id
+                        task.metadata['actual_model'] = result.model_id
                     task.completed_at = datetime.now()
                     
                     logger.info(
@@ -374,9 +381,9 @@ class TaskQueueManager:
         # Propagate thread mode to task metadata (for worker/orchestrator to see)
         task.metadata['mode'] = self.threads[thread_id].mode
         
-        # Store model_id if provided
+        # Store user's model selection (e.g. 'auto', specific model ID, profile string)
         if model_id:
-            task.metadata['model_id'] = model_id
+            task.metadata['selected_model'] = model_id
         
         # Save thread state
         self._save_thread(thread_id)
