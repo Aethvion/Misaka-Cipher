@@ -4,16 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "misaka-cipher"
-version = "1.0.0"
-description = "M.I.S.A.K.A. – Multitask Intelligence & Strategic Analysis Kernel Architecture: a self-evolving agentic AI system"
+version = "0.2.0"
+description = "M.I.S.A.K.A. – Multitask Intelligence & Strategic Analysis Kernel Architecture: a self-hosted agentic AI platform"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
     { name = "Aethvion", url = "https://github.com/Aethvion" }
 ]
-keywords = ["ai", "agents", "autonomous", "llm", "tool-generation", "multi-agent"]
+keywords = ["ai", "agents", "autonomous", "llm", "tool-generation", "multi-agent", "self-hosted"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -25,16 +25,25 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "google-generativeai>=0.3.0",
+    # AI Providers
+    "google-genai>=1.0.0",
     "openai>=1.0.0",
     "requests>=2.31.0",
-    "pyyaml>=6.0",
-    "python-dotenv>=1.0.0",
-    "psutil>=5.9.0",
+
+    # Web server
     "fastapi>=0.109.1",
     "uvicorn>=0.24.0",
     "pydantic>=2.0.0",
+
+    # Config & environment
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+
+    # CLI
     "rich>=13.0.0",
+
+    # System monitoring
+    "psutil>=5.9.0",
 ]
 
 [project.optional-dependencies]
@@ -47,16 +56,28 @@ dev = [
     "pytest>=7.0",
     "flake8>=6.0",
 ]
+all = [
+    "chromadb>=0.4.0",
+    "sentence-transformers>=2.2.0",
+    "networkx>=3.0",
+]
+
+[project.scripts]
+misaka = "core.main:main"
+misaka-cli = "core.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/Aethvion/Misaka-Cipher"
 Repository = "https://github.com/Aethvion/Misaka-Cipher"
 Documentation = "https://github.com/Aethvion/Misaka-Cipher/tree/main/documentation"
 "Bug Tracker" = "https://github.com/Aethvion/Misaka-Cipher/issues"
-Changelog = "https://github.com/Aethvion/Misaka-Cipher/blob/main/CHANGELOG.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v"
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = [".venv*", "tests*", "outputfiles*", "logs*"]

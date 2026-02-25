@@ -112,18 +112,26 @@ The system is structured around four components:
 git clone https://github.com/Aethvion/Misaka-Cipher.git
 cd Misaka-Cipher
 
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies (uses pyproject.toml)
+pip install -e ".[memory]"
 
-# Run setup
-python setup.py
-
-# Launch (web dashboard)
-python main.py
-# Open http://localhost:8000
+# Copy and fill in your API keys
+copy .env.example .env
+# edit .env — add GOOGLE_AI_API_KEY / OPENAI_API_KEY / GROK_API_KEY
 ```
 
-You'll need at least one API key configured in Settings → AI Providers (Google AI, OpenAI, or xAI).
+### Launch
+
+**One-click (Windows):**  
+Double-click `Start_Misaka_Cipher.bat` — it creates the venv, installs deps, and starts the dashboard automatically.
+
+**Manual:**
+```bash
+python -m core.main          # web dashboard (default)
+python -m core.main --cli    # interactive CLI
+python -m core.main --test   # run verification tests
+```
+Open [http://localhost:8000](http://localhost:8000) after launch.
 
 ---
 
@@ -131,8 +139,19 @@ You'll need at least one API key configured in Settings → AI Providers (Google
 
 ```
 Misaka-Cipher/
-├── main.py                     # Entry point
-├── nexus_core.py               # Central orchestration hub
+├── Start_Misaka_Cipher.bat     # One-click install + launch
+├── pyproject.toml              # All dependencies + project metadata
+├── main.py                     # Shim → core/main.py
+├── cli.py                      # Shim → core/cli.py
+├── nexus_core.py               # Shim → core/nexus_core.py
+│
+├── core/                       # 🎛️ Core modules
+│   ├── main.py                 # Entry point (web / CLI / test modes)
+│   ├── cli.py                  # Interactive CLI interface
+│   ├── nexus_core.py           # Central orchestration hub [SINGLE POINT OF ENTRY]
+│   └── interfaces/
+│       ├── dashboard/          # Web dashboard (FastAPI server + static files)
+│       └── cli_modules/        # CLI module implementations
 │
 ├── documentation/              # 📚 Docs
 │   ├── human/
@@ -144,7 +163,6 @@ Misaka-Cipher/
 │       ├── evolution-logic.md
 │       └── dashboard-interface-context.md
 │
-├── core/interfaces/dashboard/  # 🎛️ Web dashboard (FastAPI)
 ├── config/                     # ⚙️ Configuration files
 ├── orchestrator/               # 🎯 Master orchestrator + task queue
 ├── factory/                    # 🏭 Agent spawning
@@ -190,11 +208,10 @@ Misaka-Cipher/
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Misaka-Cipher.git
+git clone https://github.com/Aethvion/Misaka-Cipher.git
 cd Misaka-Cipher
-python -m venv venv
-venv\Scripts\activate   # Windows
-pip install -r requirements.txt
+pip install -e ".[memory]"
+cp .env.example .env  # or: copy .env.example .env  (Windows)
 ```
 
 ---
