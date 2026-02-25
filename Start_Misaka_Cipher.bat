@@ -4,23 +4,23 @@ SETLOCAL
 :: Window always-open guarantee:
 :: When double-clicked, MISAKA_LAUNCHED is undefined.
 :: We re-launch this same script inside `cmd /k` which holds the window open
-:: until the user explicitly closes it — regardless of errors or crashes.
+:: until the user explicitly closes it - regardless of errors or crashes.
 if not defined MISAKA_LAUNCHED (
     set MISAKA_LAUNCHED=1
     cmd /k ""%~f0""
     exit
 )
-TITLE Misaka Cipher — Aethvion Systems
+TITLE Misaka Cipher - Aethvion Systems
 SET PROJECT_DIR=%~dp0
 cd /d "%PROJECT_DIR%"
 
 echo.
 echo ============================================================
-echo          AETHVION — MISAKA CIPHER
+echo          AETHVION - MISAKA CIPHER
 echo ============================================================
 echo.
 
-:: ── 1. Python check ──────────────────────────────────────────
+:: --------------------------------------------------------------
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo [ERROR] Python is not installed or not in PATH.
@@ -31,7 +31,7 @@ if %errorlevel% neq 0 (
 for /f "tokens=2 delims= " %%v in ('python --version 2^>^&1') do set PY_VER=%%v
 echo [OK]  Python %PY_VER% detected.
 
-:: ── 2. Virtual environment ────────────────────────────────────
+:: --- 2. Virtual environment ------------------------------------
 if not exist ".venv\Scripts\activate.bat" (
     echo [SETUP] Creating virtual environment...
     python -m venv .venv
@@ -46,7 +46,7 @@ if not exist ".venv\Scripts\activate.bat" (
 
 call ".venv\Scripts\activate.bat"
 
-:: ── 3. Install / verify dependencies ─────────────────────────
+:: --- 3. Install / verify dependencies -------------------------
 python -c "import fastapi" >nul 2>&1
 if %errorlevel% neq 0 (
     echo [SETUP] Installing dependencies from pyproject.toml...
@@ -54,23 +54,28 @@ if %errorlevel% neq 0 (
     pip install -e ".[memory]"
     if %errorlevel% neq 0 (
         echo.
-        echo [ERROR] Dependency installation failed — see output above.
-        echo         Common fix: make sure Python 3.10+ is in PATH and try again.
-        goto :FAIL
+        echo [WARN]  Dependency installation reported an issue. 
+        echo         Checking if core packages are available...
+        python -c "import fastapi" >nul 2>&1
+        if %errorlevel% neq 0 (
+            echo [ERROR] Core dependencies are missing. 
+            echo         Try running: pip install -e .
+            goto :FAIL
+        )
+        echo [OK]    Core dependencies verified despite pip warnings.
+    ) else (
+        echo [OK]  Dependencies installed.
     )
-    echo [OK]  Dependencies installed.
 ) else (
     echo [OK]  Dependencies verified.
 )
 
-:: ── 4. Environment file ───────────────────────────────────────
+:: --- 4. Environment file ---------------------------------------
 if not exist ".env" (
     if exist ".env.example" (
         copy ".env.example" ".env" >nul
-        echo [SETUP] Created .env from .env.example — add your API keys before continuing.
+        echo [SETUP] Created .env from .env.example - add your API keys in the dashboard.
         echo.
-        echo         Edit .env now then re-run this file to start Misaka Cipher.
-        pause & exit /b 0
     ) else (
         echo [WARN]  No .env file found. Create one with your API keys.
     )
@@ -78,7 +83,7 @@ if not exist ".env" (
     echo [OK]  .env found.
 )
 
-:: ── 5. Required directories ───────────────────────────────────
+:: --- 5. Required directories -----------------------------------
 if not exist "data"                              mkdir data
 if not exist "data\logs"                         mkdir data\logs
 if not exist "data\outputfiles"                  mkdir data\outputfiles
@@ -89,7 +94,7 @@ if not exist "data\memory\storage\workspaces"    mkdir data\memory\storage\works
 if not exist "data\memory\storage\graphs"        mkdir data\memory\storage\graphs
 if not exist "tools\generated"                   mkdir tools\generated
 
-:: ── 5.1 Configuration Setup ──────────────────────────────────
+:: --- 5.1 Configuration Setup ----------------------------------
 if not exist "core\config\security.yaml" (
     if exist "core\config\security.yaml.example" (
         copy "core\config\security.yaml.example" "core\config\security.yaml" >nul
@@ -103,17 +108,17 @@ if not exist "data\config\model_registry.json" (
     )
 )
 
-:: ── 6. Launch ─────────────────────────────────────────────────
+:: --- 6. Launch -------------------------------------------------
 echo.
 echo [START] Launching Misaka Cipher...
-echo         Dashboard → http://localhost:8000
+echo         Dashboard -^> http://localhost:8000
 echo         Press CTRL+C to stop.
 echo.
 
 python -m core.main %*
 set MAIN_EXIT=%errorlevel%
 
-:: ── 7. Result ────────────────────────────────────────────────
+:: --- 7. Result ------------------------------------------------
 if %MAIN_EXIT% neq 0 (
     echo.
     echo [ERROR] Misaka Cipher crashed (exit code %MAIN_EXIT%).
