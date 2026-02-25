@@ -135,6 +135,7 @@ python setup.py
 ```bash
 python main.py
 # Access at http://localhost:8000
+# API docs at http://localhost:8000/docs
 ```
 
 **Interactive CLI:**
@@ -162,7 +163,7 @@ Comprehensive guides for users and developers:
   - Best practices
 
 ### 🤖 For AI Agents
-Machine-readable specifications for autonomous operation:
+Token-efficient, machine-readable specifications for autonomous operation:
 
 - **[SYSTEM_SPEC.md](/documentation/ai/SYSTEM_SPEC.md)** - Complete technical specification
   - Directory structure
@@ -181,6 +182,10 @@ Machine-readable specifications for autonomous operation:
   - How system "knows" a tool is ready
   - Self-improvement mechanism
   - Quality metrics
+
+- **[dashboard_interface_context.md](/documentation/ai/dashboard_interface_context.md)** - Web dashboard tab reference
+  - Tab descriptions and purposes
+  - Tab switching commands for the assistant
 
 ---
 
@@ -241,7 +246,7 @@ Built-in security layer that protects sensitive data:
 * **Vector Database:** ChromaDB (semantic memory)
 * **Graph Engine:** NetworkX (knowledge relationships)
 * **Persistence:** JSON (no SQLite dependency)
-* **Web Framework:** Flask + Socket.IO (real-time dashboard)
+* **Web Framework:** FastAPI + uvicorn (real-time dashboard with WebSocket)
 * **Providers:** Google AI (Gemini), OpenAI (GPT), xAI (Grok)
 * **Local Models (Roadmap):** Ollama, vLLM integration planned
 
@@ -258,17 +263,26 @@ Misaka-Cipher/
 │   ├── human/              # 👥 User-facing guides
 │   │   ├── README_Overview.md
 │   │   └── Getting_Started.md
-│   └── ai/                 # 🤖 Machine-readable specs
+│   └── ai/                 # 🤖 Machine-readable specs (token-efficient)
 │       ├── SYSTEM_SPEC.md
 │       ├── AGENT_MISSION.md
-│       └── EVOLUTION_LOGIC.md
+│       ├── EVOLUTION_LOGIC.md
+│       └── dashboard_interface_context.md
+│
+├── core/                   # 🎛️ Core interfaces
+│   ├── interfaces/
+│   │   ├── dashboard/      # Web dashboard (FastAPI server, static files, routes)
+│   │   └── cli_modules/    # CLI module implementations
+│   └── system_retrieval.py # System data retrieval
 │
 ├── config/                 # ⚙️ Configuration files
 │   ├── providers.yaml      # Provider settings & failover
 │   ├── model_registry.json # Model definitions & routing [KEY FILE]
 │   ├── security.yaml       # Intelligence Firewall rules
 │   ├── memory.yaml         # Memory tier configuration
-│   └── aethvion.yaml       # Framework standards
+│   ├── aethvion.yaml       # Framework standards
+│   ├── settings.json       # System settings persistence
+│   └── settings_manager.py # Settings manager
 │
 ├── orchestrator/           # 🎯 Master Orchestrator
 │   ├── master_orchestrator.py  # Autonomous coordination
@@ -304,13 +318,17 @@ Misaka-Cipher/
 │
 ├── tools/                  # 🔧 Tool registry
 │   ├── standard/           # Core system tools
-│   ├── generated/          # AI-created tools [DYNAMIC]
-│   └── registry.json       # Tool metadata
+│   └── generated/          # AI-created tools [DYNAMIC]
 │
-├── web/                    # 🌐 Web dashboard
-│   ├── server.py           # Flask + SocketIO server
-│   ├── static/             # Frontend assets
-│   └── templates/          # HTML templates
+├── workers/                # ⚙️ Background workers
+│   └── package_installer.py # Async package installation
+│
+├── workspace/              # 📂 Workspace management
+│   ├── workspace_manager.py    # File system operations
+│   ├── package_manager.py      # Package request & approval
+│   ├── package_intelligence.py # Package safety scoring
+│   ├── usage_tracker.py        # API usage & cost tracking
+│   └── preferences_manager.py  # User preferences
 │
 ├── tests/                  # ✅ Test suite
 └── outputfiles/            # 📂 AI output directory
@@ -368,8 +386,12 @@ Think of Misaka Cipher as a **digital forge** where:
 - Multi-tiered memory
 - Multi-provider support
 - Intelligence Firewall
-- Web dashboard
-- Comprehensive documentation
+- Web dashboard (FastAPI + WebSocket)
+- Package manager with safety scoring
+- API usage tracking
+- LLM Arena (model battle testing)
+- AI Image Studio
+- Advanced AI Conversation lab
 
 ### 🔄 Near-Term (3 Months)
 - Local model integration (Ollama/vLLM)
@@ -474,6 +496,25 @@ Need help? Have questions?
 ## 🎮 Web Dashboard Features
 
 Access the dashboard at `http://localhost:8000` after launching with `python main.py`:
+
+### Dashboard Tabs
+
+| Tab | Description |
+|-----|-------------|
+| **Chat** | Primary command interface. Multi-modal terminal for messages, file attachments, prompt templates, tool/agent selection, and conversation threads |
+| **Agent** | Spawn and monitor autonomous agents with step-by-step execution tracking |
+| **Image Studio** | AI image generation with model selection, prompt input, resolution/aspect ratio controls |
+| **Advanced AI Conversation** | Multi-agent conversation lab with custom Personas and Threads |
+| **LLM Arena** | Model battle testing — pit models against the same prompt and crown a winner |
+| **AI Conversation** | Simplified two-party AI conversation for rapid A/B model comparisons |
+| **Files** | Project file browser for navigating directories, configs, memory, and output files |
+| **Tools** | Registry of all available tools and active agents with test and inspect capabilities |
+| **Packages** | Package manager for Aethvion modules with safety scores and approval workflow |
+| **Memory** | Archive of all system memory — threads, task histories, episodic entries, knowledge graph |
+| **Logs** | Live log stream split into System Logs (file-backed) and System Terminal (WebSocket) |
+| **Usage** | API usage analytics — token consumption, cost estimates, request counts by provider/model |
+| **Status** | Live system status — CPU/RAM, Nexus health, provider API status, active agents |
+| **Settings** | Configuration hub — Assistant, AI Providers, Global System, Environment, Routing Profiles |
 
 ### Thread Settings
 Each conversation thread has configurable settings via the **▶ SETTINGS** toggle:
