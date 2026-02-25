@@ -9,7 +9,7 @@ description = "M.I.S.A.K.A. – Multitask Intelligence & Strategic Analysis Kern
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
-    { name = "Aethvion", url = "https://github.com/Aethvion" }
+    { name = "Aethvion" }
 ]
 keywords = ["ai", "agents", "autonomous", "llm", "tool-generation", "multi-agent", "self-hosted"]
 classifiers = [
