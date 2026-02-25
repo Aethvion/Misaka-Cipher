@@ -73,7 +73,7 @@ CRITICAL RULE: DO NOT state these statistics unless the user EXPLICITLY asks for
         # Load the dashboard context documentation
         doc_content = ""
         try:
-            doc_path = Path("documentation/ai/dashboard_interface_context.md")
+            doc_path = Path("documentation/ai/dashboard-interface-context.md")
             if doc_path.exists():
                 with open(doc_path, 'r', encoding='utf-8') as f:
                     doc_content = f.read()
