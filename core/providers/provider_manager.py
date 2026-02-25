@@ -43,8 +43,9 @@ class ProviderManager:
         
         # Load configuration
         if config_path is None:
-            workspace = Path(__file__).parent.parent
-            config_path = workspace / "config" / "providers.yaml"
+            # __file__ = core/providers/provider_manager.py → parent.parent.parent = project root
+            project_root = Path(__file__).parent.parent.parent
+            config_path = project_root / "core" / "config" / "providers.yaml"
         
         self._load_config(config_path)
         self._initialize_providers()
@@ -64,9 +65,10 @@ class ProviderManager:
 
     def _load_registry_overrides(self):
         """Load overrides from model_registry.json if present."""
-        # Find registry file
-        workspace = Path(__file__).parent.parent
-        registry_path = workspace / "config" / "model_registry.json"
+        # Find registry file: data/config/model_registry.json
+        # __file__ = core/providers/provider_manager.py → parent.parent.parent = project root
+        project_root = Path(__file__).parent.parent.parent
+        registry_path = project_root / "data" / "config" / "model_registry.json"
         
         if not registry_path.exists():
             return
@@ -141,8 +143,8 @@ class ProviderManager:
         self._load_registry_overrides()
         
         # 2. Update active provider instances with new config
-        workspace = Path(__file__).parent.parent
-        registry_path = workspace / "config" / "model_registry.json"
+        project_root = Path(__file__).parent.parent.parent
+        registry_path = project_root / "data" / "config" / "model_registry.json"
         
         if not registry_path.exists():
             return

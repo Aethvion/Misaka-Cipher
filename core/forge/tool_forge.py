@@ -44,10 +44,11 @@ class ToolForge:
         self.generator = CodeGenerator()
         self.validator = ToolValidator()
         
-        # Tools directory
+        # Tools directory at project root
         if tools_dir is None:
-            workspace = Path(__file__).parent.parent
-            tools_dir = workspace / "tools" / "generated"
+            # __file__ = core/forge/tool_forge.py → parent.parent.parent = project root
+            project_root = Path(__file__).parent.parent.parent
+            tools_dir = project_root / "tools" / "generated"
         
         self.tools_dir = Path(tools_dir)
         self.tools_dir.mkdir(parents=True, exist_ok=True)
@@ -60,7 +61,7 @@ class ToolForge:
     def _load_model_registry(self) -> Dict[str, Any]:
         """Load the model registry from config/model_registry.json."""
         try:
-            registry_path = Path(__file__).parent.parent / "config" / "model_registry.json"
+            registry_path = Path(__file__).parent.parent.parent / "data" / "config" / "model_registry.json"
             if registry_path.exists():
                 with open(registry_path, 'r') as f:
                     registry = json.load(f)

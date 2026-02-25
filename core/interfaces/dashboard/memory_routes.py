@@ -48,8 +48,9 @@ async def get_memory_overview():
         threads_memory = []
         
         # Path to threads directory in hierarchical workspace structure
-        workspace = Path(__file__).parent.parent.parent.parent
-        workspaces_dir = workspace / "memory" / "storage" / "workspaces"
+        # __file__ = core/interfaces/dashboard/memory_routes.py → parent.parent.parent.parent = project root
+        project_root = Path(__file__).parent.parent.parent.parent
+        workspaces_dir = project_root / "data" / "memory" / "storage" / "workspaces"
         
         if workspaces_dir.exists():
             # Get all thread JSON files inside hierarchical folders

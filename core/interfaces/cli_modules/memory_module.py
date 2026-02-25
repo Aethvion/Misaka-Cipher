@@ -231,7 +231,7 @@ def _memory_stats(memory_store, kg):
 def _search_workspaces():
     clear_screen()
     print_header("Workspace Threads")
-    workspaces_dir = Path("c:/Aethvion/Misaka-Cipher/memory/storage/workspaces")
+    workspaces_dir = Path("c:/Aethvion/Misaka-Cipher/data/memory/storage/workspaces")
     if not workspaces_dir.exists():
         print_error("Workspaces directory not found.")
         pause()
@@ -302,7 +302,7 @@ def _search_workspaces():
 def _search_aiconv():
     clear_screen()
     print_header("Advanced AI Conversations")
-    aiconv_dir = Path("c:/Aethvion/Misaka-Cipher/memory/storage/advancedaiconversation/threads")
+    aiconv_dir = Path("c:/Aethvion/Misaka-Cipher/data/memory/storage/advancedaiconversation/threads")
     if not aiconv_dir.exists():
         print_error("Advanced AI Conversation memory directory not found.")
         pause()

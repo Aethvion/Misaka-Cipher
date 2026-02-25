@@ -8,6 +8,7 @@ core/config/security.yaml
 data/logs/*
 data/memory/storage/*
 data/outputfiles/*
+data/config/*
 
 # Ignore internal DB and graph files to prevent leaking research history.
 *.db

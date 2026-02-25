@@ -18,7 +18,8 @@ _instance = None
 _lock = threading.Lock()
 
 MAX_LOG_ENTRIES = 10000
-DATA_DIR = Path(__file__).parent.parent / "data"
+# __file__ = core/workspace/usage_tracker.py → parent.parent.parent = project root
+DATA_DIR = Path(__file__).parent.parent.parent / "data"
 USAGE_LOG_FILE = DATA_DIR / "usage_log.json"
 
 
@@ -66,7 +67,7 @@ class UsageTracker:
         """Load per-model input/output cost data from model_registry.json."""
         costs = {}
         try:
-            registry_path = Path(__file__).parent.parent / "config" / "model_registry.json"
+            registry_path = Path(__file__).parent.parent.parent / "data" / "config" / "model_registry.json"
             if registry_path.exists():
                 with open(registry_path, "r") as f:
                     registry = json.load(f)

@@ -241,9 +241,10 @@ class TaskQueueManager:
         self.workers: List[TaskWorker] = []
         self.running = False
         
-        # Persistence setup
-        # Use a hierarchical workspaces folder for threads to support future expansion
-        self.workspaces_dir = Path(__file__).parent.parent / "memory" / "storage" / "workspaces"
+        # Persistence: data/memory/storage/workspaces (project_root / data / memory / storage / workspaces)
+        # __file__ is core/orchestrator/task_queue.py → go up 4 levels to project root
+        project_root = Path(__file__).parent.parent.parent
+        self.workspaces_dir = project_root / "data" / "memory" / "storage" / "workspaces"
         self.workspaces_dir.mkdir(parents=True, exist_ok=True)
         
         self._load_threads()

@@ -61,8 +61,9 @@ class WorkspaceManager:
         """
         if workspace_root is None:
             # Default to outputfiles in project root
-            project_root = Path(__file__).parent.parent
-            workspace_root = project_root / "outputfiles"
+            # __file__ = core/workspace/workspace_manager.py → parent.parent.parent = project root
+            project_root = Path(__file__).parent.parent.parent
+            workspace_root = project_root / "data" / "outputfiles"
         
         self.workspace_root = Path(workspace_root)
         

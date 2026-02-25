@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Logger
 Structured logging with automatic Trace_ID injection
 """
@@ -60,10 +60,10 @@ class MisakaLogger:
             cls._initialized = True
             return
         
-        # Ensure log directory exists
-        workspace = Path(__file__).parent.parent
-        log_dir = workspace / "logs"
-        log_dir.mkdir(exist_ok=True)
+        # Ensure log directory exists at project root
+        project_root = Path(__file__).parent.parent.parent
+        log_dir = project_root / "data" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
         
         # Load YAML configuration
         with open(config_path, 'r') as f:

@@ -18,7 +18,9 @@ logger = get_logger("web.advanced_aiconv_routes")
 
 router = APIRouter(prefix="/api/research", tags=["research"])
 
-STORAGE_DIR = Path("memory/storage/advancedaiconversation")
+# Project root = core/interfaces/dashboard/ → up 4 levels
+_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+STORAGE_DIR = _PROJECT_ROOT / "data" / "memory" / "storage" / "advancedaiconversation"
 PEOPLE_DIR = STORAGE_DIR / "people"
 THREADS_DIR = STORAGE_DIR / "threads"
 

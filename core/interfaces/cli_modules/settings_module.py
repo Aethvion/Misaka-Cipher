@@ -1,4 +1,4 @@
-"""
+﻿"""
 Misaka Cipher - Settings Module
 CLI module for managing providers and configuring the Model Registry
 """
@@ -11,7 +11,8 @@ import json
 from pathlib import Path
 
 # Load settings from file directly
-SETTINGS_FILE = Path("c:/Aethvion/Misaka-Cipher/config/model_registry.json")
+# Path: core/interfaces/cli_modules/settings_module.py → up 3 levels = project root → core/config/
+SETTINGS_FILE = Path(__file__).parent.parent.parent.parent / "data" / "config" / "model_registry.json"
 
 def load_settings():
     if not SETTINGS_FILE.exists():

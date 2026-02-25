@@ -12,7 +12,7 @@ from core.utils import get_logger
 logger = get_logger(__name__)
 
 # Use environment variable or default to relative path
-WORK_FOLDER = Path(os.environ.get("MISAKA_WORKSPACE", Path(__file__).parent.parent / "outputfiles"))
+WORK_FOLDER = Path(os.environ.get("MISAKA_WORKSPACE", Path(__file__).parent.parent / "data/outputfiles"))
 
 
 @dataclass
@@ -106,7 +106,7 @@ class OutputValidator:
             is_path = (
                 content_stripped.startswith('C:\\') or
                 content_stripped.startswith('/') or
-                'outputfiles' in content_stripped or
+                'data/outputfiles' in content_stripped or
                 (len(content_stripped) < 200 and ('\\' in content_stripped or '/' in content_stripped))
             )
             
@@ -206,15 +206,15 @@ class OutputValidator:
                     return Path(path_str)
         
         # Look for outputfiles paths
-        if 'outputfiles' in output:
+        if 'data/outputfiles' in output:
             # Extract path containing outputfiles
             lines = output.split('\n')
             for line in lines:
-                if 'outputfiles' in line:
+                if 'data/outputfiles' in line:
                     # Try to extract path
                     parts = line.split()
                     for part in parts:
-                        if 'outputfiles' in part:
+                        if 'data/outputfiles' in part:
                             path_str = part.strip('"\',.:;')
                             if Path(path_str).exists():
                                 return Path(path_str)

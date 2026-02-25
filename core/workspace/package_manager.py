@@ -60,8 +60,9 @@ class PackageManager:
             workspace_root: Root directory for workspace files
         """
         self.workspace_root = workspace_root
-        # Use location of this file (workspace module) for config
-        self.config_root = Path(__file__).parent
+        # Data files live in data/workspace/, not alongside the source code
+        # __file__ = core/workspace/package_manager.py → up 3 = project root
+        self.config_root = Path(__file__).parent.parent.parent / "data" / "workspace"
         self.packages_file = self.config_root / "packages.json"
         self.intelligence = get_package_intelligence()
         

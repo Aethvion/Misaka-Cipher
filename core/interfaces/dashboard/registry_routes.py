@@ -17,8 +17,8 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/registry", tags=["registry"])
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-REGISTRY_PATH = PROJECT_ROOT / "config" / "model_registry.json"
-SUGGESTED_PATH = PROJECT_ROOT / "config" / "suggested_models.json"
+REGISTRY_PATH = PROJECT_ROOT / "data" / "config" / "model_registry.json"
+SUGGESTED_PATH = PROJECT_ROOT / "core" / "config" / "suggested_models.json"
 ENV_PATH = PROJECT_ROOT / ".env"
 ENV_EXAMPLE_PATH = PROJECT_ROOT / ".env.example"
 

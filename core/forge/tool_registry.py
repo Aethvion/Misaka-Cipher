@@ -30,7 +30,8 @@ class ToolRegistry:
             registry_path: Path to registry.json file
         """
         if registry_path is None:
-            workspace = Path(__file__).parent.parent
+            # __file__ = core/forge/tool_registry.py → parent.parent.parent = project root
+            workspace = Path(__file__).parent.parent.parent
             registry_path = workspace / "tools" / "registry.json"
         
         self.registry_path = Path(registry_path)

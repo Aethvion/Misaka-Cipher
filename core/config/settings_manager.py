@@ -10,7 +10,9 @@ from core.utils import get_logger
 
 logger = get_logger(__name__)
 
-SETTINGS_FILE = Path(__file__).parent / "settings.json"
+# __file__ = core/config/settings_manager.py → up 3 levels = project root → data/config/settings.json
+SETTINGS_FILE = Path(__file__).parent.parent.parent / "data" / "config" / "settings.json"
+
 
 
 class SettingsManager:

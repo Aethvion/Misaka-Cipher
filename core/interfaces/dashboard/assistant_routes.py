@@ -73,7 +73,9 @@ CRITICAL RULE: DO NOT state these statistics unless the user EXPLICITLY asks for
         # Load the dashboard context documentation
         doc_content = ""
         try:
-            doc_path = Path("documentation/ai/dashboard-interface-context.md")
+            # __file__ = core/interfaces/dashboard/assistant_routes.py → parent.parent.parent.parent = project root
+            project_root = Path(__file__).parent.parent.parent.parent
+            doc_path = project_root / "documentation" / "ai" / "dashboard-interface-context.md"
             if doc_path.exists():
                 with open(doc_path, 'r', encoding='utf-8') as f:
                     doc_content = f.read()

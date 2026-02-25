@@ -150,7 +150,7 @@ async def generate_image(req: ImageGenerationRequest):
             # WorkspaceManager takes domain. We can use "Images/{date_str}" or just "Images"
             # Let's use "Images" domain, and filename includes date or we put it in folder.
             # WorkspaceManager structure is {root}/{domain}/{filename}
-            # The user asked for "outputfiles".
+            # The user asked for "data/outputfiles".
             # workspace.get_output_path("Images", filename) -> outputfiles/Images/filename
             # We want outputfiles/images/... 
             # Let's use domain="images" (lowercase usually normalized)
