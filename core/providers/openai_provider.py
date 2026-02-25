@@ -5,7 +5,7 @@ OpenAI GPT implementation (fallback provider)
 
 import os
 from typing import Iterator, Optional
-from openai import OpenAI
+# from openai import OpenAI
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
 from core.utils.logger import get_logger
 
@@ -29,6 +29,7 @@ class OpenAIProvider(BaseProvider):
             logger.warning(f"OpenAI API key not found in environment: {config.api_key}")
         
         # Initialize client
+        from openai import OpenAI
         self.client = OpenAI(
             api_key=api_key,
             timeout=config.timeout

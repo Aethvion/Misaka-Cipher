@@ -5,8 +5,8 @@ Google Generative AI (Gemini) implementation
 
 import os
 from typing import Iterator, Optional
-from google import genai
-from google.genai import types
+# from google import genai
+# from google.genai import types
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
 from core.utils.logger import get_logger
 
@@ -30,6 +30,7 @@ class GoogleAIProvider(BaseProvider):
             logger.error(f"Google AI API key not found in environment: {config.api_key}")
         
         # New SDK uses a client-based approach
+        from google import genai
         self.client = genai.Client(api_key=api_key)
         
         logger.info(f"Initialized Google AI provider with model: {config.model}")
@@ -65,6 +66,7 @@ class GoogleAIProvider(BaseProvider):
             kwargs.pop('model', None)
 
             # Generate response via client
+            from google.genai import types
             response = self.client.models.generate_content(
                 model=active_model,
                 contents=prompt,
@@ -127,6 +129,7 @@ class GoogleAIProvider(BaseProvider):
                 config_params['max_output_tokens'] = max_tokens
             
             # Stream response
+            from google.genai import types
             response = self.client.models.generate_content_stream(
                 model=self.config.model,
                 contents=prompt,
@@ -174,6 +177,7 @@ class GoogleAIProvider(BaseProvider):
             aspect_ratio = kwargs.get('aspect_ratio', '1:1')
 
             # Generate via new SDK
+            from google.genai import types
             response = self.client.models.generate_image(
                 model=active_model,
                 prompt=prompt,
