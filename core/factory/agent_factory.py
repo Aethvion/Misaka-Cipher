@@ -42,8 +42,9 @@ class AgentFactory:
         
         # Load configuration
         if config_path is None:
-            workspace = Path(__file__).parent.parent
-            config_path = workspace / "config" / "aethvion.yaml"
+            # __file__ = core/factory/agent_factory.py → parent.parent.parent = project root
+            project_root = Path(__file__).parent.parent.parent
+            config_path = project_root / "core" / "config" / "aethvion.yaml"
         
         self.config = self._load_config(config_path)
         

@@ -65,8 +65,8 @@ class Heartbeat:
         self.long_interval = intervals.get('long', 86400)      # 24 hours
         
         # Storage for insights
-        workspace = Path(__file__).parent.parent
-        self.insights_path = workspace / "memory" / "storage" / "core_insights.json"
+        project_root = Path(__file__).parent.parent.parent
+        self.insights_path = project_root / "data" / "memory" / "storage" / "core_insights.json"
         self.insights_path.parent.mkdir(parents=True, exist_ok=True)
         
         logger.info(

@@ -32,8 +32,9 @@ class EpisodicMemoryStore:
         """
         # Load configuration
         if config_path is None:
-            workspace = Path(__file__).parent.parent
-            config_path = workspace / "config" / "memory.yaml"
+            # __file__ = core/memory/episodic_memory.py → parent.parent.parent = project root
+            project_root = Path(__file__).parent.parent.parent
+            config_path = project_root / "core" / "config" / "memory.yaml"
         
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
@@ -50,8 +51,8 @@ class EpisodicMemoryStore:
         from chromadb.config import Settings
         
         # Storage paths
-        workspace = Path(__file__).parent.parent
-        storage_path = workspace / self.config.get('storage_path', 'memory/storage')
+        project_root = Path(__file__).parent.parent.parent
+        storage_path = project_root / self.config.get('storage_path', 'data/memory/storage')
         storage_path.mkdir(parents=True, exist_ok=True)
         
         # Initialize ChromaDB client
