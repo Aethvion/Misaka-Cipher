@@ -246,7 +246,7 @@ class MasterOrchestrator:
         # Route based on intent type
         if intent.intent_type == IntentType.CHAT:
             actions.append("direct_response")
-            resp_obj = self._generate_chat_response(intent, model_id=model_id)
+            resp_obj = self._generate_chat_response(intent, model_id=model_id, trace_id=trace_id)
             plan.direct_response = resp_obj.content
             if resp_obj.metadata and 'model' in resp_obj.metadata:
                 plan.model_used = resp_obj.metadata['model']
@@ -286,7 +286,7 @@ class MasterOrchestrator:
         else:
             # Unknown intent - try to have a conversation
             actions.append("direct_response")
-            resp_obj = self._generate_chat_response(intent, model_id=model_id)
+            resp_obj = self._generate_chat_response(intent, model_id=model_id, trace_id=trace_id)
             plan.direct_response = resp_obj.content
             if resp_obj.metadata and 'model' in resp_obj.metadata:
                 plan.model_used = resp_obj.metadata['model']
@@ -595,13 +595,14 @@ class MasterOrchestrator:
             temperature=0.7
         )
     
-    def _generate_chat_response(self, intent: IntentAnalysis, model_id: Optional[str] = None) -> Response:
+    def _generate_chat_response(self, intent: IntentAnalysis, model_id: Optional[str] = None, trace_id: Optional[str] = None) -> Response:
         """Generate direct chat response via Nexus Core."""
         request = Request(
             prompt=intent.prompt,
             request_type="generation",
             temperature=0.7,
             model=model_id,
+            trace_id=trace_id,  # propagate so usage log matches task.id
         )
         
         response = self.nexus.route_request(request)

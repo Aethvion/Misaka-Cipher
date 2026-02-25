@@ -248,10 +248,13 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
         }
 
         // Build model label if available
+        const actualModel = taskData?.metadata?.actual_model || taskData?.result?.model_id;
+        const isAutoRouted = taskData?.metadata?.selected_model === 'auto';
         let modelLabel = '';
-        const modelId = taskData?.metadata?.model_id;
-        if (modelId) {
-            modelLabel = `<span class="msg-model-label">${modelId}</span>`;
+        if (actualModel) {
+            const display = isAutoRouted ? `${actualModel}*` : actualModel;
+            const title = isAutoRouted ? 'Auto-routed model (*)' : 'Selected model';
+            modelLabel = `<span class="msg-model-label" title="${title}">${display}</span>`;
         }
 
         // Wrap in a div to ensure block styles work correctly after the strong tag

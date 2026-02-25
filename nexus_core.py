@@ -32,7 +32,8 @@ class Request:
     model: Optional[str] = None
     temperature: float = 0.7
     max_tokens: Optional[int] = None
-    
+    trace_id: Optional[str] = None  # Caller-provided trace ID for usage log correlation
+
     def __post_init__(self):
         # Sanitize prompt
         self.prompt = InputValidator.sanitize_prompt(self.prompt)
@@ -127,12 +128,22 @@ class NexusCore:
         """
         if not self._initialized:
             raise RuntimeError("Nexus Core not initialized. Call initialize() first.")
-        
-        # Start trace
-        trace_id = self.trace_manager.start_trace(metadata={
-            'request_type': request.request_type,
-            'timestamp': datetime.now().isoformat()
-        })
+
+        # Use caller's trace_id if provided (for usage log correlation with task queue)
+        if request.trace_id:
+            trace_id = request.trace_id
+            # Register manually — start_trace() always generates a new ID
+            self.trace_manager._active_traces[trace_id] = {
+                'trace_id': trace_id,
+                'started_at': datetime.now().isoformat(),
+                'metadata': {'request_type': request.request_type},
+                'status': 'active'
+            }
+        else:
+            trace_id = self.trace_manager.start_trace(metadata={
+                'request_type': request.request_type,
+                'timestamp': datetime.now().isoformat()
+            })
         
         logger.info(f"[{trace_id}] === NEW REQUEST ===")
         logger.info(f"[{trace_id}] Type: {request.request_type}")
