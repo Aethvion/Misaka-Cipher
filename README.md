@@ -3,540 +3,220 @@
 
 <div align="center">
 
-### 🚀 A Self-Evolving Agentic AI System
-
-**Not Just a Chatbot — A Forge for Autonomous Software Creation**
-
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-experimental-orange.svg)](https://github.com/Aethvion/Misaka-Cipher)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[📚 Documentation](/documentation/) | [🚀 Getting Started](/documentation/human/Getting_Started.md) | [🤖 AI Docs](/documentation/ai/) | [💬 Discussions](https://github.com/Aethvion/Misaka-Cipher/discussions)
+[📚 Documentation](/documentation/) | [🚀 Getting Started](/documentation/human/getting-started.md) | [💬 Discussions](https://github.com/Aethvion/Misaka-Cipher/discussions)
 
 ---
 
-<img align="center" width="124px" src="https://raw.githubusercontent.com/Aethvion/Misaka-Cipher/05a615dd1b52b86b08d1e218870935c1e8ba4fb6/assets/concept_icon.png?token=GHSAT0AAAAAADOWOOHB7BUXK3NHH2R35UFI2MZ5XRQ">
+<img align="center" width="124px" src="https://raw.githubusercontent.com/Aethvion/Misaka-Cipher/refs/heads/main/assets/misakacipher/misakacipher_default.png?token=GHSAT0AAAAAADOWOOHABNKBWUJXSTG2W2BG2M67KZQ">
 
-### ⚠️ Misaka Cipher STATUS: EXPERIMENTAL⚠️
+### ⚠️ STATUS: EXPERIMENTAL — EARLY DEVELOPMENT ⚠️
+
+*This project is actively being built. Many features described are partially implemented or planned. Expect rough edges.*
 
 ---
 </div>
 
-## 🎯 The Vision: Infinite Sessions, Infinite Possibilities
+## 🎯 What Is Misaka Cipher?
 
-Misaka Cipher is designed for **autonomous, long-running goal achievement**. Unlike traditional AI assistants that handle discrete tasks, this system can work continuously—from hours to days to weeks—until complex objectives are fully realized.
+Misaka Cipher is a **self-hosted AI assistant platform** with a web dashboard. It connects to cloud AI providers (Google Gemini, OpenAI, xAI Grok) and provides a structured environment for running chat threads, generating tools, and spawning agents — all from a local server you control.
 
-**From Simple to Ambitious:**
-- 🎨 "Build a fractal visualization tool" → System works until complete
-- 🏢 "Design a fully functioning e-commerce business" → System iterates autonomously until production-ready
-- ♾️ "Infinite sessions" where the AI creates, validates, and evolves its own tools to expand capabilities
-
-### 🧬 Self-Evolution at the Core
-
-**The system doesn't just execute—it evolves:**
-- 🔧 **Creates its own tools** when capabilities are missing
-- 🤖 **Spawns specialized agents** for complex subtasks  
-- 🧠 **Learns from every interaction** through multi-tiered memory
-- 📈 **Compounds capabilities** exponentially over time
+**The long-term goal** is an autonomous system that can work toward complex goals by creating its own tools and delegating to specialized agents. That vision is the direction — not the current state.
 
 ---
 
-## 💡 Why Misaka Cipher? The Competitive Advantage
+## ✅ What Works Right Now
 
-### Hybrid Intelligence Strategy: Cost-Efficient, Maximum Quality
+These features are functional in the current build:
 
-Traditional AI systems use expensive cloud models for everything. Misaka Cipher is smarter:
+### 💬 Chat & Threads
+- Multi-provider chat (Google, OpenAI, Grok) with automatic failover
+- Persistent conversation threads with configurable context modes (none / smart / full)
+- Per-message model selection or **auto-routing** (LLM picks the best model from your enabled pool)
+- Thread memory: task JSONs stored on disk, model used + routing reasoning recorded
 
-**Intelligence Routing:**
-- 💰 **Low-Cost/High-Volume Tasks** → Local models (near-zero cost)
-  - Reading massive file structures
-  - Batch data processing
-  - Repetitive analysis
-  
-- 🧠 **High-Intelligence/High-Cost Tasks** → Premium cloud models (Gemini Pro, GPT-4)
-  - Architectural decisions
-  - Complex reasoning
-  - Strategic planning
+### 🤖 Agent Mode
+- Basic agent spawning for analysis and execution tasks
+- Intent detection routes messages to chat or agent execution
+- Step-by-step execution visible in the System Terminal panel
 
-**Result:** 90% cost reduction while maintaining premium quality where it matters.
+### ⚒️ Tool Forge
+- AI can generate Python tools and register them for reuse
+- Generated tools are saved locally and available in subsequent sessions
+- Works for simple, well-scoped tool requests — complex multi-file generation is hit or miss
 
-### Wrapper Support + Model Advancement = Exponential Progress
+### 🧠 Memory
+- Episodic memory stored in ChromaDB (vector search)
+- Every conversation stored as a task JSON with model, routing, and usage metadata
+- Memory can be queried in subsequent sessions
 
-As AI models improve (GPT-5, Gemini 3, Claude Opus 4), Misaka Cipher **automatically benefits**:
-- ✅ Consistent interface regardless of model
-- ✅ Automatic failover to best available provider
-- ✅ Future-proof architecture
-- ✅ Cost optimization through smart routing
-
-**Each model improvement compounds with the system's self-evolution** for exponential capability growth.
+### 📊 Dashboard Tabs (Working)
+| Tab | Status | Notes |
+|-----|--------|-------|
+| Chat | ✅ Working | Threads, context, model selection, auto routing |
+| Agent | ✅ Working | Basic agent execution with terminal output |
+| Image Studio | ✅ Working | Imagen 3 / DALL-E 3 image generation |
+| LLM Arena | ✅ Working | Side-by-side model comparison |
+| AI Conversation | ✅ Working | Two-party model conversation |
+| Advanced AI Conversation | ✅ Working | Multi-persona conversation threads |
+| Files | ✅ Working | Browse workspace files |
+| Tools | ✅ Working | View registered tools and agents |
+| Memory | ✅ Working | Browse task history and episodic memory |
+| Usage | ✅ Working | Token usage and cost tracking |
+| Logs | ✅ Working | Live log stream |
+| Status | ✅ Working | System and provider health |
+| Settings | ✅ Working | Providers, routing profiles, environment config |
+| Packages | 🧪 Experimental | Package install with safety scoring — unstable |
+| Assistant | 🧪 Experimental | In-dashboard AI assistant — early prototype |
 
 ---
 
-## 🏗️ System Purpose
+## ⚠️ What Doesn't Work Yet (or Is Rough)
 
-Misaka Cipher is a modular, self-evolving strategic kernel capable of autonomous tool generation, multi-agent delegation, and high-tier strategic analysis. The system prioritizes data sovereignty, operational transparency, and adaptive intelligence.
+Be aware of these limitations before you dive in:
+
+- **Autonomous long-running tasks:** The system cannot reliably work toward a complex goal over hours or days without supervision. Agent execution works for single well-defined tasks, not multi-step plans.
+- **Self-improvement:** The system does not meaningfully "learn" or improve itself between sessions. Memory is stored but not yet deeply integrated into decision-making.
+- **Local model support:** Ollama/vLLM integration is not implemented. All inference goes to cloud providers (costs real money).
+- **Tool forge reliability:** Simple tools generate fine. Anything requiring external libraries, complex logic, or multi-file output is unreliable.
+- **90% cost reduction claim from older docs:** Not realistic in current form. All calls go to cloud APIs. Cost depends entirely on your usage and model choices.
+- **Production-readiness:** This is a personal/research project. It is not hardened for production use.
 
 ---
 
-## 🏛️ Core Architecture: The Four Pillars
+## 🏗️ Architecture Overview
 
-### 1. **Nexus Core** - The Orchestration Brain
-The absolute single point of entry for all operations. Every request flows through Nexus Core.
+The system is structured around four components:
 
-* **Centralized Orchestration:** All requests route through `nexus_core.py`
-* **Traceability:** Every transaction assigned unique `Trace_ID` for complete auditability
-* **Provider Abstraction:** Unified interface supporting Google Gemini (Primary), OpenAI GPT-4o, and xAI Grok
-* **Failover Logic:** Automated multi-provider failover sequence
-* **Intelligence Firewall:** Pre-flight scanning for PII/credentials
+| Component | Role | Status |
+|-----------|------|--------|
+| **Nexus Core** | Single entry point — routes all requests, manages trace IDs | ✅ Stable |
+| **The Factory** | Spawns transient worker agents for complex tasks | 🧪 Works for basic tasks |
+| **The Forge** | Generates Python tools autonomously | 🧪 Works for simple tools |
+| **Memory Tier** | ChromaDB episodic memory + knowledge graph | ✅ Stores data, retrieval basic |
 
-### 2. **The Factory** - Agent Spawning Engine
-Dynamic creation of transient, stateless worker agents for specialized tasks.
+**Providers supported:** Google AI (Gemini), OpenAI (GPT-4o family), xAI (Grok)
 
-* **On-Demand Spawning:** Creates agents only when needed
-* **Lifecycle Management:** Agents self-terminate after task completion
-* **Aethvion Naming:** `[Domain]_[Action]_[Object]` standard
-* **Resource Limits:** Configurable concurrent agent caps
-
-### 3. **The Forge** - Tool Generation Pipeline
-**The Revolutionary Component:** The system autonomously writes its own Python tools.
-
-* **Self-Registration:** Generated tools saved to `tools/generated/` and registered in `tools/registry.json`
-* **API Awareness:** Automatically injects available API keys (Google, OpenAI, Grok) for immediate functionality
-* **Validation Pipeline:** Security scanning, syntax checking, Aethvion compliance
-* **Self-Improving:** Failed tools automatically regenerated with improvements
-
-### 4. **The Memory Tier** - Knowledge Persistence
-Multi-tiered memory architecture for learning and context retention.
-
-* **Episodic Memory:** Vector-based interaction logs (ChromaDB with semantic embeddings)
-* **Core Insights:** Recursive summarization into high-level facts  
-* **Knowledge Graph:** NetworkX-based relationship mapping between Domains, Tools, and Agents
-* **Persistent Learning:** Every interaction makes the system smarter
+**Intelligence Firewall:** PII/credential scanning before any external API call — blocks sensitive data from leaving.
 
 ---
 
 ## 🚀 Quick Start
 
-### Installation
-
 ```bash
-# Clone repository
+# Clone
 git clone https://github.com/Aethvion/Misaka-Cipher.git
 cd Misaka-Cipher
 
-# Run automated setup
+# Install dependencies
+pip install -r requirements.txt
+
+# Run setup
 python setup.py
-```
 
-### Launch Options
-
-**Web Dashboard (Default):**
-```bash
+# Launch (web dashboard)
 python main.py
-# Access at http://localhost:8000
-# API docs at http://localhost:8000/docs
+# Open http://localhost:8000
 ```
 
-**Interactive CLI:**
-```bash
-python main.py --cli
-```
-
-**Verification Tests:**
-```bash
-python main.py --test
-```
+You'll need at least one API key configured in Settings → AI Providers (Google AI, OpenAI, or xAI).
 
 ---
 
-## 📖 Documentation
-
-### 👥 For Humans
-Comprehensive guides for users and developers:
-
-- **[System Overview](/documentation/human/README_Overview.md)** - Understand the "vibe" and philosophy
-- **[Getting Started Guide](/documentation/human/Getting_Started.md)** - Installation, setup, and first steps
-  - Why Misaka Cipher exists
-  - Value proposition explained
-  - Practical examples and use cases
-  - Best practices
-
-### 🤖 For AI Agents
-Token-efficient, machine-readable specifications for autonomous operation:
-
-- **[SYSTEM_SPEC.md](/documentation/ai/SYSTEM_SPEC.md)** - Complete technical specification
-  - Directory structure
-  - Data flow architecture
-  - API touchpoints
-  - Configuration details
-  
-- **[AGENT_MISSION.md](/documentation/ai/AGENT_MISSION.md)** - Reasoning constraints and routing rules
-  - Primary directives
-  - Cost-aware model selection
-  - Security-first routing
-  - Intelligent routing rules
-  
-- **[EVOLUTION_LOGIC.md](/documentation/ai/EVOLUTION_LOGIC.md)** - Tool creation and validation mechanism
-  - The Forge pipeline (4 phases)
-  - How system "knows" a tool is ready
-  - Self-improvement mechanism
-  - Quality metrics
-
-- **[dashboard_interface_context.md](/documentation/ai/dashboard_interface_context.md)** - Web dashboard tab reference
-  - Tab descriptions and purposes
-  - Tab switching commands for the assistant
-
----
-
-## 🎨 Example Use Cases
-
-### Simple: Generate a Tool
-```
-User: "Create a tool that counts words in text files"
-System:
-1. Analyzes requirements
-2. Generates Python code
-3. Validates security and compliance
-4. Registers tool: Text_Analysis_WordCount
-Result: Tool available system-wide immediately
-```
-
-### Intermediate: Spawn an Agent
-```
-User: "Analyze all Python files for security vulnerabilities"
-System:
-1. Spawns Code_Analysis_Security agent
-2. Agent scans repository
-3. Routes analysis to appropriate model
-4. Stores findings in memory
-5. Returns structured report
-Result: Complete security audit, automatically executed
-```
-
-### Advanced: Autonomous Goal Achievement
-```
-User: "Build a complete fractal visualization tool"
-System (over hours):
-1. Designs architecture (Pro model)
-2. Forges Math_Calculate_Mandelbrot tool
-3. Forges Image_Generate_Fractal tool  
-4. Creates UI with visualization controls
-5. Writes documentation
-6. Runs tests and validates
-Result: Production-ready fractal tool, tested and documented
-```
-
----
-
-## 🛡️ Security: Intelligence Firewall
-
-Built-in security layer that protects sensitive data:
-
-* **Pre-Flight Scanning:** Regex-based detection of PII/credentials before external API calls
-* **Smart Routing:** Automatically routes sensitive data to local processing (when available)
-* **No Data Leakage:** Blocked requests never leave the system
-* **Complete Audit Trail:** Every decision logged with Trace_ID
-
----
-
-## 🔧 Technical Stack
-
-* **Language:** Python 3.10+
-* **Vector Database:** ChromaDB (semantic memory)
-* **Graph Engine:** NetworkX (knowledge relationships)
-* **Persistence:** JSON (no SQLite dependency)
-* **Web Framework:** FastAPI + uvicorn (real-time dashboard with WebSocket)
-* **Providers:** Google AI (Gemini), OpenAI (GPT), xAI (Grok)
-* **Local Models (Roadmap):** Ollama, vLLM integration planned
-
----
 ## 📁 Directory Structure
 
 ```
 Misaka-Cipher/
-├── main.py                 # Entry point (CLI/Web/Test modes)
-├── cli.py                  # Interactive command-line interface
-├── nexus_core.py           # Central orchestration hub [SINGLE POINT OF ENTRY]
+├── main.py                     # Entry point
+├── nexus_core.py               # Central orchestration hub
 │
-├── documentation/          # 📚 Comprehensive documentation
-│   ├── human/              # 👥 User-facing guides
-│   │   ├── README_Overview.md
-│   │   └── Getting_Started.md
-│   └── ai/                 # 🤖 Machine-readable specs (token-efficient)
-│       ├── SYSTEM_SPEC.md
-│       ├── AGENT_MISSION.md
-│       ├── EVOLUTION_LOGIC.md
-│       └── dashboard_interface_context.md
+├── documentation/              # 📚 Docs
+│   ├── human/
+│   │   ├── readme-overview.md
+│   │   └── getting-started.md
+│   └── ai/
+│       ├── system-spec.md
+│       ├── agent-mission.md
+│       ├── evolution-logic.md
+│       └── dashboard-interface-context.md
 │
-├── core/                   # 🎛️ Core interfaces
-│   ├── interfaces/
-│   │   ├── dashboard/      # Web dashboard (FastAPI server, static files, routes)
-│   │   └── cli_modules/    # CLI module implementations
-│   └── system_retrieval.py # System data retrieval
-│
-├── config/                 # ⚙️ Configuration files
-│   ├── providers.yaml      # Provider settings & failover
-│   ├── model_registry.json # Model definitions & routing [KEY FILE]
-│   ├── security.yaml       # Intelligence Firewall rules
-│   ├── memory.yaml         # Memory tier configuration
-│   ├── aethvion.yaml       # Framework standards
-│   ├── settings.json       # System settings persistence
-│   └── settings_manager.py # Settings manager
-│
-├── orchestrator/           # 🎯 Master Orchestrator
-│   ├── master_orchestrator.py  # Autonomous coordination
-│   ├── intent_analyzer.py      # User intent detection
-│   └── task_queue.py           # Task queueing system
-│
-├── factory/                # 🏭 Agent spawning engine
-│   ├── agent_factory.py    # Main spawning logic
-│   ├── base_agent.py       # Agent base class
-│   └── generic_agent.py    # Generic agent implementation
-│
-├── forge/                  # ⚒️ Tool generation pipeline
-│   ├── tool_forge.py       # Main forging engine
-│   ├── code_generator.py   # Python code generation
-│   ├── tool_validator.py   # Validation & security
-│   └── tool_registry.py    # Tool registration
-│
-├── memory/                 # 🧠 Multi-tiered memory
-│   ├── episodic_memory.py  # Vector-based storage (ChromaDB)
-│   ├── knowledge_graph.py  # Relationship mapping (NetworkX)
-│   └── storage/            # Persistent storage
-│
-├── providers/              # 🔌 Provider abstraction
-│   ├── provider_manager.py # Coordination & failover
-│   ├── google_provider.py  # Google AI (Gemini)
-│   ├── openai_provider.py  # OpenAI (GPT)
-│   └── grok_provider.py    # xAI (Grok)
-│
-├── security/               # 🛡️ Intelligence Firewall
-│   ├── firewall.py         # Main firewall coordination
-│   ├── scanner.py          # PII/credential detection
-│   └── router.py           # Routing decision logic
-│
-├── tools/                  # 🔧 Tool registry
-│   ├── standard/           # Core system tools
-│   └── generated/          # AI-created tools [DYNAMIC]
-│
-├── workers/                # ⚙️ Background workers
-│   └── package_installer.py # Async package installation
-│
-├── workspace/              # 📂 Workspace management
-│   ├── workspace_manager.py    # File system operations
-│   ├── package_manager.py      # Package request & approval
-│   ├── package_intelligence.py # Package safety scoring
-│   ├── usage_tracker.py        # API usage & cost tracking
-│   └── preferences_manager.py  # User preferences
-│
-├── tests/                  # ✅ Test suite
-└── outputfiles/            # 📂 AI output directory
+├── core/interfaces/dashboard/  # 🎛️ Web dashboard (FastAPI)
+├── config/                     # ⚙️ Configuration files
+├── orchestrator/               # 🎯 Master orchestrator + task queue
+├── factory/                    # 🏭 Agent spawning
+├── forge/                      # ⚒️ Tool generation
+├── memory/                     # 🧠 ChromaDB + knowledge graph
+├── providers/                  # 🔌 Google / OpenAI / Grok
+├── security/                   # 🛡️ Intelligence Firewall
+├── tools/                      # 🔧 Standard + AI-generated tools
+├── workspace/                  # 📂 Usage tracker, package manager
+└── outputfiles/                # AI output directory
 ```
-
----
-
-## 🎯 Key Features
-
-### 🔄 Self-Evolution
-- **Autonomous Tool Creation:** Missing capabilities? System forges new tools
-- **Intelligent Agent Spawning:** Complex tasks? System creates specialized agents
-- **Persistent Learning:** Every interaction stored and analyzed
-- **Exponential Growth:** Tool library expands organically
-
-### 💰 Cost Optimization
-- **Smart Model Routing:** Right model for right task
-- **Local Processing:** High-volume tasks at near-zero cost (roadmap)
-- **Batch Operations:** Reduce API calls through intelligent batching
-- **Progressive Complexity:** Start cheap, escalate only if needed
-
-### 🛡️ Security First
-- **Pre-flight Scanning:** PII/credentials never leave system
-- **Automatic Sanitization:** Sensitive data routed to local processing
-- **Complete Auditability:** Every request tracked with Trace_ID
-- **No External Leakage:** Blocked requests rejected before API call
-
-### 🔌 Multi-Provider Support
-- **Google AI:** Gemini 2.0 Flash (fast), Gemini 1.5 Pro (complex), Imagen 3 (images)
-- **OpenAI:** GPT-4o (premium), GPT-4o-mini (fast), DALL-E 3 (images)
-- **xAI:** Grok-3 Mini Fast (cost-effective)
-- **Local (Roadmap):** Ollama, vLLM for unlimited local processing
-
----
-
-## 🌟 Philosophy: The Forge Metaphor
-
-Think of Misaka Cipher as a **digital forge** where:
-- 🔥 Raw ideas are the **ore**
-- 🔨 The AI is the **blacksmith**
-- ⚒️ Generated tools are the **forged implements**
-- 📈 Each tool makes the next creation easier
-- ♾️ The forge itself becomes more capable over time
-
-**This is not just automation—it's evolution.**
 
 ---
 
 ## 🗺️ Roadmap
 
-### ✅ Current (Sprint 3+)
-- Core orchestration (Nexus)
-- Agent spawning (Factory)
-- Tool generation (Forge)
-- Multi-tiered memory
-- Multi-provider support
+### ✅ Done
+- Multi-provider chat with failover and auto-routing
+- Persistent threads and task memory
+- Tool forge (basic)
+- Agent spawning (basic)
 - Intelligence Firewall
-- Web dashboard (FastAPI + WebSocket)
-- Package manager with safety scoring
-- API usage tracking
-- LLM Arena (model battle testing)
-- AI Image Studio
-- Advanced AI Conversation lab
+- Web dashboard with 13+ tabs
+- API usage tracking with cost estimates
+- LLM Arena, Image Studio, Advanced AI Conversation
+- Routing profiles with configurable model pools
 
-### 🔄 Near-Term (3 Months)
-- Local model integration (Ollama/vLLM)
-- Advanced multi-agent coordination
-- Tool validation improvements
-- Enhanced memory retrieval
-- Automated tool testing
+### 🔄 In Progress / Near-Term
+- Improved agent reliability for multi-step goals
+- Better memory integration in decision making
+- Tool forge validation improvements
+- Local model support (Ollama)
 
 ### 🌟 Long-Term Vision
-- True infinite sessions (weeks-long autonomous work)
-- Self-improving architecture (system refactors itself)
-- Cross-domain expertise (single system handles diverse fields)
-- Human-AI collaboration tools (pair programming at scale)
-
-**Ultimate Goal:**
-```
-Give Misaka Cipher a goal of any complexity
-→ System autonomously breaks it down
-→ Forges necessary tools
-→ Spawns required agents
-→ Learns from execution
-→ Iterates until complete
-→ Delivers production-ready result
-
-No human intervention needed.
-```
+- Reliable autonomous multi-step goal execution
+- Self-improving architecture (system modifies itself)
+- True infinite sessions with human-in-the-loop checkpoints
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Whether you're:
-- 🐛 Reporting bugs
-- 💡 Suggesting features
-- 🔧 Improving tools
-- 📚 Enhancing documentation
-- 🧪 Adding tests
-
-Please read our [Contributing Guidelines](CONTRIBUTING.md) to get started!
-
-### Quick Start for Contributors
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
-# Fork and clone the repository
 git clone https://github.com/YOUR_USERNAME/Misaka-Cipher.git
 cd Misaka-Cipher
-
-# Create a virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
+venv\Scripts\activate   # Windows
 pip install -r requirements.txt
-
-# Run tests
-python main.py --test
 ```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
 ## 📝 License
 
-[MIT License](LICENSE) - Feel free to use, modify, and distribute.
+[MIT License](LICENSE)
 
 ---
 
 ## 🔗 Links
 
-- **Documentation:** [/documentation/](/documentation/)
-- **Human Docs:** [Getting Started](/documentation/human/Getting_Started.md)
-- **AI Docs:** [System Spec](/documentation/ai/SYSTEM_SPEC.md)
+- **Docs:** [/documentation/](/documentation/)
 - **Issues:** [GitHub Issues](https://github.com/Aethvion/Misaka-Cipher/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/Aethvion/Misaka-Cipher/discussions)
 
 ---
 
-## 💬 Support
-
-Need help? Have questions?
-
-1. 📖 Check the [Getting Started Guide](/documentation/human/Getting_Started.md)
-2. 🔍 Search [existing issues](https://github.com/Aethvion/Misaka-Cipher/issues)
-3. 💬 Start a [discussion](https://github.com/Aethvion/Misaka-Cipher/discussions)
-4. 🐛 [Open an issue](https://github.com/Aethvion/Misaka-Cipher/issues/new)
-
----
-
 <div align="center">
 
-**Built with ❤️ for autonomous AI evolution**
+*An experimental AI platform — building toward something real, one sprint at a time.*
 
-*"Every tool forged is a permanent upgrade to the system."*
-
-[⭐ Star us on GitHub](https://github.com/Aethvion/Misaka-Cipher) | [📣 Share on Twitter](https://twitter.com/intent/tweet?text=Check%20out%20Misaka%20Cipher%20-%20A%20self-evolving%20AI%20system!&url=https://github.com/Aethvion/Misaka-Cipher)
+[⭐ Star on GitHub](https://github.com/Aethvion/Misaka-Cipher)
 
 </div>
-
----
-
-## 🎮 Web Dashboard Features
-
-Access the dashboard at `http://localhost:8000` after launching with `python main.py`:
-
-### Dashboard Tabs
-
-| Tab | Description |
-|-----|-------------|
-| **Chat** | Primary command interface. Multi-modal terminal for messages, file attachments, prompt templates, tool/agent selection, and conversation threads |
-| **Agent** | Spawn and monitor autonomous agents with step-by-step execution tracking |
-| **Image Studio** | AI image generation with model selection, prompt input, resolution/aspect ratio controls |
-| **Advanced AI Conversation** | Multi-agent conversation lab with custom Personas and Threads |
-| **LLM Arena** | Model battle testing — pit models against the same prompt and crown a winner |
-| **AI Conversation** | Simplified two-party AI conversation for rapid A/B model comparisons |
-| **Files** | Project file browser for navigating directories, configs, memory, and output files |
-| **Tools** | Registry of all available tools and active agents with test and inspect capabilities |
-| **Packages** | Package manager for Aethvion modules with safety scores and approval workflow |
-| **Memory** | Archive of all system memory — threads, task histories, episodic entries, knowledge graph |
-| **Logs** | Live log stream split into System Logs (file-backed) and System Terminal (WebSocket) |
-| **Usage** | API usage analytics — token consumption, cost estimates, request counts by provider/model |
-| **Status** | Live system status — CPU/RAM, Nexus health, provider API status, active agents |
-| **Settings** | Configuration hub — Assistant, AI Providers, Global System, Environment, Routing Profiles |
-
-### Thread Settings
-Each conversation thread has configurable settings via the **▶ SETTINGS** toggle:
-
-* **CTX (Context Mode):**
-  * `None`: No history (pure one-shot)
-  * `Smart` (Default): Sliding window of last N message pairs
-  * `Full`: Entire conversation history (high token usage)
-  
-* **WIN (Window Size):** Number of recent message pairs to include (default: 5)
-
-* **CHAT (Chat Only):** When enabled, AI acts as pure chatbot without executing tools/commands
-
----
-
-**Ready to start forging?** 🔥
-
-```bash
-git clone https://github.com/Aethvion/Misaka-Cipher.git
-cd Misaka-Cipher
-pip install -r requirements.txt
-python main.py --cli
-```
-
-**Let's build something autonomous! 🚀**

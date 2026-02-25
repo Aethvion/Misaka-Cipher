@@ -12,13 +12,13 @@ This documentation is organized into two main tiers designed for different audie
 Comprehensive, user-friendly guides for humans interacting with the system.
 
 **Files:**
-- **[README_Overview.md](./human/README_Overview.md)** - System philosophy and architecture
+- **[readme-overview.md](./human/readme-overview.md)** - System philosophy and architecture
   - Understanding the "vibe" of Misaka Cipher
   - The Four Pillars (Nexus, Factory, Forge, Memory)
   - Infinite session goals and capabilities
   - Why this architecture matters
   
-- **[Getting_Started.md](./human/Getting_Started.md)** - Practical guide for new users
+- **[getting-started.md](./human/getting-started.md)** - Practical guide for new users
   - Installation and setup instructions
   - API key configuration
   - Example use cases with code
@@ -29,7 +29,7 @@ Comprehensive, user-friendly guides for humans interacting with the system.
 Machine-readable specifications for AI agents operating within the system.
 
 **Files:**
-- **[SYSTEM_SPEC.md](./ai/SYSTEM_SPEC.md)** - Complete technical specification
+- **[system-spec.md](./ai/system-spec.md)** - Complete technical specification
   - Directory structure (detailed)
   - Data flow architecture (entry point → execution)
   - External API touchpoints
@@ -38,7 +38,7 @@ Machine-readable specifications for AI agents operating within the system.
   - Memory system specification
   - Configuration priorities
   
-- **[AGENT_MISSION.md](./ai/AGENT_MISSION.md)** - Reasoning constraints and routing rules
+- **[agent-mission.md](./ai/agent-mission.md)** - Reasoning constraints and routing rules
   - Primary directives for AI agents
   - Core reasoning constraints
   - Cost-aware model selection
@@ -47,7 +47,7 @@ Machine-readable specifications for AI agents operating within the system.
   - Agent coordination rules
   - Explicit DO/DON'T rules
   
-- **[EVOLUTION_LOGIC.md](./ai/EVOLUTION_LOGIC.md)** - Tool creation and validation
+- **[evolution-logic.md](./ai/evolution-logic.md)** - Tool creation and validation
   - The Forge pipeline (4 phases: Analysis, Generation, Validation, Registration)
   - How the system "knows" a tool is ready
   - Tool lifecycle management
@@ -61,19 +61,19 @@ Machine-readable specifications for AI agents operating within the system.
 ### I want to...
 
 **Understand what Misaka Cipher is:**
-→ Read [README_Overview.md](./human/README_Overview.md)
+→ Read [readme-overview.md](./human/readme-overview.md)
 
 **Get started with the system:**
-→ Follow [Getting_Started.md](./human/Getting_Started.md)
+→ Follow [getting-started.md](./human/getting-started.md)
 
 **Implement an AI agent:**
-→ Study [AGENT_MISSION.md](./ai/AGENT_MISSION.md) for constraints and rules
+→ Study [agent-mission.md](./ai/agent-mission.md) for constraints and rules
 
 **Understand the technical architecture:**
-→ Reference [SYSTEM_SPEC.md](./ai/SYSTEM_SPEC.md) for complete specs
+→ Reference [system-spec.md](./ai/system-spec.md) for complete specs
 
 **Learn how tool generation works:**
-→ Deep dive into [EVOLUTION_LOGIC.md](./ai/EVOLUTION_LOGIC.md)
+→ Deep dive into [evolution-logic.md](./ai/evolution-logic.md)
 
 **See the big picture:**
 → Start with root [README.md](../README.md)
@@ -84,19 +84,19 @@ Machine-readable specifications for AI agents operating within the system.
 
 ### For New Users (Human Audience)
 1. Root [README.md](../README.md) - Landing page overview
-2. [README_Overview.md](./human/README_Overview.md) - Understand the philosophy
-3. [Getting_Started.md](./human/Getting_Started.md) - Hands-on setup and examples
+2. [readme-overview.md](./human/readme-overview.md) - Understand the philosophy
+3. [getting-started.md](./human/getting-started.md) - Hands-on setup and examples
 
 ### For Developers
-1. [README_Overview.md](./human/README_Overview.md) - High-level architecture
-2. [SYSTEM_SPEC.md](./ai/SYSTEM_SPEC.md) - Technical details
-3. [EVOLUTION_LOGIC.md](./ai/EVOLUTION_LOGIC.md) - Tool generation mechanics
-4. [AGENT_MISSION.md](./ai/AGENT_MISSION.md) - Implementation guidelines
+1. [readme-overview.md](./human/readme-overview.md) - High-level architecture
+2. [system-spec.md](./ai/system-spec.md) - Technical details
+3. [evolution-logic.md](./ai/evolution-logic.md) - Tool generation mechanics
+4. [agent-mission.md](./ai/agent-mission.md) - Implementation guidelines
 
 ### For AI Agents
-1. [AGENT_MISSION.md](./ai/AGENT_MISSION.md) - Primary directives and constraints
-2. [SYSTEM_SPEC.md](./ai/SYSTEM_SPEC.md) - System reference
-3. [EVOLUTION_LOGIC.md](./ai/EVOLUTION_LOGIC.md) - Tool creation workflow
+1. [agent-mission.md](./ai/agent-mission.md) - Primary directives and constraints
+2. [system-spec.md](./ai/system-spec.md) - System reference
+3. [evolution-logic.md](./ai/evolution-logic.md) - Tool creation workflow
 
 ---
 
