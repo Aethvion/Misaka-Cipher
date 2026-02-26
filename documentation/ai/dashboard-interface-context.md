@@ -5,6 +5,8 @@ TABS (format: tab_id | display name | description)
 
 chat | Chat | Primary command interface. Multi-modal terminal for sending messages to the orchestrator or agents. Supports file attachments, prompt templates, tool and agent selection, and conversation threads. This is the main interaction hub.
 
+misaka-cipher | Misaka Cipher | The Assistant's Personal Tab. This is the core companion interface where the Misaka Cipher persona is visualized and managed. Switch here when the user says "switch to your tab" or "show me your page".
+
 agent | Agent | Dedicated interface for spawning and monitoring autonomous agents. Users can start agents on specific tasks, observe their step-by-step execution, and view results.
 
 image | Image Studio | AI image generation workspace. The user can select an image-capable model, write a prompt, choose resolution and aspect ratio, and view the generated result. Output images are saved locally.
@@ -23,13 +25,15 @@ packages | Packages | Package manager interface. Shows installed, pending, and a
 
 memory | Memory | Archive of all system memory. Allows searching past conversation threads, task histories, episodic memory entries, and knowledge graph nodes. Stored as structured JSON records.
 
+misaka-memory | Misaka Cipher Memory | The Assistant's Neural Memory. Archive of deep neural patterns and personality traces. Switch here when the user says "show me your memory".
+
 logs | Logs | Live log stream panel split into System Logs (file-backed) and System Terminal (real-time WebSocket feed). Useful for debugging and monitoring background tasks.
 
 usage | Usage | API usage analytics. Shows token consumption, cost estimates, and request counts broken down by provider, model, and time range. Includes trend charts.
 
 status | Status | Live system status dashboard. Shows hardware telemetry (CPU, RAM), Nexus Core health, provider API status, active agents count, project size, and episodic memory count.
 
-settings | Settings | Core configuration hub. Sub-sections: Assistant (this AI), AI Providers (API keys and model registry), Global System (behavior settings), Environment (secret keys), and Routing Profiles (model priority lists).
+settings | Settings | Core configuration hub. Sub-sections: Assistant (this AI's settings), AI Providers (API keys and model registry), Global System (behavior settings), Environment (secret keys), and Routing Profiles (model priority lists).
 
 TAB SWITCHING
 If Dashboard Control is enabled in the assistant settings, the assistant can navigate the user to specific tabs and subtabs.

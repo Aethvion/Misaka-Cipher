@@ -123,8 +123,23 @@ function updateConnectionStatus(connected) {
 function initializeUI() {
     // Main tab switching (skip dropdown-managed tabs)
     document.querySelectorAll('.main-tab').forEach(tab => {
-        if (tab.closest('.main-tab-dropdown')) return; // handled separately
+        if (tab.closest('.main-tab-dropdown') || tab.closest('.nav-dropdown')) {
+            // Dropdowns are handled differently
+            if (tab.classList.contains('dropdown-trigger')) {
+                // Trigger itself doesn't switch tabs, just shows dropdown via CSS
+                return;
+            }
+        }
         tab.addEventListener('click', () => switchMainTab(tab.dataset.maintab));
+    });
+
+    // Nav Dropdown items
+    document.querySelectorAll('.nav-dropdown-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const subtab = item.dataset.subtab;
+            switchMainTab(subtab);
+        });
     });
 
     // Chat interaction
@@ -265,12 +280,26 @@ function switchMainTab(tabName, save = true) {
             } else if (tab.classList.contains('split-arrow-action')) {
                 tab.classList.toggle('active', isActive);
             }
+        } else if (tab.classList.contains('dropdown-trigger')) {
+            // Check if any sub-item of this dropdown is active
+            const parent = tab.closest('.nav-dropdown');
+            const subItems = parent.querySelectorAll('.nav-dropdown-item');
+            let isParentActive = false;
+            subItems.forEach(item => {
+                if (item.dataset.subtab === tabName) isParentActive = true;
+            });
+            tab.classList.toggle('active', isParentActive);
         } else {
             tab.classList.toggle('active', tab.dataset.maintab === tabName);
         }
     });
 
-    // Update Sub-tab active state in dropdown
+    // Update Nav Dropdown active state
+    document.querySelectorAll('.nav-dropdown-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.subtab === tabName);
+    });
+
+    // Update Sub-tab active state in split dropdown
     document.querySelectorAll('.tab-dropdown-item').forEach(item => {
         item.classList.toggle('active', item.dataset.subtab === tabName);
     });

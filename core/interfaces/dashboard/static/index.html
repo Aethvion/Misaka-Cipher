@@ -116,13 +116,45 @@
                             Conversations</button>
                     </div>
                 </div>
+                <button class="main-tab" data-maintab="misaka-cipher"><span class="tab-icon">✨</span>Misaka
+                    Cipher</button>
                 <button class="main-tab" data-maintab="files"><span class="tab-icon">📁</span>Files</button>
-                <button class="main-tab" data-maintab="tools"><span class="tab-icon">🔧</span>Tools</button>
-                <button class="main-tab" data-maintab="packages"><span class="tab-icon">📦</span>Packages</button>
-                <button class="main-tab" data-maintab="memory"><span class="tab-icon">🧠</span>Memory</button>
-                <button class="main-tab" data-maintab="logs"><span class="tab-icon">📜</span>Logs</button>
-                <button class="main-tab" data-maintab="usage"><span class="tab-icon">📊</span>Usage</button>
-                <button class="main-tab" data-maintab="status"><span class="tab-icon">🚦</span>Status</button>
+
+                <div class="nav-dropdown">
+                    <button class="main-tab dropdown-trigger"><span class="tab-icon">🛠️</span>ToolKit <span
+                            class="dropdown-arrow">▾</span></button>
+                    <div class="nav-dropdown-menu">
+                        <button class="nav-dropdown-item" data-subtab="tools"><span
+                                class="tab-icon">🔧</span>Tools</button>
+                        <button class="nav-dropdown-item" data-subtab="packages"><span
+                                class="tab-icon">📦</span>Packages</button>
+                    </div>
+                </div>
+
+                <div class="nav-dropdown">
+                    <button class="main-tab dropdown-trigger"><span class="tab-icon">🧠</span>Knowledge <span
+                            class="dropdown-arrow">▾</span></button>
+                    <div class="nav-dropdown-menu">
+                        <button class="nav-dropdown-item" data-subtab="memory"><span
+                                class="tab-icon">📓</span>Memory</button>
+                        <button class="nav-dropdown-item" data-subtab="misaka-memory"><span
+                                class="tab-icon">🧬</span>Misaka Cipher Memory</button>
+                    </div>
+                </div>
+
+                <div class="nav-dropdown">
+                    <button class="main-tab dropdown-trigger"><span class="tab-icon">🩺</span>Diagnostics <span
+                            class="dropdown-arrow">▾</span></button>
+                    <div class="nav-dropdown-menu">
+                        <button class="nav-dropdown-item" data-subtab="logs"><span
+                                class="tab-icon">📜</span>Logs</button>
+                        <button class="nav-dropdown-item" data-subtab="usage"><span
+                                class="tab-icon">📊</span>Usage</button>
+                        <button class="nav-dropdown-item" data-subtab="status"><span
+                                class="tab-icon">🚦</span>Status</button>
+                    </div>
+                </div>
+
                 <button class="main-tab" data-maintab="settings"><span class="tab-icon">⚙️</span>Settings</button>
             </div>
         </nav>
@@ -581,6 +613,21 @@
             </div>
         </div>
 
+        <!-- Misaka Cipher (Companion) Tab -->
+        <div class="main-tab-panel" id="misaka-cipher-panel">
+            <div class="panel-header">
+                <h2>Misaka Cipher</h2>
+            </div>
+            <div class="panel-content" style="padding: 2rem; text-align: center;">
+                <div class="placeholder-text">
+                    <i class="fas fa-sparkles"
+                        style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem; display: block;"></i>
+                    <h3>Misaka Cipher Companion</h3>
+                    <p>The neural core of your digital companion is initializing.</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Files Tab -->
         <div class="main-tab-panel" id="files-panel">
             <div class="panel-header">
@@ -754,7 +801,21 @@
             </div>
         </div>
 
-        <!-- Settings Tab -->
+        <!-- Misaka Cipher Memory Tab -->
+        <div class="main-tab-panel" id="misaka-memory-panel">
+            <div class="panel-header">
+                <h2>Misaka Cipher Memory</h2>
+            </div>
+            <div class="panel-content" style="padding: 2rem; text-align: center;">
+                <div class="placeholder-text">
+                    <i class="fas fa-brain"
+                        style="font-size: 3rem; color: var(--accent); margin-bottom: 1rem; display: block;"></i>
+                    <h3>Misaka Cipher - Neural Memory</h3>
+                    <p>Deep neural patterns and personality traces will be recorded here.</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Image Studio Tab -->
         <div class="main-tab-panel" id="image-panel">
             <div class="image-studio-container">
