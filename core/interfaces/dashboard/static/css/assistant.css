@@ -4,10 +4,12 @@
     position: fixed;
     top: auto;
     left: auto;
-    bottom: 30px;
-    right: 30px;
+    bottom: 20px;
+    right: 20px;
+    width: 80px;
+    height: 80px;
     z-index: 9999;
-    /* Acts as an anchor point with 0x0 size natively because everything inside is absolute */
+    /* Container now has dimensions to anchor children properly within viewport */
 }
 
 .misaka-assistant-container.hidden {

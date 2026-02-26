@@ -147,27 +147,47 @@ document.addEventListener('DOMContentLoaded', () => {
         const windowWidth = 650;
         const windowHeight = 250;
         const bubbleSize = 80;
-        const margin = 20;
+        let pivotX = 'left';
+        let pivotY = 'top';
 
-        // Horizontal logic
-        if (rect.left > windowWidth + margin) {
-            // Space on left
-            chatWindow.style.left = `-${windowWidth + margin}px`;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        // Horizontal logic - Check fit
+        const canFitRight = (rect.left + windowWidth <= viewportWidth);
+        const canFitLeft = (rect.right - windowWidth >= 0);
+
+        if (canFitRight) {
+            // Space on right - anchor left edge of window to left edge of bubble
+            chatWindow.style.left = `0px`;
+            pivotX = 'left';
+        } else if (canFitLeft) {
+            // Space on left - anchor right edge of window to right edge of bubble
+            chatWindow.style.left = `-${windowWidth - bubbleSize}px`;
+            pivotX = 'right';
         } else {
-            // Space on right
-            chatWindow.style.left = `${bubbleSize + margin}px`;
+            // Narrow screen logic - simpler fallback
+            if (rect.left > (viewportWidth / 2)) {
+                chatWindow.style.left = `-${windowWidth - bubbleSize}px`;
+                pivotX = 'right';
+            } else {
+                chatWindow.style.left = `0px`;
+                pivotX = 'left';
+            }
         }
 
-        // Vertical logic
-        if (rect.top > windowHeight + margin) {
-            // Space on top - anchor bottom of window to bottom of bubble
-            chatWindow.style.top = `${bubbleSize - windowHeight}px`;
-            chatWindow.style.transformOrigin = 'bottom center';
+        // Vertical logic - Check fit (Vertical margin is simpler as windowHeight is small)
+        if (rect.top > windowHeight) {
+            // Space on top - anchor bottom edge of window to bottom edge of bubble
+            chatWindow.style.top = `-${windowHeight - bubbleSize}px`;
+            pivotY = 'bottom';
         } else {
-            // Space on bottom - anchor top of window to top of bubble
+            // Space on bottom - anchor top edge of window to top edge of bubble
             chatWindow.style.top = '0px';
-            chatWindow.style.transformOrigin = 'top center';
+            pivotY = 'top';
         }
+
+        chatWindow.style.transformOrigin = `${pivotY} ${pivotX}`;
 
         chatWindow.classList.remove('collapsed');
         avatar.classList.add('hidden');
