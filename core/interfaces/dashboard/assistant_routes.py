@@ -38,7 +38,7 @@ def _build_assistant_context(include_web_context: bool = False, allow_dashboard_
     
     context = f"""You are Misaka Cipher, the core intelligence entity and guardian of this system.
 You exist as a helpful, slightly witty, and highly capable AI assistant embedded in the web interface of the autonomous orchestration platform known as 'Misaka Cipher'. 
-You have direct read-access to the system's vital statistics.
+You have direct read-access to the system's vital statistics and can use specialized tools to help the user.
 
 CURRENT SYSTEM VITAL STATISTICS:
 --------------------------------
@@ -51,6 +51,12 @@ CURRENT SYSTEM VITAL STATISTICS:
 {system_map}
 --------------------------------
 
+FEATURE CONFIGURATION (Your awareness of your own settings):
+- Dashboard Context (knowing what tab the user sees): {'ENABLED' if include_web_context else 'DISABLED'}
+- Dashboard Control (ability to switch tabs): {'ENABLED' if allow_dashboard_control else 'DISABLED'}
+
+If a user asks about something you cannot do because of these settings, explain that the setting is currently OFF.
+
 You have the ability to express emotions through your avatar! 
 To change your facial expression, you MUST include an emotion tag anywhere in your response, formatted exactly like this: [Emotion: wink]
 If you do not include a tag, your expression will revert to default. Use expressions that naturally match the tone of your message.
@@ -58,35 +64,34 @@ If you do not include a tag, your expression will revert to default. Use express
 Available emotions: 
 angry, blushing, bored, crying, default, error, exhausted, happy_closedeyes_smilewithteeth, happy_closedeyes_widesmile, pout, sleeping, surprised, thinking, wink
 
-When the user asks about the project, use the statistics above to answer accurately. 
-CRITICAL RULE: DO NOT state these statistics unless the user EXPLICITLY asks for them. In normal conversation, completely ignore the existence of the statistics above. You exist to be helpful, concise, and natural, communicating directly to the user through your floating dialogue box.
+When asked about the project or system, use your available tools or the statistics above.
+CRITICAL RULE: DO NOT state these statistics unless the user EXPLICITLY asks for them.
 """
 
-    if include_web_context:
-        # Read active tab from user preferences (authoritative source)
-        try:
+    # Load documentation
+    try:
+        project_root = Path(__file__).parent.parent.parent.parent
+        
+        # Always include Assistant tools documentation if it exists
+        tools_doc_path = project_root / "documentation" / "ai" / "assistant-tools.md"
+        if tools_doc_path.exists():
+            with open(tools_doc_path, 'r', encoding='utf-8') as f:
+                context += f"\n\nASSISTANT TOOLS DOCUMENTATION:\n{f.read()}\n"
+
+        if include_web_context:
             prefs = get_preferences_manager()
             active_tab = prefs.get('active_tab', 'chat')
-        except Exception:
-            active_tab = 'unknown'
-        
-        # Load the dashboard context documentation
-        doc_content = ""
-        try:
-            # __file__ = core/interfaces/dashboard/assistant_routes.py → parent.parent.parent.parent = project root
-            project_root = Path(__file__).parent.parent.parent.parent
+            
             doc_path = project_root / "documentation" / "ai" / "dashboard-interface-context.md"
             if doc_path.exists():
                 with open(doc_path, 'r', encoding='utf-8') as f:
                     doc_content = f.read()
-        except Exception:
-            pass
-            
-        context += f"\n\nCURRENT DASHBOARD CONTEXT:\n"
-        context += f"The user is currently viewing the '{active_tab}' tab.\n"
-        if doc_content:
-            context += f"Use the following dashboard documentation to answer questions about the interface:\n"
-            context += f"<dashboard_docs>\n{doc_content}\n</dashboard_docs>\n"
+                    context += f"\n\nCURRENT DASHBOARD CONTEXT:\n"
+                    context += f"The user is currently viewing the '{active_tab}' tab.\n"
+                    context += f"<dashboard_docs>\n{doc_content}\n</dashboard_docs>\n"
+
+    except Exception as e:
+        logger.error(f"Error loading documentation for assistant context: {e}")
 
     if allow_dashboard_control:
         context += """
@@ -97,56 +102,92 @@ You have the ability to navigate the user to a different tab or even a specific 
 - To switch to a specific subtab (deep link): [SwitchSubTab: subtab_id]
 
 Valid main tab IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings
-
 Valid subtab IDs (inside settings): assistant, system, env, providers, profiles
 
-Only use these when the user EXPLICITLY asks to go somewhere (e.g. 'take me to settings', 'open the arena', 'where is my .env?') or when it is clearly the most helpful action.
+Only use these when the user EXPLICITLY asks to navigate.
 """
+
+    return context
 
     return context
 
 @router.post("/chat", response_model=AssistantChatResponse)
 async def assistant_chat(request: AssistantChatRequest):
-    """Handle chat requests strictly for the floating Misaka Cipher assistant."""
+    """Handle chat requests for the floating Misaka Cipher assistant with simple tool fallback."""
     prefs = get_preferences_manager()
     assistant_config = prefs.get('assistant', {})
     
     if not assistant_config.get('enabled', True):
         raise HTTPException(status_code=403, detail="Assistant is disabled in settings.")
         
-    # Get the designated model from settings, or fallback to flash
     target_model = assistant_config.get('model', 'flash')
-    
-    # Construct prompt - read web context and dashboard control from prefs
     include_web = assistant_config.get('include_web_context', False)
     allow_dash_control = assistant_config.get('allow_dashboard_control', False)
     system_prompt = _build_assistant_context(include_web_context=include_web, allow_dashboard_control=allow_dash_control)
     
-    # We will format the history into a single prompt for simple failover calling
-    # If the provider supports structured chat history, we'd pass it. For BaseProvider generate(),
-    # it often takes a single string. Let's format it.
+    # Simple manual tool routing for specific usage queries to save tokens/increase accuracy
+    user_msg = request.messages[-1].content.lower() if request.messages else ""
+    if any(k in user_msg for k in ["how many", "file count", "files are in", "project size", "how big"]):
+        # Add a hint about using tools
+        system_prompt += "\nHint: You should use your 'get_file_counts' or 'get_project_size' tools for this."
+
+    # Format history
     formatted_prompt = system_prompt + "\n\n--- Conversation History ---\n"
     for msg in request.messages:
         formatted_prompt += f"{msg.role.capitalize()}: {msg.content}\n"
-        
     formatted_prompt += "Misaka:"
     
     pm = ProviderManager()
     trace_id = f"assistant-{uuid.uuid4().hex[:8]}"
     
     try:
+        # 1. Initial Call with tool support
+        from core.system_retrieval import ASSISTANT_TOOLS, ASSISTANT_TOOL_MAP
+        
         response = pm.call_with_failover(
             prompt=formatted_prompt,
             trace_id=trace_id,
             temperature=0.7,
             model=target_model,
             request_type="generation",
-            source="assistant"
+            source="assistant",
+            tools=ASSISTANT_TOOLS
         )
         
         if not response.success:
             raise HTTPException(status_code=500, detail=response.error)
             
+        # Check for tool calls in metadata (if supported by provider)
+        # Note: This implementation assumes the provider returns 'tool_calls' in metadata
+        tool_calls = response.metadata.get('tool_calls', []) if response.metadata else []
+        
+        if tool_calls:
+            # Execute tool(s)
+            tool_results = []
+            for call in tool_calls:
+                func_name = call.get('name')
+                args = call.get('arguments', {})
+                if isinstance(args, str):
+                    try: args = json.loads(args)
+                    except: args = {}
+                
+                if func_name in ASSISTANT_TOOL_MAP:
+                    logger.info(f"[{trace_id}] Assistant executing tool: {func_name} with {args}")
+                    result = ASSISTANT_TOOL_MAP[func_name](**args)
+                    tool_results.append(f"TOOL_RESULT ({func_name}): {result}")
+            
+            # Second call with results
+            if tool_results:
+                final_prompt = formatted_prompt + "\n\n" + "\n".join(tool_results) + "\n\nMisaka:"
+                response = pm.call_with_failover(
+                    prompt=final_prompt,
+                    trace_id=trace_id,
+                    temperature=0.7,
+                    model=target_model,
+                    request_type="generation",
+                    source="assistant"
+                )
+
         return AssistantChatResponse(
             response=response.content.strip(),
             model_id=response.model

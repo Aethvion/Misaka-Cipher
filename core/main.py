@@ -12,6 +12,7 @@ from pathlib import Path
 import time
 import webbrowser
 import threading
+import subprocess
 from dotenv import load_dotenv
 
 # Load environment variables from project root
@@ -31,9 +32,23 @@ def run_cli():
     cli.main()
 
 
+def is_dashboard_open():
+    """Check if the dashboard is already open in a browser window using PowerShell."""
+    try:
+        # Search for windows with the specific title "Misaka Cipher - Nexus Portal"
+        ps_cmd = 'Get-Process | Where-Object { $_.MainWindowTitle -like "*Misaka Cipher - Nexus Portal*" }'
+        result = subprocess.run(['powershell', '-Command', ps_cmd], capture_output=True, text=True)
+        return len(result.stdout.strip()) > 0
+    except Exception:
+        return False
+
 def open_browser():
-    """Wait for server to start and then open browser."""
-    time.sleep(0.5)
+    """Wait for server to start and then open browser if not already open."""
+    time.sleep(1.0) # Slightly longer to ensure server bound
+    if is_dashboard_open():
+        logger.info("Dashboard is already open. Skipping browser launch.")
+        return
+        
     logger.info("Automatically opening dashboard at http://localhost:8000")
     webbrowser.open("http://localhost:8000")
 

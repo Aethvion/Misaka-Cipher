@@ -1,5 +1,5 @@
 MISAKA CIPHER - DASHBOARD INTERFACE CONTEXT
-This document describes the tabs and features of the Misaka Cipher dashboard. Use it to answer questions like "what is this tab?", "what am I looking at?", or "where do I find X?".
+This document describes the tabs and features of the Misaka Cipher dashboard. For information about the assistant's specific tools and capabilities, refer to [assistant-tools.md](file:///c:/Aethvion/Misaka-Cipher/documentation/ai/assistant-tools.md).
 
 TABS (format: tab_id | display name | description)
 

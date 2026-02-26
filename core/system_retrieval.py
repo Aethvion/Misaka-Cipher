@@ -40,9 +40,15 @@ def get_project_size() -> str:
     return f"Total Project Size (excluding ignored dirs): {mb} MB"
 
 def get_token_usage() -> str:
-    """Return the monetary cost and token usage for today and all-time."""
+    """Return the monetary cost and token usage for today, this month, and all-time."""
     tracker = get_usage_tracker()
     today = tracker.get_today_summary()
+    
+    from datetime import datetime
+    now = datetime.utcnow()
+    month_str = now.strftime("%Y-%m")
+    month_summary = tracker.get_monthly_summary(month_str)
+    
     total = tracker.get_summary()
     
     return f"""Token Usage & Cost:
@@ -50,11 +56,48 @@ def get_token_usage() -> str:
 Tokens: {today.get('tokens', 0)}
 Cost: ${today.get('cost', 0.0):.6f}
 
+--- THIS MONTH ({month_str}) ---
+Calls: {month_summary.get('total_calls', 0)}
+Tokens: {month_summary.get('total_tokens', 0)}
+Cost: ${month_summary.get('total_cost', 0.0):.6f}
+
 --- ALL-TIME ---
 Total Calls: {total.get('total_calls', 0)}
 Total Tokens: {total.get('total_tokens', 0)}
 Total Cost: ${total.get('total_cost', 0.0):.6f}
 """
+
+def query_usage_detailed(query: str) -> str:
+    """Provides detailed answers to usage questions by searching logs."""
+    from datetime import datetime, timedelta
+    tracker = get_usage_tracker()
+    query_lower = query.lower()
+    
+    if "peak" in query_lower or "highest" in query_lower or "expensive day" in query_lower:
+        peak = tracker.get_peak_usage_day()
+        if peak['date']:
+            return f"Peak usage was on {peak['date']} with a total cost of ${peak['cost']:.6f}."
+        return "No usage data found to determine peak day."
+        
+    if "month" in query_lower:
+        # Simple extraction of YYYY-MM or similar might be needed, but for now we'll handle current/last
+        now = datetime.utcnow()
+        if "last month" in query_lower:
+            first_of_this_month = now.replace(day=1)
+            last_month = first_of_this_month - timedelta(days=1)
+            target = last_month.strftime("%Y-%m")
+        else:
+            target = now.strftime("%Y-%m")
+            
+        summary = tracker.get_monthly_summary(target)
+        return (f"Usage for {target}:\n"
+                f"- Total Calls: {summary.get('total_calls', 0)}\n"
+                f"- Total Tokens: {summary.get('total_tokens', 0)}\n"
+                f"- Total Cost: ${summary.get('total_cost', 0.0):.6f}")
+
+    # Fallback to today if nothing else matches
+    today = tracker.get_today_summary()
+    return f"Today's usage ({datetime.utcnow().strftime('%Y-%m-%d')}):\n- Tokens: {today.get('tokens', 0)}\n- Cost: ${today.get('cost', 0.0):.6f}"
 
 def get_system_map() -> str:
     """Returns a textual map/overview of the Misaka Cipher architecture directories."""
@@ -115,8 +158,25 @@ ASSISTANT_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_token_usage",
-            "description": "Returns money spent and LLM tokens used today and all-time.",
+            "description": "Returns a high-level overview of money spent and LLM tokens used today, this month, and all-time.",
             "parameters": {"type": "object", "properties": {}, "required": []}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_usage_detailed",
+            "description": "Provides detailed answers to granular usage questions (e.g., peak usage day, last month's cost).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The specific usage question to answer."
+                    }
+                },
+                "required": ["query"]
+            }
         }
     },
     {
@@ -150,6 +210,7 @@ ASSISTANT_TOOL_MAP = {
     "get_file_counts": get_file_counts,
     "get_project_size": get_project_size,
     "get_token_usage": get_token_usage,
+    "query_usage_detailed": query_usage_detailed,
     "get_system_map": get_system_map,
     "search_scripts": search_scripts
 }

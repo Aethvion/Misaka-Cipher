@@ -78,14 +78,25 @@ class OpenAIProvider(BaseProvider):
             
             logger.info(f"[{trace_id}] Successfully generated response with OpenAI")
             
+            # Extract tool calls
+            tool_calls = []
+            if response.choices[0].message.tool_calls:
+                for tc in response.choices[0].message.tool_calls:
+                    tool_calls.append({
+                        "id": tc.id,
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments
+                    })
+
             return ProviderResponse(
-                content=response.choices[0].message.content,
+                content=response.choices[0].message.content or "",
                 model=active_model,
                 provider="openai",
                 trace_id=trace_id,
                 metadata={
                     'model': active_model,
                     'finish_reason': response.choices[0].finish_reason,
+                    'tool_calls': tool_calls,
                     'usage': {
                         'prompt_tokens': response.usage.prompt_tokens,
                         'completion_tokens': response.usage.completion_tokens,

@@ -288,6 +288,77 @@ class UsageTracker:
             "since": entries[0].get("timestamp") if entries else start_date.isoformat() + "Z"
         }
 
+    def get_monthly_summary(self, year_month: str) -> Dict[str, Any]:
+        """
+        Get aggregated summary for a specific month.
+        Args:
+            year_month: Format 'YYYY-MM'
+        """
+        month_dir = LOGS_DIR / year_month
+        if not month_dir.exists():
+            return {"total_calls": 0, "total_tokens": 0, "total_cost": 0.0}
+            
+        all_entries = []
+        for log_file in month_dir.glob("usage_*.json"):
+            try:
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    all_entries.extend(json.load(f))
+            except Exception:
+                continue
+                
+        return self._summarize_entries(all_entries)
+
+    def get_peak_usage_day(self) -> Dict[str, Any]:
+        """
+        Find the day with the highest total cost.
+        """
+        peak_date = None
+        max_cost = -1.0
+        
+        # Scan all month directories
+        if not LOGS_DIR.exists():
+            return {"date": None, "cost": 0.0}
+            
+        for month_dir in sorted(LOGS_DIR.iterdir(), reverse=True):
+            if not month_dir.is_dir(): continue
+            
+            for log_file in month_dir.glob("usage_*.json"):
+                try:
+                    date_str = log_file.stem.replace("usage_", "")
+                    with open(log_file, 'r', encoding='utf-8') as f:
+                        entries = json.load(f)
+                        summary = self._summarize_entries(entries)
+                        cost = summary.get("total_cost", 0.0)
+                        if cost > max_cost:
+                            max_cost = cost
+                            peak_date = date_str
+                except Exception:
+                    continue
+                    
+        return {
+            "date": peak_date,
+            "cost": round(max_cost, 6) if max_cost >= 0 else 0.0
+        }
+
+    def _summarize_entries(self, entries: List[Dict]) -> Dict[str, Any]:
+        """Helper to aggregate a list of usage entries."""
+        total_tokens = 0
+        total_input_cost = 0.0
+        total_output_cost = 0.0
+        
+        for entry in entries:
+            total_tokens += entry.get("total_tokens", 0) # Changed from "tokens" to "total_tokens" to match log_api_call
+            total_input_cost += entry.get("input_cost", 0.0)
+            total_output_cost += entry.get("output_cost", 0.0)
+            
+        return {
+            "total_calls": len(entries),
+            "total_tokens": total_tokens,
+            "total_input_cost": round(total_input_cost, 6),
+            "total_output_cost": round(total_output_cost, 6),
+            "total_cost": round(total_input_cost + total_output_cost, 6)
+        }
+
     def get_history(self, limit: int = 100, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> List[Dict[str, Any]]:
         """Get recent usage entries (newest first)."""
         if start_date:

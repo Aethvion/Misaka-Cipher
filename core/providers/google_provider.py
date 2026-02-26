@@ -4,7 +4,7 @@ Google Generative AI (Gemini) implementation
 """
 
 import os
-from typing import Iterator, Optional
+from typing import Iterator, Optional, Dict, Any
 # from google import genai
 # from google.genai import types
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig
@@ -65,6 +65,27 @@ class GoogleAIProvider(BaseProvider):
             kwargs.pop('json_mode', None)
             kwargs.pop('model', None)
 
+            # Extract tools if provided and convert to Google-specific types
+            tools = kwargs.pop('tools', None)
+            google_tools = []
+            if tools:
+                from google.genai import types
+                decls = []
+                for t in tools:
+                    if t.get('type') == 'function':
+                        f = t.get('function', {})
+                        # Convert parameter schema to Google's uppercase types
+                        params = f.get('parameters', {})
+                        schema = self._convert_to_google_schema(params)
+                        decls.append(types.FunctionDeclaration(
+                            name=f.get('name'),
+                            description=f.get('description'),
+                            parameters=schema
+                        ))
+                if decls:
+                    google_tools.append(types.Tool(function_declarations=decls))
+                config_params['tools'] = google_tools
+
             # Generate response via client
             from google.genai import types
             response = self.client.models.generate_content(
@@ -73,6 +94,16 @@ class GoogleAIProvider(BaseProvider):
                 config=types.GenerateContentConfig(**config_params)
             )
             
+            # Extract tool calls
+            tool_calls = []
+            if response.candidates and response.candidates[0].content.parts:
+                for part in response.candidates[0].content.parts:
+                    if part.function_call:
+                        tool_calls.append({
+                            "name": part.function_call.name,
+                            "arguments": part.function_call.args
+                        })
+
             # Record success
             self.record_success()
             
@@ -86,13 +117,14 @@ class GoogleAIProvider(BaseProvider):
             } if hasattr(response, 'usage_metadata') and response.usage_metadata else {}
 
             return ProviderResponse(
-                content=response.text,
+                content=response.text if response.text else "",
                 model=active_model,
                 provider="google_ai",
                 trace_id=trace_id,
                 metadata={
                     'model': active_model,
                     'finish_reason': response.candidates[0].finish_reason if response.candidates else None,
+                    'tool_calls': tool_calls,
                     'usage': usage_meta
                 }
             )
@@ -149,6 +181,47 @@ class GoogleAIProvider(BaseProvider):
             self.record_failure()
             yield f"Error: {str(e)}"
     
+    def _convert_to_google_schema(self, schema: Dict[str, Any]) -> Any:
+        """Recursively convert JSON schema types to Google-specific uppercase strings."""
+        from google.genai import types
+        
+        type_map = {
+            "string": "STRING",
+            "number": "NUMBER",
+            "integer": "INTEGER",
+            "boolean": "BOOLEAN",
+            "object": "OBJECT",
+            "array": "ARRAY",
+            "null": "NULL"
+        }
+        
+        # Determine the type
+        stype = schema.get("type", "object")
+        google_type = type_map.get(stype, "OBJECT")
+        
+        # Build schema object
+        schema_kwargs = {"type": google_type}
+        
+        if "description" in schema:
+            schema_kwargs["description"] = schema["description"]
+            
+        if "properties" in schema:
+            google_props = {}
+            for k, v in schema["properties"].items():
+                google_props[k] = self._convert_to_google_schema(v)
+            schema_kwargs["properties"] = google_props
+            
+        if "required" in schema:
+            schema_kwargs["required"] = schema["required"]
+            
+        if "items" in schema:
+            schema_kwargs["items"] = self._convert_to_google_schema(schema["items"])
+            
+        if "enum" in schema:
+            schema_kwargs["enum"] = schema["enum"]
+
+        return types.Schema(**schema_kwargs)
+
     def validate_credentials(self) -> bool:
         """Validate Google AI API credentials."""
         try:
