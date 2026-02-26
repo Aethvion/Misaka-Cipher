@@ -175,23 +175,27 @@ class GoogleAIProvider(BaseProvider):
             logger.debug(f"[{trace_id}] Generating image with Google AI model {active_model}")
 
             aspect_ratio = kwargs.get('aspect_ratio', '1:1')
+            negative_prompt = kwargs.get('negative_prompt')
+            seed = kwargs.get('seed')
 
             # Generate via new SDK
             from google.genai import types
-            response = self.client.models.generate_image(
+            response = self.client.models.generate_images(
                 model=active_model,
                 prompt=prompt,
-                config=types.GenerateImageConfig(
+                config=types.GenerateImagesConfig(
                     number_of_images=n,
                     aspect_ratio=aspect_ratio,
-                    safety_filter="BLOCK_ONLY_HIGH"
+                    negative_prompt=negative_prompt,
+                    seed=seed
                 )
             )
             
-            import io
             image_bytes_list = []
-            for img in response.generated_images:
-                image_bytes_list.append(img.image.image_bytes)
+            if hasattr(response, 'generated_images'):
+                for img in response.generated_images:
+                    if hasattr(img, 'image') and hasattr(img.image, 'image_bytes'):
+                        image_bytes_list.append(img.image.image_bytes)
 
             self.record_success()
             logger.info(f"[{trace_id}] Successfully generated {len(image_bytes_list)} images with Google AI")
@@ -212,7 +216,7 @@ class GoogleAIProvider(BaseProvider):
             self.record_failure()
             return ProviderResponse(
                 content="",
-                model=active_model,
+                model=active_model if 'active_model' in locals() else "google_ai",
                 provider="google_ai",
                 trace_id=trace_id,
                 error=str(e)

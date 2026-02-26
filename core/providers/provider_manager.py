@@ -157,25 +157,43 @@ class ProviderManager:
             logger.error(f"Failed to reload provider config: {e}")
 
     def _initialize_providers(self):
-        """Initialize all providers (regardless of active status)."""
-        # We need to initialize ALL providers so they can be used if specifically requested
-        # even if they are not in the active priority lists.
+        """Initialize only providers that are defined in the model registry."""
+        # Get providers mentioned in registry
+        project_root = Path(__file__).parent.parent.parent
+        registry_path = project_root / "data" / "config" / "model_registry.json"
         
+        registered_provider_names = []
+        if registry_path.exists():
+            try:
+                with open(registry_path, 'r') as f:
+                    registry = json.load(f)
+                registered_provider_names = list(registry.get('providers', {}).keys())
+            except Exception as e:
+                logger.error(f"Failed to read registry for initialization: {e}")
+
         for name, config in self.config.items():
             try:
-                # Initialize unless explicitly disabled in YAML (system level disable)
-                # But for now, we trust YAML enabled flag as "system enabled"
-                # and registry as "user enabled".
-                # Actually, let's just initialize everything in config.
+                # ONLY initialize if present in registry
+                if name not in registered_provider_names:
+                    logger.debug(f"Skipping initialization for unconfigured provider: {name}")
+                    continue
                 
                 provider_class = self.PROVIDER_CLASSES.get(name)
                 if not provider_class:
                     logger.warning(f"Unknown provider: {name}")
                     continue
                 
+                # Get the first model from registry for this provider if default is missing
+                default_model = config.get('model')
+                if not default_model and registry_path.exists():
+                    # Re-read or use cached models
+                    registry_models = registry.get('providers', {}).get(name, {}).get('models', {})
+                    if registry_models:
+                        default_model = list(registry_models.keys())[0]
+
                 provider_config = ProviderConfig(
                     name=config.get('name', name),
-                    model=config.get('model'),
+                    model=default_model,
                     api_key=config.get('api_key_env', ''),
                     endpoint=config.get('endpoint', ''),
                     timeout=config.get('timeout', 30),
@@ -183,8 +201,7 @@ class ProviderManager:
                 )
                 
                 self.providers[name] = provider_class(provider_config)
-                
-                logger.info(f"Initialized provider: {name}")
+                logger.info(f"Initialized provider: {name} (default model: {default_model})")
                 
             except Exception as e:
                 logger.error(f"Failed to initialize provider {name}: {str(e)}")

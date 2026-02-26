@@ -4,37 +4,23 @@ providers:
   google_ai:
     enabled: true
     name: "Google AI"
-    # UPDATED: Matching your working proxy
-    model: "gemini-2.0-flash" 
     api_key_env: "GOOGLE_AI_API_KEY"
     endpoint: "https://generativelanguage.googleapis.com/v1beta"
     timeout: 30
-    fallback_models:
-      - "gemini-1.5-pro-latest"
-      - "gemini-1.5-flash"
     
   openai:
     enabled: true
     name: "OpenAI"
-    # UPDATED: Standard high-performance model for 2026
-    model: "gpt-4o" 
     api_key_env: "OPENAI_API_KEY"
     endpoint: "https://api.openai.com/v1"
     timeout: 30
-    fallback_models:
-      - "gpt-4-turbo"
-      - "gpt-4o-mini"
     
   grok:
     enabled: true
     name: "xAI Grok"
-    # UPDATED: Current fast/affordable model
-    model: "grok-3-mini-fast" 
     api_key_env: "GROK_API_KEY"
     endpoint: "https://api.x.ai/v1"
     timeout: 30
-    fallback_models:
-      - "grok-3-fast"
 
 # Failover Configuration
 failover:
@@ -54,4 +40,3 @@ rate_limits:
   grok:
     requests_per_minute: 30
     tokens_per_minute: 50000
-
