@@ -66,12 +66,12 @@ These features are functional in the current build:
 | Files | ✅ Working | Browse workspace files |
 | Tools | ✅ Working | View registered tools and agents |
 | Memory | ✅ Working | Browse task history and episodic memory |
-| Usage | ✅ Working | Token usage and cost tracking |
+| Usage | ✅ Working | Token usage, cost tracking, and detailed granular queries |
 | Logs | ✅ Working | Live log stream |
 | Status | ✅ Working | System and provider health |
 | Settings | ✅ Working | Providers, routing profiles, environment config |
 | Packages | 🧪 Experimental | Package install with safety scoring — unstable |
-| Assistant | 🧪 Experimental | In-dashboard AI assistant — early prototype |
+| Assistant | 🛡️ Beta | Advanced in-dashboard AI assistant with tool-calling and feature awareness |
 
 ---
 
@@ -123,7 +123,7 @@ copy .env.example .env
 ### Launch
 
 **One-click (Windows):**  
-Double-click `Start_Misaka_Cipher.bat` — it creates the venv, installs deps, and starts the dashboard automatically.
+Double-click `Start_Misaka_Cipher.bat` — it creates the virtual environment, installs dependencies, and starts the dashboard automatically. It also includes a **Smart Tab** check to prevent opening duplicate browser tabs.
 
 **Manual:**
 ```bash

@@ -49,29 +49,33 @@ Result: $1.60 in API costs, fully automatic, self-improving system
    - GPT-4o excels at reasoning
    - Gemini 2.0 Flash is incredibly fast and cheap
    - Llama 3 runs locally for unlimited processing
-   - Each model has strengths
+1.  **Today's Reality:**
+    - GPT-4o excels at reasoning
+    - Gemini 2.0 Flash is incredibly fast and cheap
+    - Llama 3 runs locally for unlimited processing
+    - Each model has strengths
 
-2. **Tomorrow's Advantage:**
-   - GPT-5 releases → Misaka automatically uses it (config change only)
-   - Gemini 3 releases → System routes high-stakes tasks there
-   - Claude Opus 4 releases → Add to failover chain
-   - Local models improve → More tasks run at zero cost
+2.  **Tomorrow's Advantage:**
+    - GPT-5 releases → Misaka automatically uses it (config change only)
+    - Gemini 3 releases → System routes high-stakes tasks there
+    - Claude Opus 4 releases → Add to failover chain
+    - Local models improve → More tasks run at zero cost (Planned)
 
-3. **The Compound Effect:**
-   ```
-   Week 1: GPT-4o + Gemini Flash
-   → System is 2x better than single-model approach
-   
-   Month 3: GPT-5 + Gemini 3 + Better local models
-   → System is 5x better (model improvements + system learning)
-   
-   Year 1: GPT-6 + Gemini 4 + Advanced local models + 500 forged tools
-   → System is 20x better (model improvements + massive tool library + deep memory)
-   ```
+3.  **The Compound Effect:**
+    ```
+    Week 1: GPT-4o + Gemini Flash
+    → System is 2x better than single-model approach
 
-4. **Cost Efficiency at Scale:**
-   - Traditional: Every improvement costs more (better model = higher prices)
-   - Misaka Cipher: Cost per task decreases over time (more local processing + forged tools reduce cloud API needs)
+    Month 3: GPT-5 + Gemini 3 + Better local models
+    → System is 5x better (model improvements + system learning)
+
+    Year 1: GPT-6 + Gemini 4 + Advanced local models + 500 forged tools
+    → System is 20x better (model improvements + massive tool library + deep memory)
+    ```
+
+4.  **Cost Efficiency at Scale:**
+    - Traditional: Every improvement costs more (better model = higher prices)
+    - Misaka Cipher: Cost per task decreases over time (more local processing + forged tools reduce cloud API needs)
 
 ---
 
@@ -90,17 +94,28 @@ git clone https://github.com/Aethvion/Misaka-Cipher.git
 cd Misaka-Cipher
 ```
 
-### Step 2: Automated Setup
+### Step 2: Automated Setup (Windows)
+
+Double-click `Start_Misaka_Cipher.bat` in the root directory.
+
+This script will:
+- Check your Python version (3.12+ recommended)
+- Create a virtual environment (`.venv`)
+- Install all necessary dependencies from `pyproject.toml`
+- Configure your `.env` file (creates from `.env.example` if missing)
+- Check for existing browser tabs before launching the dashboard
+
+### Step 2 (Alternative): Manual Setup
 
 ```bash
-python setup.py
-```
+# Create and activate venv
+python -m venv .venv
+source .venv/bin/activate  # Linux/macOS
+.venv\Scripts\activate     # Windows
 
-This utility will:
-- Check your Python version (3.10+ required)
-- Install all necessary dependencies from `requirements.txt` (including Memory Tier)
-- Configure your `.env` file (creates from `.env.example` if missing)
-- Initialize required system directories
+# Install dependencies
+pip install -e ".[memory]"
+```
 
 ### Step 3: Configure API Keys
 
@@ -118,7 +133,7 @@ GROK_API_KEY=your_grok_api_key_here
 ### Step 4: Verify Installation (Optional)
 
 ```bash
-python main.py --test
+python -m core.main --test
 ```
 
 You should see:
@@ -146,12 +161,12 @@ Provider Status:
 
 ## Your First Session
 
-### Option 1: Web Dashboard (Recommended for Beginners)
+### Option 1: Web Dashboard (Recommended)
 
 Launch the web interface:
 
 ```bash
-python main.py
+python -m core.main
 ```
 
 Open your browser to `http://localhost:8000`
@@ -175,7 +190,7 @@ The dashboard includes tabs for Chat, Agent monitoring, Image Studio, LLM Arena,
 Launch the command-line interface:
 
 ```bash
-python main.py --cli
+python -m core.main --cli
 ```
 
 You'll see the main menu:

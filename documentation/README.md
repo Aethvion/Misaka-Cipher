@@ -47,6 +47,16 @@ Machine-readable specifications for AI agents operating within the system.
   - Agent coordination rules
   - Explicit DO/DON'T rules
   
+- **[assistant-tools.md](./ai/assistant-tools.md)** - Assistant-specific capabilities
+  - List of tools available to the dashboard assistant
+  - Configuration toggles (context, control)
+  - Emotion system IDs
+  
+- **[dashboard-interface-context.md](./ai/dashboard-interface-context.md)** - UI context for AI
+  - Detailed description of all 14+ dashboard tabs
+  - Navigation tag specifications ([SwitchTab])
+  - Subtab deep-linking IDs
+
 - **[evolution-logic.md](./ai/evolution-logic.md)** - Tool creation and validation
   - The Forge pipeline (4 phases: Analysis, Generation, Validation, Registration)
   - How the system "knows" a tool is ready
