@@ -56,12 +56,19 @@ if %errorlevel% neq 0 (
         echo.
         echo [WARN]  Dependency installation reported an issue. 
         echo         Checking if core packages are available...
-        python -c "import fastapi; import pydantic" >nul 2>&1
+        :: Run the check and capture any error message if it fails
+        python -c "import fastapi; import pydantic; import google.genai" >clog.tmp 2>&1
         if %errorlevel% neq 0 (
-            echo [ERROR] Core dependencies are missing. 
-            echo         Try running: pip install -e .
+            echo [ERROR] Core dependencies check failed.
+            echo         Details:
+            type clog.tmp
+            del clog.tmp
+            echo.
+            echo         Try running: pip install -e ".[memory]"
             goto :FAIL
         )
+        del clog.tmp
+        echo [OK]    Core dependencies verified despite pip warnings.
         echo [OK]    Core dependencies verified despite pip warnings.
     ) else (
         echo [OK]  Dependencies installed.
