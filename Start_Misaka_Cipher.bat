@@ -56,7 +56,7 @@ if %errorlevel% neq 0 (
         echo.
         echo [WARN]  Dependency installation reported an issue. 
         echo         Checking if core packages are available...
-        python -c "import fastapi, pydantic, google.genai" >nul 2>&1
+        python -c "import fastapi; import pydantic" >nul 2>&1
         if %errorlevel% neq 0 (
             echo [ERROR] Core dependencies are missing. 
             echo         Try running: pip install -e .
