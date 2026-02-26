@@ -26,13 +26,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load initial settings
     async function loadAssistantSettings() {
         try {
-            const res = await fetch('/api/preferences/get?key=assistant');
+            const res = await fetch('/api/preferences');
             if (res.ok) {
                 const data = await res.json();
-                if (data.value) {
-                    isAssistantEnabled = data.value.enabled !== undefined ? data.value.enabled : true;
-                    typingSpeed = data.value.typing_speed !== undefined ? data.value.typing_speed : 20;
-                    contextHistoryLimit = data.value.context_limit !== undefined ? data.value.context_limit : 5;
+                if (data.assistant) {
+                    isAssistantEnabled = data.assistant.enabled !== undefined ? data.assistant.enabled : true;
+                    typingSpeed = data.assistant.typing_speed !== undefined ? data.assistant.typing_speed : 20;
+                    contextHistoryLimit = data.assistant.context_limit !== undefined ? data.assistant.context_limit : 5;
+
+                    if (data.assistant.position) {
+                        const pos = data.assistant.position;
+                        container.style.bottom = 'auto';
+                        container.style.right = 'auto';
+                        container.style.left = pos.left + 'px';
+                        container.style.top = pos.top + 'px';
+                    }
                 } else {
                     isAssistantEnabled = true; // default
                 }
@@ -51,8 +59,74 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Draggable Logic
+    let isDragging = false;
+    let dragStartX, dragStartY;
+    let initialLeft, initialTop;
+    let dragThreshold = 5; // Pixels to move before considering it a drag
+    let totalMoved = 0;
+
+    avatar.addEventListener('pointerdown', (e) => {
+        isDragging = false;
+        totalMoved = 0;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+
+        const rect = container.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        avatar.setPointerCapture(e.pointerId);
+    });
+
+    avatar.addEventListener('pointermove', (e) => {
+        if (e.buttons === 0) return;
+
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+        totalMoved += Math.sqrt(dx * dx + dy * dy);
+
+        if (!isDragging && totalMoved > dragThreshold) {
+            isDragging = true;
+        }
+
+        if (isDragging) {
+            container.style.bottom = 'auto';
+            container.style.right = 'auto';
+            container.style.left = (initialLeft + dx) + 'px';
+            container.style.top = (initialTop + dy) + 'px';
+        }
+    });
+
+    avatar.addEventListener('pointerup', async (e) => {
+        avatar.releasePointerCapture(e.pointerId);
+
+        if (isDragging) {
+            // Save position
+            const rect = container.getBoundingClientRect();
+            const position = {
+                left: Math.round(rect.left),
+                top: Math.round(rect.top)
+            };
+
+            try {
+                await fetch('/api/preferences/assistant.position', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: 'assistant.position', value: position })
+                });
+            } catch (err) {
+                console.error("Failed to save assistant position:", err);
+            }
+
+            // Prevent click event from opening chat
+            setTimeout(() => { isDragging = false; }, 10);
+        }
+    });
+
     // Toggle Chat Window
-    avatar.addEventListener('click', () => {
+    avatar.addEventListener('click', (e) => {
+        if (isDragging) return;
         chatWindow.classList.remove('collapsed');
         avatar.classList.add('hidden');
         input.focus();
