@@ -1,5 +1,5 @@
 @echo off
-SETLOCAL
+SETLOCAL EnableDelayedExpansion
 
 :: Window always-open guarantee:
 :: When double-clicked, MISAKA_LAUNCHED is undefined.
@@ -58,7 +58,7 @@ if %errorlevel% neq 0 (
         echo         Checking if core packages are available...
         :: Run the check and capture any error message if it fails
         python -c "import fastapi; import pydantic; import google.genai" >clog.tmp 2>&1
-        if %errorlevel% neq 0 (
+        if !errorlevel! neq 0 (
             echo [ERROR] Core dependencies check failed.
             echo         Details:
             type clog.tmp
@@ -68,7 +68,6 @@ if %errorlevel% neq 0 (
             goto :FAIL
         )
         del clog.tmp
-        echo [OK]    Core dependencies verified despite pip warnings.
         echo [OK]    Core dependencies verified despite pip warnings.
     ) else (
         echo [OK]  Dependencies installed.
