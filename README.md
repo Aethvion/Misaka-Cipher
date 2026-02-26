@@ -17,6 +17,7 @@
 ### ⚠️ STATUS: EXPERIMENTAL — EARLY DEVELOPMENT ⚠️
 
 *This project is actively being built. Many features described are partially implemented or planned. Expect rough edges.*
+*The documentation is generated so expect some errors.*
 
 ---
 </div>
