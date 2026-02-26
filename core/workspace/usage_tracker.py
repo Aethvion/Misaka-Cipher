@@ -187,20 +187,33 @@ class UsageTracker:
 
         return ic, oc, ic + oc
 
-    def _get_entries_for_range(self, days: int = 30) -> List[Dict[str, Any]]:
-        """Retrieve all entries for the last X days."""
+    def _get_entries_for_range(self, start_date: datetime, end_date: Optional[datetime] = None) -> List[Dict[str, Any]]:
+        """Retrieve all entries between start_date and end_date (exclusive)."""
+        end_date = end_date or datetime.utcnow()
         all_entries = []
-        now = datetime.utcnow()
-        for i in range(days):
-            dt = now - timedelta(days=i)
-            all_entries.extend(self._load_day_logs(dt))
-        # Keep them sorted by timestamp ascending for calculations, then flip if needed for display
-        all_entries.sort(key=lambda x: x.get("timestamp", ""))
-        return all_entries
+        
+        current = start_date
+        while current <= end_date:
+            all_entries.extend(self._load_day_logs(current))
+            current += timedelta(days=1)
+            
+        # Filter strictly by timestamp if needed, and sort
+        start_iso = start_date.isoformat() + "Z"
+        end_iso = end_date.isoformat() + "Z"
+        
+        filtered = [
+            e for e in all_entries 
+            if start_iso <= e.get("timestamp", "") <= end_iso
+        ]
+        filtered.sort(key=lambda x: x.get("timestamp", ""))
+        return filtered
 
-    def get_summary(self, days: int = 30) -> Dict[str, Any]:
-        """Get aggregated usage summary for last X days."""
-        entries = self._get_entries_for_range(days)
+    def get_summary(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, days: int = 30) -> Dict[str, Any]:
+        """Get aggregated usage summary for a date range or last X days."""
+        if not start_date:
+            start_date = datetime.utcnow() - timedelta(days=days)
+        
+        entries = self._get_entries_for_range(start_date, end_date)
         if not entries:
             return {
                 "total_calls": 0,
@@ -211,7 +224,7 @@ class UsageTracker:
                 "by_provider": {},
                 "by_model": {},
                 "success_rate": 0.0,
-                "since": None
+                "since": start_date.isoformat() + "Z"
             }
 
         by_provider = defaultdict(lambda: {"calls": 0, "tokens": 0, "input_cost": 0.0, "output_cost": 0.0, "cost": 0.0})
@@ -272,23 +285,26 @@ class UsageTracker:
             "by_provider": dict(by_provider),
             "by_model": dict(by_model),
             "success_rate": round(successes / len(entries) * 100, 1) if entries else 0,
-            "since": entries[0].get("timestamp") if entries else None
+            "since": entries[0].get("timestamp") if entries else start_date.isoformat() + "Z"
         }
 
-    def get_history(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_history(self, limit: int = 100, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> List[Dict[str, Any]]:
         """Get recent usage entries (newest first)."""
-        all_recent = []
-        now = datetime.utcnow()
-        # Scan backward until limit is reached or we go back 365 days
-        for i in range(365):
-            dt = now - timedelta(days=i)
-            day_logs = self._load_day_logs(dt)
-            if day_logs:
-                all_recent.extend(reversed(day_logs))
-                if len(all_recent) >= limit:
-                    break
+        if start_date:
+            entries = self._get_entries_for_range(start_date, end_date)
+            entries = list(reversed(entries))[:limit]
+        else:
+            all_recent = []
+            now = datetime.utcnow()
+            for i in range(365):
+                dt = now - timedelta(days=i)
+                day_logs = self._load_day_logs(dt)
+                if day_logs:
+                    all_recent.extend(reversed(day_logs))
+                    if len(all_recent) >= limit:
+                        break
+            entries = all_recent[:limit]
         
-        entries = all_recent[:limit]
         for entry in entries:
             if "input_cost" not in entry:
                 ic, oc, c = self._compute_entry_costs(entry)
@@ -299,7 +315,8 @@ class UsageTracker:
 
     def get_usage_by_trace_id(self, trace_id: str) -> Dict[str, Any]:
         """Get aggregated usage summary for trace_id. Scans last 7 days."""
-        entries = self._get_entries_for_range(7)
+        start = datetime.utcnow() - timedelta(days=7)
+        entries = self._get_entries_for_range(start)
         calls = [e for e in entries if e.get("trace_id") == trace_id]
         if not calls:
             return {}
@@ -354,9 +371,9 @@ class UsageTracker:
         if routing_reason: result["routing_reason"] = routing_reason
         return result
 
-    def get_cost_by_model(self, days: int = 30) -> Dict[str, Any]:
+    def get_cost_by_model(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, days: int = 30) -> Dict[str, Any]:
         """Get cost breakdown by model for chart data."""
-        summary = self.get_summary(days)
+        summary = self.get_summary(start_date, end_date, days)
         models = []
         for model_name, data in summary.get("by_model", {}).items():
             models.append({
@@ -368,9 +385,9 @@ class UsageTracker:
         models.sort(key=lambda x: x["total_cost"], reverse=True)
         return {"models": models}
 
-    def get_tokens_by_model(self, days: int = 30) -> Dict[str, Any]:
+    def get_tokens_by_model(self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, days: int = 30) -> Dict[str, Any]:
         """Get token breakdown by model for chart data."""
-        summary = self.get_summary(days)
+        summary = self.get_summary(start_date, end_date, days)
         models = []
         for model_name, data in summary.get("by_model", {}).items():
             models.append({
@@ -382,13 +399,17 @@ class UsageTracker:
         models.sort(key=lambda x: x["total_tokens"], reverse=True)
         return {"models": models}
 
-    def get_hourly_breakdown(self, hours: int = 24) -> List[Dict[str, Any]]:
+    def get_hourly_breakdown(self, hours: Optional[int] = 24, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None) -> List[Dict[str, Any]]:
         """Get token usage broken down by hour for chart data."""
-        days_to_load = (hours // 24) + 1
-        entries = self._get_entries_for_range(days_to_load)
+        if start_date:
+            entries = self._get_entries_for_range(start_date, end_date)
+            cutoff_dt = start_date
+        else:
+            days_to_load = (hours // 24) + 1
+            cutoff_dt = datetime.utcnow() - timedelta(hours=hours)
+            entries = self._get_entries_for_range(cutoff_dt)
         
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
-        cutoff_str = cutoff.isoformat() + "Z"
+        cutoff_str = cutoff_dt.isoformat() + "Z"
         buckets = defaultdict(lambda: {"tokens": 0, "calls": 0, "cost": 0.0})
 
         for entry in entries:
@@ -408,6 +429,19 @@ class UsageTracker:
                 "cost": round(buckets[key]["cost"], 6)
             })
         return result
+
+    def get_today_summary(self) -> Dict[str, Any]:
+        """Get total tokens and estimated cost for today UTC."""
+        day_logs = self._load_day_logs(datetime.utcnow())
+        tokens = 0
+        cost = 0.0
+        for entry in day_logs:
+            tokens += entry.get("total_tokens", 0)
+            cost += entry.get("estimated_cost", 0.0)
+        return {
+            "tokens": tokens,
+            "cost": round(cost, 6)
+        }
 
     def get_today_summary(self) -> Dict[str, Any]:
         """Get total tokens and estimated cost for today UTC."""

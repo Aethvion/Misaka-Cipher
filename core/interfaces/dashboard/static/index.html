@@ -815,6 +815,26 @@
                 <h2>Usage Dashboard</h2>
             </div>
             <div class="usage-dashboard">
+                <!-- Dashboard Controls -->
+                <div class="usage-controls-row">
+                    <div class="usage-date-picker">
+                        <div class="date-presets">
+                            <button class="date-preset-btn" data-preset="1d">1D</button>
+                            <button class="date-preset-btn active" data-preset="1w">1W</button>
+                            <button class="date-preset-btn" data-preset="1m">1M</button>
+                            <button class="date-preset-btn" data-preset="total">Total</button>
+                        </div>
+                        <div class="date-custom">
+                            <input type="date" id="usage-start-date" class="date-input" title="Start Date">
+                            <span class="date-sep">to</span>
+                            <input type="date" id="usage-end-date" class="date-input" title="End Date">
+                            <button id="usage-apply-btn" class="icon-btn xs-btn" title="Apply Range">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Stat Cards Row -->
                 <div class="usage-stat-row">
                     <div class="usage-stat-card">
@@ -834,8 +854,8 @@
                         <div class="stat-label">Output Cost</div>
                     </div>
                     <div class="usage-stat-card">
-                        <div class="stat-value" id="usage-success-rate">0%</div>
-                        <div class="stat-label">Success Rate</div>
+                        <div class="stat-value" id="usage-total-cost">$0.00</div>
+                        <div class="stat-label">Total Cost</div>
                     </div>
                 </div>
 
@@ -848,10 +868,6 @@
                     <div class="usage-chart-container">
                         <div class="chart-header-row">
                             <h3>Token Usage Over Time</h3>
-                            <div class="chart-controls">
-                                <button class="chart-time-btn active" data-range="1w">1w</button>
-                                <button class="chart-time-btn" data-range="1d">1d</button>
-                            </div>
                         </div>
                         <canvas id="chart-tokens-timeline"></canvas>
                     </div>

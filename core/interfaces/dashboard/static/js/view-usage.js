@@ -6,21 +6,40 @@ let _timelineChart = null;
 let _costByModelChart = null;
 let _tokensByModelChart = null;
 
-async function loadUsageDashboard() {
+async function loadUsageDashboard(startDate = null, endDate = null) {
     try {
         const timeRange = typeof prefs !== 'undefined' ? prefs.get('usage.time_range', '1w') : '1w';
-        const hours = timeRange === '1d' ? 24 : 168;
 
-        document.querySelectorAll('.chart-time-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.range === timeRange);
+        let start = startDate;
+        let end = endDate;
+
+        if (!start && !end) {
+            // Apply presets if no custom dates
+            const now = new Date();
+            if (timeRange === '1d') {
+                start = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+            } else if (timeRange === '1w') {
+                start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            } else if (timeRange === '1m') {
+                start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+            } else if (timeRange === 'total') {
+                start = '2020-01-01'; // Far past
+            }
+        }
+
+        const queryBase = (start || end) ? `?${start ? `start=${start}` : ''}${end ? `${start ? '&' : ''}end=${end}` : ''}` : '';
+        const timelineQuery = (start || end) ? queryBase : `?hours=${timeRange === '1d' ? 24 : 168}`;
+
+        document.querySelectorAll('.date-preset-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.preset === timeRange && !startDate);
         });
 
         const [summaryRes, historyRes, hourlyRes, costModelRes, tokensModelRes] = await Promise.all([
-            fetch('/api/usage/summary'),
-            fetch('/api/usage/history?limit=50'),
-            fetch(`/api/usage/hourly?hours=${hours}`),
-            fetch('/api/usage/cost-by-model'),
-            fetch('/api/usage/tokens-by-model')
+            fetch(`/api/usage/summary${queryBase}`),
+            fetch(`/api/usage/history?limit=50${queryBase ? `&${queryBase.slice(1)}` : ''}`),
+            fetch(`/api/usage/hourly${timelineQuery}`),
+            fetch(`/api/usage/cost-by-model${queryBase}`),
+            fetch(`/api/usage/tokens-by-model${queryBase}`)
         ]);
 
         const summary = await summaryRes.json();
@@ -48,15 +67,29 @@ async function loadUsageDashboard() {
 }
 
 function setupUsageListeners() {
-    document.querySelectorAll('.chart-time-btn').forEach(btn => {
+    document.querySelectorAll('.date-preset-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-            const range = e.target.dataset.range;
+            const preset = e.target.dataset.preset;
             if (typeof savePreference === 'function') {
-                await savePreference('usage.time_range', range);
+                await savePreference('usage.time_range', preset);
             }
+            // Clear custom inputs when preset is clicked
+            document.getElementById('usage-start-date').value = '';
+            document.getElementById('usage-end-date').value = '';
             loadUsageDashboard();
         });
     });
+
+    const applyBtn = document.getElementById('usage-apply-btn');
+    if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+            const start = document.getElementById('usage-start-date').value;
+            const end = document.getElementById('usage-end-date').value;
+            if (start || end) {
+                loadUsageDashboard(start, end);
+            }
+        });
+    }
 }
 
 function formatNumber(n) {

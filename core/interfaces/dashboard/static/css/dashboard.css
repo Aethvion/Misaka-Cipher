@@ -78,6 +78,68 @@
     max-height: 280px;
 }
 
+.usage-date-picker {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.date-presets {
+    display: flex;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.date-preset-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.2rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.date-preset-btn:hover {
+    color: var(--primary);
+}
+
+.date-preset-btn.active {
+    background: var(--primary);
+    color: var(--bg-primary);
+}
+
+.date-custom {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.date-input {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+}
+
+.date-input:focus {
+    border-color: var(--primary);
+}
+
+.date-sep {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
 .usage-table-full {
     background: var(--bg-tertiary);
     border: 1px solid var(--border);
