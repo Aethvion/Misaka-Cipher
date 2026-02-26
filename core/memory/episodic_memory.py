@@ -7,7 +7,7 @@ import yaml
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-from datetime import datetime, timedelta
+import time
 # heavy import moved to lazy loading
 # from sentence_transformers import SentenceTransformer
 
@@ -46,6 +46,8 @@ class EpisodicMemoryStore:
         
         if not self.enabled:
             logger.info("Episodic Memory is disabled")
+            self.client = None
+            self.collection = None
             return
         
         # Lazy imports (ChromaDB & SentenceTransformers)
@@ -57,12 +59,32 @@ class EpisodicMemoryStore:
         storage_path = project_root / self.config.get('storage_path', 'data/memory/storage')
         storage_path.mkdir(parents=True, exist_ok=True)
         
-        # Initialize ChromaDB client
-        self.client = chromadb.PersistentClient(
-            path=str(storage_path),
-            settings=Settings(anonymized_telemetry=False)
-        )
+        # Initialize ChromaDB client with retry logic
+        max_retries = 3
+        retry_delay = 1.0  # seconds
         
+        self.client = None
+        for attempt in range(max_retries):
+            try:
+                self.client = chromadb.PersistentClient(
+                    path=str(storage_path),
+                    settings=Settings(anonymized_telemetry=False)
+                )
+                
+                # Connection check
+                self.client.heartbeat()
+                logger.info("ChromaDB client initialized successfully")
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"ChromaDB connection attempt {attempt + 1} failed: {e}. Retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    logger.error(f"CRITICAL: Failed to connect to ChromaDB after {max_retries} attempts: {e}")
+                    self.enabled = False
+                    return
+
         # Get or create collection
         collection_name = self.config.get('collection_name', 'misaka_episodic')
         try:

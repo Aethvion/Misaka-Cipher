@@ -589,7 +589,12 @@ async def websocket_chat(websocket: WebSocket):
             if "message" in data:
                 result = await asyncio.to_thread(orchestrator.process_message, data["message"])
                 await websocket.send_json({"type": "response", "trace_id": result.trace_id, "response": result.response, "actions": result.actions_taken, "success": result.success})
-    except WebSocketDisconnect: manager.disconnect(websocket, "chat")
+    except (WebSocketDisconnect, RuntimeError):
+        pass # Client disconnected or connection closed
+    except Exception as e:
+        logger.error(f"WebSocket chat error: {e}")
+    finally:
+        manager.disconnect(websocket, "chat")
 
 @app.websocket("/ws/logs")
 async def websocket_logs(websocket: WebSocket):
@@ -598,7 +603,12 @@ async def websocket_logs(websocket: WebSocket):
         while True:
             await asyncio.sleep(10)
             await websocket.send_json({"type": "heartbeat", "timestamp": datetime.now().isoformat()})
-    except WebSocketDisconnect: manager.disconnect(websocket, "logs")
+    except (WebSocketDisconnect, RuntimeError):
+        pass # Client disconnected or connection closed
+    except Exception as e:
+        logger.error(f"WebSocket logs error: {e}")
+    finally:
+        manager.disconnect(websocket, "logs")
 
 @app.websocket("/ws/agents")
 async def websocket_agents(websocket: WebSocket):
@@ -608,7 +618,12 @@ async def websocket_agents(websocket: WebSocket):
             agents = factory.registry.get_all_agents()
             await websocket.send_json({"type": "agents_update", "count": len(agents), "agents": agents, "timestamp": datetime.now().isoformat()})
             await asyncio.sleep(2)
-    except WebSocketDisconnect: manager.disconnect(websocket, "agents")
+    except (WebSocketDisconnect, RuntimeError):
+        pass # Client disconnected or connection closed
+    except Exception as e:
+        logger.error(f"WebSocket agents error: {e}")
+    finally:
+        manager.disconnect(websocket, "agents")
 
 async def broadcast_log(message: str, level: str = "info"):
     await manager.broadcast({"type": "log", "level": level, "message": message, "timestamp": datetime.now().isoformat()}, "logs")
