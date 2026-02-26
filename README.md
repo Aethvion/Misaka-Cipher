@@ -12,7 +12,7 @@
 
 ---
 
-<img align="center" width="124px" src="https://github.com/Aethvion/Misaka-Cipher/blob/f1b76b17ce02ec3768fc1ae54e90f33f276f27d0/assets/misakacipher/misakacipher_default.png">
+<img align="center" width="124px" src="https://raw.githubusercontent.com/Aethvion/Misaka-Cipher/refs/heads/main/core/interfaces/dashboard/static/misakacipher/chibi1/misakacipher_chibi_tablet.png?token=GHSAT0AAAAAADOWOOHABZTRDRRBYQFJLPBK2NANUXQ">
 
 ### ⚠️ STATUS: EXPERIMENTAL — EARLY DEVELOPMENT ⚠️
 
