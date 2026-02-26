@@ -312,6 +312,15 @@
     align-items: center;
     gap: 0.3rem;
     min-width: 120px;
+    padding: 0.2rem;
+    border-radius: 4px;
+    transition: background 0.2s, border-color 0.2s;
+    border: 1px solid transparent;
+}
+
+.caps-cell.empty {
+    border-color: rgba(255, 68, 68, 0.4);
+    background: rgba(255, 68, 68, 0.05);
 }
 
 .cap-tag {
@@ -628,6 +637,77 @@ input::-webkit-inner-spin-button {
     display: flex;
     align-items: center;
     gap: 0.4rem;
+}
+
+/* ===== Enhanced Add Model Modal ===== */
+.add-model-modal {
+    width: 550px !important;
+    max-width: 90vw;
+}
+
+.suggested-select-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.suggested-select-wrapper select {
+    padding-left: 2.2rem !important;
+}
+
+.select-magic-icon {
+    position: absolute;
+    left: 0.8rem;
+    color: var(--primary);
+    opacity: 0.7;
+    pointer-events: none;
+    font-size: 0.9rem;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1.5rem 0;
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border);
+}
+
+.divider:not(:empty)::before {
+    margin-right: 1rem;
+}
+
+.divider:not(:empty)::after {
+    margin-left: 1rem;
+}
+
+.cost-row-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+#new-model-caps-container {
+    background: var(--bg-primary);
+    padding: 0.8rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+}
+
+/* Ensure dropdown is visible in modal */
+.cap-dropdown {
+    position: absolute;
+    z-index: 10001 !important;
+    /* Above modal */
 }
 
 .toggle-image-settings {

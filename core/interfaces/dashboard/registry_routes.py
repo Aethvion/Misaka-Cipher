@@ -435,8 +435,8 @@ async def get_chat_models():
                     continue
 
                 capabilities = model_info.get("capabilities", [])
-                # Skip image-only models
-                if capabilities and all(c in ("image_generation",) for c in capabilities):
+                # Only include models that explicitly have 'chat' capability
+                if "chat" not in capabilities:
                     continue
 
                 chat_models.append({

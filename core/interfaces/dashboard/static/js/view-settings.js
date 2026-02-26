@@ -457,7 +457,8 @@ function renderCapsTd(caps = [], modelKey = null) {
         gearBtn = `<button class="icon-btn xs-btn toggle-image-settings" title="Image Settings" data-model="${modelKey}"><i class="fas fa-cog"></i></button>`;
     }
 
-    return `<div class="caps-cell" style="position:relative;">${pills}<div class="caps-actions">${gearBtn}<button class="add-cap-btn" title="Add capability">+</button></div></div>`;
+    const isEmpty = caps.length === 0 ? 'empty' : '';
+    return `<div class="caps-cell ${isEmpty}" style="position:relative;">${pills}<div class="caps-actions">${gearBtn}<button class="add-cap-btn" title="Add capability">+</button></div></div>`;
 }
 
 function renderImageConfigRow(modelKey, m) {
@@ -521,7 +522,11 @@ function initCapsTd(cell) {
     cell.addEventListener('click', (e) => {
         const tag = e.target.closest('.cap-tag');
         if (tag) {
+            const currentCell = tag.closest('.caps-cell');
             tag.remove();
+            if (currentCell && currentCell.querySelectorAll('.cap-tag').length === 0) {
+                currentCell.classList.add('empty');
+            }
             markSettingsDirty();
             return;
         }
@@ -563,7 +568,9 @@ function initCapsTd(cell) {
                 pill.dataset.cap = cap;
                 pill.title = 'Click to remove';
                 pill.innerHTML = `${cap}<span class="cap-remove">✕</span>`;
-                cell.insertBefore(pill, addBtn);
+                const actions = cell.querySelector('.caps-actions');
+                cell.insertBefore(pill, actions);
+                cell.classList.remove('empty');
 
                 // If 'image' capability added, dynamically add gear button and config row if missing
                 if (cap === 'image') {
@@ -741,6 +748,7 @@ function renderProviderCards(registry) {
                     </table>
                     <div class="add-model-line">
                         <button class="action-btn xs-btn secondary add-model-btn" data-provider="${name}">+ Add Model</button>
+                        <button class="action-btn xs-btn secondary suggested-model-btn" data-provider="${name}"><i class="fas fa-magic"></i> Suggested</button>
                     </div>
                 </div>
             </div>
@@ -787,6 +795,10 @@ function renderProviderCards(registry) {
 
     container.querySelectorAll('.add-model-btn').forEach(btn => {
         btn.onclick = () => addModelRowInline(btn.dataset.provider);
+    });
+
+    container.querySelectorAll('.suggested-model-btn').forEach(btn => {
+        btn.onclick = () => openAddModelModal(btn.dataset.provider);
     });
 
     container.querySelectorAll('.del-model').forEach(btn => {
@@ -1141,16 +1153,19 @@ async function openAddModelModal(providerName) {
             <div class="modal-body">
                 <div class="setting-group">
                     <label>Select from Suggested Models</label>
-                    <select id="suggested-model-select" class="control-input">
-                        <option value="">-- Select or choose Custom --</option>
-                        ${providerSuggested.map(m => `
-                            <option value="${m.id}" data-cost-in="${m.cost?.input || 0}" data-cost-out="${m.cost?.output || 0}" data-caps="${(m.capabilities || []).join(',')}">
-                                ${m.id} (${m.tier || 'custom'})
-                            </option>
-                        `).join('')}
-                    </select>
+                    <div class="suggested-select-wrapper">
+                        <select id="suggested-model-select" class="control-input">
+                            <option value="">-- Select or choose Custom --</option>
+                            ${providerSuggested.map(m => `
+                                <option value="${m.id}" data-cost-in="${m.input_cost || 0}" data-cost-out="${m.output_cost || 0}" data-caps="${(m.capabilities || []).join(',')}">
+                                    ${m.id} (${m.tier || 'custom'})
+                                </option>
+                            `).join('')}
+                        </select>
+                        <i class="fas fa-magic select-magic-icon"></i>
+                    </div>
                 </div>
-                <div class="divider">OR</div>
+                <div class="divider"><span>OR CUSTOM</span></div>
                 <div class="setting-group">
                     <label>Custom Model ID</label>
                     <input type="text" id="custom-model-id" class="control-input" placeholder="e.g. gpt-4-turbo">
@@ -1166,8 +1181,10 @@ async function openAddModelModal(providerName) {
                     </div>
                 </div>
                  <div class="setting-group">
-                    <label>Capabilities (comma separated)</label>
-                    <input type="text" id="new-model-caps" class="control-input" placeholder="chat, vision, search...">
+                    <label>Capabilities</label>
+                    <div id="new-model-caps-container">
+                        ${renderCapsTd([], null)}
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -1183,7 +1200,10 @@ async function openAddModelModal(providerName) {
     const customInput = document.getElementById('custom-model-id');
     const costIn = document.getElementById('new-model-cost-in');
     const costOut = document.getElementById('new-model-cost-out');
-    const capsInput = document.getElementById('new-model-caps');
+    const capsContainer = document.getElementById('new-model-caps-container');
+
+    // Initialize the capability picker logic for the modal
+    initCapsTd(capsContainer.querySelector('.caps-cell'));
 
     select.onchange = () => {
         if (select.value) {
@@ -1191,7 +1211,22 @@ async function openAddModelModal(providerName) {
             customInput.value = select.value;
             costIn.value = opt.dataset.costIn;
             costOut.value = opt.dataset.costOut;
-            capsInput.value = opt.dataset.caps;
+
+            // Clear existing and set new caps
+            const cell = capsContainer.querySelector('.caps-cell');
+            cell.querySelectorAll('.cap-tag').forEach(t => t.remove());
+            const caps = opt.dataset.caps.split(',').filter(Boolean);
+            const addBtn = cell.querySelector('.add-cap-btn');
+            caps.forEach(cap => {
+                const pill = document.createElement('span');
+                pill.className = 'cap-tag';
+                pill.dataset.cap = cap;
+                pill.title = 'Click to remove';
+                pill.innerHTML = `${cap}<span class="cap-remove">✕</span>`;
+                const actions = cell.querySelector('.caps-actions');
+                cell.insertBefore(pill, actions);
+            });
+            cell.classList.toggle('empty', caps.length === 0);
         }
     };
 
@@ -1202,10 +1237,13 @@ async function openAddModelModal(providerName) {
             return;
         }
 
+        const capsCell = capsContainer.querySelector('.caps-cell');
+        const capabilities = Array.from(capsCell.querySelectorAll('.cap-tag')).map(t => t.dataset.cap);
+
         const modelEntry = {
             input_cost_per_1m_tokens: parseFloat(costIn.value) || 0,
             output_cost_per_1m_tokens: parseFloat(costOut.value) || 0,
-            capabilities: capsInput.value.split(',').map(c => c.trim()).filter(c => c !== '')
+            capabilities: capabilities
         };
 
         // Add to registry data
