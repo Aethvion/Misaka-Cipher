@@ -17,7 +17,7 @@ function initializeImageStudio() {
             // Collect parameters
             const model = document.getElementById('image-model-selector').value;
             const aspectRatio = document.getElementById('image-aspect-ratio')?.value;
-            const resolution = document.getElementById('image-resolution')?.value;
+            const customAr = document.getElementById('image-custom-aspect-ratio')?.value;
             const negPrompt = document.getElementById('image-negative-prompt')?.value;
             const seed = document.getElementById('image-seed')?.value;
             const quality = document.getElementById('image-quality')?.value;
@@ -35,8 +35,7 @@ function initializeImageStudio() {
                     prompt: promptInput.value.trim(),
                     model: model,
                     n: 1,
-                    size: resolution || "1024x1024",
-                    aspect_ratio: aspectRatio,
+                    aspect_ratio: aspectRatio === 'custom' ? customAr : aspectRatio,
                     negative_prompt: negPrompt,
                     seed: seed ? parseInt(seed) : null,
                     quality: quality || "standard"
@@ -206,18 +205,20 @@ function updateImageStudioControls() {
             <select class="term-select" style="width:100%;" id="image-aspect-ratio">
                 ${options}
             </select>
+            <div id="custom-ar-container" style="display:none; margin-top:0.5rem;">
+                <input type="text" class="term-input" id="image-custom-aspect-ratio" placeholder="e.g. 21:9">
+            </div>
         `);
-    }
 
-    // Resolutions
-    if (config.resolutions && config.resolutions.length > 0) {
-        const options = config.resolutions.map(r => `<option value="${r}">${r}</option>`).join('');
-        createControl(`
-            <label>Resolution</label>
-            <select class="term-select" style="width:100%;" id="image-resolution">
-                ${options}
-            </select>
-        `);
+        const arSelect = document.getElementById('image-aspect-ratio');
+        const customContainer = document.getElementById('custom-ar-container');
+        if (arSelect && customContainer) {
+            arSelect.onchange = () => {
+                customContainer.style.display = arSelect.value === 'custom' ? 'block' : 'none';
+            };
+            // Initial check
+            customContainer.style.display = arSelect.value === 'custom' ? 'block' : 'none';
+        }
     }
 
     // Negative Prompt

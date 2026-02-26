@@ -445,13 +445,68 @@ const AVAILABLE_CAPS = ['chat', 'image'];
  * Renders the inner HTML of a caps table cell.
  * Returns a string with .caps-cell div containing pills and a + button.
  */
-function renderCapsTd(caps = []) {
+function renderCapsTd(caps = [], modelKey = null) {
     const pills = caps.map(c => `
         <span class="cap-tag" data-cap="${c}" title="Click to remove">
             ${c}<span class="cap-remove">✕</span>
         </span>
     `).join('');
-    return `<div class="caps-cell" style="position:relative;">${pills}<button class="add-cap-btn" title="Add capability">+</button></div>`;
+
+    let gearBtn = '';
+    if (caps.includes('image') && modelKey) {
+        gearBtn = `<button class="icon-btn xs-btn toggle-image-settings" title="Image Settings" data-model="${modelKey}"><i class="fas fa-cog"></i></button>`;
+    }
+
+    return `<div class="caps-cell" style="position:relative;">${pills}<div class="caps-actions">${gearBtn}<button class="add-cap-btn" title="Add capability">+</button></div></div>`;
+}
+
+function renderImageConfigRow(modelKey, m) {
+    const config = m.image_config || {};
+    const ratios = Array.isArray(config.aspect_ratios) ? config.aspect_ratios : [];
+    const quality_options = Array.isArray(config.quality_options) ? config.quality_options.join(', ') : (config.quality_options || '');
+
+    const isChecked = (r) => ratios.includes(r) ? 'checked' : '';
+
+    return `
+        <tr class="image-config-row" data-model="${modelKey}" style="display:none;">
+            <td colspan="5">
+                <div class="image-config-container">
+                    <div class="image-config-header">
+                        <i class="fas fa-image"></i> Image Generation Capability Configuration
+                    </div>
+                    <div class="image-config-grid">
+                        <div class="config-field">
+                            <label>Allowed Aspect Ratios</label>
+                            <div class="ratio-toggles">
+                                <label class="ratio-toggle-item"><input type="checkbox" class="img-ar-1-1" ${isChecked('1:1')}> 1:1</label>
+                                <label class="ratio-toggle-item"><input type="checkbox" class="img-ar-16-9" ${isChecked('16:9')}> 16:9</label>
+                                <label class="ratio-toggle-item"><input type="checkbox" class="img-ar-9-16" ${isChecked('9:16')}> 9:16</label>
+                                <label class="ratio-toggle-item"><input type="checkbox" class="img-ar-custom" ${isChecked('custom')}> Custom</label>
+                            </div>
+                        </div>
+                        <div class="config-field">
+                            <label>Quality Options</label>
+                            <input type="text" class="img-quality-options" value="${quality_options}" placeholder="standard, hd">
+                        </div>
+                        <div class="config-field toggle-field">
+                            <label>Neg Prompt</label>
+                            <label class="switch small">
+                                <input type="checkbox" class="img-neg-prompt" ${config.supports_negative_prompt ? 'checked' : ''}>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <div class="config-field toggle-field">
+                            <label>Seeds</label>
+                            <label class="switch small">
+                                <input type="checkbox" class="img-supports-seed" ${config.supports_seed ? 'checked' : ''}>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `;
 }
 
 /**
@@ -509,6 +564,50 @@ function initCapsTd(cell) {
                 pill.title = 'Click to remove';
                 pill.innerHTML = `${cap}<span class="cap-remove">✕</span>`;
                 cell.insertBefore(pill, addBtn);
+
+                // If 'image' capability added, dynamically add gear button and config row if missing
+                if (cap === 'image') {
+                    const actions = cell.querySelector('.caps-actions');
+                    if (actions && !actions.querySelector('.toggle-image-settings')) {
+                        const tr = cell.closest('tr');
+                        const modelInput = tr.querySelector('.model-id-input-small');
+                        const modelKey = modelInput ? modelInput.value.trim() : '';
+
+                        if (modelKey) {
+                            const gear = document.createElement('button');
+                            gear.className = 'icon-btn xs-btn toggle-image-settings';
+                            gear.title = 'Image Settings';
+                            gear.dataset.model = modelKey;
+                            gear.innerHTML = '<i class="fas fa-cog"></i>';
+                            actions.insertBefore(gear, actions.firstChild);
+
+                            // Re-init the click listener for the new gear button
+                            gear.onclick = (ge) => {
+                                const providerItem = gear.closest('.compact-provider-item');
+                                let row = providerItem.querySelector(`.image-config-row[data-model="${modelKey}"]`);
+
+                                // Create row if it doesn't exist yet
+                                if (!row) {
+                                    const tbody = tr.parentNode;
+                                    const newRow = document.createElement('tr');
+                                    newRow.innerHTML = renderImageConfigRow(modelKey, {});
+                                    const tempTable = document.createElement('table');
+                                    tempTable.innerHTML = renderImageConfigRow(modelKey, {});
+                                    const actualRow = tempTable.querySelector('tr');
+                                    actualRow.style.display = 'none';
+                                    tr.parentNode.insertBefore(actualRow, tr.nextSibling);
+                                    row = actualRow;
+                                }
+
+                                const isVisible = row.style.display !== 'none';
+                                row.style.display = isVisible ? 'none' : 'table-row';
+                                gear.classList.toggle('active', !isVisible);
+                                ge.stopPropagation();
+                            };
+                        }
+                    }
+                }
+
                 markSettingsDirty();
             });
 
@@ -621,7 +720,7 @@ function renderProviderCards(registry) {
             const caps = Array.isArray(m.capabilities) ? m.capabilities : [];
             const desc = (typeof m === 'object' && m.description) ? m.description : '';
             return `
-                                    <tr>
+                                    <tr class="model-main-row" data-model="${key}">
                                         <td><input type="text" class="model-id-input-small" value="${key}" data-key="${key}"></td>
                                         <td>
                                             <div class="cost-inputs">
@@ -629,12 +728,13 @@ function renderProviderCards(registry) {
                                                 <input type="number" step="0.01" class="model-cost-out" value="${m.output_cost_per_1m_tokens || 0}">
                                             </div>
                                         </td>
-                                        <td>${renderCapsTd(caps)}</td>
+                                        <td>${renderCapsTd(caps, key)}</td>
                                         <td><input type="text" class="model-desc-input" value="${desc.replace(/"/g, '&quot;')}" placeholder="Best for..."></td>
                                         <td>
                                             <button class="btn-icon xs-btn del-model" data-key="${key}"><i class="fas fa-trash"></i></button>
                                         </td>
                                     </tr>
+                                    ${renderImageConfigRow(key, m)}
                                  `;
         }).join('')}
                         </tbody>
@@ -654,6 +754,21 @@ function renderProviderCards(registry) {
         btn.onclick = () => {
             const foldout = btn.closest('.compact-provider-item').querySelector('.provider-models-foldout');
             foldout.style.display = foldout.style.display === 'none' ? 'block' : 'none';
+        };
+    });
+
+    container.querySelectorAll('.toggle-image-settings').forEach(btn => {
+        btn.onclick = (e) => {
+            const modelKey = btn.dataset.model;
+            // Find the image config row for THIS model in THIS provider card
+            const providerItem = btn.closest('.compact-provider-item');
+            const row = providerItem.querySelector(`.image-config-row[data-model="${modelKey}"]`);
+            if (row) {
+                const isVisible = row.style.display !== 'none';
+                row.style.display = isVisible ? 'none' : 'table-row';
+                btn.classList.toggle('active', !isVisible);
+            }
+            e.stopPropagation();
         };
     });
 
@@ -694,6 +809,7 @@ function addModelRowInline(providerName) {
     foldout.style.display = 'block';
 
     const row = document.createElement('tr');
+    row.className = 'model-main-row';
     row.innerHTML = `
         <td><input type="text" class="model-id-input-small" value="" data-key="" placeholder="model-id"></td>
         <td>
@@ -702,13 +818,14 @@ function addModelRowInline(providerName) {
                 <input type="number" step="0.01" class="model-cost-out" value="0">
             </div>
         </td>
-        <td>${renderCapsTd([])}</td>
+        <td>${renderCapsTd([], '')}</td>
         <td><input type="text" class="model-desc-input" value="" placeholder="Best for..."></td>
         <td>
             <button class="btn-icon xs-btn del-model" onclick="this.closest('tr').remove(); markSettingsDirty();"><i class="fas fa-trash"></i></button>
         </td>
     `;
     tbody.appendChild(row);
+    // Note: We don't render image config row for new models until they get the 'image' cap
     initCapsTd(row.querySelector('.caps-cell'));
     markSettingsDirty();
     row.querySelector('input').focus();
@@ -728,7 +845,7 @@ async function saveProviderSettings() {
 
         // Model updates - Rebuild from scratch to handle additions/deletions
         prov.models = {};
-        const modelRows = item.querySelectorAll('tbody tr');
+        const modelRows = item.querySelectorAll('tbody tr.model-main-row');
         modelRows.forEach(row => {
             const input = row.querySelector('.model-id-input-small');
             const modelName = input.value.trim();
@@ -744,11 +861,34 @@ async function saveProviderSettings() {
             const descInput = row.querySelector('.model-desc-input');
             const description = descInput ? descInput.value.trim() : '';
 
+            // Image config (if row exists)
+            const imgRow = item.querySelector(`.image-config-row[data-model="${modelName}"]`);
+            let image_config = null;
+            if (imgRow && capabilities.includes('image')) {
+                const ar = [];
+                if (imgRow.querySelector('.img-ar-1-1').checked) ar.push('1:1');
+                if (imgRow.querySelector('.img-ar-16-9').checked) ar.push('16:9');
+                if (imgRow.querySelector('.img-ar-9-16').checked) ar.push('9:16');
+                if (imgRow.querySelector('.img-ar-custom').checked) ar.push('custom');
+
+                const qual = imgRow.querySelector('.img-quality-options').value.split(',').map(s => s.trim()).filter(Boolean);
+                const neg = imgRow.querySelector('.img-neg-prompt').checked;
+                const seed = imgRow.querySelector('.img-supports-seed').checked;
+
+                image_config = {
+                    aspect_ratios: ar,
+                    quality_options: qual,
+                    supports_negative_prompt: neg,
+                    supports_seed: seed
+                };
+            }
+
             prov.models[modelName] = {
                 input_cost_per_1m_tokens: costIn,
                 output_cost_per_1m_tokens: costOut,
                 capabilities: capabilities,
-                ...(description ? { description } : {})
+                ...(description ? { description } : {}),
+                ...(image_config ? { image_config } : {})
             };
         });
     });

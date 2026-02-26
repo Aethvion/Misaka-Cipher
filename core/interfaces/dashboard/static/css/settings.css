@@ -517,3 +517,126 @@ input::-webkit-inner-spin-button {
     border-radius: 4px;
     color: var(--text-primary);
 }
+
+/* ===== Image Config Inline Expansion ===== */
+.image-config-row td {
+    padding: 0 !important;
+    border-bottom: 0 !important;
+}
+
+.image-config-container {
+    background: rgba(var(--primary-rgb, 0, 212, 255), 0.03);
+    border-left: 3px solid var(--primary);
+    margin: 0.5rem 1rem 1rem 1rem;
+    padding: 1rem;
+    border-radius: 0 6px 6px 0;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.image-config-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+.image-config-header .hint {
+    font-weight: 400;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    margin-left: auto;
+}
+
+.image-config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.config-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.config-field label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.config-field input[type="text"] {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    width: 100%;
+}
+
+.ratio-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    background: var(--bg-secondary);
+    padding: 0.4rem 0.6rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+}
+
+.ratio-toggle-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.ratio-toggle-item input {
+    margin: 0;
+    cursor: pointer;
+}
+
+.config-field.toggle-field {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 1.2rem;
+}
+
+.caps-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.toggle-image-settings {
+    opacity: 0.6;
+    transition: opacity 0.2s, color 0.2s;
+}
+
+.toggle-image-settings:hover,
+.toggle-image-settings.active {
+    opacity: 1;
+    color: var(--primary);
+}
