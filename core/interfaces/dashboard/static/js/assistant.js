@@ -35,7 +35,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     contextHistoryLimit = data.assistant.context_limit !== undefined ? data.assistant.context_limit : 5;
 
                     if (data.assistant.position) {
-                        const pos = data.assistant.position;
+                        let pos = data.assistant.position;
+                        // Clamp initial position to current window size in case it changed
+                        pos = clampBounds(pos.left, pos.top);
+
                         container.style.bottom = 'auto';
                         container.style.right = 'auto';
                         container.style.left = pos.left + 'px';
@@ -63,8 +66,20 @@ document.addEventListener('DOMContentLoaded', () => {
     let isDragging = false;
     let dragStartX, dragStartY;
     let initialLeft, initialTop;
-    let dragThreshold = 5; // Pixels to move before considering it a drag
+    let dragThreshold = 5;
     let totalMoved = 0;
+
+    function clampBounds(left, top) {
+        const bubbleSize = 80;
+        const margin = 10;
+        const maxX = window.innerWidth - bubbleSize - margin;
+        const maxY = window.innerHeight - bubbleSize - margin;
+
+        return {
+            left: Math.max(margin, Math.min(left, maxX)),
+            top: Math.max(margin, Math.min(top, maxY))
+        };
+    }
 
     avatar.addEventListener('pointerdown', (e) => {
         isDragging = false;
@@ -91,10 +106,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (isDragging) {
+            const pos = clampBounds(initialLeft + dx, initialTop + dy);
             container.style.bottom = 'auto';
             container.style.right = 'auto';
-            container.style.left = (initialLeft + dx) + 'px';
-            container.style.top = (initialTop + dy) + 'px';
+            container.style.left = pos.left + 'px';
+            container.style.top = pos.top + 'px';
         }
     });
 
@@ -102,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
         avatar.releasePointerCapture(e.pointerId);
 
         if (isDragging) {
-            // Save position
             const rect = container.getBoundingClientRect();
             const position = {
                 left: Math.round(rect.left),
@@ -119,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Failed to save assistant position:", err);
             }
 
-            // Prevent click event from opening chat
             setTimeout(() => { isDragging = false; }, 10);
         }
     });
@@ -127,6 +141,34 @@ document.addEventListener('DOMContentLoaded', () => {
     // Toggle Chat Window
     avatar.addEventListener('click', (e) => {
         if (isDragging) return;
+
+        // Smart Position Check
+        const rect = container.getBoundingClientRect();
+        const windowWidth = 650;
+        const windowHeight = 250;
+        const bubbleSize = 80;
+        const margin = 20;
+
+        // Horizontal logic
+        if (rect.left > windowWidth + margin) {
+            // Space on left
+            chatWindow.style.left = `-${windowWidth + margin}px`;
+        } else {
+            // Space on right
+            chatWindow.style.left = `${bubbleSize + margin}px`;
+        }
+
+        // Vertical logic
+        if (rect.top > windowHeight + margin) {
+            // Space on top - anchor bottom of window to bottom of bubble
+            chatWindow.style.top = `${bubbleSize - windowHeight}px`;
+            chatWindow.style.transformOrigin = 'bottom center';
+        } else {
+            // Space on bottom - anchor top of window to top of bubble
+            chatWindow.style.top = '0px';
+            chatWindow.style.transformOrigin = 'top center';
+        }
+
         chatWindow.classList.remove('collapsed');
         avatar.classList.add('hidden');
         input.focus();

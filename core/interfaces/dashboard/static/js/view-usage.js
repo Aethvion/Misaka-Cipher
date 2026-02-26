@@ -120,8 +120,8 @@ function updateUsageStatCards(summary) {
     const outputCost = document.getElementById('usage-output-cost');
     if (outputCost) outputCost.textContent = formatCost(summary.total_output_cost || 0);
 
-    const successRate = document.getElementById('usage-success-rate');
-    if (successRate) successRate.textContent = (summary.success_rate || 0).toFixed(1) + '%';
+    const totalCost = document.getElementById('usage-total-cost');
+    if (totalCost) totalCost.textContent = formatCost(summary.total_cost || 0);
 }
 
 function renderProviderChart(summary) {

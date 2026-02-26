@@ -78,6 +78,16 @@
     max-height: 280px;
 }
 
+.usage-controls-row {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
 .usage-date-picker {
     display: flex;
     align-items: center;
