@@ -20,7 +20,10 @@ _lock = threading.Lock()
 MAX_LOG_ENTRIES = 10000
 # __file__ = core/workspace/usage_tracker.py → parent.parent.parent = project root
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
-USAGE_LOG_FILE = DATA_DIR / "usage_log.json"
+# __file__ = core/workspace/usage_tracker.py → parent.parent.parent = project root
+DATA_DIR = Path(__file__).parent.parent.parent / "data"
+# New structure: data/logs/usage/YYYY-MM/usage_YYYY-MM-DD.json
+LOGS_DIR = DATA_DIR / "logs" / "usage"
 
 
 def get_usage_tracker():
@@ -37,39 +40,38 @@ class UsageTracker:
     """Tracks all API usage: calls, tokens, costs."""
 
     def __init__(self):
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        self._log: List[Dict[str, Any]] = self._load_log()
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
         self._model_costs = self._load_model_costs()
-        logger.info(f"UsageTracker initialized ({len(self._log)} existing entries)")
+        logger.info("UsageTracker initialized with daily file structure")
 
-    def _load_log(self) -> List[Dict[str, Any]]:
-        """Load existing usage log from disk."""
-        try:
-            if USAGE_LOG_FILE.exists():
-                with open(USAGE_LOG_FILE, "r") as f:
+    def _get_daily_log_path(self, dt: Optional[datetime] = None) -> Path:
+        """Get the path to the daily log file based on a datetime (default UTC now)."""
+        dt = dt or datetime.utcnow()
+        month_str = dt.strftime("%Y-%m")
+        day_str = dt.strftime("%Y-%m-%d")
+        dir_path = LOGS_DIR / month_str
+        dir_path.mkdir(parents=True, exist_ok=True)
+        return dir_path / f"usage_{day_str}.json"
+
+    def _load_day_logs(self, dt: datetime) -> List[Dict[str, Any]]:
+        """Load logs for a specific day."""
+        path = self._get_daily_log_path(dt)
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                return data if isinstance(data, list) else []
-        except Exception as e:
-            logger.warning(f"Could not load usage log: {e}")
+                    return data if isinstance(data, list) else []
+            except Exception as e:
+                logger.error(f"Failed to load usage for {dt.date()}: {e}")
         return []
-
-    def _save_log(self):
-        """Persist usage log to disk (capped)."""
-        try:
-            # Keep only the most recent entries
-            trimmed = self._log[-MAX_LOG_ENTRIES:]
-            with open(USAGE_LOG_FILE, "w") as f:
-                json.dump(trimmed, f, indent=2)
-        except Exception as e:
-            logger.error(f"Failed to save usage log: {e}")
 
     def _load_model_costs(self) -> Dict[str, Dict[str, float]]:
         """Load per-model input/output cost data from model_registry.json."""
         costs = {}
         try:
-            registry_path = Path(__file__).parent.parent.parent / "data" / "config" / "model_registry.json"
+            registry_path = DATA_DIR / "config" / "model_registry.json"
             if registry_path.exists():
-                with open(registry_path, "r") as f:
+                with open(registry_path, "r", encoding="utf-8") as f:
                     registry = json.load(f)
                 for provider_name, provider_cfg in registry.get("providers", {}).items():
                     for model_key, model_info in provider_cfg.get("models", {}).items():
@@ -112,6 +114,7 @@ class UsageTracker:
     ):
         """Log an API call with token and cost estimation."""
         metadata = metadata or {}
+        now = datetime.utcnow()
 
         # Extract or estimate token counts
         usage_data = metadata.get("usage", {})
@@ -126,7 +129,7 @@ class UsageTracker:
         estimated_cost = input_cost + output_cost
 
         entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": now.isoformat() + "Z",
             "provider": provider,
             "model": model,
             "prompt_tokens": prompt_tokens,
@@ -142,7 +145,7 @@ class UsageTracker:
             "source": source
         }
 
-        # Persist routing metadata if present (route_picker + routed_to from auto routing)
+        # Persist routing metadata
         if metadata.get("route_picker"):
             entry["routing_model"] = metadata["route_picker"]
         if metadata.get("routed_to"):
@@ -150,8 +153,19 @@ class UsageTracker:
         if metadata.get("routing_reason"):
             entry["routing_reason"] = metadata["routing_reason"]
 
-        self._log.append(entry)
-        self._save_log()
+        # Append to daily file
+        path = self._get_daily_log_path(now)
+        try:
+            with _lock:
+                logs = []
+                if path.exists():
+                    with open(path, "r", encoding="utf-8") as f:
+                        logs = json.load(f)
+                logs.append(entry)
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(logs, f, indent=2)
+        except Exception as e:
+            logger.error(f"Failed to log usage to {path}: {e}")
 
         logger.debug(
             f"[{trace_id}] Usage logged: {provider}/{model} "
@@ -163,7 +177,6 @@ class UsageTracker:
         ic = entry.get("input_cost", 0.0)
         oc = entry.get("output_cost", 0.0)
 
-        # Recalculate if this is a legacy entry without separate costs
         if "input_cost" not in entry:
             m = entry.get("model", "unknown")
             pt = entry.get("prompt_tokens", 0)
@@ -174,9 +187,21 @@ class UsageTracker:
 
         return ic, oc, ic + oc
 
-    def get_summary(self) -> Dict[str, Any]:
-        """Get aggregated usage summary."""
-        if not self._log:
+    def _get_entries_for_range(self, days: int = 30) -> List[Dict[str, Any]]:
+        """Retrieve all entries for the last X days."""
+        all_entries = []
+        now = datetime.utcnow()
+        for i in range(days):
+            dt = now - timedelta(days=i)
+            all_entries.extend(self._load_day_logs(dt))
+        # Keep them sorted by timestamp ascending for calculations, then flip if needed for display
+        all_entries.sort(key=lambda x: x.get("timestamp", ""))
+        return all_entries
+
+    def get_summary(self, days: int = 30) -> Dict[str, Any]:
+        """Get aggregated usage summary for last X days."""
+        entries = self._get_entries_for_range(days)
+        if not entries:
             return {
                 "total_calls": 0,
                 "total_tokens": 0,
@@ -199,14 +224,13 @@ class UsageTracker:
         total_output_cost = 0.0
         successes = 0
 
-        for entry in self._log:
+        for entry in entries:
             p = entry.get("provider", "unknown")
             m = entry.get("model", "unknown")
             t = entry.get("total_tokens", 0)
             pt = entry.get("prompt_tokens", 0)
             ct = entry.get("completion_tokens", 0)
 
-            # Recalculate costs from tokens (handles legacy entries)
             ic, oc, c = self._compute_entry_costs(entry)
 
             by_provider[p]["calls"] += 1
@@ -240,21 +264,31 @@ class UsageTracker:
             v["cost"] = round(v["cost"], 6)
 
         return {
-            "total_calls": len(self._log),
+            "total_calls": len(entries),
             "total_tokens": total_tokens,
             "total_input_cost": round(total_input_cost, 6),
             "total_output_cost": round(total_output_cost, 6),
             "total_cost": round(total_input_cost + total_output_cost, 6),
             "by_provider": dict(by_provider),
             "by_model": dict(by_model),
-            "success_rate": round(successes / len(self._log) * 100, 1) if self._log else 0,
-            "since": self._log[0].get("timestamp") if self._log else None
+            "success_rate": round(successes / len(entries) * 100, 1) if entries else 0,
+            "since": entries[0].get("timestamp") if entries else None
         }
 
     def get_history(self, limit: int = 100) -> List[Dict[str, Any]]:
-        """Get recent usage entries (newest first), enriched with costs."""
-        entries = list(reversed(self._log[-limit:]))
-        # Enrich legacy entries that lack input/output cost
+        """Get recent usage entries (newest first)."""
+        all_recent = []
+        now = datetime.utcnow()
+        # Scan backward until limit is reached or we go back 365 days
+        for i in range(365):
+            dt = now - timedelta(days=i)
+            day_logs = self._load_day_logs(dt)
+            if day_logs:
+                all_recent.extend(reversed(day_logs))
+                if len(all_recent) >= limit:
+                    break
+        
+        entries = all_recent[:limit]
         for entry in entries:
             if "input_cost" not in entry:
                 ic, oc, c = self._compute_entry_costs(entry)
@@ -264,8 +298,9 @@ class UsageTracker:
         return entries
 
     def get_usage_by_trace_id(self, trace_id: str) -> Dict[str, Any]:
-        """Get aggregated usage summary for all API calls with a given trace_id."""
-        calls = [e for e in self._log if e.get("trace_id") == trace_id]
+        """Get aggregated usage summary for trace_id. Scans last 7 days."""
+        entries = self._get_entries_for_range(7)
+        calls = [e for e in entries if e.get("trace_id") == trace_id]
         if not calls:
             return {}
 
@@ -274,7 +309,6 @@ class UsageTracker:
         total_completion = 0
         total_input_cost = 0.0
         total_output_cost = 0.0
-
         routing_model = None
         routed_model = None
         routing_reason = None
@@ -298,7 +332,6 @@ class UsageTracker:
             models_used[m]["input_cost"] += ic
             models_used[m]["output_cost"] += oc
 
-            # Capture routing metadata (first entry that has it wins)
             if not routing_model and entry.get("routing_model"):
                 routing_model = entry["routing_model"]
             if not routed_model and entry.get("routed_model"):
@@ -316,17 +349,14 @@ class UsageTracker:
             "total_output_cost": round(total_output_cost, 6),
             "total_cost": round(total_input_cost + total_output_cost, 6),
         }
-        if routing_model:
-            result["routing_model"] = routing_model
-        if routed_model:
-            result["routed_model"] = routed_model
-        if routing_reason:
-            result["routing_reason"] = routing_reason
+        if routing_model: result["routing_model"] = routing_model
+        if routed_model: result["routed_model"] = routed_model
+        if routing_reason: result["routing_reason"] = routing_reason
         return result
 
-    def get_cost_by_model(self) -> Dict[str, Any]:
+    def get_cost_by_model(self, days: int = 30) -> Dict[str, Any]:
         """Get cost breakdown by model for chart data."""
-        summary = self.get_summary()
+        summary = self.get_summary(days)
         models = []
         for model_name, data in summary.get("by_model", {}).items():
             models.append({
@@ -338,9 +368,9 @@ class UsageTracker:
         models.sort(key=lambda x: x["total_cost"], reverse=True)
         return {"models": models}
 
-    def get_tokens_by_model(self) -> Dict[str, Any]:
+    def get_tokens_by_model(self, days: int = 30) -> Dict[str, Any]:
         """Get token breakdown by model for chart data."""
-        summary = self.get_summary()
+        summary = self.get_summary(days)
         models = []
         for model_name, data in summary.get("by_model", {}).items():
             models.append({
@@ -354,21 +384,21 @@ class UsageTracker:
 
     def get_hourly_breakdown(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Get token usage broken down by hour for chart data."""
+        days_to_load = (hours // 24) + 1
+        entries = self._get_entries_for_range(days_to_load)
+        
         cutoff = datetime.utcnow() - timedelta(hours=hours)
         cutoff_str = cutoff.isoformat() + "Z"
-
         buckets = defaultdict(lambda: {"tokens": 0, "calls": 0, "cost": 0.0})
 
-        for entry in self._log:
+        for entry in entries:
             ts = entry.get("timestamp", "")
             if ts >= cutoff_str:
-                # Bucket by hour
-                hour_key = ts[:13]  # "2026-02-16T14"
+                hour_key = ts[:13]
                 buckets[hour_key]["tokens"] += entry.get("total_tokens", 0)
                 buckets[hour_key]["calls"] += 1
                 buckets[hour_key]["cost"] += entry.get("estimated_cost", 0.0)
 
-        # Sort by hour
         result = []
         for key in sorted(buckets.keys()):
             result.append({
@@ -377,23 +407,16 @@ class UsageTracker:
                 "calls": buckets[key]["calls"],
                 "cost": round(buckets[key]["cost"], 6)
             })
-
         return result
 
     def get_today_summary(self) -> Dict[str, Any]:
-        """Get total tokens and estimated cost for today (since midnight local time approximation, or UTC to be safe). 
-           We'll use UTC since everything else is UTC, or just the last 24 hours."""
-        # Using UTC for simplicity to match `datetime.utcnow().isoformat()`
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0).isoformat() + "Z"
-        
+        """Get total tokens and estimated cost for today UTC."""
+        day_logs = self._load_day_logs(datetime.utcnow())
         tokens = 0
         cost = 0.0
-        
-        for entry in self._log:
-            if entry.get("timestamp", "") >= today_start:
-                tokens += entry.get("total_tokens", 0)
-                cost += entry.get("estimated_cost", 0.0)
-                
+        for entry in day_logs:
+            tokens += entry.get("total_tokens", 0)
+            cost += entry.get("estimated_cost", 0.0)
         return {
             "tokens": tokens,
             "cost": round(cost, 6)
