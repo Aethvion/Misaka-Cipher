@@ -54,6 +54,7 @@ async function pollStartupStatus() {
                             splash.classList.add('fade-out');
                             setTimeout(() => {
                                 splash.style.display = 'none';
+                                window.dispatchEvent(new CustomEvent('systemReady'));
                                 resolve();
                             }, 800);
                         }, 500);

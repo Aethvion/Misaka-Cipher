@@ -520,8 +520,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Initialize
-    loadAssistantSettings();
+    // Initialize after system is ready (splash screen finished)
+    let initialized = false;
+    const init = () => {
+        if (initialized) return;
+        initialized = true;
+        loadAssistantSettings();
+    };
+
+    window.addEventListener('systemReady', init);
+
+    // Fallback: Initialize after 5 seconds if systemReady event is not received
+    // (Useful for dev/debug or if splash screen is disabled)
+    setTimeout(init, 5000);
 });
 
 /**
