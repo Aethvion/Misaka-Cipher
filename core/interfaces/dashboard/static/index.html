@@ -629,31 +629,57 @@
         </div>
 
         <!-- Files Tab -->
-        <div class="main-tab-panel" id="files-panel">
-            <div class="panel-header">
-                <h2>Workspace Files</h2>
-                <div class="file-filters">
-                    <select id="domain-filter" class="filter-select">
-                        <option value="">All Domains</option>
-                        <option value="Finance">Finance</option>
-                        <option value="System">System</option>
-                        <option value="Data">Data</option>
-                        <option value="Code">Code</option>
-                        <option value="Audio">Audio</option>
-                        <option value="General">General</option>
-                    </select>
-                    <select id="type-filter" class="filter-select">
-                        <option value="">All Types</option>
-                        <option value="pdf">PDF</option>
-                        <option value="txt">Text</option>
-                        <option value="csv">CSV</option>
-                        <option value="json">JSON</option>
-                        <option value="html">HTML</option>
-                    </select>
-                    <button id="refresh-files" class="refresh-button">🔄 Refresh</button>
+        <div class="main-tab-panel" id="files-panel"
+            style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+            <div class="panel-header"
+                style="flex-direction: column; align-items: stretch; gap: 1rem; height: auto; min-height: 70px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>Workspace Files</h2>
+                    <div class="file-filters" style="display: flex; gap: 0.5rem; align-items: center;">
+                        <input type="text" id="file-search" placeholder="Search files or paths..." class="search-input"
+                            style="width: 200px;">
+                        <div class="view-toggles"
+                            style="display: flex; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; padding: 2px;">
+                            <button id="view-grid-btn" class="icon-btn active" title="Grid View"
+                                style="border-radius: 4px; padding: 4px 8px;"><i class="fas fa-th-large"></i></button>
+                            <button id="view-list-btn" class="icon-btn" title="List View"
+                                style="border-radius: 4px; padding: 4px 8px;"><i class="fas fa-list"></i></button>
+                        </div>
+                        <select id="type-filter" class="filter-select">
+                            <option value="">All Types</option>
+                            <option value="pdf">PDF</option>
+                            <option value="txt">Text</option>
+                            <option value="csv">CSV</option>
+                            <option value="json">JSON</option>
+                            <option value="html">HTML</option>
+                            <option value="py">Python</option>
+                            <option value="js">JavaScript</option>
+                        </select>
+                        <button id="refresh-files" class="refresh-button">🔄 Refresh</button>
+                    </div>
+                </div>
+                <!-- Global Stats Bar -->
+                <div class="file-stats-container"
+                    style="display: flex; flex-direction: column; gap: 0.5rem; background: var(--bg-secondary); padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border);">
+                    <div
+                        style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-secondary);">
+                        <span style="font-weight: 600; color: var(--text-primary);"><i class="fas fa-chart-pie"
+                                style="margin-right: 4px; color: var(--primary);"></i> Global Statistics</span>
+                        <span id="file-total-count">0 files mapped</span>
+                    </div>
+                    <div id="file-stats-bar"
+                        style="display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--bg-tertiary);">
+                        <!-- Segments injected by JS -->
+                    </div>
+                    <div id="file-stats-legend"
+                        style="display: flex; gap: 1rem; font-size: 0.75rem; color: var(--text-secondary); flex-wrap: wrap;">
+                        <!-- Legend injected by JS -->
+                    </div>
                 </div>
             </div>
-            <div class="files-grid" id="files-grid">
+
+            <div class="files-container files-grid-view" id="files-grid"
+                style="margin-top: 1rem; flex: 1; overflow-y: auto; padding-bottom: 2rem;">
                 <p class="placeholder-text">No files yet. Ask Misaka to create reports, analysis, or other outputs!</p>
             </div>
         </div>

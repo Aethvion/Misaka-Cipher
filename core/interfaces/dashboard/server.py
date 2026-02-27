@@ -14,6 +14,8 @@ import asyncio
 import json
 import logging
 import sys
+import os
+import subprocess
 from datetime import datetime
 
 from core.utils import get_logger
@@ -531,15 +533,53 @@ async def search_memory(request: MemorySearchRequest):
 
 
 @app.get("/api/workspace/files")
-async def list_workspace_files(domain: Optional[str] = None):
-    """List workspace files."""
+async def list_workspace_files():
+    """List workspace files recursively and get stats."""
     try:
         from core.workspace import get_workspace_manager
         workspace = get_workspace_manager()
-        outputs = workspace.list_outputs(domain=domain)
-        return {"count": len(outputs), "files": [output.to_dict() for output in outputs]}
+        # list_outputs now returns {"count": X, "files": [...], "stats": {...}}
+        return workspace.list_outputs()
     except Exception as e:
         logger.error(f"Workspace file listing error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ExplorerOpenRequest(BaseModel):
+    path: str
+
+@app.post("/api/workspace/explorer/open")
+async def open_in_explorer(req: ExplorerOpenRequest):
+    """Open a file or folder in the system's external explorer."""
+    try:
+        from core.workspace import get_workspace_manager
+        workspace = get_workspace_manager()
+        
+        # Resolve full path
+        target_path = workspace.workspace_root / req.path
+        if not target_path.exists():
+            raise HTTPException(status_code=404, detail=f"Path not found: {req.path}")
+            
+        target_str = str(target_path.resolve())
+        
+        # Windows specific explorer command
+        if os.name == 'nt':
+            if target_path.is_file():
+                # Open explorer and select the file
+                subprocess.Popen(f'explorer /select,"{target_str}"')
+            else:
+                # Open directory
+                os.startfile(target_str)
+        elif sys.platform == 'darwin':
+            subprocess.Popen(['open', '-R', target_str] if target_path.is_file() else ['open', target_str])
+        else:
+            # Linux fallback
+            subprocess.Popen(['xdg-open', target_str if target_path.is_dir() else str(target_path.parent)])
+            
+        return {"status": "success", "opened": req.path}
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        logger.error(f"Explorer open error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

@@ -8,6 +8,7 @@ from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 import shutil
+import json
 
 from core.utils import get_logger
 
@@ -24,6 +25,20 @@ class FileInfo:
     created_at: str
     trace_id: Optional[str] = None
     file_type: str = ""
+    is_dir: bool = False
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for API responses."""
+        return {
+            'path': self.path.replace('\\', '/'),
+            'filename': self.filename,
+            'domain': self.domain,
+            'size_bytes': self.size_bytes,
+            'created_at': self.created_at,
+            'trace_id': self.trace_id,
+            'file_type': self.file_type,
+            'is_dir': self.is_dir
+        }
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for API responses."""
@@ -137,50 +152,77 @@ class WorkspaceManager:
         
         return output_path
     
-    def list_outputs(self, domain: Optional[str] = None) -> List[FileInfo]:
+    def list_outputs(self) -> Dict[str, Any]:
         """
-        List output files in workspace.
-        
-        Args:
-            domain: Optional domain filter (None = all domains)
-            
-        Returns:
-            List of FileInfo objects
+        List output files and folders recursively in outputfiles.
+        Returns a dict containing count, files list, and stats breakdown.
+        Saves a cache to files.json.
         """
         outputs = []
+        stats = {}
+        total_files = 0
         
-        # Determine which domains to search
-        domains_to_search = [domain] if domain else self.ALLOWED_DOMAINS
-        
-        for dom in domains_to_search:
-            domain_path = self.workspace_root / dom
+        # Deep recursive scan
+        try:
+            for file_path in self.workspace_root.rglob('*'):
+                # Exclude files.json
+                if file_path.name == 'files.json':
+                    continue
+                    
+                relative_path = file_path.relative_to(self.workspace_root)
+                domain = relative_path.parts[0] if len(relative_path.parts) > 0 else 'General'
+                
+                try:
+                    stat = file_path.stat()
+                    is_dir = file_path.is_dir()
+                    
+                    file_type = ""
+                    if not is_dir:
+                        file_type = file_path.suffix.lstrip('.') if file_path.suffix else 'txt'
+                        total_files += 1
+                        stats[file_type] = stats.get(file_type, 0) + 1
+                    
+                    file_info = FileInfo(
+                        path=str(relative_path),
+                        filename=file_path.name,
+                        domain=domain,
+                        size_bytes=stat.st_size if not is_dir else 0,
+                        created_at=datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                        file_type=file_type,
+                        is_dir=is_dir
+                    )
+                    
+                    outputs.append(file_info)
+                except Exception as e:
+                    logger.error(f"Error reading file {file_path}: {str(e)}")
+                    
+        except Exception as e:
+            logger.error(f"Error traversing workspace: {str(e)}")
             
-            if not domain_path.exists():
-                continue
-            
-            # Get all files in domain directory (non-recursive)
-            for file_path in domain_path.iterdir():
-                if file_path.is_file():
-                    try:
-                        stat = file_path.stat()
-                        
-                        file_info = FileInfo(
-                            path=str(file_path.relative_to(self.workspace_root)),
-                            filename=file_path.name,
-                            domain=dom,
-                            size_bytes=stat.st_size,
-                            created_at=datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                            file_type=file_path.suffix.lstrip('.')
-                        )
-                        
-                        outputs.append(file_info)
-                    except Exception as e:
-                        logger.error(f"Error reading file {file_path}: {str(e)}")
+        # Calculate percentages
+        stats_percentages = {}
+        if total_files > 0:
+            for ext, count in stats.items():
+                stats_percentages[ext] = round((count / total_files) * 100, 1)
         
-        # Sort by creation time (newest first)
+        # Ensure outputs are sorted by creation_time descending
         outputs.sort(key=lambda f: f.created_at, reverse=True)
         
-        return outputs
+        result_dict = {
+            "count": len(outputs),
+            "files": [output.to_dict() for output in outputs],
+            "stats": stats_percentages
+        }
+        
+        # Save cache
+        cache_path = self.workspace_root / "files.json"
+        try:
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                json.dump(result_dict, f, indent=2)
+        except Exception as e:
+            logger.error(f"Failed to save files.json cache: {e}")
+            
+        return result_dict
     
     def get_output_info(self, file_path: Path) -> Optional[FileInfo]:
         """
