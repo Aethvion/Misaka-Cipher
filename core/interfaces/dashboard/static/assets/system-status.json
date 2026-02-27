@@ -30,6 +30,10 @@
                 {
                     "name": "OpenAI",
                     "desc": "Native support for OpenAI models."
+                },
+                {
+                    "name": "xAI (Grok)",
+                    "desc": "Native support for Grok models."
                 }
             ],
             "tooling": [
@@ -92,8 +96,8 @@
             ],
             "providers": [
                 {
-                    "name": "xAI (Grok)",
-                    "desc": "Native support for Grok models."
+                    "name": "Anthropic",
+                    "desc": "Native support for Anthropic models."
                 }
             ],
             "memory": [
@@ -111,10 +115,6 @@
         },
         "planned": {
             "providers": [
-                {
-                    "name": "Anthropic",
-                    "desc": "Native support for Anthropic models."
-                },
                 {
                     "name": "DeepSeek",
                     "desc": "Native support for DeepSeek models."
