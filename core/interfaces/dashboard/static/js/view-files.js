@@ -20,44 +20,47 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('view-grid-btn')?.addEventListener('click', () => setViewMode('grid'));
     document.getElementById('view-list-btn')?.addEventListener('click', () => setViewMode('list'));
 
-    // Load preferences
-    loadPreferences();
+    // Do not call loadFilePreferences() immediately on DOM load to avoid race conditions.
+    // It will be triggered by systemReady when all global data is hydrated.
 });
 
-async function loadPreferences() {
-    try {
-        const response = await fetch('/api/preferences/get?key=files_filters.hide_folders', {
-            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
-        });
-        if (response.ok) {
-            const data = await response.json();
-            console.log("Loaded preference files_filters.hide_folders:", data);
-            if (data && data.hasOwnProperty('value') && data.value !== null) {
-                // Ensure value is strictly a boolean
-                hideFolders = (data.value === true || String(data.value).toLowerCase() === 'true');
-                const toggle = document.getElementById('exclude-folders-toggle');
-                if (toggle) toggle.checked = hideFolders;
+// Rely on systemReady heavily
+window.addEventListener('systemReady', () => {
+    loadFilePreferences();
+});
 
-                // Re-render files if they're already loaded before preferences finished fetching
-                if (currentFiles && currentFiles.length > 0) {
-                    renderFiles();
-                }
-            } else {
-                console.warn("Preferences value missing or null", data);
-            }
+async function loadFilePreferences() {
+    try {
+        // Use the global prefs object loaded during startup
+        hideFolders = prefs.get('files_filters.hide_folders', true);
+        const toggle = document.getElementById('exclude-folders-toggle');
+        if (toggle) toggle.checked = hideFolders;
+
+        // Load View Mode
+        const savedViewMode = prefs.get('files_filters.view_mode', 'grid');
+        setViewMode(savedViewMode, false); // Don't trigger save during load
+
+        // Load Sort
+        const savedSort = prefs.get('files_filters.sort', { key: 'name', dir: 'asc' });
+        currentSort = savedSort;
+        const sortDropdown = document.getElementById('sort-filter');
+        if (sortDropdown) sortDropdown.value = `${currentSort.key}_${currentSort.dir}`;
+
+        // Re-render files if they're already loaded before preferences finished fetching
+        if (currentFiles && currentFiles.length > 0) {
+            renderFiles();
         }
-    } catch (e) { console.error("Could not load preferences", e); }
+    } catch (e) {
+        console.error("Could not load preferences from global object", e);
+    }
 }
 
 async function handleExcludeFoldersChange(e) {
     hideFolders = e.target.checked;
     renderFiles();
     try {
-        await fetch('/api/preferences/files_filters.hide_folders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: 'files_filters.hide_folders', value: hideFolders })
-        });
+        // Save via global prefs wrapper
+        await prefs.set('files_filters.hide_folders', hideFolders);
     } catch (e) { console.error("Could not save preference", e); }
 }
 
@@ -65,6 +68,10 @@ function handleSortDropdownChange(e) {
     const val = e.target.value; // e.g., 'name_asc', 'date_desc'
     const parts = val.split('_');
     currentSort = { key: parts[0], dir: parts[1] };
+
+    // Save to preferences
+    prefs.set('files_filters.sort', currentSort).catch(console.error);
+
     renderFiles();
 }
 
@@ -81,10 +88,13 @@ function handleSortHeaderClick(key) {
         dd.value = `${currentSort.key}_${currentSort.dir}`;
     }
 
+    // Save to preferences
+    prefs.set('files_filters.sort', currentSort).catch(console.error);
+
     renderFiles();
 }
 
-function setViewMode(mode) {
+function setViewMode(mode, save = true) {
     currentViewMode = mode;
 
     const gridBtn = document.getElementById('view-grid-btn');
@@ -103,6 +113,10 @@ function setViewMode(mode) {
             container.classList.remove('files-grid-view');
             container.classList.add('files-list-view');
         }
+    }
+
+    if (save) {
+        prefs.set('files_filters.view_mode', mode).catch(console.error);
     }
 
     renderFiles();

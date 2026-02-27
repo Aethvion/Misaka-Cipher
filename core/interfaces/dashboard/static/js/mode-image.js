@@ -132,7 +132,7 @@ async function loadImageModels() {
     for (const [providerName, config] of Object.entries(_registryData.providers)) {
         if (!config.models) continue;
         for (const [key, info] of Object.entries(config.models)) {
-            const caps = info.capabilities || [];
+            const caps = (info.capabilities || []).map(c => c.toLowerCase());
             if (caps.includes('image') || caps.includes('image_generation')) {
                 models.push({
                     key: key,
