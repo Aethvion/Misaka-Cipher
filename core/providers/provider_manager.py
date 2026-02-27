@@ -279,19 +279,24 @@ class ProviderManager:
                 descriptor_lines = []
                 for mid in candidate_pool:
                     info = self.model_descriptor_map.get(mid, {})
+                    provider_name = info.get('provider', '').lower()
                     desc = info.get('description', '').strip()
-                    descriptor_lines.append(f"- {mid}: {desc}" if desc else f"- {mid}")
+                    descriptor_lines.append(f"- {mid} (Provider: {provider_name}): {desc}" if desc else f"- {mid} (Provider: {provider_name})")
 
                 chosen = None
                 routing_reason = ''
-                if route_picker and len(candidate_pool) > 1 and any(': ' in l for l in descriptor_lines):
+                direct_answer = None
+
+                if route_picker and len(candidate_pool) > 1:
                     routing_prompt = (
                         f"You are a model router. The user wants to send a message to the best-fit AI model.\n"
-                        f"Select the single best model from the list below for the user's message.\n"
-                        f"You may also use natural language hints in the message like 'use the most complex model', "
-                        f"'use a claude model', or 'use the fastest model' — respect those if present.\n"
-                        f"Return ONLY valid JSON with exactly two fields, no markdown, no code fences:\n"
-                        f"{{\"model\": \"<exact_model_id_from_list>\", \"reason\": \"<one sentence why>\"}}\n\n"
+                        f"Select the single best model from the list below for the user's message.\n\n"
+                        f"CRITICAL RULES:\n"
+                        f"1. If the user explicitly requests a specific PROVIDER (e.g., 'openai', 'grok', 'google', 'anthropic', 'claude', 'xai') or a specific MODEL, you MUST select that model or a model from that provider.\n"
+                        f"2. If the user's request is simple (facts, simple greeting, short math, etc.) and YOU can answer it yourself, provide the answer in the 'answer' field and select yourself ('{route_picker}') as the model.\n"
+                        f"3. Otherwise, select the most capable model for complex reasoning or the fastest model for simple tasks if not specified.\n\n"
+                        f"Return ONLY valid JSON with exactly three fields, no markdown, no code fences:\n"
+                        f"{{\"model\": \"<exact_model_id_from_list>\", \"reason\": \"<one sentence why>\", \"answer\": \"<optional direct answer if step 2 applies, else null>\"}}\n\n"
                         f"Available models:\n" + "\n".join(descriptor_lines) + "\n\n"
                         f"User message (first 800 chars): {prompt[:800]}"
                     )
@@ -306,19 +311,25 @@ class ProviderManager:
                         )
                         if routing_response.success:
                             raw_content = routing_response.content.strip()
-                            # Try JSON parse first
                             try:
-                                import json as _json
-                                parsed = _json.loads(raw_content)
+                                # Ensure we don't have markdown fences
+                                if "```json" in raw_content:
+                                    raw_content = raw_content.split("```json")[1].split("```")[0].strip()
+                                elif "```" in raw_content:
+                                    raw_content = raw_content.split("```")[1].split("```")[0].strip()
+                                
+                                parsed = json.loads(raw_content)
                                 raw_model = str(parsed.get('model', '')).strip().strip('"').split()[0]
                                 routing_reason = str(parsed.get('reason', '')).strip()
+                                direct_answer = parsed.get('answer')
                             except Exception:
                                 # Fallback: treat as plain model ID string
                                 raw_model = raw_content.strip('\"').strip("'").split()[0]
-                                routing_reason = ''
+                                routing_reason = 'Fallback parsing'
+                            
                             if raw_model in candidate_pool:
                                 chosen = raw_model
-                                logger.info(f"[{trace_id}] AUTO router ({route_picker}) chose: '{chosen}' reason: '{routing_reason}'")
+                                logger.info(f"[{trace_id}] AUTO router ({route_picker}) chose: '{chosen}' reason: '{routing_reason}' DirectAnswer: {bool(direct_answer)}")
                             else:
                                 logger.warning(f"[{trace_id}] Router returned unknown model '{raw_model}', using pool order")
                         else:
@@ -326,16 +337,33 @@ class ProviderManager:
                     except Exception as router_err:
                         logger.error(f"[{trace_id}] Router exception: {router_err}")
 
+                # 2.2 Handle Direct Answer Efficiency
+                if direct_answer and isinstance(direct_answer, str) and direct_answer.strip():
+                    logger.info(f"[{trace_id}] ROUTER DIRECT ANSWER: Bypassing second model call.")
+                    return ProviderResponse(
+                        content=direct_answer,
+                        model=route_picker or "auto_router",
+                        provider=self.model_to_provider_map.get(route_picker, "unknown"),
+                        trace_id=trace_id,
+                        metadata={
+                            'auto_routed': True,
+                            'route_picker': route_picker,
+                            'routing_reason': routing_reason,
+                            'direct_answer': True
+                        }
+                    )
+
                 if chosen:
                     model_order = [chosen] + [m for m in candidate_pool if m != chosen]
                 else:
                     model_order = candidate_pool
 
-                # Capture routing metadata as a local (NOT in kwargs — would leak to provider.generate)
+                # Capture routing metadata
                 auto_routing_meta = {
                     'route_picker': route_picker or '',
                     'routed_to': chosen or (candidate_pool[0] if candidate_pool else ''),
                     'routing_reason': routing_reason,
+                    'auto_routed': True
                 }
 
             
@@ -434,14 +462,17 @@ class ProviderManager:
                 if response.success:
                     logger.info(f"[{trace_id}] Request successful with provider: {target_provider_name}")
 
+                    # Merge auto-routing metadata into response for downstream tools/UI
+                    if not response.metadata:
+                        response.metadata = {}
+                    if auto_routing_meta:
+                        response.metadata.update(auto_routing_meta)
+                        response.metadata['routed_model'] = model_id
+
                     # Log usage
                     try:
                         from core.workspace.usage_tracker import get_usage_tracker
                         tracker = get_usage_tracker()
-                        # Attach auto-routing metadata if this was an AUTO routed call
-                        log_meta = {**(response.metadata or {}), **auto_routing_meta}
-                        if auto_routing_meta:
-                            log_meta['routed_model'] = model_id
                         tracker.log_api_call(
                             provider=response.provider,
                             model=response.model,
@@ -449,7 +480,7 @@ class ProviderManager:
                             response_content=response.content,
                             trace_id=trace_id,
                             success=True,
-                            metadata=log_meta,
+                            metadata=response.metadata,
                             source=source
                         )
                     except Exception as usage_err:
