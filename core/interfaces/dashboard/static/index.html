@@ -41,6 +41,7 @@
     <link rel="stylesheet" href="/static/css/preferences.css">
     <link rel="stylesheet" href="/static/css/status.css">
     <link rel="stylesheet" href="/static/css/image_studio.css">
+    <link rel="stylesheet" href="/static/css/misaka_cipher.css">
     <link rel="stylesheet" href="/static/css/adv_aiconv.css">
     <link rel="stylesheet" href="/static/css/assistant.css">
 </head>
@@ -615,15 +616,31 @@
 
         <!-- Misaka Cipher (Companion) Tab -->
         <div class="main-tab-panel" id="misaka-cipher-panel">
-            <div class="panel-header">
-                <h2>Misaka Cipher</h2>
-            </div>
-            <div class="panel-content" style="padding: 2rem; text-align: center;">
-                <div class="placeholder-text">
-                    <i class="fas fa-sparkles"
-                        style="font-size: 3rem; color: var(--primary); margin-bottom: 1rem; display: block;"></i>
-                    <h3>Misaka Cipher Companion</h3>
-                    <p>The neural core of your digital companion is initializing.</p>
+            <div class="companion-layout">
+                <!-- Companion Column (Left) -->
+                <div class="companion-avatar-view">
+                    <div class="avatar-container">
+                        <img id="misaka-expression-img" src="/static/misakacipher/expressions/misakacipher_default.png"
+                            alt="Misaka Cipher">
+                    </div>
+                    <div id="misaka-status-line" class="status-line">Neural core engaged.</div>
+                </div>
+
+                <!-- Chat Column (Middle) -->
+                <div class="companion-chat-column">
+                    <div class="chat-header">
+                        <h2>Misaka Cipher</h2>
+                    </div>
+                    <div class="chat-messages" id="misaka-chat-messages">
+                        <!-- Messages will scroll here -->
+                        <div class="chat-message assistant">
+                            <div class="message-bubble">Hello! I am Misaka Cipher. Ready to assist you.</div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <textarea id="misaka-chat-input" placeholder="Type a message to Misaka..."></textarea>
+                        <button id="send-misaka-msg" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -850,15 +867,14 @@
 
         <!-- Misaka Cipher Memory Tab -->
         <div class="main-tab-panel" id="misaka-memory-panel">
-            <div class="panel-header">
-                <h2>Misaka Cipher Memory</h2>
-            </div>
-            <div class="panel-content" style="padding: 2rem; text-align: center;">
-                <div class="placeholder-text">
-                    <i class="fas fa-brain"
-                        style="font-size: 3rem; color: var(--accent); margin-bottom: 1rem; display: block;"></i>
-                    <h3>Misaka Cipher - Neural Memory</h3>
-                    <p>Deep neural patterns and personality traces will be recorded here.</p>
+            <div class="neural-memory-layout">
+                <div class="memory-file-view">
+                    <h4><i class="fas fa-id-card"></i> BASE_INFO.JSON</h4>
+                    <div id="misaka-base-info-viewer" class="json-viewer">Loading base info...</div>
+                </div>
+                <div class="memory-file-view">
+                    <h4><i class="fas fa-brain"></i> MEMORY.JSON</h4>
+                    <div id="misaka-dynamic-memory-viewer" class="json-viewer">Loading dynamic memory...</div>
                 </div>
             </div>
         </div>
@@ -1446,6 +1462,7 @@
         <script src="/static/js/mode-aiconv.js?v=2"></script>
         <script src="/static/js/mode-adv-aiconv.js?v=3"></script>
         <script src="/static/js/mode-chat.js?v=1"></script>
+        <script src="/static/js/mode-misakacipher.js?v=1"></script>
         <script src="/static/js/assistant.js?v=1"></script>
 </body>
 

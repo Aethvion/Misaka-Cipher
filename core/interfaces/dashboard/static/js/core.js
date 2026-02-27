@@ -328,6 +328,9 @@ function switchMainTab(tabName, save = true) {
     }
     else if (tabName === 'aiconv' && typeof loadArenaModels === 'function') loadArenaModels();
     else if (tabName === 'status' && typeof loadSystemStatusTab === 'function') loadSystemStatusTab();
+    else if ((tabName === 'misaka-cipher' || tabName === 'misaka-memory') && typeof initializeMisakaCipher === 'function') {
+        initializeMisakaCipher();
+    }
 
     // Update layout based on mode
     updateChatLayout();

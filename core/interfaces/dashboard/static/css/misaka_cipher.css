@@ -1,0 +1,210 @@
+/* Misaka Cipher Companion - Premium Aesthetics */
+
+.companion-layout {
+    display: flex;
+    height: 100%;
+    background: linear-gradient(135deg, var(--bg-primary) 0%, #0a0a14 100%);
+    overflow: hidden;
+}
+
+/* Avatar Column */
+.companion-avatar-view {
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    border-right: 1px solid rgba(0, 217, 255, 0.1);
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(10px);
+}
+
+.avatar-container {
+    width: 320px;
+    height: 320px;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 30px rgba(0, 217, 255, 0.2);
+    border: 1px solid rgba(0, 217, 255, 0.3);
+    background: #000;
+}
+
+.avatar-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.status-line {
+    margin-top: 1.5rem;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
+    animation: pulse 2s infinite ease-in-out;
+}
+
+/* Chat Column */
+.companion-chat-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.companion-chat-column .chat-header {
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.companion-chat-column .chat-messages {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    scroll-behavior: smooth;
+}
+
+/* Chat Bubbles */
+.chat-message {
+    max-width: 80%;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-message.assistant {
+    align-self: flex-start;
+}
+
+.chat-message.user {
+    align-self: flex-end;
+}
+
+.message-bubble {
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    font-size: 1rem;
+    line-height: 1.5;
+    position: relative;
+}
+
+.assistant .message-bubble {
+    background: rgba(0, 217, 255, 0.05);
+    border: 1px solid rgba(0, 217, 255, 0.2);
+    color: var(--text-primary);
+    border-bottom-left-radius: 2px;
+}
+
+.user .message-bubble {
+    background: var(--primary);
+    color: var(--bg-primary);
+    border-bottom-right-radius: 2px;
+    box-shadow: 0 4px 15px rgba(0, 217, 255, 0.3);
+}
+
+/* Input Area */
+.chat-input-area {
+    padding: 1.5rem 2rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.chat-input-area textarea {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: var(--text-primary);
+    resize: none;
+    height: 48px;
+    font-family: inherit;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.chat-input-area textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 10px rgba(0, 217, 255, 0.2);
+}
+
+.send-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    background: var(--primary);
+    color: var(--bg-primary);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.send-btn:hover {
+    transform: translateY(-2px);
+    background: var(--primary-hover);
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 0.8;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+/* Neural Memory Panel */
+.neural-memory-layout {
+    display: flex;
+    height: 100%;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.memory-file-view {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.memory-file-view h4 {
+    padding: 0.75rem 1rem;
+    background: var(--bg-tertiary);
+    margin: 0;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    color: var(--primary);
+}
+
+.json-viewer {
+    flex: 1;
+    padding: 1rem;
+    overflow: auto;
+    font-family: 'Fira Code', 'Courier New', monospace;
+    font-size: 0.85rem;
+    color: var(--accent);
+    white-space: pre-wrap;
+    background: #050505;
+}

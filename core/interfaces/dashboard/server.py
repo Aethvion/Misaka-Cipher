@@ -207,6 +207,7 @@ async def initialize_system_background():
         from .image_routes import router as image_router
         from .advanced_aiconv_routes import router as adv_aiconv_router
         from .assistant_routes import router as assistant_router
+        from .misaka_cipher_routes import router as misaka_cipher_router
         
         # Immediate Router Inclusion (Sync but fast)
         app.include_router(package_router)
@@ -220,6 +221,7 @@ async def initialize_system_background():
         app.include_router(image_router)
         app.include_router(adv_aiconv_router)
         app.include_router(assistant_router)
+        app.include_router(misaka_cipher_router)
 
         # Step 2: Offload Heavy Component Initialization to a Thread
         # This keeps the FastAPI event loop free to serve requests.
