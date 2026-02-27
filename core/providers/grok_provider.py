@@ -200,6 +200,9 @@ class GrokProvider(BaseProvider):
         n: int = 1,
         size: str = "1024x1024",
         quality: str = "standard",
+        action: str = "generate",
+        input_image_bytes: Optional[bytes] = None,
+        mask_image_bytes: Optional[bytes] = None,
         **kwargs
     ) -> ProviderResponse:
         """Grok does not currently support image generation."""

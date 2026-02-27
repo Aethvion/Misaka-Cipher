@@ -240,10 +240,22 @@ class GoogleAIProvider(BaseProvider):
         n: int = 1,
         size: str = "1024x1024",
         quality: str = "standard",
+        action: str = "generate",
+        input_image_bytes: Optional[bytes] = None,
+        mask_image_bytes: Optional[bytes] = None,
         **kwargs
     ) -> ProviderResponse:
-        """Generate image using Google AI."""
+        """Generate or manipulate an image using Google AI."""
         try:
+            if action != "generate":
+                return ProviderResponse(
+                    content="",
+                    model=model or "google_ai",
+                    provider="google_ai",
+                    trace_id=trace_id,
+                    error=f"Action '{action}' is currently not supported natively by the Misaka Google AI integration."
+                )
+
             active_model = model if model else "imagen-3.0-generate-002"
             logger.debug(f"[{trace_id}] Generating image with Google AI model {active_model}")
 

@@ -174,29 +174,50 @@ class OpenAIProvider(BaseProvider):
         n: int = 1,
         size: str = "1024x1024",
         quality: str = "standard",
+        action: str = "generate",
+        input_image_bytes: Optional[bytes] = None,
+        mask_image_bytes: Optional[bytes] = None,
         **kwargs
     ) -> ProviderResponse:
-        """Generate image using OpenAI."""
+        """Generate or manipulate an image using OpenAI."""
         try:
             active_model = model if model else "dall-e-3"
-            logger.debug(f"[{trace_id}] Generating image with OpenAI model {active_model}")
+            logger.debug(f"[{trace_id}] {action.capitalize()} image with OpenAI model {active_model}")
 
-            # Generate
-            # DALL-E 3 requires specific sizes, 1024x1024 is standard.
-            # quality: standard or hd
-            
-            # Map size from app.js '1024x1024' to API inputs
-            # OpenAI API takes 'size' param directly.
-            
-            response = self.client.images.generate(
-                model=active_model,
-                prompt=prompt,
-                n=n,
-                size=size,
-                quality=quality,
-                response_format="b64_json",
-                user=trace_id
-            )
+            if action == "edit":
+                if not input_image_bytes:
+                    raise ValueError("input_image_bytes is required for 'edit' action")
+                edit_kwargs = {
+                    "model": active_model if "dall-e-2" in active_model else "dall-e-2", # OpenAI Edit requires DALL-E 2
+                    "image": input_image_bytes,
+                    "prompt": prompt,
+                    "n": n,
+                    "size": size,
+                    "response_format": "b64_json",
+                    "user": trace_id
+                }
+                if mask_image_bytes:
+                    edit_kwargs["mask"] = mask_image_bytes
+                
+                response = self.client.images.edit(**edit_kwargs)
+            elif action == "generate":
+                response = self.client.images.generate(
+                    model=active_model,
+                    prompt=prompt,
+                    n=n,
+                    size=size,
+                    quality=quality,
+                    response_format="b64_json",
+                    user=trace_id
+                )
+            else:
+                return ProviderResponse(
+                    content="",
+                    model=active_model,
+                    provider="openai",
+                    trace_id=trace_id,
+                    error=f"Action '{action}' is currently not supported natively by the Misaka OpenAI integration."
+                )
             
             import base64
             image_bytes_list = []

@@ -39,6 +39,9 @@ class ImageGenerationRequest(BaseModel):
     aspect_ratio: Optional[str] = None # 1:1, 16:9 (Imagen specific)
     negative_prompt: Optional[str] = None
     seed: Optional[int] = None
+    action: str = "generate"
+    input_image: Optional[str] = None  # base64 encoded string
+    mask_image: Optional[str] = None   # base64 encoded string
 
 class ImageGenerationResponse(BaseModel):
     success: bool
@@ -100,6 +103,22 @@ async def generate_image(req: ImageGenerationRequest):
         if req.seed is not None:
              kwargs['seed'] = req.seed
 
+        # Decode base64 images if present
+        import base64
+        input_image_bytes = None
+        mask_image_bytes = None
+        
+        def decode_b64(b64_str: str) -> bytes:
+            if "," in b64_str:
+                # Remove data URI prefix (e.g., data:image/png;base64,...)
+                b64_str = b64_str.split(",", 1)[1]
+            return base64.b64decode(b64_str)
+
+        if req.input_image:
+            input_image_bytes = decode_b64(req.input_image)
+        if req.mask_image:
+            mask_image_bytes = decode_b64(req.mask_image)
+
         # Call generate_image
         # Note: generate_image is synchronous in our implementation (calls API blocking)
         # We should ideally run this in a threadpool if it blocks, but for now direct call.
@@ -110,6 +129,9 @@ async def generate_image(req: ImageGenerationRequest):
             n=req.n,
             size=req.size,
             quality=req.quality,
+            action=req.action,
+            input_image_bytes=input_image_bytes,
+            mask_image_bytes=mask_image_bytes,
             **kwargs
         )
         

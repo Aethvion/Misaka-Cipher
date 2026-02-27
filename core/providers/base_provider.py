@@ -101,10 +101,13 @@ class BaseProvider(ABC):
         n: int = 1,
         size: str = "1024x1024",
         quality: str = "standard",
+        action: str = "generate",
+        input_image_bytes: Optional[bytes] = None,
+        mask_image_bytes: Optional[bytes] = None,
         **kwargs
     ) -> ProviderResponse:
         """
-        Generate an image from the provider.
+        Generate or manipulate an image from the provider.
         
         Args:
             prompt: Image prompt
@@ -113,6 +116,9 @@ class BaseProvider(ABC):
             n: Number of images to generate
             size: Image size text (e.g. "1024x1024")
             quality: Quality setting
+            action: "generate", "edit", "upscale", "expand"
+            input_image_bytes: Required if action is not "generate"
+            mask_image_bytes: Optional for inpainting mode
             **kwargs: Additional provider-specific parameters
             
         Returns:
