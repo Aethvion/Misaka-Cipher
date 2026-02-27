@@ -439,7 +439,7 @@ async function toggleAddProviderInline() {
 }
 
 // Available capability tags
-const AVAILABLE_CAPS = ['chat', 'image'];
+const AVAILABLE_CAPS = ['CHAT', 'IMAGE'];
 
 /**
  * Renders the inner HTML of a caps table cell.
@@ -649,6 +649,15 @@ async function loadChatModels() {
         if (!res.ok) throw new Error('Failed to load chat models');
         const data = await res.json();
 
+        // Standardize tags in registry data too if they come back as lowercase
+        if (data.models) {
+            data.models.forEach(m => {
+                if (m.capabilities) {
+                    m.capabilities = m.capabilities.map(c => c.toUpperCase());
+                }
+            });
+        }
+
         const chatOptions = generateCategorizedModelOptions(data, 'chat');
         const agentOptions = generateCategorizedModelOptions(data, 'agent');
 
@@ -673,7 +682,7 @@ async function loadChatModels() {
     }
 }
 
-function renderProviderCards(registry) {
+function renderProviderCards(registry, expandedProviderName = null) {
     const container = document.getElementById('provider-cards-container');
     if (!container) return;
 
@@ -682,6 +691,7 @@ function renderProviderCards(registry) {
 
     for (const [name, config] of Object.entries(providers)) {
         const isActive = (config.chat_config?.active || config.agent_config?.active);
+        const shouldBeExpanded = (name === expandedProviderName);
 
         html += `
             <div class="compact-provider-item ${isActive ? 'active' : ''}" data-provider="${name}">
@@ -710,7 +720,7 @@ function renderProviderCards(registry) {
                         </label>
                     </div>
                 </div>
-                <div class="provider-models-foldout" style="display:none;">
+                <div class="provider-models-foldout" style="display:${shouldBeExpanded ? 'block' : 'none'};">
                     <table class="compact-models-table">
                         <thead>
                             <tr>
@@ -1152,32 +1162,32 @@ async function openAddModelModal(providerName) {
             </div>
             <div class="modal-body">
                 <div class="setting-group">
-                    <label>Select from Suggested Models</label>
+                    <label>Select from suggested models</label>
                     <div class="suggested-select-wrapper">
-                        <select id="suggested-model-select" class="control-input">
-                            <option value="">-- Select or choose Custom --</option>
+                        <i class="fas fa-wand-sparkles select-magic-icon"></i>
+                        <select id="suggested-model-select" class="term-select-main">
+                            <option value="">-- Choose a Model --</option>
                             ${providerSuggested.map(m => `
                                 <option value="${m.id}" data-cost-in="${m.input_cost || 0}" data-cost-out="${m.output_cost || 0}" data-caps="${(m.capabilities || []).join(',')}">
                                     ${m.id} (${m.tier || 'custom'})
                                 </option>
                             `).join('')}
                         </select>
-                        <i class="fas fa-magic select-magic-icon"></i>
                     </div>
                 </div>
                 <div class="divider"><span>OR CUSTOM</span></div>
                 <div class="setting-group">
                     <label>Custom Model ID</label>
-                    <input type="text" id="custom-model-id" class="control-input" placeholder="e.g. gpt-4-turbo">
+                    <input type="text" id="custom-model-id" class="term-input" placeholder="e.g. gpt-4-turbo">
                 </div>
                 <div class="cost-row-grid">
                     <div class="setting-group">
                         <label>Input Cost ($/1M)</label>
-                        <input type="number" step="0.01" id="new-model-cost-in" class="control-input" value="0">
+                        <input type="number" step="0.01" id="new-model-cost-in" class="term-input" value="0">
                     </div>
                     <div class="setting-group">
                         <label>Output Cost ($/1M)</label>
-                        <input type="number" step="0.01" id="new-model-cost-out" class="control-input" value="0">
+                        <input type="number" step="0.01" id="new-model-cost-out" class="term-input" value="0">
                     </div>
                 </div>
                  <div class="setting-group">
@@ -1254,7 +1264,7 @@ async function openAddModelModal(providerName) {
 
         closeModal();
         markSettingsDirty();
-        renderProviderCards(_registryData);
+        renderProviderCards(_registryData, providerName);
         showNotification(`Model ${modelId} added (unsaved).`, 'info');
     };
 }

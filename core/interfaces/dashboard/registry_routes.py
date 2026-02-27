@@ -435,8 +435,10 @@ async def get_chat_models():
                     continue
 
                 capabilities = model_info.get("capabilities", [])
+                # Normalize capabilities to lowercase for internal checks
+                caps_lower = [c.lower() for c in capabilities]
                 # Only include models that explicitly have 'chat' capability
-                if "chat" not in capabilities:
+                if "chat" not in caps_lower:
                     continue
 
                 chat_models.append({
@@ -476,7 +478,8 @@ def _get_chat_model_ids(registry: Dict[str, Any]) -> Dict[str, Dict]:
             if not isinstance(model_info, dict):
                 continue
             caps = model_info.get("capabilities", [])
-            if "chat" in caps:
+            caps_lower = [c.lower() for c in caps]
+            if "chat" in caps_lower:
                 result[model_id] = {
                     "description": model_info.get("description", ""),
                     "provider": provider_name,

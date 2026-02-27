@@ -4,10 +4,7 @@
             "id": "gemini-2.0-flash",
             "tier": "fast",
             "capabilities": [
-                "chat",
-                "analysis",
-                "code_generation",
-                "verification"
+                "CHAT"
             ],
             "input_cost": 0.1,
             "output_cost": 0.4,
@@ -17,8 +14,7 @@
             "id": "gemini-2.0-flash-lite",
             "tier": "fast",
             "capabilities": [
-                "chat",
-                "analysis"
+                "CHAT"
             ],
             "input_cost": 0.075,
             "output_cost": 0.3,
@@ -28,10 +24,7 @@
             "id": "gemini-2.5-pro-preview-05-06",
             "tier": "premium",
             "capabilities": [
-                "chat",
-                "analysis",
-                "code_generation",
-                "complex_reasoning"
+                "CHAT"
             ],
             "input_cost": 1.25,
             "output_cost": 10,
@@ -41,10 +34,7 @@
             "id": "gemini-3-flash-preview",
             "tier": "fast",
             "capabilities": [
-                "chat",
-                "analysis",
-                "code_generation",
-                "complex_reasoning"
+                "CHAT"
             ],
             "input_cost": 0.5,
             "output_cost": 3,
@@ -54,7 +44,7 @@
             "id": "imagen-3.0-generate-002",
             "tier": "specialized",
             "capabilities": [
-                "image_generation"
+                "IMAGE"
             ],
             "input_cost": 0,
             "output_cost": 0,
@@ -84,8 +74,7 @@
             "id": "gpt-4o-mini",
             "tier": "fast",
             "capabilities": [
-                "chat",
-                "analysis"
+                "CHAT"
             ],
             "input_cost": 0.15,
             "output_cost": 0.6,
@@ -95,9 +84,7 @@
             "id": "gpt-4o",
             "tier": "premium",
             "capabilities": [
-                "chat",
-                "analysis",
-                "code_generation"
+                "CHAT"
             ],
             "input_cost": 2.5,
             "output_cost": 10,
@@ -107,10 +94,7 @@
             "id": "o3-mini",
             "tier": "premium",
             "capabilities": [
-                "chat",
-                "analysis",
-                "code_generation",
-                "complex_reasoning"
+                "CHAT"
             ],
             "input_cost": 1.1,
             "output_cost": 4.4,
@@ -120,7 +104,7 @@
             "id": "dall-e-3",
             "tier": "specialized",
             "capabilities": [
-                "image_generation"
+                "IMAGE"
             ],
             "input_cost": 0,
             "output_cost": 0,
@@ -151,8 +135,7 @@
             "id": "grok-3-mini-fast",
             "tier": "fast",
             "capabilities": [
-                "chat",
-                "analysis"
+                "CHAT"
             ],
             "input_cost": 0.3,
             "output_cost": 0.5,
@@ -162,10 +145,7 @@
             "id": "grok-3",
             "tier": "premium",
             "capabilities": [
-                "chat",
-                "analysis",
-                "code_generation",
-                "complex_reasoning"
+                "CHAT"
             ],
             "input_cost": 3,
             "output_cost": 15,
@@ -177,8 +157,7 @@
             "id": "claude-3-5-haiku-latest",
             "tier": "fast",
             "capabilities": [
-                "chat",
-                "analysis"
+                "CHAT"
             ],
             "input_cost": 0.8,
             "output_cost": 4,
@@ -188,10 +167,7 @@
             "id": "claude-sonnet-4-20250514",
             "tier": "premium",
             "capabilities": [
-                "chat",
-                "analysis",
-                "code_generation",
-                "complex_reasoning"
+                "CHAT"
             ],
             "input_cost": 3,
             "output_cost": 15,
@@ -201,10 +177,7 @@
             "id": "claude-3-opus-latest",
             "tier": "premium",
             "capabilities": [
-                "chat",
-                "analysis",
-                "code_generation",
-                "complex_reasoning"
+                "CHAT"
             ],
             "input_cost": 15,
             "output_cost": 75,
@@ -216,7 +189,7 @@
             "id": "llama3",
             "tier": "local",
             "capabilities": [
-                "chat"
+                "CHAT"
             ],
             "input_cost": 0,
             "output_cost": 0,
@@ -226,8 +199,7 @@
             "id": "mistral",
             "tier": "local",
             "capabilities": [
-                "chat",
-                "analysis"
+                "CHAT"
             ],
             "input_cost": 0,
             "output_cost": 0,
@@ -237,7 +209,7 @@
             "id": "codellama",
             "tier": "local",
             "capabilities": [
-                "code_generation"
+                "CHAT"
             ],
             "input_cost": 0,
             "output_cost": 0,
