@@ -92,6 +92,10 @@
                 {
                     "name": "Image Generation Studio",
                     "desc": "Integrated workspace for text-to-image synthesis."
+                },
+                {
+                    "name": "Audio Generation Studio",
+                    "desc": "Integrated workspace for text-to-audio synthesis."
                 }
             ],
             "providers": [

@@ -47,7 +47,13 @@ async def root():
     """Serve the main dashboard page instantly."""
     index_path = STATIC_DIR / "index.html"
     if index_path.exists():
-        return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
+        content = index_path.read_text(encoding="utf-8")
+        headers = {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+        return HTMLResponse(content=content, headers=headers)
     return HTMLResponse("<h1>Misaka Cipher Dashboard</h1><p>index.html not found</p>")
 
 # Mount static files immediately

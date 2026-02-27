@@ -40,18 +40,6 @@ class FileInfo:
             'is_dir': self.is_dir
         }
     
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for API responses."""
-        return {
-            'path': self.path,
-            'filename': self.filename,
-            'domain': self.domain,
-            'size_bytes': self.size_bytes,
-            'created_at': self.created_at,
-            'trace_id': self.trace_id,
-            'file_type': self.file_type
-        }
-
 
 class WorkspaceManager:
     """

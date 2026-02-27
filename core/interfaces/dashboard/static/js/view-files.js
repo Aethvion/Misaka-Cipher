@@ -3,7 +3,7 @@
 
 let currentFiles = [];
 let currentViewMode = 'grid'; // 'grid' or 'list'
-let excludeFolders = false;
+let hideFolders = false;
 let currentSort = { key: 'name', dir: 'asc' };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -26,26 +26,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadPreferences() {
     try {
-        const response = await fetch('/api/preferences/get?key=files_exclude_folders');
+        const response = await fetch('/api/preferences/get?key=files_filters.hide_folders', {
+            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+        });
         if (response.ok) {
             const data = await response.json();
-            if (data && data.value !== null) {
-                excludeFolders = data.value;
+            console.log("Loaded preference files_filters.hide_folders:", data);
+            if (data && data.hasOwnProperty('value') && data.value !== null) {
+                // Ensure value is strictly a boolean
+                hideFolders = (data.value === true || String(data.value).toLowerCase() === 'true');
                 const toggle = document.getElementById('exclude-folders-toggle');
-                if (toggle) toggle.checked = excludeFolders;
+                if (toggle) toggle.checked = hideFolders;
+
+                // Re-render files if they're already loaded before preferences finished fetching
+                if (currentFiles && currentFiles.length > 0) {
+                    renderFiles();
+                }
+            } else {
+                console.warn("Preferences value missing or null", data);
             }
         }
     } catch (e) { console.error("Could not load preferences", e); }
 }
 
 async function handleExcludeFoldersChange(e) {
-    excludeFolders = e.target.checked;
+    hideFolders = e.target.checked;
     renderFiles();
     try {
-        await fetch('/api/preferences/files_exclude_folders', {
+        await fetch('/api/preferences/files_filters.hide_folders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key: 'files_exclude_folders', value: excludeFolders })
+            body: JSON.stringify({ key: 'files_filters.hide_folders', value: hideFolders })
         });
     } catch (e) { console.error("Could not save preference", e); }
 }
@@ -184,7 +195,7 @@ function renderFiles() {
 
     // First, Filter
     let filteredFiles = currentFiles.filter(file => {
-        if (excludeFolders && file.is_dir) return false;
+        if (hideFolders && file.is_dir) return false;
 
         const matchesSearch = file.filename.toLowerCase().includes(searchQuery) ||
             file.path.toLowerCase().includes(searchQuery);
@@ -229,17 +240,20 @@ function renderFiles() {
 
     // Render
     if (currentViewMode === 'grid') {
-        container.innerHTML = filteredFiles.map(file => `
+        container.innerHTML = filteredFiles.map(file => {
+            const displayName = file.is_dir ? `${file.filename}/` : file.filename;
+            return `
             <div class="file-card" onclick="openExplorer('${file.path.replace(/'/g, "\\'")}')" title="${file.path}">
                 <div class="file-icon">${getFileHTML(file)}</div>
-                <div class="file-name">${file.filename}</div>
+                <div class="file-name">${displayName}</div>
                 <div class="file-meta">
                     <div class="text-truncate" style="max-width: 100%;" title="${file.path}">${file.domain}/${file.path}</div>
                     <div>${file.is_dir ? 'Folder' : formatFileSize(file.size_bytes)}</div>
                     <div>${formatDate(file.created_at)}</div>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     } else {
         const getSortIcon = (key) => {
             if (currentSort.key !== key) return '<i class="fas fa-sort"></i>';
@@ -259,15 +273,18 @@ function renderFiles() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${filteredFiles.map(file => `
+                    ${filteredFiles.map(file => {
+            const displayName = file.is_dir ? `${file.filename}/` : file.filename;
+            return `
                         <tr class="file-list-row" onclick="openExplorer('${file.path.replace(/'/g, "\\'")}')" style="cursor: pointer;">
                             <td style="text-align: center; padding: 4px;">${getFileHTML(file)}</td>
-                            <td style="font-weight: 500; color: var(--text-primary);">${file.filename}</td>
+                            <td style="font-weight: 500; color: var(--text-primary);">${displayName}</td>
                             <td class="text-truncate" style="max-width: 250px; color: var(--text-secondary);" title="${file.domain}/${file.path}">${file.domain}/${file.path}</td>
                             <td style="color: var(--text-secondary);">${file.is_dir ? '--' : formatFileSize(file.size_bytes)}</td>
                             <td style="color: var(--text-secondary);">${formatDate(file.created_at)}</td>
                         </tr>
-                    `).join('')}
+                        `;
+        }).join('')}
                 </tbody>
             </table>
         `;
