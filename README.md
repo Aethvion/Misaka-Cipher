@@ -1,4 +1,4 @@
-# Misaka Cipher (M.I.S.A.K.A.)
+# Misaka Cipher
 **Multitask Intelligence & Strategic Analysis Kernel Architecture**
 
 <div align="center">
@@ -12,7 +12,7 @@
 
 ---
 
-<img align="center" width="124px" src="https://raw.githubusercontent.com/Aethvion/Misaka-Cipher/refs/heads/main/core/interfaces/dashboard/static/misakacipher/chibi1/misakacipher_chibi_tablet.png?token=GHSAT0AAAAAADOWOOHABZTRDRRBYQFJLPBK2NANUXQ">
+<img align="center" width="124px" src="https://raw.githubusercontent.com/Aethvion/Misaka-Cipher/refs/heads/main/core/interfaces/dashboard/static/misakacipher/chibi1/misakacipher_chibi_tablet.png">
 
 ### ⚠️ STATUS: EXPERIMENTAL — EARLY DEVELOPMENT ⚠️
 
