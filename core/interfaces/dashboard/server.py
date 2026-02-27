@@ -599,6 +599,32 @@ async def download_workspace_file(domain: str, filename: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/workspace/files/serve")
+async def serve_workspace_file(path: str):
+    """Serve a workspace file directly (useful for image previews)."""
+    try:
+        from core.workspace import get_workspace_manager
+        workspace = get_workspace_manager()
+        file_path = workspace.workspace_root / path
+        
+        # Security check: ensure the path resolves within the workspace root
+        try:
+            resolved_path = file_path.resolve()
+            workspace_resolved = workspace.workspace_root.resolve()
+            if not str(resolved_path).startswith(str(workspace_resolved)):
+                raise HTTPException(status_code=403, detail="Access denied")
+        except Exception:
+            raise HTTPException(status_code=403, detail="Invalid path")
+
+        if not resolved_path.exists() or not resolved_path.is_file():
+            raise HTTPException(status_code=404, detail="File not found")
+            
+        return FileResponse(path=str(resolved_path))
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        logger.error(f"File serve error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/traces/{trace_id}")
 async def get_trace_details(trace_id: str):
     """Get trace details."""

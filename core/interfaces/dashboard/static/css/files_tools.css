@@ -105,6 +105,42 @@
 .file-icon {
     font-size: 2rem;
     margin-bottom: 0.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 40px;
+    /* fixed height for consistency when images are used */
+}
+
+.image-preview {
+    max-width: 100%;
+    max-height: 48px;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Sortable Table Headers */
+th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+th.sortable:hover {
+    background-color: rgba(0, 217, 255, 0.1);
+    color: var(--primary);
+}
+
+th.sortable i {
+    margin-left: 0.3rem;
+    font-size: 0.8em;
+    opacity: 0.5;
+}
+
+th.sortable.active-sort i {
+    opacity: 1;
+    color: var(--primary);
 }
 
 .file-name {

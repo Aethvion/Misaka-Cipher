@@ -3,6 +3,8 @@
 
 let currentFiles = [];
 let currentViewMode = 'grid'; // 'grid' or 'list'
+let excludeFolders = false;
+let currentSort = { key: 'name', dir: 'asc' };
 
 document.addEventListener('DOMContentLoaded', () => {
     // Setup event listeners for the files page
@@ -10,10 +12,66 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('file-search')?.addEventListener('input', renderFiles);
     document.getElementById('type-filter')?.addEventListener('change', renderFiles);
 
+    // New Feature Listeners
+    document.getElementById('exclude-folders-toggle')?.addEventListener('change', handleExcludeFoldersChange);
+    document.getElementById('sort-filter')?.addEventListener('change', handleSortDropdownChange);
+
     // View toggles
     document.getElementById('view-grid-btn')?.addEventListener('click', () => setViewMode('grid'));
     document.getElementById('view-list-btn')?.addEventListener('click', () => setViewMode('list'));
+
+    // Load preferences
+    loadPreferences();
 });
+
+async function loadPreferences() {
+    try {
+        const response = await fetch('/api/preferences/get?key=files_exclude_folders');
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.value !== null) {
+                excludeFolders = data.value;
+                const toggle = document.getElementById('exclude-folders-toggle');
+                if (toggle) toggle.checked = excludeFolders;
+            }
+        }
+    } catch (e) { console.error("Could not load preferences", e); }
+}
+
+async function handleExcludeFoldersChange(e) {
+    excludeFolders = e.target.checked;
+    renderFiles();
+    try {
+        await fetch('/api/preferences/files_exclude_folders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: 'files_exclude_folders', value: excludeFolders })
+        });
+    } catch (e) { console.error("Could not save preference", e); }
+}
+
+function handleSortDropdownChange(e) {
+    const val = e.target.value; // e.g., 'name_asc', 'date_desc'
+    const parts = val.split('_');
+    currentSort = { key: parts[0], dir: parts[1] };
+    renderFiles();
+}
+
+function handleSortHeaderClick(key) {
+    if (currentSort.key === key) {
+        currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort = { key: key, dir: 'asc' };
+    }
+
+    // Sync dropdown if exists
+    const dd = document.getElementById('sort-filter');
+    if (dd) {
+        dd.value = `${currentSort.key}_${currentSort.dir}`;
+    }
+
+    renderFiles();
+}
 
 function setViewMode(mode) {
     currentViewMode = mode;
@@ -124,7 +182,10 @@ function renderFiles() {
     const searchQuery = (document.getElementById('file-search')?.value || '').toLowerCase();
     const typeFilter = document.getElementById('type-filter')?.value || '';
 
+    // First, Filter
     let filteredFiles = currentFiles.filter(file => {
+        if (excludeFolders && file.is_dir) return false;
+
         const matchesSearch = file.filename.toLowerCase().includes(searchQuery) ||
             file.path.toLowerCase().includes(searchQuery);
         const matchesType = !typeFilter || file.file_type === typeFilter;
@@ -136,10 +197,41 @@ function renderFiles() {
         return;
     }
 
+    // Second, Sort
+    filteredFiles.sort((a, b) => {
+        let valA, valB;
+        switch (currentSort.key) {
+            case 'name':
+                valA = a.filename.toLowerCase();
+                valB = b.filename.toLowerCase();
+                break;
+            case 'path':
+                valA = a.path.toLowerCase();
+                valB = b.path.toLowerCase();
+                break;
+            case 'size':
+                valA = a.is_dir ? -1 : a.size_bytes;
+                valB = b.is_dir ? -1 : b.size_bytes;
+                break;
+            case 'date':
+                valA = new Date(a.created_at).getTime();
+                valB = new Date(b.created_at).getTime();
+                break;
+            default:
+                valA = a.filename.toLowerCase();
+                valB = b.filename.toLowerCase();
+        }
+
+        if (valA < valB) return currentSort.dir === 'asc' ? -1 : 1;
+        if (valA > valB) return currentSort.dir === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    // Render
     if (currentViewMode === 'grid') {
         container.innerHTML = filteredFiles.map(file => `
-            <div class="file-card" onclick="openExplorer('${file.path}')" title="${file.path}">
-                <div class="file-icon">${getFileIcon(file.file_type, file.is_dir)}</div>
+            <div class="file-card" onclick="openExplorer('${file.path.replace(/'/g, "\\'")}')" title="${file.path}">
+                <div class="file-icon">${getFileHTML(file)}</div>
                 <div class="file-name">${file.filename}</div>
                 <div class="file-meta">
                     <div class="text-truncate" style="max-width: 100%;" title="${file.path}">${file.domain}/${file.path}</div>
@@ -149,23 +241,29 @@ function renderFiles() {
             </div>
         `).join('');
     } else {
+        const getSortIcon = (key) => {
+            if (currentSort.key !== key) return '<i class="fas fa-sort"></i>';
+            return currentSort.dir === 'asc' ? '<i class="fas fa-sort-up"></i>' : '<i class="fas fa-sort-down"></i>';
+        };
+        const getSortClass = (key) => currentSort.key === key ? 'sortable active-sort' : 'sortable';
+
         container.innerHTML = `
             <table class="data-table" style="width: 100%;">
                 <thead>
                     <tr>
-                        <th style="width: 40px;"></th>
-                        <th>Name</th>
-                        <th>Path</th>
-                        <th>Size</th>
-                        <th>Date</th>
+                        <th style="width: 60px; text-align: center;">Icon</th>
+                        <th class="${getSortClass('name')}" onclick="handleSortHeaderClick('name')">Name ${getSortIcon('name')}</th>
+                        <th class="${getSortClass('path')}" onclick="handleSortHeaderClick('path')">Path ${getSortIcon('path')}</th>
+                        <th class="${getSortClass('size')}" onclick="handleSortHeaderClick('size')">Size ${getSortIcon('size')}</th>
+                        <th class="${getSortClass('date')}" onclick="handleSortHeaderClick('date')">Date ${getSortIcon('date')}</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${filteredFiles.map(file => `
-                        <tr class="file-list-row" onclick="openExplorer('${file.path}')" style="cursor: pointer;">
-                            <td style="text-align: center;">${getFileIcon(file.file_type, file.is_dir)}</td>
+                        <tr class="file-list-row" onclick="openExplorer('${file.path.replace(/'/g, "\\'")}')" style="cursor: pointer;">
+                            <td style="text-align: center; padding: 4px;">${getFileHTML(file)}</td>
                             <td style="font-weight: 500; color: var(--text-primary);">${file.filename}</td>
-                            <td class="text-truncate" style="max-width: 200px; color: var(--text-secondary);" title="${file.domain}/${file.path}">${file.domain}/${file.path}</td>
+                            <td class="text-truncate" style="max-width: 250px; color: var(--text-secondary);" title="${file.domain}/${file.path}">${file.domain}/${file.path}</td>
                             <td style="color: var(--text-secondary);">${file.is_dir ? '--' : formatFileSize(file.size_bytes)}</td>
                             <td style="color: var(--text-secondary);">${formatDate(file.created_at)}</td>
                         </tr>
@@ -192,8 +290,15 @@ async function openExplorer(pathStr) {
     }
 }
 
-function getFileIcon(type, isDir) {
-    if (isDir) return '📁';
+function getFileHTML(file) {
+    if (file.is_dir) return '📁';
+
+    // Check if image
+    const imgExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'];
+    if (imgExts.includes(file.file_type)) {
+        // use serve endpoint
+        return `<img src="/api/workspace/files/serve?path=${encodeURIComponent(file.path)}" alt="${file.filename}" class="image-preview" loading="lazy" />`;
+    }
 
     const icons = {
         'pdf': '📄',
@@ -203,15 +308,12 @@ function getFileIcon(type, isDir) {
         'markdown': '📝',
         'md': '📝',
         'html': '🌐',
-        'png': '🖼️',
-        'jpg': '🖼️',
-        'jpeg': '🖼️',
         'mp3': '🎵',
         'wav': '🎵',
         'py': '🐍',
         'js': '📜'
     };
-    return icons[type] || '📄';
+    return icons[file.file_type] || '📄';
 }
 
 function formatFileSize(bytes) {

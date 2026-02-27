@@ -635,9 +635,31 @@
                 style="flex-direction: column; align-items: stretch; gap: 1rem; height: auto; min-height: 70px;">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h2>Workspace Files</h2>
-                    <div class="file-filters" style="display: flex; gap: 0.5rem; align-items: center;">
+                    <div class="file-filters" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                         <input type="text" id="file-search" placeholder="Search files or paths..." class="search-input"
                             style="width: 200px;">
+
+                        <!-- NEW: Folder Exclusion Toggle -->
+                        <div class="toggle-control"
+                            style="display: flex; align-items: center; background: var(--bg-tertiary); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border);">
+                            <input type="checkbox" id="exclude-folders-toggle"
+                                style="margin-right: 0.5rem; cursor: pointer;">
+                            <label for="exclude-folders-toggle"
+                                style="font-size: 0.85rem; cursor: pointer; color: var(--text-secondary); white-space: nowrap;">Exclude
+                                Folders</label>
+                        </div>
+
+                        <!-- NEW: Sort Dropdown -->
+                        <select id="sort-filter" class="filter-select">
+                            <option value="name_asc">Name (A-Z)</option>
+                            <option value="name_desc">Name (Z-A)</option>
+                            <option value="date_desc">Newest First</option>
+                            <option value="date_asc">Oldest First</option>
+                            <option value="size_desc">Largest First</option>
+                            <option value="size_asc">Smallest First</option>
+                            <option value="path_asc">Path (A-Z)</option>
+                        </select>
+
                         <div class="view-toggles"
                             style="display: flex; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; padding: 2px;">
                             <button id="view-grid-btn" class="icon-btn active" title="Grid View"
