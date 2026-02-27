@@ -453,7 +453,8 @@ function renderCapsTd(caps = [], modelKey = null) {
     `).join('');
 
     let gearBtn = '';
-    if (caps.includes('image') && modelKey) {
+    const hasImageCap = caps.some(c => c.toLowerCase() === 'image' || c.toLowerCase() === 'image_generation');
+    if (hasImageCap && modelKey) {
         gearBtn = `<button class="icon-btn xs-btn toggle-image-settings" title="Image Settings" data-model="${modelKey}"><i class="fas fa-cog"></i></button>`;
     }
 
@@ -522,8 +523,26 @@ function initCapsTd(cell) {
     cell.addEventListener('click', (e) => {
         const tag = e.target.closest('.cap-tag');
         if (tag) {
+            const removedCap = tag.dataset.cap;
             const currentCell = tag.closest('.caps-cell');
             tag.remove();
+
+            if (removedCap && (removedCap.toLowerCase() === 'image' || removedCap.toLowerCase() === 'image_generation')) {
+                const gear = currentCell.querySelector('.toggle-image-settings');
+                if (gear) gear.remove();
+
+                // Also hide the config row if it's currently open
+                const tr = cell.closest('tr');
+                if (tr) {
+                    const modelInput = tr.querySelector('.model-id-input-small');
+                    const modelKey = modelInput ? modelInput.value.trim() : '';
+                    if (modelKey) {
+                        const configRow = tr.parentNode.querySelector(`.image-config-row[data-model="${modelKey}"]`);
+                        if (configRow) configRow.style.display = 'none';
+                    }
+                }
+            }
+
             if (currentCell && currentCell.querySelectorAll('.cap-tag').length === 0) {
                 currentCell.classList.add('empty');
             }
@@ -573,7 +592,7 @@ function initCapsTd(cell) {
                 cell.classList.remove('empty');
 
                 // If 'image' capability added, dynamically add gear button and config row if missing
-                if (cap === 'image') {
+                if (cap.toLowerCase() === 'image' || cap.toLowerCase() === 'image_generation') {
                     const actions = cell.querySelector('.caps-actions');
                     if (actions && !actions.querySelector('.toggle-image-settings')) {
                         const tr = cell.closest('tr');
