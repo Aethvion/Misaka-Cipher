@@ -118,7 +118,7 @@ Keep responses engaging and human-like.
         
         # Use preference for model if available, else default to flash
         prefs = get_preferences_manager()
-        model = prefs.get('assistant', {}).get('model', 'flash')
+        model = prefs.get('misakacipher', {}).get('model', 'gemini-1.5-flash')
         
         response = pm.call_with_failover(
             prompt=formatted_prompt,

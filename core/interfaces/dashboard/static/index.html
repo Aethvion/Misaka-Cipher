@@ -1107,7 +1107,7 @@
                 <!-- Sidebar Navigation -->
                 <div class="settings-sidebar">
                     <button class="settings-nav-item active" data-settingsubtab="assistant">
-                        <i class="fas fa-robot"></i> Assistant
+                        <i class="fas fa-brain"></i> Misaka Cipher
                     </button>
                     <button class="settings-nav-item" data-settingsubtab="system">
                         <i class="fas fa-cog"></i> Global System
@@ -1181,6 +1181,29 @@
                                         <input type="checkbox" id="setting-assistant-dashboard-control">
                                         <span class="slider round"></span>
                                     </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card: Misaka Cipher (Specific) -->
+                        <div class="setting-card" id="card-misakacipher">
+                            <div class="card-header">
+                                <div class="header-title">
+                                    <i class="fas fa-brain"></i>
+                                    <span>Misaka Cipher Configuration</span>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <p class="section-hint">Settings for the Misaka Cipher chat companion.</p>
+                                <div class="compact-item">
+                                    <div class="item-label">
+                                        <span>Primary Model</span>
+                                        <i class="fas fa-info-circle tooltip-trigger"
+                                            title="The LLM that powers Misaka Cipher's personality and memory system."></i>
+                                    </div>
+                                    <select id="setting-misakacipher-model" class="control-select">
+                                        <option value="flash">Loading models...</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>

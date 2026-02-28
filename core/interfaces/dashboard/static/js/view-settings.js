@@ -130,6 +130,14 @@ async function loadPreferences() {
         };
     }
 
+    // Misaka Cipher Settings
+    const misakaModel = document.getElementById('setting-misakacipher-model');
+    if (misakaModel) {
+        misakaModel.onchange = async (e) => {
+            await savePreference('misakacipher.model', e.target.value);
+        };
+    }
+
     // Initialize Other Sections
     loadGlobalSettings();
     initDevMode();
@@ -658,7 +666,8 @@ async function loadChatModels() {
         document.getElementById('agent-model-select'),
         document.getElementById('arena-model-add'),
         document.getElementById('aiconv-model-add'),
-        document.getElementById('advaiconv-person-add')
+        document.getElementById('advaiconv-person-add'),
+        document.getElementById('setting-misakacipher-model')
     ].filter(Boolean);
 
     if (selects.length === 0) return;
@@ -685,9 +694,14 @@ async function loadChatModels() {
             const isAgent = sel.id === 'agent-model-select';
             sel.innerHTML = isAgent ? agentOptions : chatOptions;
 
-            // Fix for assistant select initialization
+            // Fix for model select initialization
             if (sel.id === 'setting-assistant-model') {
                 const prefModel = prefs.get('assistant.model', 'gemini-2.0-flash');
+                if (sel.querySelector(`option[value="${prefModel}"]`)) {
+                    sel.value = prefModel;
+                }
+            } else if (sel.id === 'setting-misakacipher-model') {
+                const prefModel = prefs.get('misakacipher.model', 'gemini-1.5-flash');
                 if (sel.querySelector(`option[value="${prefModel}"]`)) {
                     sel.value = prefModel;
                 }
