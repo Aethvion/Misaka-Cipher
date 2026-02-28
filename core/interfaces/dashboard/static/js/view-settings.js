@@ -154,6 +154,25 @@ async function loadPreferences() {
         };
     }
 
+    const misakaContextLimit = document.getElementById('setting-misakacipher-context-limit');
+    const misakaContextLimitVal = document.getElementById('setting-misakacipher-context-limit-val');
+    if (misakaContextLimit && misakaContextLimitVal) {
+        const currentLimit = prefs.get('misakacipher.context_limit', 6);
+        misakaContextLimit.value = currentLimit;
+        misakaContextLimitVal.textContent = currentLimit;
+
+        misakaContextLimit.oninput = (e) => {
+            misakaContextLimitVal.textContent = e.target.value;
+        };
+        misakaContextLimit.onchange = async (e) => {
+            const val = parseInt(e.target.value, 10);
+            await savePreference('misakacipher.context_limit', val);
+            window.dispatchEvent(new CustomEvent('misakaSettingsUpdated', {
+                detail: { context_limit: val }
+            }));
+        };
+    }
+
     // Initialize Other Sections
     loadGlobalSettings();
     initDevMode();
