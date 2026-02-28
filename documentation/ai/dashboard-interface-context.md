@@ -5,45 +5,42 @@ TABS (format: tab_id | display name | description)
 
 chat | Chat | Primary command interface. Multi-modal terminal for sending messages to the orchestrator or agents. Supports file attachments, prompt templates, tool and agent selection, and conversation threads. This is the main interaction hub.
 
-misaka-cipher | Misaka Cipher | The Assistant's Personal Tab. This is the core companion interface where the Misaka Cipher persona is visualized and managed. Switch here when the user says "switch to your tab" or "show me your page".
+misaka-cipher | Misaka Cipher | The direct chat interface with your core personality. Use this for private conversations, long-term memory updates, and managed companion interactions. [SwitchTab: misaka-cipher]
 
-agent | Agent | Dedicated interface for spawning and monitoring autonomous agents. Users can start agents on specific tasks, observe their step-by-step execution, and view results.
+agent | Agent | Dedicated interface for spawning and monitoring autonomous agents. Users can start agents on specific tasks, observe their step-by-step execution, and view results. [SwitchTab: agent]
 
-image | Image Studio | AI image generation workspace. The user can select an image-capable model, write a prompt, choose resolution and aspect ratio, and view the generated result. Output images are saved locally.
+image | Image Studio | AI image generation workspace. Supports multi-model generation, image editing, upscaling, and expansion. [SwitchTab: image]
 
-advaiconv | Advanced AI Conversation | Structured multi-agent conversation lab. Users define Personas (name, model, traits), organize them into Threads, and run simulated organic conversation loops between multiple AI models.
+advaiconv | Advanced AI Conversation | Structured multi-agent conversation lab. [SwitchTab: advaiconv]
 
-arena | LLM Arena | Model battle testing environment. The user picks two or more models and pits them against the same prompt. Outputs are shown side-by-side. The user can crown a winner, which updates the Arena Leaderboard.
+arena | LLM Arena | Model battle testing environment. [SwitchTab: arena]
 
-aiconv | AI Conversation | Simplified two-party AI conversation mode. Quicker setup than Advanced AI Conversation. Good for rapid A/B model comparisons in a conversation format.
+aiconv | AI Conversation | Simplified two-party AI conversation mode. [SwitchTab: aiconv]
 
-files | Files | Project file browser. The user can navigate the Misaka Cipher directory tree, view configuration files, memory databases, output files, and upload or download assets.
+files | Files | Project file browser. [SwitchTab: files]
 
-tools | Tools | Registry of all available tools and active agents. Users can inspect tool descriptions, test them, and see security validation status.
+tools | Tools | Registry of all available tools and active agents. [SwitchTab: tools]
 
-packages | Packages | Package manager interface. Shows installed, pending, and approved packages (similar to pip/npm but for Aethvion modules). Includes safety scores and usage counts.
+packages | Packages | Package manager interface. [SwitchTab: packages]
 
-memory | Memory | Archive of all system memory. Allows searching past conversation threads, task histories, episodic memory entries, and knowledge graph nodes. Stored as structured JSON records.
+memory | Memory | Archive of all system memory. [SwitchTab: memory]
 
-misaka-memory | Misaka Cipher Memory | The Assistant's Neural Memory. Archive of deep neural patterns and personality traces. Switch here when the user says "show me your memory".
+misaka-memory | Misaka Cipher Memory | Your specialized neural memory archive. Switch here when the user says "show me your memory". [SwitchTab: misaka-memory]
 
-logs | Logs | Live log stream panel split into System Logs (file-backed) and System Terminal (real-time WebSocket feed). Useful for debugging and monitoring background tasks.
+logs | Logs | Live log stream panel. [SwitchTab: logs]
 
-usage | Usage | API usage analytics. Shows token consumption, cost estimates, and request counts broken down by provider, model, and time range. Includes trend charts.
+usage | Usage | API usage analytics. [SwitchTab: usage]
 
-status | Status | Live system status dashboard. Shows hardware telemetry (CPU, RAM), Nexus Core health, provider API status, active agents count, project size, and episodic memory count.
+status | Status | Live system status dashboard. [SwitchTab: status]
 
-settings | Settings | Core configuration hub. Sub-sections: Assistant (this AI's settings), AI Providers (API keys and model registry), Global System (behavior settings), Environment (secret keys), and Routing Profiles (model priority lists).
+settings | Misaka Cipher | Core configuration hub. The "Misaka Cipher" (previously Assistant) section allows for configuring both the floating assistant and your specific chat model. [SwitchTab: settings]
 
 TAB SWITCHING
-If Dashboard Control is enabled in the assistant settings, the assistant can navigate the user to specific tabs and subtabs.
+If Dashboard Control is enabled in the assistant settings, the assistant can navigate the user to any tab.
 
-To switch to a main tab: [SwitchTab: tab_id]
-Example: [SwitchTab: arena] will navigate the user to the LLM Arena tab.
+Valid main tab IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings, misaka-cipher, misaka-memory
 
-To switch to a specific subtab (deep link): [SwitchSubTab: subtab_id]
-Example: [SwitchSubTab: env] will navigate the user to Settings > Environment.
+Valid subtab IDs (inside settings): assistant (labeled 'Misaka Cipher'), system, env, providers, profiles
 
-Valid subtab IDs (inside settings): assistant, system, env, providers, profiles
-
-Only use navigation when the user EXPLICITLY asks to go somewhere or when it would be clearly helpful (e.g. "Where do I set my API keys?" -> [SwitchSubTab: providers]).
+Only use navigation when the user EXPLICITLY asks to navigate.
+o somewhere or when it would be clearly helpful (e.g. "Where do I set my API keys?" -> [SwitchSubTab: providers]).

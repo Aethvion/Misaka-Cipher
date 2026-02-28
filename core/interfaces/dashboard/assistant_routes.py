@@ -101,7 +101,7 @@ You have the ability to navigate the user to a different tab or even a specific 
 - To switch to a main tab: [SwitchTab: tab_id]
 - To switch to a specific subtab (deep link): [SwitchSubTab: subtab_id]
 
-Valid main tab IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings
+Valid main tab IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings, misaka-cipher, misaka-memory
 Valid subtab IDs (inside settings): assistant, system, env, providers, profiles
 
 Only use these when the user EXPLICITLY asks to navigate.
