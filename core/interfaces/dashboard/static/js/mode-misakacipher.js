@@ -3,12 +3,17 @@
  */
 
 let misakaChatHistory = [];
-const MISAKA_MAX_HISTORY = 6;
+let misakaMaxHistory = 6;
 let isMisakaTyping = false;
 let historyOffsetDays = 0;
 const HISTORY_LIMIT_DAYS = 3;
+let hasInitializedMisaka = false;
 
 async function initializeMisakaCipher() {
+    if (hasInitializedMisaka) {
+        console.log("Misaka Cipher already active, skipping initialization.");
+        return;
+    }
     console.log("Initializing Misaka Cipher Companion...");
 
     const chatMessages = document.getElementById('misaka-chat-messages');
@@ -40,7 +45,20 @@ async function initializeMisakaCipher() {
 
     // 5. Load Recent History (Last 3 days)
     historyOffsetDays = 0;
+    // Update local context limit from prefs
+    misakaMaxHistory = typeof prefs !== 'undefined' ? prefs.get('misakacipher.context_limit', 6) : 6;
+
     await loadHistory(0, 3, true);
+
+    hasInitializedMisaka = true;
+
+    // 6. Listen for changes from settings page
+    window.addEventListener('misakaSettingsUpdated', (e) => {
+        if (e.detail && e.detail.context_limit) {
+            misakaMaxHistory = e.detail.context_limit;
+            console.log("Misaka context limit updated to:", misakaMaxHistory);
+        }
+    });
 
     // Event Listeners
     sendBtn.onclick = () => sendMisakaMessage();
@@ -75,6 +93,17 @@ async function loadHistory(offset = 0, limit = 3, isInitial = false) {
             for (let i = data.history.length - 1; i >= 0; i--) {
                 const day = data.history[i];
                 renderDayHistory(day, isInitial);
+            }
+
+            // Sync Context Window: If initial load, take newest messages for LLM context
+            if (isInitial && data.history.length > 0) {
+                const mostRecentDay = data.history[0]; // newest is first
+                if (mostRecentDay && mostRecentDay.messages) {
+                    misakaChatHistory = mostRecentDay.messages.slice(-misakaMaxHistory).map(m => ({
+                        role: m.role,
+                        content: m.content
+                    }));
+                }
             }
 
             if (!isInitial) {
@@ -213,8 +242,8 @@ async function sendMisakaMessage() {
         misakaChatHistory.push({ role: 'user', content: text });
         misakaChatHistory.push({ role: 'assistant', content: data.response });
 
-        if (misakaChatHistory.length > MISAKA_MAX_HISTORY) {
-            misakaChatHistory = misakaChatHistory.slice(-MISAKA_MAX_HISTORY);
+        if (misakaChatHistory.length > misakaMaxHistory) {
+            misakaChatHistory = misakaChatHistory.slice(-misakaMaxHistory);
         }
 
         await addAssistantMessageTyped(data.response);
