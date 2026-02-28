@@ -67,17 +67,22 @@
     flex: 1;
     padding: 2rem;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
     scroll-behavior: smooth;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Chat Bubbles */
 .chat-message {
-    max-width: 80%;
+    max-width: 85%;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    /* Prevents flex overflow */
 }
 
 .chat-message.assistant {
@@ -94,6 +99,16 @@
     font-size: 1rem;
     line-height: 1.5;
     position: relative;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.message-bubble * {
+    max-width: 100%;
+    overflow-wrap: break-word;
 }
 
 .assistant .message-bubble {
@@ -157,6 +172,26 @@
     transform: translateY(-2px);
     background: var(--primary-hover);
 }
+
+.message-bubble.typing-glow {
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.2);
+    border-color: rgba(0, 217, 255, 0.4);
+    position: relative;
+}
+
+/* Removed typing cursors per user request */
+@keyframes blink {
+
+    from,
+    to {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
+}
+
 
 @keyframes pulse {
 

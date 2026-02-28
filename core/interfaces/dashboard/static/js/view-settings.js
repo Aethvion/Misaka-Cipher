@@ -138,6 +138,22 @@ async function loadPreferences() {
         };
     }
 
+    const misakaTypingSpeed = document.getElementById('setting-misakacipher-typing-speed');
+    const misakaTypingVal = document.getElementById('setting-misakacipher-typing-speed-val');
+    if (misakaTypingSpeed && misakaTypingVal) {
+        const currentSpeed = prefs.get('misakacipher.typing_speed', 20);
+        misakaTypingSpeed.value = currentSpeed;
+        misakaTypingVal.textContent = currentSpeed;
+
+        misakaTypingSpeed.oninput = (e) => {
+            misakaTypingVal.textContent = e.target.value;
+        };
+        misakaTypingSpeed.onchange = async (e) => {
+            const val = parseInt(e.target.value, 10);
+            await savePreference('misakacipher.typing_speed', val);
+        };
+    }
+
     // Initialize Other Sections
     loadGlobalSettings();
     initDevMode();

@@ -133,17 +133,14 @@ Keep responses engaging and human-like.
             raise HTTPException(status_code=500, detail=response.error)
             
         full_content = response.content.strip()
-        
-        # 5. Extract Expression
         expression = "default"
-        import re
-        expr_match = re.search(r"\[Emotion:\s*(\w+)\]", full_content)
-        if expr_match:
-            expression = expr_match.group(1)
-            # Clean from content? Usually we keep it for the chat log but can strip for display
-            
-        # 6. Extract Memory Update
+        
+        # Don't strip or extract expressions here; let the frontend handle it 
+        # so expressions can change in-context as she types.
+        
+        # 5. Extract Memory Update
         memory_updated = False
+        import re
         mem_match = re.search(r"<memory_update>(.*?)</memory_update>", full_content, re.DOTALL)
         if mem_match:
             try:
