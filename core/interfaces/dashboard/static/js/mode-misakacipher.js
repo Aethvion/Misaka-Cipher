@@ -248,10 +248,14 @@ async function sendMisakaMessage() {
 
         await addAssistantMessageTyped(data.response);
 
-        if (data.memory_updated) {
+        if (data.memory_updated || data.synthesis_ran) {
             await refreshMisakaMemory();
-            if (statusLine) statusLine.textContent = "Memory synchronized.";
-            setTimeout(() => { if (statusLine) statusLine.textContent = "Neural core engaged."; }, 3000);
+            if (data.synthesis_ran) {
+                if (statusLine) statusLine.textContent = "Memory synthesis complete. Neural patterns updated.";
+            } else {
+                if (statusLine) statusLine.textContent = "Memory synchronized.";
+            }
+            setTimeout(() => { if (statusLine) statusLine.textContent = "Neural core engaged."; }, 4000);
         } else {
             if (statusLine) statusLine.textContent = "Neural core engaged.";
         }

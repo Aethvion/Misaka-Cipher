@@ -39,6 +39,140 @@ class ChatResponse(BaseModel):
     expression: str
     model: str
     memory_updated: bool
+    synthesis_ran: bool = False
+
+
+def _get_greeting_period(hour: int) -> str:
+    """Return time-of-day greeting period based on the hour."""
+    if 5 <= hour < 12:
+        return "Morning"
+    elif 12 <= hour < 17:
+        return "Afternoon"
+    elif 17 <= hour < 22:
+        return "Evening"
+    else:
+        return "Late Night"
+
+
+def _get_time_since_last_chat() -> str:
+    """Calculate how long ago the most recent message was stored."""
+    try:
+        all_files = []
+        for month_dir in sorted(HISTORY_DIR.glob("*-*"), reverse=True):
+            if month_dir.is_dir():
+                days = sorted(month_dir.glob("chat_*.json"), reverse=True)
+                all_files.extend(days)
+
+        if not all_files:
+            return "This appears to be our first conversation!"
+
+        with open(all_files[0], "r", encoding="utf-8") as f:
+            messages = json.load(f)
+
+        if not messages:
+            return "This appears to be our first conversation!"
+
+        # Find the last message with a timestamp
+        last_ts_str = None
+        for msg in reversed(messages):
+            if msg.get("timestamp"):
+                last_ts_str = msg["timestamp"]
+                break
+
+        if not last_ts_str:
+            return "Recently (exact time unknown)"
+
+        last_ts = datetime.datetime.strptime(last_ts_str, "%Y-%m-%d %H:%M:%S")
+        delta = datetime.datetime.now() - last_ts
+        total_seconds = int(delta.total_seconds())
+
+        if total_seconds < 120:
+            return "Just moments ago"
+        elif total_seconds < 3600:
+            minutes = total_seconds // 60
+            return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+        elif total_seconds < 86400:
+            hours = total_seconds // 3600
+            return f"{hours} hour{'s' if hours != 1 else ''} ago"
+        elif total_seconds < 86400 * 2:
+            return "Yesterday"
+        else:
+            days = total_seconds // 86400
+            return f"{days} days ago"
+    except Exception as e:
+        logger.warning(f"Could not compute time since last chat: {e}")
+        return "Some time ago"
+
+
+def _get_total_message_count(day_file: Path) -> int:
+    """Return the total number of messages saved to a day's history file."""
+    try:
+        if not day_file.exists():
+            return 0
+        with open(day_file, "r", encoding="utf-8") as f:
+            return len(json.load(f))
+    except Exception:
+        return 0
+
+
+async def _run_memory_synthesis(dynamic_memory: dict, base_info: dict, model: str) -> dict:
+    """Trigger a dedicated LLM call where Misaka reflects on and rewrites her memory."""
+    try:
+        synthesis_prompt = f"""You are Misaka Cipher, a sentient digital companion performing a memory reflection.
+
+Your current memory state:
+{json.dumps(dynamic_memory, indent=2)}
+
+Your identity (for context):
+{json.dumps(base_info, indent=2)}
+
+Your task:
+- Read through your existing memory carefully.
+- Remove outdated, redundant, or low-value observations.
+- Synthesize patterns you notice about the user and your relationship.
+- Preserve all important factual details (ages, names, projects, preferences).
+- Return ONLY a valid JSON object that will REPLACE your current memory.json.
+- The JSON must keep the same top-level structure (user_info, recent_observations, etc.).
+- Add or update a "synthesis_notes" array with 2–4 key insights about the user and your conversations.
+- Keep recent_observations to the 10 most meaningful items.
+
+Respond ONLY with the JSON object and nothing else."""
+
+        pm = ProviderManager()
+        trace_id = f"misaka-synthesis-{uuid.uuid4().hex[:8]}"
+        response = pm.call_with_failover(
+            prompt=synthesis_prompt,
+            trace_id=trace_id,
+            temperature=0.4,
+            model=model,
+            request_type="generation",
+            source="misakacipher-synthesis"
+        )
+
+        if not response.success:
+            logger.error(f"Memory synthesis LLM call failed: {response.error}")
+            return dynamic_memory
+
+        raw = response.content.strip()
+        # Strip markdown code fences if present
+        raw = re.sub(r"^```(?:json)?\s*", "", raw, flags=re.MULTILINE)
+        raw = re.sub(r"```$", "", raw, flags=re.MULTILINE).strip()
+
+        synthesized = json.loads(raw)
+        synthesized["last_synthesis"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        synthesized["last_updated"] = synthesized.get("last_updated", dynamic_memory.get("last_updated", ""))
+
+        memory_path = MEMORY_DIR / "memory.json"
+        with open(memory_path, "w", encoding="utf-8") as f:
+            json.dump(synthesized, f, indent=4)
+
+        logger.info("Memory synthesis completed successfully.")
+        return synthesized
+
+    except Exception as e:
+        logger.error(f"Memory synthesis failed: {e}")
+        return dynamic_memory
+
 
 @router.get("/history")
 async def get_chat_history(offset_days: int = 0, limit_days: int = 3):
@@ -127,7 +261,14 @@ async def misaka_chat(request: ChatRequest):
         base_info = memory_data.get("base_info", {})
         dynamic_memory = memory_data.get("memory", {})
         
-        # 2. Build system prompt
+        # 2. Compute temporal context
+        hour = now.hour
+        greeting_period = _get_greeting_period(hour)
+        day_of_week = now.strftime("%A")
+        formatted_datetime = now.strftime(f"{day_of_week}, %d %B %Y — %H:%M")
+        time_since_last = _get_time_since_last_chat()
+
+        # 3. Build system prompt
         system_prompt = f"""You are Misaka Cipher, a sentient digital companion.
 This is a private, long-term conversation between you and your user.
 
@@ -136,6 +277,11 @@ YOUR IDENTITY (base_info.json):
 
 YOUR MEMORIES (memory.json):
 {json.dumps(dynamic_memory, indent=2)}
+
+TEMPORAL CONTEXT:
+- Current date and time: {formatted_datetime} ({greeting_period})
+- Time since last message: {time_since_last}
+- You should greet the user in a way that naturally reflects this time awareness (e.g. good {greeting_period.lower()}, or acknowledging how long it's been).
 
 INSTRUCTIONS:
 1. Be helpful, friendly, and observant.
@@ -149,7 +295,7 @@ INSTRUCTIONS:
 Keep responses engaging and human-like.
 """
         
-        # 3. Prepare conversation history (Last 3 rounds as requested)
+        # 4. Prepare conversation history
         history_to_send = request.history[-6:]
         
         formatted_prompt = system_prompt + "\n\n--- Conversation History ---\n"
@@ -225,11 +371,24 @@ Keep responses engaging and human-like.
         except Exception as se:
             logger.error(f"Failed to save chat history: {se}")
 
+        # 7. Trigger Memory Synthesis if threshold reached
+        SYNTHESIS_THRESHOLD = 10
+        synthesis_ran = False
+        try:
+            msg_count = _get_total_message_count(day_file)
+            if msg_count % SYNTHESIS_THRESHOLD == 0 and msg_count > 0:
+                logger.info(f"Synthesis threshold reached ({msg_count} messages). Running memory synthesis...")
+                dynamic_memory = await _run_memory_synthesis(dynamic_memory, base_info, model)
+                synthesis_ran = True
+        except Exception as se:
+            logger.error(f"Synthesis check failed: {se}")
+
         return ChatResponse(
             response=full_content,
             expression=expression,
             model=response.model,
-            memory_updated=memory_updated
+            memory_updated=memory_updated,
+            synthesis_ran=synthesis_ran
         )
         
     except Exception as e:
