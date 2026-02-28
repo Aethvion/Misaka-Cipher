@@ -1,10 +1,12 @@
 /**
- * Misaka Cipher Companion - Refined Frontend Logic v2.1
+ * Misaka Cipher Companion - Persistence & History v1
  */
 
 let misakaChatHistory = [];
 const MISAKA_MAX_HISTORY = 6;
 let isMisakaTyping = false;
+let historyOffsetDays = 0;
+const HISTORY_LIMIT_DAYS = 3;
 
 async function initializeMisakaCipher() {
     console.log("Initializing Misaka Cipher Companion...");
@@ -15,11 +17,30 @@ async function initializeMisakaCipher() {
 
     if (!chatMessages || !chatInput || !sendBtn) return;
 
-    // Load expressions
+    // 1. Add "Load More" button at the top if it doesn't exist
+    if (!document.getElementById('misaka-load-more-btn')) {
+        const loadMoreBtn = document.createElement('button');
+        loadMoreBtn.id = 'misaka-load-more-btn';
+        loadMoreBtn.className = 'load-more-btn';
+        loadMoreBtn.textContent = "Load Previous Conversations";
+        loadMoreBtn.style.display = 'none'; // Hidden by default
+        loadMoreBtn.onclick = () => loadMoreHistory();
+        chatMessages.prepend(loadMoreBtn);
+    }
+
+    // 2. Clear current messages (except load more) for fresh init
+    const blocks = chatMessages.querySelectorAll('.history-day-block');
+    blocks.forEach(b => b.remove());
+
+    // 3. Load expressions
     await loadExpressions();
 
-    // Load Memory
+    // 4. Load Memory
     await refreshMisakaMemory();
+
+    // 5. Load Recent History (Last 3 days)
+    historyOffsetDays = 0;
+    await loadHistory(0, 3, true);
 
     // Event Listeners
     sendBtn.onclick = () => sendMisakaMessage();
@@ -29,6 +50,108 @@ async function initializeMisakaCipher() {
             sendMisakaMessage();
         }
     };
+}
+
+async function loadHistory(offset = 0, limit = 3, isInitial = false) {
+    try {
+        const response = await fetch(`/api/misakacipher/history?offset_days=${offset}&limit_days=${limit}`);
+        const data = await response.json();
+
+        const chatMessages = document.getElementById('misaka-chat-messages');
+        const loadMoreBtn = document.getElementById('misaka-load-more-btn');
+
+        if (loadMoreBtn) {
+            loadMoreBtn.style.display = data.has_more ? 'block' : 'none';
+        }
+
+        if (data.history && data.history.length > 0) {
+            const oldHeight = chatMessages.scrollHeight;
+
+            // data.history is [newestDay, ..., oldestDay]
+            // We want to render them such that the OLDEST day is at the TOP of the loaded batch
+            // but the batch itself is PREPENDED to the current view.
+
+            // To maintain order, we iterate backwards and prepend
+            for (let i = data.history.length - 1; i >= 0; i--) {
+                const day = data.history[i];
+                renderDayHistory(day, isInitial);
+            }
+
+            if (!isInitial) {
+                chatMessages.scrollTop = chatMessages.scrollHeight - oldHeight;
+            } else {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            historyOffsetDays += data.history.length;
+        }
+    } catch (e) {
+        console.error("Error loading chat history:", e);
+    }
+}
+
+async function loadMoreHistory() {
+    await loadHistory(historyOffsetDays, HISTORY_LIMIT_DAYS, false);
+}
+
+function renderDayHistory(day, isInitial) {
+    const chatMessages = document.getElementById('misaka-chat-messages');
+    const loadMoreBtn = document.getElementById('misaka-load-more-btn');
+
+    const dayBlock = document.createElement('div');
+    dayBlock.className = 'history-day-block';
+
+    const separator = document.createElement('div');
+    separator.className = 'date-separator';
+    separator.innerHTML = `<span>${formatDate(day.date)}</span>`;
+    dayBlock.appendChild(separator);
+
+    day.messages.forEach(msg => {
+        const msgDiv = createMessageElement(msg.role, msg.content);
+        dayBlock.appendChild(msgDiv);
+    });
+
+    if (isInitial) {
+        chatMessages.appendChild(dayBlock);
+    } else {
+        // Prepend after load more button
+        if (loadMoreBtn && loadMoreBtn.nextSibling) {
+            chatMessages.insertBefore(dayBlock, loadMoreBtn.nextSibling);
+        } else {
+            chatMessages.prepend(dayBlock);
+        }
+    }
+}
+
+function createMessageElement(role, text) {
+    const div = document.createElement('div');
+    div.className = `chat-message ${role}`;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'message-bubble';
+
+    if (role === 'assistant') {
+        const cleanText = text.replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '')
+            .replace(/\[Emotion:\s*\w+\]/gi, '').trim();
+        bubble.innerHTML = renderMarkdown(cleanText);
+    } else {
+        bubble.textContent = text;
+    }
+
+    div.appendChild(bubble);
+    return div;
+}
+
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const yest = new Date();
+    yest.setDate(now.getDate() - 1);
+
+    if (date.toDateString() === now.toDateString()) return "Today";
+    if (date.toDateString() === yest.toDateString()) return "Yesterday";
+
+    return date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
 async function loadExpressions() {
@@ -62,17 +185,14 @@ async function sendMisakaMessage() {
     const text = chatInput.value.trim();
     if (!text) return;
 
-    // 1. UI: Add User Message
-    addMisakaMessage('user', text);
+    addAssistantMessageStatic('user', text);
     chatInput.value = '';
 
-    // 2. Prepare Payload
     const payload = {
         message: text,
         history: misakaChatHistory
     };
 
-    // 3. UI: Loading State
     const statusLine = document.getElementById('misaka-status-line');
     if (statusLine) statusLine.textContent = "Processing neural paths...";
 
@@ -90,7 +210,6 @@ async function sendMisakaMessage() {
 
         const data = await response.json();
 
-        // 4. Update History
         misakaChatHistory.push({ role: 'user', content: text });
         misakaChatHistory.push({ role: 'assistant', content: data.response });
 
@@ -98,24 +217,29 @@ async function sendMisakaMessage() {
             misakaChatHistory = misakaChatHistory.slice(-MISAKA_MAX_HISTORY);
         }
 
-        // 5. UI: Add Assistant Message with Typing Animation (Handles in-context expressions)
         await addAssistantMessageTyped(data.response);
 
-        // 6. UI: Update Memory if needed
         if (data.memory_updated) {
             await refreshMisakaMemory();
             if (statusLine) statusLine.textContent = "Memory synchronized.";
-            setTimeout(() => {
-                if (statusLine) statusLine.textContent = "Neural core engaged.";
-            }, 3000);
+            setTimeout(() => { if (statusLine) statusLine.textContent = "Neural core engaged."; }, 3000);
         } else {
             if (statusLine) statusLine.textContent = "Neural core engaged.";
         }
 
     } catch (e) {
         console.error("Chat Error:", e);
-        addMisakaMessage('assistant', "I encountered a neural desync. Please try again.");
+        addAssistantMessageStatic('assistant', "I encountered a neural desync. Please try again.");
     }
+}
+
+function addAssistantMessageStatic(role, text) {
+    const container = document.getElementById('misaka-chat-messages');
+    if (!container) return;
+
+    const div = createMessageElement(role, text);
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
 }
 
 function renderMarkdown(text) {
@@ -123,35 +247,9 @@ function renderMarkdown(text) {
         if (typeof marked.parse === 'function') return marked.parse(text);
         if (typeof marked === 'function') return marked(text);
     }
-    return text.replace(/\n/g, '<br>'); // Simple fallback
+    return text.replace(/\n/g, '<br>');
 }
 
-function addMisakaMessage(role, text) {
-    const container = document.getElementById('misaka-chat-messages');
-    if (!container) return;
-
-    const div = document.createElement('div');
-    div.className = `chat-message ${role}`;
-
-    const bubble = document.createElement('div');
-    bubble.className = 'message-bubble';
-
-    if (role === 'assistant') {
-        const cleanText = text.replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '')
-            .replace(/\[Emotion:\s*\w+\]/gi, '').trim();
-        bubble.innerHTML = renderMarkdown(cleanText);
-    } else {
-        bubble.textContent = text;
-    }
-
-    div.appendChild(bubble);
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
-}
-
-/**
- * Strips metadata and handles in-context expressions.
- */
 async function addAssistantMessageTyped(fullText) {
     const container = document.getElementById('misaka-chat-messages');
     if (!container) return;
@@ -166,10 +264,8 @@ async function addAssistantMessageTyped(fullText) {
     div.appendChild(bubble);
     container.appendChild(div);
 
-    // 1. Strip memory updates first
     let remainingText = fullText.replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '').trim();
 
-    // 2. Parse triggers and compute clean text
     let triggers = [];
     const emotionRegex = /\[Emotion:\s*(\w+)\]/gi;
     let match;
@@ -178,15 +274,11 @@ async function addAssistantMessageTyped(fullText) {
 
     while ((match = emotionRegex.exec(remainingText)) !== null) {
         cleanText += remainingText.substring(lastIndex, match.index);
-        triggers.push({
-            pos: cleanText.length,
-            emotion: match[1].toLowerCase()
-        });
+        triggers.push({ pos: cleanText.length, emotion: match[1].toLowerCase() });
         lastIndex = emotionRegex.lastIndex;
     }
     cleanText += remainingText.substring(lastIndex);
 
-    // 3. Fetch current speed preference
     let speed = 20;
     try {
         const res = await fetch('/api/preferences');
@@ -196,14 +288,11 @@ async function addAssistantMessageTyped(fullText) {
                 speed = prefs.misakacipher.typing_speed;
             }
         }
-    } catch (e) {
-        console.warn("Could not fetch typing speed, using default.");
-    }
+    } catch (e) { }
 
     const delay = Math.max(5, 100 - speed);
 
     if (speed >= 98) {
-        // Final expression if any
         if (triggers.length > 0) updateMisakaExpression(triggers[triggers.length - 1].emotion);
         bubble.innerHTML = renderMarkdown(cleanText);
         container.scrollTop = container.scrollHeight;
@@ -211,30 +300,21 @@ async function addAssistantMessageTyped(fullText) {
         return;
     }
 
-    // 4. Typing Loop
     let currentVisibleText = "";
-    const characters = Array.from(cleanText); // Handle emojis etc
+    const characters = Array.from(cleanText);
     let triggerIdx = 0;
 
     for (let i = 0; i < characters.length; i++) {
-        // Check for expression trigger at this EXACT point
         while (triggerIdx < triggers.length && triggers[triggerIdx].pos <= i) {
             updateMisakaExpression(triggers[triggerIdx].emotion);
             triggerIdx++;
         }
-
         currentVisibleText += characters[i];
-
-        // Render Markdown
         bubble.innerHTML = renderMarkdown(currentVisibleText);
-
-        // Auto-scroll
         container.scrollTop = container.scrollHeight;
-
         await new Promise(r => setTimeout(r, delay));
     }
 
-    // Final check for any trailing triggers
     while (triggerIdx < triggers.length) {
         updateMisakaExpression(triggers[triggerIdx].emotion);
         triggerIdx++;
@@ -243,24 +323,16 @@ async function addAssistantMessageTyped(fullText) {
     bubble.innerHTML = renderMarkdown(cleanText);
     bubble.classList.remove('typing-glow');
     container.scrollTop = container.scrollHeight;
-
     isMisakaTyping = false;
 }
 
 function updateMisakaExpression(expression) {
     const img = document.getElementById('misaka-expression-img');
     if (!img) return;
-
     const path = `/static/misakacipher/expressions/misakacipher_${expression}.png`;
-
     const tempImg = new Image();
-    tempImg.onload = () => {
-        img.src = path;
-        // Pulse effect removed per user request
-    };
-    tempImg.onerror = () => {
-        img.src = "/static/misakacipher/expressions/misakacipher_default.png";
-    };
+    tempImg.onload = () => { img.src = path; };
+    tempImg.onerror = () => { img.src = "/static/misakacipher/expressions/misakacipher_default.png"; };
     tempImg.src = path;
 }
 
