@@ -1222,6 +1222,48 @@
                                         value="6">
                                 </div>
 
+                                <!-- Workspace Access Sub-section -->
+                                <div
+                                    style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                                    <div
+                                        style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 0.5rem; font-family: 'Orbitron', sans-serif;">
+                                        Workspace Access</div>
+                                    <p class="section-hint" style="margin-bottom: 0.75rem;">Directories Misaka can
+                                        read/write within.</p>
+                                    <div id="misaka-workspace-list"
+                                        style="display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.75rem;">
+                                        <span
+                                            style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">No
+                                            workspaces configured.</span>
+                                    </div>
+                                    <details>
+                                        <summary
+                                            style="font-size: 0.8rem; color: var(--primary); cursor: pointer; list-style: none; display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem;">
+                                            <i class="fas fa-plus"></i> Add Workspace
+                                        </summary>
+                                        <div
+                                            style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; margin-top: 0.4rem;">
+                                            <input id="ws-add-path" type="text" class="control-input"
+                                                placeholder="Directory path (e.g. C:\Projects\MyApp)"
+                                                style="width: 100%; box-sizing: border-box;">
+                                            <input id="ws-add-label" type="text" class="control-input"
+                                                placeholder="Label (e.g. My Project)"
+                                                style="width: 100%; box-sizing: border-box;">
+                                            <div
+                                                style="display: flex; gap: 1.2rem; flex-wrap: wrap; font-size: 0.84rem; color: var(--text-primary);">
+                                                <label><input type="checkbox" id="ws-perm-read" checked> Read</label>
+                                                <label><input type="checkbox" id="ws-perm-write"> Write</label>
+                                                <label><input type="checkbox" id="ws-perm-delete"> Delete</label>
+                                                <label style="margin-left: auto;"><input type="checkbox"
+                                                        id="ws-recursive" checked> Subfolders</label>
+                                            </div>
+                                            <button id="ws-add-btn" class="btn btn-primary"
+                                                style="align-self: flex-start; font-size: 0.8rem; padding: 0.4rem 1rem;">Add
+                                                Workspace</button>
+                                        </div>
+                                    </details>
+                                </div>
+
                                 <!-- Proactive Messages Sub-section -->
                                 <div
                                     style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">

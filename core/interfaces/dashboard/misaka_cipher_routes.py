@@ -4,9 +4,15 @@ from typing import List, Dict, Any, Optional
 import uuid
 import json
 import os
+import shutil
 from pathlib import Path
 import datetime
 import re
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
 
 from core.providers.provider_manager import ProviderManager
 from core.workspace.preferences_manager import get_preferences_manager
@@ -20,6 +26,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 MEMORY_DIR = PROJECT_ROOT / "data" / "memory" / "storage" / "misakacipher"
 HISTORY_DIR = MEMORY_DIR / "chathistory"
 EXPRESSIONS_DIR = PROJECT_ROOT / "core" / "interfaces" / "dashboard" / "static" / "misakacipher" / "expressions"
+WORKSPACES_FILE = MEMORY_DIR / "workspaces.json"
 
 # Ensure directories exist
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
@@ -45,6 +52,167 @@ class ChatResponse(BaseModel):
     model: str
     memory_updated: bool
     synthesis_ran: bool = False
+
+class WorkspaceConfig(BaseModel):
+    id: Optional[str] = None
+    label: str
+    path: str
+    permissions: List[str] = ["read"]  # ["read", "write", "delete"]
+    recursive: bool = True
+
+
+# ===== WORKSPACE HELPERS =====
+
+def _load_workspaces() -> List[dict]:
+    """Load workspace configurations from disk."""
+    if not WORKSPACES_FILE.exists():
+        return []
+    try:
+        with open(WORKSPACES_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+def _save_workspaces(workspaces: List[dict]) -> None:
+    """Save workspace configurations to disk."""
+    with open(WORKSPACES_FILE, "w", encoding="utf-8") as f:
+        json.dump(workspaces, f, indent=4)
+
+def _validate_path(target_path: str, workspaces: List[dict], required_permission: str) -> tuple[bool, str]:
+    """
+    Check if a target_path is allowed under any configured workspace with the required permission.
+    Returns (is_allowed, reason).
+    """
+    tp = Path(target_path).resolve()
+    for ws in workspaces:
+        if required_permission not in ws.get("permissions", []):
+            continue
+        ws_path = Path(ws["path"]).resolve()
+        try:
+            tp.relative_to(ws_path)  # raises ValueError if not under ws_path
+            # Check recursive: if not recursive, tp must be a direct child
+            if not ws.get("recursive", True):
+                if tp.parent != ws_path:
+                    return False, f"Path is in a subdirectory, but workspace '{ws['label']}' is set to folder-only (non-recursive)."
+            return True, "OK"
+        except ValueError:
+            continue
+    return False, f"Path '{target_path}' is not within any workspace with '{required_permission}' permission."
+
+async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str, List[str]]:
+    """
+    Scan Misaka's raw response for [tool:X ...] tags, execute them, and return
+    (cleaned_content_without_tool_tags, list_of_tool_results).
+    """
+    results = []
+    tool_pattern = re.compile(
+        r'\[tool:(read_file|write_file|list_files|search_files|system_stats)'
+        r'(?:\s+([^\]]*))?\]',
+        re.IGNORECASE
+    )
+
+    def parse_attrs(attr_str: str) -> dict:
+        """Parse key="value" pairs from attribute string."""
+        attrs = {}
+        for m in re.finditer(r'(\w+)=["\']([^"\']*)["\']', attr_str or ""):
+            attrs[m.group(1)] = m.group(2)
+        return attrs
+
+    for match in tool_pattern.finditer(content):
+        tool_name = match.group(1).lower()
+        attrs = parse_attrs(match.group(2))
+
+        try:
+            if tool_name == "system_stats":
+                if HAS_PSUTIL:
+                    cpu = psutil.cpu_percent(interval=0.5)
+                    vm = psutil.virtual_memory()
+                    disk = psutil.disk_usage(str(PROJECT_ROOT))
+                    results.append(
+                        f"[system_stats] CPU: {cpu}% | RAM: {vm.percent}% used "
+                        f"({vm.used // (1024**2)}MB / {vm.total // (1024**2)}MB) | "
+                        f"Disk: {disk.percent}% used ({disk.free // (1024**3)}GB free)"
+                    )
+                else:
+                    results.append("[system_stats] psutil not installed — cannot read system stats.")
+
+            elif tool_name == "read_file":
+                path = attrs.get("path", "")
+                allowed, reason = _validate_path(path, workspaces, "read")
+                if not allowed:
+                    results.append(f"[read_file ERROR] {reason}")
+                else:
+                    p = Path(path)
+                    if not p.exists():
+                        results.append(f"[read_file ERROR] File not found: {path}")
+                    elif p.stat().st_size > 500_000:
+                        results.append(f"[read_file ERROR] File too large (>{500_000} bytes): {path}")
+                    else:
+                        text = p.read_text(encoding="utf-8", errors="replace")
+                        results.append(f"[read_file: {path}]\n{text[:8000]}")
+
+            elif tool_name == "write_file":
+                path = attrs.get("path", "")
+                file_content = attrs.get("content", "")
+                allowed, reason = _validate_path(path, workspaces, "write")
+                if not allowed:
+                    results.append(f"[write_file ERROR] {reason}")
+                else:
+                    p = Path(path)
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    p.write_text(file_content, encoding="utf-8")
+                    results.append(f"[write_file OK] Written {len(file_content)} chars to {path}")
+
+            elif tool_name == "list_files":
+                path = attrs.get("path", "")
+                allowed, reason = _validate_path(path, workspaces, "read")
+                if not allowed:
+                    results.append(f"[list_files ERROR] {reason}")
+                else:
+                    p = Path(path)
+                    if not p.is_dir():
+                        results.append(f"[list_files ERROR] Not a directory: {path}")
+                    else:
+                        items = list(p.iterdir())[:50]
+                        listing = "\n".join(
+                            f"{'[DIR] ' if i.is_dir() else '[FILE]'} {i.name}"
+                            for i in sorted(items)
+                        )
+                        results.append(f"[list_files: {path}]\n{listing}")
+
+            elif tool_name == "search_files":
+                query = attrs.get("query", "")
+                search_path = attrs.get("path", "")
+                allowed, reason = _validate_path(search_path, workspaces, "read")
+                if not allowed:
+                    results.append(f"[search_files ERROR] {reason}")
+                else:
+                    p = Path(search_path)
+                    matches = []
+                    for file in p.rglob("*") if True else p.glob("*"):
+                        if file.is_file() and len(matches) < 20:
+                            try:
+                                text = file.read_text(encoding="utf-8", errors="ignore")
+                                if query.lower() in text.lower():
+                                    line_matches = [
+                                        f"  L{i+1}: {line.strip()}"
+                                        for i, line in enumerate(text.splitlines())
+                                        if query.lower() in line.lower()
+                                    ][:3]
+                                    matches.append(f"{file} ({len(line_matches)} matches):\n" + "\n".join(line_matches))
+                            except Exception:
+                                pass
+                    if matches:
+                        results.append(f"[search_files: '{query}' in {search_path}]\n" + "\n\n".join(matches))
+                    else:
+                        results.append(f"[search_files] No matches for '{query}' in {search_path}")
+
+        except Exception as e:
+            results.append(f"[{tool_name} ERROR] {str(e)}")
+
+    # Strip tool tags from content
+    cleaned = tool_pattern.sub("", content).strip()
+    return cleaned, results
 
 
 def _get_greeting_period(hour: int) -> str:
@@ -177,6 +345,79 @@ Respond ONLY with the JSON object and nothing else."""
     except Exception as e:
         logger.error(f"Memory synthesis failed: {e}")
         return dynamic_memory
+
+
+
+# ===== WORKSPACE CRUD =====
+
+@router.get("/workspaces")
+async def get_workspaces():
+    """Return all configured workspace directories."""
+    return {"workspaces": _load_workspaces()}
+
+@router.post("/workspaces")
+async def add_workspace(config: WorkspaceConfig):
+    """Add a new workspace directory."""
+    workspaces = _load_workspaces()
+    ws = {
+        "id": str(uuid.uuid4()),
+        "label": config.label,
+        "path": str(Path(config.path).resolve()),
+        "permissions": config.permissions,
+        "recursive": config.recursive,
+    }
+    if not Path(ws["path"]).exists():
+        raise HTTPException(status_code=400, detail=f"Directory does not exist: {ws['path']}")
+    workspaces.append(ws)
+    _save_workspaces(workspaces)
+    return ws
+
+@router.put("/workspaces/{workspace_id}")
+async def update_workspace(workspace_id: str, config: WorkspaceConfig):
+    """Update an existing workspace."""
+    workspaces = _load_workspaces()
+    for i, ws in enumerate(workspaces):
+        if ws["id"] == workspace_id:
+            workspaces[i] = {
+                "id": workspace_id,
+                "label": config.label,
+                "path": str(Path(config.path).resolve()),
+                "permissions": config.permissions,
+                "recursive": config.recursive,
+            }
+            _save_workspaces(workspaces)
+            return workspaces[i]
+    raise HTTPException(status_code=404, detail="Workspace not found")
+
+@router.delete("/workspaces/{workspace_id}")
+async def delete_workspace(workspace_id: str):
+    """Remove a workspace."""
+    workspaces = _load_workspaces()
+    workspaces = [ws for ws in workspaces if ws["id"] != workspace_id]
+    _save_workspaces(workspaces)
+    return {"status": "deleted"}
+
+@router.get("/system-stats")
+async def get_system_stats():
+    """Return current CPU, RAM, and disk stats."""
+    if not HAS_PSUTIL:
+        return {"error": "psutil not installed"}
+    try:
+        cpu = psutil.cpu_percent(interval=0.5)
+        vm = psutil.virtual_memory()
+        disk = psutil.disk_usage(str(PROJECT_ROOT))
+        return {
+            "cpu_percent": cpu,
+            "ram_used_mb": vm.used // (1024 ** 2),
+            "ram_total_mb": vm.total // (1024 ** 2),
+            "ram_percent": vm.percent,
+            "disk_used_gb": disk.used // (1024 ** 3),
+            "disk_total_gb": disk.total // (1024 ** 3),
+            "disk_free_gb": disk.free // (1024 ** 3),
+            "disk_percent": disk.percent,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/initiate", response_model=ChatResponse)
@@ -379,6 +620,17 @@ async def misaka_chat(request: ChatRequest):
         memory_data = await get_misaka_memory()
         base_info = memory_data.get("base_info", {})
         dynamic_memory = memory_data.get("memory", {})
+
+        # 1b. Load workspace config
+        workspaces = _load_workspaces()
+        workspace_summary = ""
+        if workspaces:
+            ws_lines = []
+            for ws in workspaces:
+                perms = ", ".join(ws.get("permissions", ["read"]))
+                scope = "all subfolders" if ws.get("recursive", True) else "folder only"
+                ws_lines.append(f"  - [{ws['label']}] {ws['path']} (permissions: {perms}, scope: {scope})")
+            workspace_summary = "WORKSPACE ACCESS:\nYou have access to the following directories:\n" + "\n".join(ws_lines)
         
         # 2. Compute temporal context
         hour = now.hour
@@ -397,6 +649,8 @@ YOUR IDENTITY (base_info.json):
 YOUR MEMORIES (memory.json):
 {json.dumps(dynamic_memory, indent=2)}
 
+{workspace_summary}
+
 TEMPORAL CONTEXT:
 - Current date and time: {formatted_datetime} ({greeting_period})
 - Time since last message: {time_since_last}
@@ -411,6 +665,13 @@ INSTRUCTIONS:
 6. Format memory updates as a JSON block at the END of your message using the tag <memory_update>...</memory_update>.
    Example: <memory_update>{{"user_info": {{"age": 25}}, "recent_observations": ["User is working on a Python project."]}}</memory_update>
    ONLY include fields that should be merged into the existing memory.json.
+7. FILE/SYSTEM TOOLS: You may use the following tools by embedding tags anywhere in your response. Execution is automatic.
+   - [tool:read_file path="/absolute/path/to/file"] — read a file's contents
+   - [tool:write_file path="/absolute/path/file.txt" content="text here"] — write or create a file
+   - [tool:list_files path="/absolute/path/to/dir"] — list files in a directory
+   - [tool:search_files query="search term" path="/absolute/path"] — search for text in files
+   - [tool:system_stats] — check CPU, RAM, disk usage
+   Only use tools for paths within your configured workspaces above. Tools run silently; results are returned in the next step.
 
 Keep responses engaging and human-like.
 """
@@ -446,6 +707,28 @@ Keep responses engaging and human-like.
         full_content = response.content.strip()
         expression = "default"
         mood = "calm"
+
+        # 5. Tool-use loop — if Misaka used any [tool:X] tags, execute them and do a second LLM pass
+        if workspaces and re.search(r'\[tool:', full_content, re.IGNORECASE):
+            cleaned_content, tool_results = await _execute_tool_calls(full_content, workspaces)
+            if tool_results:
+                tool_results_str = "\n\n".join(tool_results)
+                followup_prompt = (
+                    formatted_prompt +
+                    f"Misaka (thinking): {cleaned_content}\n\n"
+                    f"[Tool Results]:\n{tool_results_str}\n\n"
+                    "Misaka (final response, using the above tool results to help the user):"
+                )
+                followup = pm.call_with_failover(
+                    prompt=followup_prompt,
+                    trace_id=f"{trace_id}-tool",
+                    temperature=0.7,
+                    model=model,
+                    request_type="generation",
+                    source="misakacipher-tool"
+                )
+                if followup.success:
+                    full_content = followup.content.strip()
 
         # 5a. Extract Mood tag
         mood_match = re.search(r'\[Mood:\s*(\w+)\]', full_content, re.IGNORECASE)

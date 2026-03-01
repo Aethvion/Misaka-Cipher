@@ -206,10 +206,93 @@ async function loadPreferences() {
     loadGlobalSettings();
     initDevMode();
     initTooltips();
+    loadMisakaWorkspaces();
 }
 
 async function savePreference(key, value) {
     await prefs.set(key, value);
+}
+
+// ===== Misaka Workspace Management =====
+
+async function loadMisakaWorkspaces() {
+    try {
+        const res = await fetch('/api/misakacipher/workspaces');
+        if (!res.ok) return;
+        const data = await res.json();
+        renderWorkspaces(data.workspaces || []);
+
+        const addBtn = document.getElementById('ws-add-btn');
+        if (addBtn) addBtn.onclick = addMisakaWorkspace;
+    } catch (e) {
+        console.warn('Could not load Misaka workspaces:', e);
+    }
+}
+
+function renderWorkspaces(workspaces) {
+    const container = document.getElementById('misaka-workspace-list');
+    if (!container) return;
+    if (!workspaces.length) {
+        container.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">No workspaces configured.</span>';
+        return;
+    }
+    container.innerHTML = '';
+    for (const ws of workspaces) {
+        const perms = ws.permissions.map(p => `<span style="background: rgba(0,217,255,0.1); border: 1px solid rgba(0,217,255,0.25); border-radius: 4px; padding: 1px 6px; font-size: 0.7rem; color: var(--primary);">${p}</span>`).join(' ');
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; align-items:center; gap:0.6rem; padding:0.5rem 0.6rem; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:6px; font-size:0.82rem;';
+        row.innerHTML = `
+            <div style="flex:1; min-width:0;">
+                <div style="font-weight:600; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ws.label}</div>
+                <div style="color:var(--text-secondary); font-size:0.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${ws.path}">${ws.path}</div>
+            </div>
+            <div style="display:flex; gap:0.3rem; flex-shrink:0;">${perms}</div>
+            <span style="color:var(--text-secondary); font-size:0.7rem; flex-shrink:0;">${ws.recursive ? '↳ recursive' : 'folder only'}</span>
+            <button data-wsid="${ws.id}" title="Remove workspace" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:0.85rem; padding:0.2rem 0.4rem; transition:color 0.2s;" onmouseover="this.style.color='#ff4444'" onmouseout="this.style.color=''">✕</button>
+        `;
+        row.querySelector('button').onclick = () => deleteMisakaWorkspace(ws.id);
+        container.appendChild(row);
+    }
+}
+
+async function addMisakaWorkspace() {
+    const path = document.getElementById('ws-add-path')?.value?.trim();
+    const label = document.getElementById('ws-add-label')?.value?.trim() || path;
+    if (!path) return;
+
+    const permissions = [];
+    if (document.getElementById('ws-perm-read')?.checked) permissions.push('read');
+    if (document.getElementById('ws-perm-write')?.checked) permissions.push('write');
+    if (document.getElementById('ws-perm-delete')?.checked) permissions.push('delete');
+    const recursive = document.getElementById('ws-recursive')?.checked ?? true;
+
+    try {
+        const res = await fetch('/api/misakacipher/workspaces', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ label, path, permissions, recursive })
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            alert('Error: ' + (err.detail || 'Unknown error'));
+            return;
+        }
+        document.getElementById('ws-add-path').value = '';
+        document.getElementById('ws-add-label').value = '';
+        await loadMisakaWorkspaces();
+    } catch (e) {
+        console.error('Failed to add workspace:', e);
+    }
+}
+
+async function deleteMisakaWorkspace(id) {
+    if (!confirm('Remove this workspace?')) return;
+    try {
+        await fetch(`/api/misakacipher/workspaces/${id}`, { method: 'DELETE' });
+        await loadMisakaWorkspaces();
+    } catch (e) {
+        console.error('Failed to delete workspace:', e);
+    }
 }
 
 // ===== Global settings.json Management =====
