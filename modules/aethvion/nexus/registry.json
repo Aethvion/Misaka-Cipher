@@ -1,0 +1,35 @@
+{
+    "modules": [
+        {
+            "id": "spotify",
+            "name": "Spotify Link",
+            "description": "Control playback and get track info from Spotify.",
+            "module_path": "modules.aethvion.nexus.spotify_link",
+            "requires_auth": true,
+            "is_authorized": false,
+            "available_commands": {
+                "get_current": "Get info about the currently playing track",
+                "play": "Start playback (takes 'target' as optional argument)",
+                "pause": "Pause playback",
+                "skip": "Skip to the next track"
+            },
+            "settings": [
+                "client_id",
+                "client_secret",
+                "redirect_uri"
+            ]
+        },
+        {
+            "id": "media_sentinel",
+            "name": "Media Sentinel",
+            "description": "Read system-wide media info (SMTC) using Windows native hooks.",
+            "module_path": "modules.aethvion.nexus.media_sentinel",
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "get_media_info": "Get what is currently playing on the system (YouTube, Spotify, etc.)"
+            },
+            "settings": []
+        }
+    ]
+}

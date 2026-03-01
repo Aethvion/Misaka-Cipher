@@ -8,11 +8,9 @@ import shutil
 from pathlib import Path
 import datetime
 import re
-try:
-    import psutil
-    HAS_PSUTIL = True
-except ImportError:
-    HAS_PSUTIL = False
+import psutil
+HAS_PSUTIL = True
+from core.nexus import nexus_manager
 
 from core.providers.provider_manager import ProviderManager
 from core.workspace.preferences_manager import get_preferences_manager
@@ -672,7 +670,9 @@ INSTRUCTIONS:
    - [tool:list_files path="/absolute/path/to/dir"] — list files in a directory
    - [tool:search_files query="search term" path="/absolute/path"] — search for text in files
    - [tool:system_stats] — check CPU, RAM, disk usage
-   Only use tools for paths within your configured workspaces above. Tools run silently; results are returned in the next step.
+   - [tool:nexus module="spotify" cmd="play" target="optional"] — control Spotify (play, pause, skip, get_current)
+   - [tool:nexus module="media_sentinel" cmd="get_media_info"] — read what is currently playing on the Windows PC (YouTube, Spotify, Web Browsers, etc.)
+   Only use tools for paths within your configured workspaces above (for file tools) or for enabled Nexus modules. Tools run silently; results are returned in the next step.
 
 8. MULTI-MESSAGE: If your response is naturally multiple separate thoughts, sections, or actions, you can split them into separate chat bubbles by inserting the exact text [msg_break] between them. Use this sparingly — only when a topic or action genuinely warrants its own message bubble.
 
@@ -823,7 +823,45 @@ Keep responses engaging and human-like.
             memory_updated=memory_updated,
             synthesis_ran=synthesis_ran
         )
-        
+
     except Exception as e:
         logger.error(f"Misaka Chat Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Nexus Module Management ---
+
+@router.get("/nexus/registry")
+async def get_nexus_registry():
+    """Get the Nexus module registry."""
+    return nexus_manager.get_registry()
+
+@router.post("/nexus/spotify/authorize")
+async def authorize_spotify(settings: Dict[str, str]):
+    """Get the Spotify authorization URL."""
+    try:
+        from modules.aethvion.nexus import spotify_link
+        url = spotify_link.get_auth_url(settings)
+        return {"url": url}
+    except Exception as e:
+        logger.error(f"Failed to get Spotify auth URL: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/nexus/spotify/callback")
+async def spotify_callback(code: str):
+    """Handle the Spotify OAuth2 callback."""
+    try:
+        # We need the settings to exchange the code
+        from modules.aethvion.nexus import spotify_link
+        prefs_manager = get_preferences_manager()
+        all_prefs = prefs_manager.get_all_preferences()
+        settings = all_prefs.get("nexus", {}).get("spotify", {})
+        
+        success = spotify_link.handle_callback(settings, code)
+        if success:
+            nexus_manager.update_auth_state("spotify", True)
+            return "Spotify authorized successfully! You can close this window."
+        raise HTTPException(status_code=400, detail="Failed to authorize Spotify.")
+    except Exception as e:
+        logger.error(f"Spotify callback error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

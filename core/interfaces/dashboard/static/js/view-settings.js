@@ -208,12 +208,109 @@ async function loadPreferences() {
     // Initialize Other Sections
     loadGlobalSettings();
     initDevMode();
-    initTooltips();
     loadMisakaWorkspaces();
+    loadNexusModules();
 }
 
 async function savePreference(key, value) {
     await prefs.set(key, value);
+}
+
+// ===== Nexus Module Management =====
+
+async function loadNexusModules() {
+    try {
+        const res = await fetch('/api/misakacipher/nexus/registry');
+        if (!res.ok) return;
+        const data = await res.json();
+        renderNexusModules(data.modules || []);
+    } catch (e) {
+        console.warn('Could not load Nexus modules:', e);
+    }
+}
+
+function renderNexusModules(modules) {
+    const container = document.getElementById('nexus-module-list');
+    if (!container) return;
+    if (!modules.length) {
+        container.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">No Nexus modules available.</span>';
+        return;
+    }
+    container.innerHTML = '';
+    for (const mod of modules) {
+        const card = document.createElement('div');
+        card.style.cssText = 'padding:1rem; background:rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:8px;';
+
+        let settingsHtml = '';
+        if (mod.settings && mod.settings.length > 0) {
+            settingsHtml = `
+                <div style="margin-top:0.75rem; display:flex; flex-direction:column; gap:0.5rem; border-top:1px solid rgba(255,255,255,0.05); padding-top:0.75rem;">
+                    ${mod.settings.map(s => `
+                        <div style="display:flex; flex-direction:column; gap:0.2rem;">
+                            <label style="font-size:0.75rem; color:var(--text-secondary);">${s.replace(/_/g, ' ').toUpperCase()}</label>
+                            <input type="password" class="control-input nexus-setting" data-mod="${mod.id}" data-key="${s}" value="${prefs.get(`nexus.${mod.id}.${s}`, '')}" style="width:100%; box-sizing:border-box; font-size:0.8rem; padding:0.4rem;">
+                        </div>
+                    `).join('')}
+                    <button class="btn btn-secondary" style="font-size:0.75rem; margin-top:0.25rem;" onclick="saveNexusSettings('${mod.id}')">Save ${mod.name} Settings</button>
+                </div>
+            `;
+        }
+
+        const authBtn = (mod.requires_auth && !mod.is_authorized)
+            ? `<button class="btn btn-primary" style="font-size:0.75rem; margin-top:0.5rem;" onclick="authorizeNexusModule('${mod.id}')">Connect ${mod.name}</button>`
+            : (mod.requires_auth ? `<span style="color:#00ff88; font-size:0.75rem; margin-top:0.5rem; display:block;"><i class="fas fa-check-circle"></i> Authorized</span>` : '');
+
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:start;">
+                <div>
+                    <div style="font-weight:600; color:var(--text-primary); font-size:0.9rem;">${mod.name}</div>
+                    <div style="color:var(--text-secondary); font-size:0.8rem; margin-top:0.2rem;">${mod.description}</div>
+                </div>
+                <div style="font-size:0.7rem; color:var(--primary); font-family:Orbitron,sans-serif;">ID: ${mod.id}</div>
+            </div>
+            ${authBtn}
+            ${settingsHtml}
+        `;
+        container.appendChild(card);
+    }
+}
+
+async function saveNexusSettings(moduleId) {
+    const inputs = document.querySelectorAll(`.nexus-setting[data-mod="${moduleId}"]`);
+    for (const input of inputs) {
+        const key = input.getAttribute('data-key');
+        const val = input.value.trim();
+        await savePreference(`nexus.${moduleId}.${key}`, val);
+    }
+    alert(`${moduleId} settings saved!`);
+}
+
+async function authorizeNexusModule(moduleId) {
+    if (moduleId === 'spotify') {
+        const settings = {
+            client_id: prefs.get('nexus.spotify.client_id', ''),
+            client_secret: prefs.get('nexus.spotify.client_secret', ''),
+            redirect_uri: prefs.get('nexus.spotify.redirect_uri', 'http://localhost:8080/callback')
+        };
+
+        if (!settings.client_id || !settings.client_secret) {
+            alert('Please enter and save your Spotify Client ID and Secret first.');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/misakacipher/nexus/spotify/authorize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            });
+            if (!res.ok) throw new Error('Failed to get auth URL');
+            const data = await res.json();
+            window.open(data.url, '_blank', 'width=600,height=800');
+        } catch (e) {
+            alert('Error: ' + e.message);
+        }
+    }
 }
 
 // ===== Misaka Workspace Management =====
@@ -1525,6 +1622,10 @@ async function switchSettingsSubTab(subTab, save = true) {
 
     if (subTab === 'profiles') {
         loadRoutingProfiles();
+    }
+
+    if (subTab === 'modules') {
+        loadNexusModules();
     }
 
     if (save && typeof savePreference === 'function') {

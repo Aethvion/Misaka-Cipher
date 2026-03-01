@@ -1121,6 +1121,9 @@
                     <button class="settings-nav-item" data-settingsubtab="profiles">
                         <i class="fas fa-users"></i> Routing Profiles
                     </button>
+                    <button class="settings-nav-item" data-settingsubtab="modules">
+                        <i class="fas fa-cubes"></i> Modules
+                    </button>
                 </div>
 
                 <!-- Settings Content Pane -->
@@ -1264,6 +1267,7 @@
                                     </details>
                                 </div>
 
+
                                 <!-- Proactive Messages Sub-section -->
                                 <div
                                     style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
@@ -1355,6 +1359,28 @@
                                         <input type="range" id="setting-misaka-session-chance" min="10" max="100"
                                             value="60">
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel: Modules -->
+                    <div class="settings-panel" id="settings-panel-modules">
+                        <div class="setting-card" id="card-modules">
+                            <div class="card-header">
+                                <div class="header-title">
+                                    <i class="fas fa-cubes"></i>
+                                    <span>Nexus Modules</span>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <p class="section-hint">External integrations and bridges to other software.</p>
+                                <div id="nexus-module-list"
+                                    style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+                                    <!-- Dynamically populated -->
+                                    <span
+                                        style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">Loading
+                                        modules...</span>
                                 </div>
                             </div>
                         </div>
