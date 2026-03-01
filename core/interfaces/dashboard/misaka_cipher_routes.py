@@ -163,8 +163,10 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
                 else:
                     p = Path(path)
                     p.parent.mkdir(parents=True, exist_ok=True)
-                    p.write_text(file_content, encoding="utf-8")
-                    results.append(f"[write_file OK] Written {len(file_content)} chars to {path}")
+                    # Handle escaped characters from LLM tool calls
+                    processed_content = file_content.replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t")
+                    p.write_text(processed_content, encoding="utf-8")
+                    results.append(f"[write_file OK] Written {len(processed_content)} chars to {path}")
 
             elif tool_name == "list_files":
                 path = attrs.get("path", "")
