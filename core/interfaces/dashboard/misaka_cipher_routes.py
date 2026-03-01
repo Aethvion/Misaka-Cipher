@@ -105,7 +105,7 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
     """
     results = []
     tool_pattern = re.compile(
-        r'\[tool:(read_file|write_file|list_files|search_files|system_stats)'
+        r'\[tool:(read_file|write_file|list_files|search_files|system_stats|nexus)'
         r'(?:\s+([^\]]*))?\]',
         re.IGNORECASE
     )
@@ -205,6 +205,16 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
                         results.append(f"[search_files: '{query}' in {search_path}]\n" + "\n\n".join(matches))
                     else:
                         results.append(f"[search_files] No matches for '{query}' in {search_path}")
+
+            elif tool_name == "nexus":
+                # External module bridge (Spotify, Media Sentinel, etc.)
+                module_id = attrs.get("module", "")
+                command = attrs.get("cmd", "")
+                # Any other attributes are passed as args
+                args = {k: v for k, v in attrs.items() if k not in ["module", "cmd"]}
+                
+                result = nexus_manager.call_module(module_id, command, args)
+                results.append(f"[nexus:{module_id}.{command}] {result}")
 
         except Exception as e:
             results.append(f"[{tool_name} ERROR] {str(e)}")
