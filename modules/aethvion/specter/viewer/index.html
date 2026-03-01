@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Specter - VTuber Rigging Viewer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #0f111a;
+            --panel: #1a1d2bbd;
+            --accent: #00d9ff;
+            --text: #e0e0e0;
+            --border: #2a2e3f;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: var(--panel);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            max-height: calc(100% - 40px);
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.8rem;
+        }
+
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .param-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .param-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .slider-container {
+            width: 100%;
+        }
+
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 5px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            font-size: 0.75rem;
+            color: #888;
+            display: flex;
+            gap: 20px;
+        }
+
+        .live-tag {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        /* Overlay */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0, 217, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div id="loading-text">Initializing Specter Core...</div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div class="control-panel">
+        <div class="panel-header">
+            <i class="fas fa-ghost"></i>
+            <h2>Specter Rig</h2>
+        </div>
+
+        <div id="params-list">
+            <!-- Dynamic parameters will be added here -->
+            <div class="placeholder-text" style="font-size: 0.8rem; opacity: 0.5;">No active model loaded.</div>
+        </div>
+
+        <div style="margin-top: 2rem;">
+            <button id="reset-btn"
+                style="width: 100%; padding: 0.8rem; background: transparent; border: 1px solid var(--accent); color: var(--accent); border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
+                Reset Parameters
+            </button>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <span>FPS: <span id="fps-val">--</span></span>
+        <span>ENGINE: <span class="live-tag">READY</span></span>
+        <span id="model-name">MODEL: NONE</span>
+    </div>
+
+    <script src="/viewer/specter_engine.js"></script>
+    <script>
+        // Start engine
+        window.addEventListener('load', () => {
+            const engine = new SpecterEngine('canvas-container');
+
+            // Register UI hooks
+            engine.onLoadingComplete = () => {
+                document.getElementById('loading-overlay').style.display = 'none';
+            };
+
+            engine.onModelLoaded = (model) => {
+                document.getElementById('model-name').textContent = `MODEL: ${model.name}`;
+                updateParamsUI(model.params);
+            };
+
+            // Start engine after hooks are ready
+            engine.init().then(() => {
+                // Fetch first available model
+                fetch('/api/models')
+                    .then(r => r.json())
+                    .then(models => {
+                        if (models.length > 0) {
+                            engine.loadModel(models[0].path);
+                        } else {
+                            document.getElementById('loading-text').textContent = "No models found. Please add a .specter.json model.";
+                        }
+                    });
+            });
+
+            // Basic FPS display
+            setInterval(() => {
+                const fpsVal = document.getElementById('fps-val');
+                if (fpsVal && engine.app) {
+                    fpsVal.textContent = Math.round(engine.app.ticker.FPS);
+                }
+            }, 500);
+        });
+
+        function updateParamsUI(params) {
+            const list = document.getElementById('params-list');
+            list.innerHTML = '';
+
+            Object.keys(params).forEach(key => {
+                const p = params[key];
+                const div = document.createElement('div');
+                div.className = 'param-group';
+                div.innerHTML = `
+                    <div class="param-label">
+                        <span>${p.name || key}</span>
+                        <span id="val-${key}">${p.value.toFixed(2)}</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" min="${p.min}" max="${p.max}" step="0.01" value="${p.value}" 
+                               oninput="window.updateParam('${key}', this.value)">
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+    </script>
+</body>
+
+</html>
