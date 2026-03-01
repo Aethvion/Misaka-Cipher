@@ -11,6 +11,9 @@ let hasInitializedMisaka = false;
 let currentMisakaMood = 'calm';
 
 async function initializeMisakaCipher() {
+    // Always deliver any queued proactive message when switching to this tab
+    deliverQueuedProactiveMessage();
+
     if (hasInitializedMisaka) {
         console.log("Misaka Cipher already active, skipping initialization.");
         return;
@@ -77,9 +80,6 @@ async function initializeMisakaCipher() {
 
     // 7. Start proactive scheduler (runs once, sets up timers)
     startProactiveScheduler();
-
-    // 8. Deliver any queued message from when we were on a different tab
-    deliverQueuedProactiveMessage();
 
     // Event Listeners
     sendBtn.onclick = () => sendMisakaMessage();
@@ -531,8 +531,8 @@ function showMisakaPopup(text) {
     popup.id = 'misaka-proactive-popup';
     popup.className = 'misaka-proactive-popup';
 
-    // Clean display text (strip emotion tags)
-    const cleanText = text.replace(/\[Emotion:\s*\w+\]/gi, '').trim();
+    // Clean display text (strip emotion and mood tags)
+    const cleanText = text.replace(/\[Emotion:\s*\w+\]/gi, '').replace(/\[Mood:\s*\w+\]/gi, '').trim();
     const preview = cleanText.length > 120 ? cleanText.slice(0, 117) + '…' : cleanText;
 
     const avatarSrc = document.getElementById('misaka-expression-img')?.src
@@ -548,20 +548,13 @@ function showMisakaPopup(text) {
         <div class="popup-progress"></div>
     `;
 
-    // Click popup body → navigate to Misaka tab
-    popup.querySelector('.popup-body').addEventListener('click', () => {
+    // Click popup → navigate to Misaka tab
+    const navigateToMisaka = () => {
         dismissMisakaPopup();
-        // Switch to Misaka Cipher tab
-        const misakaTab = document.querySelector('[data-tab="misaka-companion"]') ||
-            document.querySelector('[data-tab="misakacipher"]');
-        if (misakaTab) misakaTab.click();
-    });
-    popup.querySelector('.popup-avatar').addEventListener('click', () => {
-        dismissMisakaPopup();
-        const misakaTab = document.querySelector('[data-tab="misaka-companion"]') ||
-            document.querySelector('[data-tab="misakacipher"]');
-        if (misakaTab) misakaTab.click();
-    });
+        if (typeof switchMainTab === 'function') switchMainTab('misaka-cipher');
+    };
+    popup.querySelector('.popup-body').addEventListener('click', navigateToMisaka);
+    popup.querySelector('.popup-avatar').addEventListener('click', navigateToMisaka);
 
     // Dismiss button
     popup.querySelector('.popup-dismiss').addEventListener('click', (e) => {
