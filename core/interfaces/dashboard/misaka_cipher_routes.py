@@ -105,16 +105,20 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
     """
     results = []
     tool_pattern = re.compile(
-        r'\[tool:(read_file|write_file|list_files|search_files|system_stats|nexus)'
-        r'(?:\s+([^\]]*))?\]',
-        re.IGNORECASE
+        r'\[tool:(\w+)(?:\s+((?:(?!\[tool:).)*?))?\](?=\s*(?:\[tool:|$|[^\[]*$))',
+        re.IGNORECASE | re.DOTALL
     )
 
     def parse_attrs(attr_str: str) -> dict:
-        """Parse key="value" pairs from attribute string."""
+        """Parse key="value" or key='value' or key=value pairs from attribute string."""
         attrs = {}
-        for m in re.finditer(r'(\w+)=["\']([^"\']*)["\']', attr_str or ""):
-            attrs[m.group(1)] = m.group(2)
+        # Supports key="val", key='val', and key=val (no spaces)
+        attr_regex = re.compile(r'(\w+)=(?:(["\'])(.*?)\2|([^\s>\]]+))', re.DOTALL)
+        for m in attr_regex.finditer(attr_str or ""):
+            key = m.group(1)
+            # If quoted, value is in group 3. If unquoted, value is in group 4.
+            val = m.group(3) if m.group(3) is not None else m.group(4)
+            attrs[key] = val
         return attrs
 
     for match in tool_pattern.finditer(content):
