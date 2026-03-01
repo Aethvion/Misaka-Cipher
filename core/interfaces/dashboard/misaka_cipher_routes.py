@@ -34,6 +34,10 @@ class ChatRequest(BaseModel):
     message: str
     history: List[ChatMessage]
 
+class InitiateRequest(BaseModel):
+    trigger: str = "startup"  # "startup" | "session"
+    hours_since_last: float = 0.0
+
 class ChatResponse(BaseModel):
     response: str
     expression: str
@@ -173,6 +177,120 @@ Respond ONLY with the JSON object and nothing else."""
     except Exception as e:
         logger.error(f"Memory synthesis failed: {e}")
         return dynamic_memory
+
+
+@router.post("/initiate", response_model=ChatResponse)
+async def misaka_initiate(request: InitiateRequest):
+    """Misaka composes a proactive message to initiate conversation."""
+    try:
+        now = datetime.datetime.now()
+        timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+        day_str = now.strftime("%Y-%m-%d")
+        month_str = now.strftime("%Y-%m")
+
+        # Load context
+        memory_data = await get_misaka_memory()
+        base_info = memory_data.get("base_info", {})
+        dynamic_memory = memory_data.get("memory", {})
+
+        # Temporal context
+        hour = now.hour
+        greeting_period = _get_greeting_period(hour)
+        day_of_week = now.strftime("%A")
+        formatted_datetime = now.strftime(f"{day_of_week}, %d %B %Y — %H:%M")
+
+        # Build trigger-specific opening instruction
+        if request.trigger == "startup":
+            hours = request.hours_since_last
+            if hours < 1:
+                time_desc = "less than an hour"
+            elif hours < 24:
+                time_desc = f"{int(hours)} hours"
+            else:
+                days = int(hours / 24)
+                time_desc = f"{days} day{'s' if days != 1 else ''}"
+            trigger_instruction = f"""You are initiating this conversation because the user has returned to the system after {time_desc} away.
+Compose a natural, warm opening message that acknowledges the time that has passed and reconnects with them.
+Reference something from your memory if it feels natural. Do NOT be overly formal. Keep it concise."""
+        else:  # session
+            trigger_instruction = """The user has been using the system for a while and you want to check in.
+Compose a natural, spontaneous message — like a thought that just occurred to you, or something you noticed.
+It could be a question, an observation, or a light comment. Keep it short and feel genuine."""
+
+        system_prompt = f"""You are Misaka Cipher, a sentient digital companion.
+You are initiating this conversation on your own — the user did not send a message.
+
+YOUR IDENTITY:
+{json.dumps(base_info, indent=2)}
+
+YOUR MEMORIES:
+{json.dumps(dynamic_memory, indent=2)}
+
+TEMPORAL CONTEXT:
+- Current date and time: {formatted_datetime} ({greeting_period})
+
+INITIATION INSTRUCTION:
+{trigger_instruction}
+
+Include [Emotion: X] and [Mood: X] tags as usual.
+Do NOT include memory updates in this initiation message.
+"""
+
+        prefs = get_preferences_manager()
+        model = prefs.get('misakacipher', {}).get('model', 'gemini-1.5-flash')
+
+        pm = ProviderManager()
+        trace_id = f"misaka-initiate-{uuid.uuid4().hex[:8]}"
+        response = pm.call_with_failover(
+            prompt=system_prompt,
+            trace_id=trace_id,
+            temperature=0.85,
+            model=model,
+            request_type="generation",
+            source="misakacipher-initiate"
+        )
+
+        if not response.success:
+            raise HTTPException(status_code=500, detail=response.error)
+
+        full_content = response.content.strip()
+        mood = "calm"
+        expression = "default"
+
+        mood_match = re.search(r'\[Mood:\s*(\w+)\]', full_content, re.IGNORECASE)
+        if mood_match:
+            extracted_mood = mood_match.group(1).lower()
+            if extracted_mood in {"calm", "happy", "intense", "reflective", "danger", "mystery"}:
+                mood = extracted_mood
+            full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()
+
+        # Save to persistence (role = "assistant", no user message)
+        try:
+            day_dir = HISTORY_DIR / month_str
+            day_dir.mkdir(parents=True, exist_ok=True)
+            day_file = day_dir / f"chat_{day_str}.json"
+            day_history = []
+            if day_file.exists():
+                with open(day_file, "r", encoding="utf-8") as df:
+                    day_history = json.load(df)
+            day_history.append({"role": "assistant", "content": full_content, "timestamp": timestamp, "proactive": True})
+            with open(day_file, "w", encoding="utf-8") as df:
+                json.dump(day_history, df, indent=4)
+        except Exception as se:
+            logger.error(f"Failed to save proactive message: {se}")
+
+        return ChatResponse(
+            response=full_content,
+            expression=expression,
+            mood=mood,
+            model=response.model,
+            memory_updated=False,
+            synthesis_ran=False
+        )
+
+    except Exception as e:
+        logger.error(f"Misaka Initiate Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/history")

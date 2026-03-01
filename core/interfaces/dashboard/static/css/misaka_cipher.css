@@ -438,3 +438,88 @@
     flex-direction: column;
     gap: 1.5rem;
 }
+
+/* ===== PROACTIVE NOTIFICATION POPUP ===== */
+.misaka-proactive-popup {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 320px;
+    background: rgba(6, 6, 14, 0.92);
+    border: 1px solid rgba(0, 217, 255, 0.35);
+    border-radius: 14px;
+    padding: 1rem 1.1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    box-shadow: 0 0 30px rgba(0, 217, 255, 0.15), 0 8px 32px rgba(0,0,0,0.6);
+    backdrop-filter: blur(16px);
+    cursor: pointer;
+    z-index: 99999;
+    transform: translateX(120%);
+    opacity: 0;
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
+}
+.misaka-proactive-popup.show {
+    transform: translateX(0);
+    opacity: 1;
+}
+.misaka-proactive-popup .popup-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid rgba(0, 217, 255, 0.3);
+    flex-shrink: 0;
+}
+.misaka-proactive-popup .popup-body {
+    flex: 1;
+    min-width: 0;
+}
+.misaka-proactive-popup .popup-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    color: var(--primary);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+}
+.misaka-proactive-popup .popup-text {
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+.misaka-proactive-popup .popup-dismiss {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.6rem;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 0.25rem;
+    transition: color 0.2s;
+}
+.misaka-proactive-popup .popup-dismiss:hover {
+    color: var(--text-primary);
+}
+.misaka-proactive-popup .popup-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--primary);
+    border-radius: 0 0 14px 14px;
+    width: 100%;
+    transform-origin: left;
+    animation: popup-countdown 12s linear forwards;
+}
+@keyframes popup-countdown {
+    from { transform: scaleX(1); }
+    to   { transform: scaleX(0); }
+}

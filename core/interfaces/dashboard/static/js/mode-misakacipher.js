@@ -75,6 +75,12 @@ async function initializeMisakaCipher() {
         }
     });
 
+    // 7. Start proactive scheduler (runs once, sets up timers)
+    startProactiveScheduler();
+
+    // 8. Deliver any queued message from when we were on a different tab
+    deliverQueuedProactiveMessage();
+
     // Event Listeners
     sendBtn.onclick = () => sendMisakaMessage();
     chatInput.onkeydown = (e) => {
@@ -394,13 +400,9 @@ function updateMisakaMood(mood) {
     const layout = document.querySelector('.companion-layout');
     if (!layout) return;
 
-    // Remove all existing mood classes
     layout.classList.remove('mood-calm', 'mood-happy', 'mood-intense', 'mood-reflective', 'mood-danger', 'mood-mystery');
-
-    // Apply new mood
     layout.classList.add(`mood-${mood}`);
 
-    // Update badge
     const badge = document.getElementById('misaka-mood-badge');
     if (badge) {
         const moodLabels = {
@@ -413,11 +415,192 @@ function updateMisakaMood(mood) {
         };
         badge.textContent = moodLabels[mood] || mood;
         badge.classList.add('visible');
-
-        // Hide badge after 5 seconds
         clearTimeout(badge._hideTimer);
         badge._hideTimer = setTimeout(() => badge.classList.remove('visible'), 5000);
     }
 }
 
+// ===== PROACTIVE MESSAGING SYSTEM =====
+let _proactiveSessionTimer = null;
+let _queuedProactiveMessage = null; // { response, mood } — pending delivery when user opens Misaka tab
+
+function _randomBetween(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
+async function _getHoursSinceLastMessage() {
+    try {
+        const res = await fetch('/api/misakacipher/history?offset_days=0&limit_days=1');
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (!data.history || !data.history[0] || !data.history[0].messages) return null;
+        const msgs = data.history[0].messages;
+        let lastTs = null;
+        for (let i = msgs.length - 1; i >= 0; i--) {
+            if (msgs[i].timestamp) { lastTs = msgs[i].timestamp; break; }
+        }
+        if (!lastTs) return null;
+        const last = new Date(lastTs.replace(' ', 'T'));
+        const now = new Date();
+        return (now - last) / (1000 * 3600);
+    } catch { return null; }
+}
+
+async function startProactiveScheduler() {
+    // Read prefs
+    const res = await fetch('/api/preferences');
+    if (!res.ok) return;
+    const p = await res.json();
+    const mc = p.misakacipher || {};
+
+    const enabled = mc.proactive_enabled !== false;
+    const startupHours = mc.startup_trigger_hours ?? 4;
+    const startupChance = mc.startup_chance ?? 75;
+    const delayMin = mc.startup_delay_min ?? 10;
+    const delayMax = mc.startup_delay_max ?? 45;
+    const intervalMin = mc.session_interval_min ?? 45;
+    const intervalMax = mc.session_interval_max ?? 90;
+    const sessionChance = mc.session_chance ?? 60;
+
+    if (!enabled) return;
+
+    // --- Startup check ---
+    const hoursSince = await _getHoursSinceLastMessage();
+    if (hoursSince !== null && hoursSince >= startupHours) {
+        if (Math.random() * 100 < startupChance) {
+            const delay = _randomBetween(delayMin, delayMax) * 1000;
+            setTimeout(() => triggerProactiveMessage('startup', hoursSince), delay);
+        }
+    }
+
+    // --- Session check-in loop ---
+    function scheduleNextSession() {
+        const interval = _randomBetween(intervalMin, intervalMax) * 60000;
+        _proactiveSessionTimer = setTimeout(async () => {
+            if (Math.random() * 100 < sessionChance) {
+                await triggerProactiveMessage('session', 0);
+            }
+            scheduleNextSession();
+        }, interval);
+    }
+    scheduleNextSession();
+}
+
+async function triggerProactiveMessage(trigger, hoursSince) {
+    try {
+        const res = await fetch('/api/misakacipher/initiate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ trigger, hours_since_last: hoursSince })
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // Check if Misaka tab is active
+        const misakaPanel = document.getElementById('misaka-companion-panel');
+        const isMisakaVisible = misakaPanel && !misakaPanel.classList.contains('hidden') &&
+            misakaPanel.offsetParent !== null;
+
+        if (isMisakaVisible) {
+            // Deliver directly
+            if (data.mood) updateMisakaMood(data.mood);
+            await addAssistantMessageTyped(data.response);
+            misakaChatHistory.push({ role: 'assistant', content: data.response });
+            if (misakaChatHistory.length > misakaMaxHistory) {
+                misakaChatHistory = misakaChatHistory.slice(-misakaMaxHistory);
+            }
+        } else {
+            // Queue and show popup
+            _queuedProactiveMessage = data;
+            const prefRes = await fetch('/api/preferences');
+            const prefs = await prefRes.json();
+            const popupEnabled = (prefs.misakacipher || {}).proactive_popup !== false;
+            if (popupEnabled) showMisakaPopup(data.response);
+        }
+    } catch (e) {
+        console.warn('Proactive message failed:', e);
+    }
+}
+
+function showMisakaPopup(text) {
+    // Remove any existing popup
+    const existing = document.getElementById('misaka-proactive-popup');
+    if (existing) existing.remove();
+
+    const popup = document.createElement('div');
+    popup.id = 'misaka-proactive-popup';
+    popup.className = 'misaka-proactive-popup';
+
+    // Clean display text (strip emotion tags)
+    const cleanText = text.replace(/\[Emotion:\s*\w+\]/gi, '').trim();
+    const preview = cleanText.length > 120 ? cleanText.slice(0, 117) + '…' : cleanText;
+
+    const avatarSrc = document.getElementById('misaka-expression-img')?.src
+        || '/static/misakacipher/expressions/misakacipher_default.png';
+
+    popup.innerHTML = `
+        <img class="popup-avatar" src="${avatarSrc}" alt="Misaka">
+        <div class="popup-body">
+            <div class="popup-name">Misaka Cipher</div>
+            <div class="popup-text">${preview}</div>
+        </div>
+        <button class="popup-dismiss" title="Dismiss">✕</button>
+        <div class="popup-progress"></div>
+    `;
+
+    // Click popup body → navigate to Misaka tab
+    popup.querySelector('.popup-body').addEventListener('click', () => {
+        dismissMisakaPopup();
+        // Switch to Misaka Cipher tab
+        const misakaTab = document.querySelector('[data-tab="misaka-companion"]') ||
+            document.querySelector('[data-tab="misakacipher"]');
+        if (misakaTab) misakaTab.click();
+    });
+    popup.querySelector('.popup-avatar').addEventListener('click', () => {
+        dismissMisakaPopup();
+        const misakaTab = document.querySelector('[data-tab="misaka-companion"]') ||
+            document.querySelector('[data-tab="misakacipher"]');
+        if (misakaTab) misakaTab.click();
+    });
+
+    // Dismiss button
+    popup.querySelector('.popup-dismiss').addEventListener('click', (e) => {
+        e.stopPropagation();
+        dismissMisakaPopup();
+    });
+
+    document.body.appendChild(popup);
+    // Animate in
+    requestAnimationFrame(() => requestAnimationFrame(() => popup.classList.add('show')));
+
+    // Auto-dismiss after 12s
+    popup._dismissTimer = setTimeout(() => dismissMisakaPopup(), 12000);
+}
+
+function dismissMisakaPopup() {
+    const popup = document.getElementById('misaka-proactive-popup');
+    if (!popup) return;
+    clearTimeout(popup._dismissTimer);
+    popup.classList.remove('show');
+    setTimeout(() => popup.remove(), 500);
+}
+
+// Deliver queued message when user returns to Misaka tab
+function deliverQueuedProactiveMessage() {
+    if (!_queuedProactiveMessage) return;
+    const data = _queuedProactiveMessage;
+    _queuedProactiveMessage = null;
+    dismissMisakaPopup();
+
+    setTimeout(async () => {
+        if (data.mood) updateMisakaMood(data.mood);
+        await addAssistantMessageTyped(data.response);
+        misakaChatHistory.push({ role: 'assistant', content: data.response });
+        if (misakaChatHistory.length > misakaMaxHistory) {
+            misakaChatHistory = misakaChatHistory.slice(-misakaMaxHistory);
+        }
+    }, 800);
+}
+
 window.initializeMisakaCipher = initializeMisakaCipher;
+window.deliverQueuedProactiveMessage = deliverQueuedProactiveMessage;

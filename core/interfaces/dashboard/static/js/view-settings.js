@@ -173,6 +173,35 @@ async function loadPreferences() {
         };
     }
 
+    // Proactive Messaging Settings
+    const proactiveSettings = [
+        { id: 'setting-misaka-proactive-enabled', pref: 'misakacipher.proactive_enabled', type: 'toggle', default: true },
+        { id: 'setting-misaka-proactive-popup', pref: 'misakacipher.proactive_popup', type: 'toggle', default: true },
+        { id: 'setting-misaka-startup-hours', pref: 'misakacipher.startup_trigger_hours', type: 'range', default: 4, valId: 'setting-misaka-startup-hours-val' },
+        { id: 'setting-misaka-startup-chance', pref: 'misakacipher.startup_chance', type: 'range', default: 75, valId: 'setting-misaka-startup-chance-val' },
+        { id: 'setting-misaka-startup-delay-min', pref: 'misakacipher.startup_delay_min', type: 'range', default: 10, valId: 'setting-misaka-startup-delay-min-val' },
+        { id: 'setting-misaka-startup-delay-max', pref: 'misakacipher.startup_delay_max', type: 'range', default: 45, valId: 'setting-misaka-startup-delay-max-val' },
+        { id: 'setting-misaka-session-interval-min', pref: 'misakacipher.session_interval_min', type: 'range', default: 45, valId: 'setting-misaka-session-interval-min-val' },
+        { id: 'setting-misaka-session-interval-max', pref: 'misakacipher.session_interval_max', type: 'range', default: 90, valId: 'setting-misaka-session-interval-max-val' },
+        { id: 'setting-misaka-session-chance', pref: 'misakacipher.session_chance', type: 'range', default: 60, valId: 'setting-misaka-session-chance-val' },
+    ];
+
+    for (const s of proactiveSettings) {
+        const el = document.getElementById(s.id);
+        if (!el) continue;
+        if (s.type === 'toggle') {
+            el.checked = prefs.get(s.pref, s.default);
+            el.onchange = async (e) => await savePreference(s.pref, e.target.checked);
+        } else {
+            const val = prefs.get(s.pref, s.default);
+            el.value = val;
+            const display = document.getElementById(s.valId);
+            if (display) display.textContent = val;
+            el.oninput = (e) => { if (display) display.textContent = e.target.value; };
+            el.onchange = async (e) => await savePreference(s.pref, parseFloat(e.target.value));
+        }
+    }
+
     // Initialize Other Sections
     loadGlobalSettings();
     initDevMode();

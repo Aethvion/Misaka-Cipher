@@ -1221,6 +1221,99 @@
                                     <input type="range" id="setting-misakacipher-context-limit" min="1" max="50"
                                         value="6">
                                 </div>
+
+                                <!-- Proactive Messages Sub-section -->
+                                <div
+                                    style="margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                                    <div
+                                        style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 0.75rem; font-family: 'Orbitron', sans-serif;">
+                                        Proactive Messages</div>
+
+                                    <div class="compact-item toggle-item" style="margin-bottom: 0.5rem;">
+                                        <div class="item-label">
+                                            <span>Proactive Messages</span>
+                                            <i class="fas fa-info-circle tooltip-trigger"
+                                                title="Allows Misaka to initiate conversations on her own."></i>
+                                        </div>
+                                        <label class="switch small">
+                                            <input type="checkbox" id="setting-misaka-proactive-enabled" checked>
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="compact-item toggle-item" style="margin-bottom: 0.5rem;">
+                                        <div class="item-label">
+                                            <span>Popup Notification</span>
+                                            <i class="fas fa-info-circle tooltip-trigger"
+                                                title="Show a popup when Misaka sends a message while you're on a different tab."></i>
+                                        </div>
+                                        <label class="switch small">
+                                            <input type="checkbox" id="setting-misaka-proactive-popup" checked>
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Startup — Min Hours Away</span>
+                                            <span class="range-display" id="setting-misaka-startup-hours-val">4</span>
+                                        </div>
+                                        <input type="range" id="setting-misaka-startup-hours" min="1" max="48"
+                                            value="4">
+                                    </div>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Startup — Chance (%)</span>
+                                            <span class="range-display" id="setting-misaka-startup-chance-val">75</span>
+                                        </div>
+                                        <input type="range" id="setting-misaka-startup-chance" min="10" max="100"
+                                            value="75">
+                                    </div>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Startup — Min Delay (s)</span>
+                                            <span class="range-display"
+                                                id="setting-misaka-startup-delay-min-val">10</span>
+                                        </div>
+                                        <input type="range" id="setting-misaka-startup-delay-min" min="5" max="120"
+                                            value="10">
+                                    </div>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Startup — Max Delay (s)</span>
+                                            <span class="range-display"
+                                                id="setting-misaka-startup-delay-max-val">45</span>
+                                        </div>
+                                        <input type="range" id="setting-misaka-startup-delay-max" min="10" max="180"
+                                            value="45">
+                                    </div>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Session — Min Interval (min)</span>
+                                            <span class="range-display"
+                                                id="setting-misaka-session-interval-min-val">45</span>
+                                        </div>
+                                        <input type="range" id="setting-misaka-session-interval-min" min="10" max="120"
+                                            value="45">
+                                    </div>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Session — Max Interval (min)</span>
+                                            <span class="range-display"
+                                                id="setting-misaka-session-interval-max-val">90</span>
+                                        </div>
+                                        <input type="range" id="setting-misaka-session-interval-max" min="20" max="240"
+                                            value="90">
+                                    </div>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Session — Chance (%)</span>
+                                            <span class="range-display" id="setting-misaka-session-chance-val">60</span>
+                                        </div>
+                                        <input type="range" id="setting-misaka-session-chance" min="10" max="100"
+                                            value="60">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
