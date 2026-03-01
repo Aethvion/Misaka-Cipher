@@ -158,16 +158,34 @@
             <h2>Specter Rig</h2>
         </div>
 
+        <div class="param-group" id="animations-group" style="display: none; margin-bottom: 2rem;">
+            <div class="param-label"><span>Animations</span></div>
+            <div style="display: flex; gap: 8px;">
+                <select id="anim-select"
+                    style="flex: 1; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px; padding: 5px;">
+                </select>
+                <button id="play-anim-btn"
+                    style="background: var(--accent); border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; color: black; font-weight: bold;">
+                    Play
+                </button>
+            </div>
+        </div>
+
         <div id="params-list">
             <!-- Dynamic parameters will be added here -->
             <div class="placeholder-text" style="font-size: 0.8rem; opacity: 0.5;">No active model loaded.</div>
         </div>
 
-        <div style="margin-top: 2rem;">
+        <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 10px;">
             <button id="reset-btn"
                 style="width: 100%; padding: 0.8rem; background: transparent; border: 1px solid var(--accent); color: var(--accent); border-radius: 4px; cursor: pointer; font-size: 0.9rem;">
                 Reset Parameters
             </button>
+            <button id="auto-rig-btn"
+                style="width: 100%; padding: 0.8rem; background: var(--accent); border: none; color: black; border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: bold;">
+                <i class="fas fa-magic"></i> AI Auto-Rig Image
+            </button>
+            <input type="file" id="auto-rig-input" style="display: none;" accept="image/*">
         </div>
     </div>
 
@@ -191,7 +209,30 @@
             engine.onModelLoaded = (model) => {
                 document.getElementById('model-name').textContent = `MODEL: ${model.name}`;
                 updateParamsUI(model.params);
+                document.getElementById('loading-overlay').style.display = 'none';
+
+                // Populate animations
+                const animGroup = document.getElementById('animations-group');
+                const animSelect = document.getElementById('anim-select');
+                if (model.animations && Object.keys(model.animations).length > 0) {
+                    animGroup.style.display = 'block';
+                    animSelect.innerHTML = '';
+                    Object.keys(model.animations).forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+                        animSelect.appendChild(opt);
+                    });
+                } else {
+                    animGroup.style.display = 'none';
+                }
             };
+
+            // Play Animation Button
+            document.getElementById('play-anim-btn').addEventListener('click', () => {
+                const name = document.getElementById('anim-select').value;
+                if (window.playAnimation) window.playAnimation(name);
+            });
 
             // Start engine after hooks are ready
             engine.init().then(() => {
@@ -207,13 +248,45 @@
                     });
             });
 
-            // Basic FPS display
-            setInterval(() => {
-                const fpsVal = document.getElementById('fps-val');
-                if (fpsVal && engine.app) {
-                    fpsVal.textContent = Math.round(engine.app.ticker.FPS);
+            // Reset Button
+            document.getElementById('reset-btn').addEventListener('click', () => {
+                engine.resetParams();
+            });
+
+            // AI Auto-Rigging
+            const rigBtn = document.getElementById('auto-rig-btn');
+            const rigInput = document.getElementById('auto-rig-input');
+
+            rigBtn.addEventListener('click', () => rigInput.click());
+
+            rigInput.addEventListener('change', async (e) => {
+                if (!e.target.files[0]) return;
+
+                const file = e.target.files[0];
+                const formData = new FormData();
+                formData.append('file', file);
+
+                document.getElementById('loading-overlay').style.display = 'flex';
+                document.getElementById('loading-text').textContent = "AI is rigging your avatar...";
+
+                try {
+                    const response = await fetch('/api/auto-rig', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        engine.loadModel(result.path);
+                    } else {
+                        alert("Auto-rigging failed: " + result.message);
+                        document.getElementById('loading-overlay').style.display = 'none';
+                    }
+                } catch (err) {
+                    alert("Upload error: " + err.message);
+                    document.getElementById('loading-overlay').style.display = 'none';
                 }
-            }, 500);
+            });
         });
 
         function updateParamsUI(params) {

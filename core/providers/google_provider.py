@@ -25,7 +25,11 @@ class GoogleAIProvider(BaseProvider):
         super().__init__(config)
         
         # Configure API - read from environment variable
-        api_key = os.getenv(config.api_key, config.api_key)
+        api_key = os.getenv(config.api_key)
+        if not api_key:
+            # Fallback to direct key if provided in config (less common but possible)
+            api_key = config.api_key if not config.api_key.isupper() else None
+            
         if not api_key:
             logger.error(f"Google AI API key not found in environment: {config.api_key}")
         

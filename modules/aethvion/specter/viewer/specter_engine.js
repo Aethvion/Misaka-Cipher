@@ -4,7 +4,10 @@ class SpecterEngine {
         this.app = null;
         this.currentModel = null;
         this.params = {};
-        this.layers = {}; // Map of layer names to Pixi objects
+        this.layers = {}; // Map of layer names to Pixi objects (Sprite or Mesh)
+        this.animations = {};
+        this.activeAnimations = new Set();
+        this.time = 0;
 
         this.onLoadingComplete = null;
         this.onModelLoaded = null;
@@ -32,6 +35,7 @@ class SpecterEngine {
         // Expose updateParam globally for UI
         window.updateParam = (key, val) => this.setParam(key, parseFloat(val));
         window.resetParams = () => this.resetParams();
+        window.playAnimation = (name) => this.playAnimation(name);
 
         if (this.onLoadingComplete) this.onLoadingComplete();
     }
@@ -40,7 +44,12 @@ class SpecterEngine {
         console.log(`[Specter] Loading model: ${configPath}`);
         try {
             const response = await fetch(configPath);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
             const config = await response.json();
+            if (!config.parts || !Array.isArray(config.parts)) {
+                throw new Error("Invalid model configuration: 'parts' property is missing or not an array.");
+            }
 
             // Clear current model
             if (this.currentModel) {
@@ -49,7 +58,9 @@ class SpecterEngine {
 
             this.currentModel = config;
             this.params = config.params || {};
+            this.animations = config.animations || {};
             this.layers = {};
+            this.activeAnimations.clear();
 
             // Load textures
             const baseDir = configPath.substring(0, configPath.lastIndexOf('/'));
@@ -64,14 +75,28 @@ class SpecterEngine {
             const sortedParts = [...config.parts].sort((a, b) => (a.z || 0) - (b.z || 0));
 
             for (const part of sortedParts) {
-                const sprite = new PIXI.Sprite(textures[part.id]);
-                sprite.anchor.set(0.5);
-                sprite.x = part.x || 0;
-                sprite.y = part.y || 0;
-                sprite.scale.set(part.scale || 1);
+                let displayObject;
 
-                this.app.stage.addChild(sprite);
-                this.layers[part.id] = sprite;
+                if (part.mesh) {
+                    // Create Mesh
+                    const vertices = new Float32Array(part.mesh.vertices.map((v, i) =>
+                        i % 2 === 0 ? v * part.mesh.width : v * part.mesh.height
+                    ));
+                    const uvs = new Float32Array(part.mesh.uvs);
+                    const indices = new Uint16Array(part.mesh.indices);
+
+                    displayObject = new PIXI.SimpleMesh(textures[part.id], vertices, uvs, indices);
+                } else {
+                    // Fallback to Sprite
+                    displayObject = new PIXI.Sprite(textures[part.id]);
+                    displayObject.anchor.set(0.5);
+                    displayObject.scale.set(part.scale || 1);
+                }
+
+                displayObject.x = part.x || 0;
+                displayObject.y = part.y || 0;
+                this.app.stage.addChild(displayObject);
+                this.layers[part.id] = displayObject;
             }
 
             // Center stage
@@ -83,8 +108,18 @@ class SpecterEngine {
             // Start update loop
             this.app.ticker.add((delta) => this.update(delta));
 
+            // Auto-play idle if exists
+            if (this.animations.idle) this.playAnimation('idle');
+
         } catch (e) {
             console.error("[Specter] Model load failed:", e);
+        }
+    }
+
+    playAnimation(name) {
+        if (this.animations[name]) {
+            this.activeAnimations.add(name);
+            console.log(`[Specter] Playing animation: ${name}`);
         }
     }
 
@@ -109,8 +144,24 @@ class SpecterEngine {
 
     update(delta) {
         if (!this.currentModel) return;
+        this.time += delta / 60; // Approximate seconds
 
-        // Apply parameter logic
+        // 1. Update Animations
+        for (const animName of this.activeAnimations) {
+            const anim = this.animations[animName];
+            for (const [paramKey, config] of Object.entries(anim)) {
+                if (!this.params[paramKey]) continue;
+
+                if (config.type === 'sine') {
+                    const offset = config.offset || 0;
+                    this.params[paramKey].value = (Math.sin(this.time * config.speed + offset) + 1) / 2 * config.amplitude;
+                } else if (config.type === 'fixed') {
+                    this.params[paramKey].value = config.value;
+                }
+            }
+        }
+
+        // 2. Apply Mappings
         // This is a simplified version where we map params to layer properties
         for (const mapping of (this.currentModel.mappings || [])) {
             const param = this.params[mapping.param];
@@ -122,13 +173,22 @@ class SpecterEngine {
                 if (mapping.type === 'rotation') {
                     layer.rotation = mapping.base + (val * mapping.multiplier);
                 } else if (mapping.type === 'scale') {
-                    layer.scale.set(mapping.base + (val * mapping.multiplier));
+                    const s = mapping.base + (val * mapping.multiplier);
+                    layer.scale.set(s);
                 } else if (mapping.type === 'position_x') {
                     layer.x = mapping.base + (val * mapping.multiplier);
                 } else if (mapping.type === 'position_y') {
                     layer.y = mapping.base + (val * mapping.multiplier);
                 } else if (mapping.type === 'alpha') {
                     layer.alpha = mapping.base + (val * mapping.multiplier);
+                } else if (mapping.type === 'mesh_deform' && layer.vertices) {
+                    const partConfig = this.currentModel.parts.find(p => p.id === mapping.layer);
+                    if (!partConfig || !partConfig.mesh) continue;
+
+                    const idx = mapping.vertex_index * 2 + (mapping.axis === 'y' ? 1 : 0);
+                    const basePos = partConfig.mesh.vertices[idx];
+                    const extent = (mapping.axis === 'y' ? partConfig.mesh.height : partConfig.mesh.width);
+                    layer.vertices[idx] = (basePos * extent) + (val * mapping.multiplier * extent);
                 }
             }
         }
