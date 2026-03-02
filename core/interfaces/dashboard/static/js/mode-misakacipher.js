@@ -500,11 +500,18 @@ function updateMisakaExpression(expression) {
     const aliases = {
         'smile': 'happy_closedeyes_widesmile',
         'smiling': 'happy_closedeyes_widesmile',
+        'happy': 'happy_closedeyes_widesmile',
+        'grin': 'happy_closedeyes_smilewithteeth',
         'blush': 'blushing',
         'cry': 'crying',
+        'sad': 'crying',
         'sleep': 'sleeping',
         'surprise': 'surprised',
-        'think': 'thinking'
+        'shock': 'surprised',
+        'think': 'thinking',
+        'hm': 'thinking',
+        'pouting': 'pout',
+        'mad': 'angry'
     };
     const finalExpression = aliases[expression.toLowerCase()] || expression;
 
