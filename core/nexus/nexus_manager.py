@@ -7,8 +7,9 @@ from pathlib import Path
 # Setup logging
 logger = logging.getLogger(__name__)
 
-# Paths
-REGISTRY_FILE = Path("modules/aethvion/nexus/registry.json")
+# Paths - Use project root relative path
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+REGISTRY_FILE = PROJECT_ROOT / "modules" / "aethvion" / "nexus" / "registry.json"
 
 def get_registry() -> dict:
     """Loads the Nexus registry."""

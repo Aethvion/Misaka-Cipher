@@ -688,11 +688,16 @@ INSTRUCTIONS:
 1. PERSONALITY: Be helpful, friendly, and observant while staying true to your identity.
 2. NATURAL GREETINGS: Do NOT use formal "Good [Period]" greetings if you have been chatting recently (e.g., within the last hour). Just say "Hi", "Hey", or slide directly into the response.
 3. BREVITY & SCALE: Match the user's energy. If they give short answers, give short, natural responses. Avoid multi-paragraph responses for simple interactions.
-4. TOOL USE: Do NOT use tools (like system_stats, weather, or media_sentinel) periodically in every message. Only use them if you are genuinely curious, or if it is relevant to a specific topic or request.
+4. TOOL USE: You have access to a neural toolbox. To use a tool, you must explicitly state what you are doing, then use the tag: [tool:tool_name attr="value"]. Chained calls are supported.
+   - [tool:system_stats] - Check CPU, RAM, Disk.
+   - [tool:read_file path="..."], [tool:write_file path="..." content="..."], [tool:list_files path="..."], [tool:search_files path="..." query="..."]
+   - [tool:nexus module="module_id" cmd="command" ...] - Use Nexus modules.
+     * Example: [tool:nexus module="weather_link" cmd="get_weather" location="London"]
+     * Example: [tool:nexus module="media_sentinel" cmd="get_media_info"]
+   - Only use tools if relevant or requested. TOOLS RUN SILENTLY; always acknowledge BEFORE calling them.
 5. FACIAL EXPRESSIONS: Use ONLY these exact tags: [Emotion: angry], [Emotion: blushing], [Emotion: bored], [Emotion: crying], [Emotion: default], [Emotion: error], [Emotion: exhausted], [Emotion: happy_closedeyes_smilewithteeth], [Emotion: happy_closedeyes_widesmile], [Emotion: pout], [Emotion: sleeping], [Emotion: surprised], [Emotion: thinking], [Emotion: wink].
 6. AMBIENT MOOD: Include one of: [Mood: calm], [Mood: happy], [Mood: intense], [Mood: reflective], [Mood: danger], [Mood: mystery].
-7. MEMORY: Provide memory updates (<memory_update>JSON</memory_update>) only for meaningful changes to your long-term understanding of the user or context.
-8. FILE/SYSTEM TOOLS: [tool:read_file], [tool:write_file], [tool:list_files], [tool:search_files], [tool:system_stats], [tool:nexus] (Spotify, Media Sentinel, Weather). Tools run silently.
+7. MEMORY: Provide memory updates (<memory_update>JSON</memory_update>) only for meaningful changes to your long-term understanding.
 
 Include [msg_break] between separate thoughts if a natural message split is warranted.
 Keep responses engaging and human-like.
@@ -731,34 +736,55 @@ Keep responses engaging and human-like.
         mood = "calm"
 
         # 5. Iterative tool-use loop — allows chained tool calls (up to 3 passes)
-        if workspaces:
-            for _tool_pass in range(3):
-                if not re.search(r'\[tool:', full_content, re.IGNORECASE):
+        for _tool_pass in range(3):
+            if not re.search(r'\[tool:', full_content, re.IGNORECASE):
+                break
+            
+            cleaned_content, tool_results = await _execute_tool_calls(full_content, workspaces)
+            if not tool_results:
+                full_content = cleaned_content
+                break
+                
+            # Preserve the "thought/acknowledgment" part by joining with msg_break
+            if _tool_pass == 0:
+                # Replace full_content with the current cleaned version, we'll append followup
+                full_content = cleaned_content
+            else:
+                # Add a break before the next thought
+                full_content += f" [msg_break] {cleaned_content}"
+
+            tool_results_str = "\n\n".join(tool_results)
+            followup_prompt = (
+                formatted_prompt +
+                f"Misaka (thinking, tool pass {_tool_pass + 1}): {cleaned_content}\n\n"
+                f"[Tool Results]:\n{tool_results_str}\n\n"
+                "Misaka (continue response, you may use more tools if needed or give the final answer):"
+            )
+            followup = pm.call_with_failover(
+                prompt=followup_prompt,
+                trace_id=f"{trace_id}-tool{_tool_pass}",
+                temperature=0.7,
+                model=model,
+                request_type="generation",
+                source="misakacipher-tool"
+            )
+            if followup.success:
+                # The final content will be appended via the next pass or at the end
+                next_content = followup.content.strip()
+                # If this was the last tool pass or it has no more tools, 
+                # we'll append it to full_content in the next loop evaluation or breakout
+                full_content = f"{full_content} [msg_break] {next_content}"
+                # Loop again to see if next_content has more tools
+                # But we need to update the re-search target
+                # Wait, if I append it now, re.search(r'\[tool:', full_content) 
+                # will find the OLD tools we already stripped from cleaned_content.
+                # Let's use a temporary search target.
+                if not re.search(r'\[tool:', next_content, re.IGNORECASE):
                     break
-                cleaned_content, tool_results = await _execute_tool_calls(full_content, workspaces)
-                if not tool_results:
-                    full_content = cleaned_content
-                    break
-                tool_results_str = "\n\n".join(tool_results)
-                followup_prompt = (
-                    formatted_prompt +
-                    f"Misaka (thinking, tool pass {_tool_pass + 1}): {cleaned_content}\n\n"
-                    f"[Tool Results]:\n{tool_results_str}\n\n"
-                    "Misaka (continue response, you may use more tools if needed or give the final answer):"
-                )
-                followup = pm.call_with_failover(
-                    prompt=followup_prompt,
-                    trace_id=f"{trace_id}-tool{_tool_pass}",
-                    temperature=0.7,
-                    model=model,
-                    request_type="generation",
-                    source="misakacipher-tool"
-                )
-                if followup.success:
-                    full_content = followup.content.strip()
-                else:
-                    full_content = cleaned_content
-                    break
+                # Only iterate on the NEW content
+                full_content_to_scan = next_content
+            else:
+                break
 
             full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()
 
