@@ -8,6 +8,9 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from core.orchestrator.task_queue import get_task_queue_manager
+from core.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
 
