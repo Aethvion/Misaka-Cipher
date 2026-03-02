@@ -786,7 +786,8 @@ Keep responses engaging and human-like.
             else:
                 break
 
-            full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()
+        # Move mood cleanup OUTSIDE the for loop to catch all passes and initial response
+        full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()
 
         # Extract Expression tag
         exp_match = re.search(r'\[Emotion:\s*(\w+)\]', full_content, re.IGNORECASE)

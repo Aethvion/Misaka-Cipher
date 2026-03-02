@@ -32,7 +32,7 @@
             "settings": []
         },
         {
-            "id": "weather",
+            "id": "weather_link",
             "name": "Weather Link",
             "description": "Get real-time weather data for any location.",
             "module_path": "modules.aethvion.nexus.weather_link",
