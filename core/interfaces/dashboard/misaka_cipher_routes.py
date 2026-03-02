@@ -509,7 +509,12 @@ Do NOT include memory updates in this initiation message.
         if not response.success:
             raise HTTPException(status_code=500, detail=response.error)
 
-            full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()
+        full_content = response.content.strip()
+        expression = "default"
+        mood = "calm"
+
+        # Clean tags from the response meant for display
+        full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()
         
         # Extract Expression tag
         exp_match = re.search(r'\[Emotion:\s*(\w+)\]', full_content, re.IGNORECASE)

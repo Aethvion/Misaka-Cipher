@@ -194,15 +194,21 @@ async function loadPreferences() {
         if (!el) continue;
         if (s.type === 'toggle') {
             el.checked = prefs.get(s.pref, s.default);
-            el.onchange = async (e) => await savePreference(s.pref, e.target.checked);
         } else {
             const val = prefs.get(s.pref, s.default);
             el.value = val;
             const display = document.getElementById(s.valId);
             if (display) display.textContent = val;
             el.oninput = (e) => { if (display) display.textContent = e.target.value; };
-            el.onchange = async (e) => await savePreference(s.pref, parseFloat(e.target.value));
         }
+
+        el.onchange = async (e) => {
+            const val = s.type === 'toggle' ? e.target.checked : parseFloat(e.target.value);
+            await savePreference(s.pref, val);
+            window.dispatchEvent(new CustomEvent('misakaSettingsUpdated', {
+                detail: { proactive_change: true }
+            }));
+        };
     }
 
     // Initialize Other Sections

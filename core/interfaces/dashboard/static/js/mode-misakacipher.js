@@ -75,6 +75,11 @@ async function initializeMisakaCipher() {
     window.addEventListener('misakaSettingsUpdated', (e) => {
         if (e.detail && e.detail.context_limit) misakaMaxHistory = e.detail.context_limit;
         if (e.detail && e.detail.typing_speed !== undefined) misakaTypingSpeed = e.detail.typing_speed;
+
+        // Restart proactive scheduler if proactive settings might have changed
+        if (e.detail && e.detail.proactive_change) {
+            startProactiveScheduler();
+        }
     });
 
     // 7. Cache typing speed from prefs
@@ -475,7 +480,20 @@ async function addAssistantMessageTyped(fullText) {
 function updateMisakaExpression(expression) {
     const img = document.getElementById('misaka-expression-img');
     if (!img) return;
-    const path = `/static/misakacipher/expressions/misakacipher_${expression}.png`;
+
+    // Expression aliasing to prevent 404s
+    const aliases = {
+        'smile': 'happy_closedeyes_widesmile',
+        'smiling': 'happy_closedeyes_widesmile',
+        'blush': 'blushing',
+        'cry': 'crying',
+        'sleep': 'sleeping',
+        'surprise': 'surprised',
+        'think': 'thinking'
+    };
+    const finalExpression = aliases[expression.toLowerCase()] || expression;
+
+    const path = `/static/misakacipher/expressions/misakacipher_${finalExpression}.png`;
     const tempImg = new Image();
     tempImg.onload = () => { img.src = path; };
     tempImg.onerror = () => { img.src = "/static/misakacipher/expressions/misakacipher_default.png"; };
@@ -536,6 +554,12 @@ async function _getHoursSinceLastMessage() {
 }
 
 async function startProactiveScheduler() {
+    // Prevent multiple timers from running
+    if (_proactiveSessionTimer) {
+        clearTimeout(_proactiveSessionTimer);
+        _proactiveSessionTimer = null;
+    }
+
     // Read prefs
     const res = await fetch('/api/preferences');
     if (!res.ok) return;
@@ -551,20 +575,29 @@ async function startProactiveScheduler() {
     const intervalMax = mc.session_interval_max ?? 90;
     const sessionChance = mc.session_chance ?? 60;
 
-    if (!enabled) return;
+    if (!enabled) {
+        console.log('[Misaka] Proactive scheduler disabled.');
+        return;
+    }
 
     // --- Startup check ---
     const hoursSince = await _getHoursSinceLastMessage();
     if (hoursSince !== null && hoursSince >= startupHours) {
         if (Math.random() * 100 < startupChance) {
             const delay = _randomBetween(delayMin, delayMax) * 1000;
+            console.log(`[Misaka] Startup message scheduled in ${(_randomBetween(delayMin, delayMax)).toFixed(2)} seconds (Hours since: ${hoursSince.toFixed(2)})`);
             setTimeout(() => triggerProactiveMessage('startup', hoursSince), delay);
         }
     }
 
     // --- Session check-in loop ---
     function scheduleNextSession() {
-        const interval = _randomBetween(intervalMin, intervalMax) * 60000;
+        const intervalMinVal = Math.max(1, intervalMin);
+        const intervalMaxVal = Math.max(intervalMinVal, intervalMax);
+        const interval = _randomBetween(intervalMinVal, intervalMaxVal) * 60000;
+
+        console.log(`[Misaka] Proactive session scheduled in ${(interval / 60000).toFixed(2)} minutes.`);
+
         _proactiveSessionTimer = setTimeout(async () => {
             if (Math.random() * 100 < sessionChance) {
                 await triggerProactiveMessage('session', 0);
@@ -586,8 +619,8 @@ async function triggerProactiveMessage(trigger, hoursSince) {
         const data = await res.json();
 
         // Check if Misaka tab is active
-        const misakaPanel = document.getElementById('misaka-companion-panel');
-        const isMisakaVisible = misakaPanel && !misakaPanel.classList.contains('hidden') &&
+        const misakaPanel = document.getElementById('misaka-cipher-panel');
+        const isMisakaVisible = misakaPanel && misakaPanel.classList.contains('active') &&
             misakaPanel.offsetParent !== null;
 
         if (isMisakaVisible) {
