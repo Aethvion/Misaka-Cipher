@@ -4,13 +4,16 @@
 let currentFiles = [];
 let currentViewMode = 'grid'; // 'grid' or 'list'
 let hideFolders = false;
+let semanticMode = false;
 let currentSort = { key: 'name', dir: 'asc' };
+let searchDebounceTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Setup event listeners for the files page
     document.getElementById('refresh-files')?.addEventListener('click', loadFiles);
-    document.getElementById('file-search')?.addEventListener('input', renderFiles);
+    document.getElementById('file-search')?.addEventListener('input', handleSearchInput);
     document.getElementById('type-filter')?.addEventListener('change', renderFiles);
+    document.getElementById('semantic-search-toggle')?.addEventListener('click', toggleSemanticMode);
 
     // New Feature Listeners
     document.getElementById('exclude-folders-toggle')?.addEventListener('change', handleExcludeFoldersChange);
@@ -208,14 +211,21 @@ function renderFiles() {
     const typeFilter = document.getElementById('type-filter')?.value || '';
 
     // First, Filter
-    let filteredFiles = currentFiles.filter(file => {
-        if (hideFolders && file.is_dir) return false;
+    let filteredFiles = currentFiles;
 
-        const matchesSearch = file.filename.toLowerCase().includes(searchQuery) ||
-            file.path.toLowerCase().includes(searchQuery);
-        const matchesType = !typeFilter || file.file_type === typeFilter;
-        return matchesSearch && matchesType;
-    });
+    // Only filter locally if NOT in semantic mode (unless search is empty)
+    const skipLocalFilter = arguments[0] === true;
+
+    if (!skipLocalFilter) {
+        filteredFiles = currentFiles.filter(file => {
+            if (hideFolders && file.is_dir) return false;
+
+            const matchesSearch = file.filename.toLowerCase().includes(searchQuery) ||
+                file.path.toLowerCase().includes(searchQuery);
+            const matchesType = !typeFilter || file.file_type === typeFilter;
+            return matchesSearch && matchesType;
+        });
+    }
 
     if (filteredFiles.length === 0) {
         container.innerHTML = '<p class="placeholder-text">No files match your filters.</p>';
@@ -256,14 +266,18 @@ function renderFiles() {
     if (currentViewMode === 'grid') {
         container.innerHTML = filteredFiles.map(file => {
             const displayName = file.is_dir ? `${file.filename}/` : file.filename;
+            const relevanceBadge = file.relevance ? `<span style="position: absolute; top: -6px; right: -6px; background: var(--primary); color: white; border-radius: 10px; padding: 2px 6px; font-size: 10px; font-weight: bold; border: 1px solid white;">${Math.round(file.relevance * 100)}%</span>` : '';
+            const excerptHtml = file.excerpt ? `<div class="file-excerpt" style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--border-subtle); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.2;">${file.excerpt}</div>` : '';
+
             return `
-            <div class="file-card" onclick="openExplorer('${file.path.replace(/'/g, "\\'")}')" title="${file.path}">
-                <div class="file-icon">${getFileHTML(file)}</div>
+            <div class="file-card" onclick="openExplorer('${file.path.replace(/'/g, "\\'")}')" title="${file.path}" style="position: relative;">
+                <div class="file-icon" style="position: relative;">${getFileHTML(file)} ${relevanceBadge}</div>
                 <div class="file-name">${displayName}</div>
                 <div class="file-meta">
                     <div class="text-truncate" style="max-width: 100%;" title="${file.path}">${file.domain}/${file.path}</div>
                     <div>${file.is_dir ? 'Folder' : formatFileSize(file.size_bytes)}</div>
                     <div>${formatDate(file.created_at)}</div>
+                    ${excerptHtml}
                 </div>
             </div>
             `;
@@ -289,10 +303,15 @@ function renderFiles() {
                 <tbody>
                     ${filteredFiles.map(file => {
             const displayName = file.is_dir ? `${file.filename}/` : file.filename;
+            const relevanceTd = file.relevance ? `<div style="font-weight: bold; color: var(--primary); font-size: 0.8rem;">${Math.round(file.relevance * 100)}% Match</div>` : '';
             return `
                         <tr class="file-list-row" onclick="openExplorer('${file.path.replace(/'/g, "\\'")}')" style="cursor: pointer;">
                             <td style="text-align: center; padding: 4px;">${getFileHTML(file)}</td>
-                            <td style="font-weight: 500; color: var(--text-primary);">${displayName}</td>
+                            <td>
+                                <div style="font-weight: 500; color: var(--text-primary);">${displayName}</div>
+                                ${relevanceTd}
+                                ${file.excerpt ? `<div style="font-size: 0.75rem; color: var(--text-secondary); opacity: 0.8;">${file.excerpt}</div>` : ''}
+                            </td>
                             <td class="text-truncate" style="max-width: 250px; color: var(--text-secondary);" title="${file.domain}/${file.path}">${file.domain}/${file.path}</td>
                             <td style="color: var(--text-secondary);">${file.is_dir ? '--' : formatFileSize(file.size_bytes)}</td>
                             <td style="color: var(--text-secondary);">${formatDate(file.created_at)}</td>
@@ -361,4 +380,79 @@ function formatDate(dateString) {
         hour: '2-digit',
         minute: '2-digit'
     });
+}
+
+function handleSearchInput() {
+    if (semanticMode) {
+        // Debounce semantic search
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => {
+            performSemanticSearch();
+        }, 500);
+    } else {
+        renderFiles();
+    }
+}
+
+function toggleSemanticMode() {
+    semanticMode = !semanticMode;
+    const btn = document.getElementById('semantic-search-toggle');
+    if (btn) {
+        if (semanticMode) {
+            btn.classList.add('active');
+            btn.style.background = 'var(--primary)';
+            btn.style.color = 'white';
+            btn.title = 'Semantic Search Active';
+
+            // Trigger search if something is already typed
+            const query = document.getElementById('file-search')?.value;
+            if (query && query.length > 2) performSemanticSearch();
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = 'var(--bg-tertiary)';
+            btn.style.color = 'var(--text-secondary)';
+            btn.title = 'Semantic Search Mode';
+            renderFiles();
+        }
+    }
+}
+
+async function performSemanticSearch() {
+    const query = document.getElementById('file-search')?.value;
+    const container = document.getElementById('files-grid');
+    if (!query || query.length < 3) {
+        if (!query) renderFiles();
+        return;
+    }
+
+    if (container) {
+        container.innerHTML = '<div class="loading-container" style="text-align: center; padding: 2rem;"><div class="loading-spinner"></div><p style="margin-top: 1rem; color: var(--text-secondary);">Searching semantically...</p></div>';
+    }
+
+    try {
+        const response = await fetch('/api/workspace/files/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query: query,
+                limit: 20
+            })
+        });
+
+        if (!response.ok) throw new Error('Search failed');
+        const data = await response.json();
+
+        // Temporarily override currentFiles with search results for rendering
+        const originalFiles = [...currentFiles];
+        currentFiles = data.results || [];
+
+        renderFiles(true); // true means skip local filtering
+
+        // Restore original files
+        currentFiles = originalFiles;
+
+    } catch (e) {
+        console.error("Semantic search failed", e);
+        if (container) container.innerHTML = '<p class="placeholder-text" style="color: var(--danger);">Search failed.</p>';
+    }
 }

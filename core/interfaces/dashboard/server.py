@@ -170,6 +170,12 @@ class MemorySearchRequest(BaseModel):
     domain: Optional[str] = None
     limit: int = 10
 
+class SemanticSearchRequest(BaseModel):
+    """Semantic file search request."""
+    query: str
+    limit: int = 10
+    domain: Optional[str] = None
+
 
 # Startup/Shutdown events
 @app.on_event("startup")
@@ -548,10 +554,87 @@ async def list_workspace_files():
     try:
         from core.workspace import get_workspace_manager
         workspace = get_workspace_manager()
-        # list_outputs now returns {"count": X, "files": [...], "stats": {...}}
         return workspace.list_outputs()
     except Exception as e:
         logger.error(f"Workspace file listing error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/workspace/files/search")
+async def search_workspace_files(req: SemanticSearchRequest):
+    """Semantically search workspace files."""
+    try:
+        from core.memory.file_vector_store import get_file_vector_store
+        from core.workspace import get_workspace_manager
+        
+        store = get_file_vector_store()
+        workspace = get_workspace_manager()
+        
+        # Check if we need to index (first time)
+        if store.collection.count() == 0:
+            logger.info("Semantic index is empty, performing initial index...")
+            all_files_data = workspace.list_outputs()
+            all_files = all_files_data.get('files', [])
+            for f in all_files:
+                if not f.get('is_dir'):
+                    path = workspace.workspace_root / f['path']
+                    if path.exists():
+                        try:
+                            content = path.read_text(encoding='utf-8', errors='ignore')
+                            store.index_file(f['path'], content, {"domain": f['domain']})
+                        except: continue
+        
+        results = store.search(req.query, limit=req.limit, domain=req.domain)
+        
+        # Enrich results with full file info from WorkspaceManager
+        all_metadata_data = workspace.list_outputs()
+        all_metadata = all_metadata_data.get('files', [])
+        meta_map = {f['path']: f for f in all_metadata}
+        
+        enriched_results = []
+        for r in results:
+            path = r['path']
+            if path in meta_map:
+                enriched_results.append({
+                    **meta_map[path],
+                    "relevance": round(1.0 - (r['score'] / 2.0), 3), # Convert distance to rough score
+                    "excerpt": r['excerpt']
+                })
+        
+        return {"results": enriched_results, "count": len(enriched_results)}
+    except Exception as e:
+        logger.error(f"Semantic file search error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/workspace/files/reindex")
+async def reindex_workspace_files():
+    """Manually trigger a full re-index of workspace files."""
+    try:
+        from core.memory.file_vector_store import get_file_vector_store
+        from core.workspace import get_workspace_manager
+        
+        store = get_file_vector_store()
+        workspace = get_workspace_manager()
+        
+        # Clear existing
+        store.client.delete_collection("workspace_files")
+        store.collection = store.client.create_collection("workspace_files")
+        
+        all_files_data = workspace.list_outputs()
+        all_files = all_files_data.get('files', [])
+        indexed_count = 0
+        for f in all_files:
+            if not f.get('is_dir'):
+                path = workspace.workspace_root / f['path']
+                if path.exists():
+                    try:
+                        content = path.read_text(encoding='utf-8', errors='ignore')
+                        if store.index_file(f['path'], content, {"domain": f['domain']}):
+                            indexed_count += 1
+                    except: continue
+        
+        return {"status": "success", "indexed_count": indexed_count}
+    except Exception as e:
+        logger.error(f"Re-indexing error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

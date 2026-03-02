@@ -8,6 +8,7 @@ core/config/security.yaml
 # Folders are created at runtime by the startup script.
 data/logs/*
 data/memory/storage/*
+data/memory/file_search/*
 data/outputfiles/*
 data/config/*
 !data/config/*.example
