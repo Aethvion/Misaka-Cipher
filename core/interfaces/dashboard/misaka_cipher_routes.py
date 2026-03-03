@@ -617,10 +617,10 @@ Do NOT include memory updates in this initiation message.
             full_content = " [msg_break] ".join([p for p in response_parts if p.strip()])
 
         # Clean tags from the response meant for display
-        full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()
+        full_content = re.sub(r'\[Mood:\s*\w+\]?', '', full_content, flags=re.IGNORECASE).strip()
         
         # Extract Expression tag
-        exp_match = re.search(r'\[Emotion:\s*(\w+)\]', full_content, re.IGNORECASE)
+        exp_match = re.search(r'\[Emotion:\s*(\w+)\]?', full_content, re.IGNORECASE)
         if exp_match:
             expression = exp_match.group(1).lower()
             # We don't strip it here yet because frontend might want it for individual bubbles, 
@@ -883,10 +883,10 @@ Keep responses engaging and human-like.
         full_content = " [msg_break] ".join([p for p in response_parts if p.strip()])
 
         # Move mood cleanup OUTSIDE the for loop to catch all passes and initial response
-        full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()
+        full_content = re.sub(r'\[Mood:\s*\w+\]?', '', full_content, flags=re.IGNORECASE).strip()
 
         # Extract Expression tag
-        exp_match = re.search(r'\[Emotion:\s*(\w+)\]', full_content, re.IGNORECASE)
+        exp_match = re.search(r'\[Emotion:\s*(\w+)\]?', full_content, re.IGNORECASE)
         if exp_match:
             # Note: We don't sub it here because the frontend's typing effect relies on finding these tags.
             # But we extract it to save as the 'last state'.

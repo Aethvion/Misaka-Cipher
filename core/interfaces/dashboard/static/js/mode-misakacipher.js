@@ -424,7 +424,7 @@ async function addAssistantMessageTyped(fullText) {
         .trim();
 
     let triggers = [];
-    const emotionRegex = /\[Emotion:\s*(\w+)\]/gi;
+    const emotionRegex = /\[Emotion:\s*(\w+)\]?/gi;
     let match;
     let cleanText = "";
     let lastIndex = 0;
