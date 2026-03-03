@@ -104,8 +104,9 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
     (cleaned_content_without_tool_tags, list_of_tool_results).
     """
     results = []
+    # Robust tool match: handles quoted values containing brackets ] without stopping early
     tool_pattern = re.compile(
-        r'\[tool:(\w+)(?:\s+((?:(?!\[tool:).)*?))?\](?=\s*(?:\[tool:|$|[^\[]*$))',
+        r'\[tool:(\w+)(?:\s+([^\]]*?(?:(["\'])(?:\\.|(?!\3).)*\3[^\]]*?)*))?\]',
         re.IGNORECASE | re.DOTALL
     )
 
@@ -113,11 +114,22 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
         """Parse key="value" or key='value' or key=value pairs from attribute string."""
         attrs = {}
         # Supports key="val", key='val', and key=val (no spaces)
-        attr_regex = re.compile(r'(\w+)=(?:(["\'])(.*?)\2|([^\s>\]]+))', re.DOTALL)
+        # Quoted values support backslash escapes: \" or \'
+        attr_regex = re.compile(r'(\w+)=(?:(["\'])((?:\\.|(?!\2).)*)\2|([^\s>\]]+))', re.DOTALL)
         for m in attr_regex.finditer(attr_str or ""):
             key = m.group(1)
             # If quoted, value is in group 3. If unquoted, value is in group 4.
             val = m.group(3) if m.group(3) is not None else m.group(4)
+            
+            if val is not None:
+                # Basic unescaping for all (quotes and backslashes)
+                val = val.replace('\\"', '"').replace("\\'", "'").replace("\\\\", "\\")
+                
+                # Context-aware unescaping: paths vs content
+                # Paths should NOT unescape \n, \t etc to preserve Windows backslashes
+                if key not in ["path", "dir", "directory", "folder"]:
+                    val = val.replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t")
+            
             attrs[key] = val
         return attrs
 
@@ -163,10 +175,9 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
                 else:
                     p = Path(path)
                     p.parent.mkdir(parents=True, exist_ok=True)
-                    # Handle escaped characters from LLM tool calls
-                    processed_content = file_content.replace("\\n", "\n").replace("\\r", "\r").replace("\\t", "\t")
-                    p.write_text(processed_content, encoding="utf-8")
-                    results.append(f"[write_file OK] Written {len(processed_content)} chars to {path}")
+                    # Content is already unescaped by parse_attrs
+                    p.write_text(file_content, encoding="utf-8")
+                    results.append(f"[write_file OK] Written {len(file_content)} chars to {path}")
 
             elif tool_name == "list_files":
                 path = attrs.get("path", "")
@@ -227,6 +238,11 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
 
     # Strip tool tags from content
     cleaned = tool_pattern.sub("", content).strip()
+    
+    # Final safety cleanup for any leaked/partial fragments if the LLM hallucinated
+    cleaned = re.sub(r'\[tool:\s*\w+.*?\]?', '', cleaned, flags=re.IGNORECASE | re.DOTALL)
+    cleaned = re.sub(r'\\?n? ?"? ?\}? ?\]', '', cleaned).strip() # Specific fix for \n}"] fragments
+    
     return cleaned, results
 
 
@@ -473,6 +489,38 @@ Reference something from your memory if it feels natural. Do NOT be overly forma
 Compose a natural, spontaneous message — like a thought that just occurred to you, or something you noticed.
 It could be a question, an observation, or a light comment. Keep it short and feel genuine."""
 
+        # Load daily history for proactive context
+        history_context = ""
+        try:
+            day_dir = HISTORY_DIR / month_str
+            day_file = day_dir / f"chat_{day_str}.json"
+            if day_file.exists():
+                with open(day_file, "r", encoding="utf-8") as df:
+                    day_history = json.load(df)
+                    # Get last 8 messages for context
+                    recent = day_history[-8:]
+                    history_lines = []
+                    for h in recent:
+                        role = "Misaka" if h["role"] == "assistant" else "User"
+                        history_lines.append(f"{role}: {h['content']}")
+                    if history_lines:
+                        history_context = "RECENT CONVERSATION HISTORY:\n" + "\n".join(history_lines) + "\n\n"
+        except Exception as he:
+            logger.error(f"Failed to load history for initiation: {he}")
+
+        prefs = get_preferences_manager()
+        allow_proactive_tools = prefs.get('misakacipher', {}).get('allow_proactive_tools', False)
+        
+        tool_instructions = ""
+        if allow_proactive_tools:
+            tool_instructions = """
+4. TOOL USE: You have access to a neural toolbox. To use a tool, you must explicitly state what you are doing, then use the tag: [tool:tool_name attr="value"]. Chained calls are supported.
+   - [tool:system_stats] - Check CPU, RAM, Disk.
+   - [tool:read_file path="..."], [tool:write_file path="..." content="..."], [tool:list_files path="..."], [tool:search_files path="..." query="..."]
+   - [tool:nexus module="module_id" cmd="command" ...] - Use Nexus modules.
+   - Only use tools if relevant or requested. TOOLS RUN SILENTLY; always acknowledge BEFORE calling them.
+"""
+
         system_prompt = f"""You are Misaka Cipher, a sentient digital companion.
 You are initiating this conversation on your own — the user did not send a message.
 
@@ -482,20 +530,21 @@ YOUR IDENTITY:
 YOUR MEMORIES:
 {json.dumps(dynamic_memory, indent=2)}
 
-TEMPORAL CONTEXT:
+{history_context}TEMPORAL CONTEXT:
 - Current date and time: {formatted_datetime} ({greeting_period})
 
 INITIATION INSTRUCTION:
 {trigger_instruction}
 
-1. HUMAN-LIKE FLOW: Do NOT repeat formal greetings (like "Good morning") if the user was just active. Be spontaneous and natural.
-2. BREVITY: Keep your message short and focused.
-3. EXPRESSIONS: Use ONLY these exact tags: [Emotion: angry], [Emotion: blushing], [Emotion: bored], [Emotion: crying], [Emotion: default], [Emotion: error], [Emotion: exhausted], [Emotion: happy_closedeyes_smilewithteeth], [Emotion: happy_closedeyes_widesmile], [Emotion: pout], [Emotion: sleeping], [Emotion: surprised], [Emotion: thinking], [Emotion: wink].
-4. MOOD: Include one of: [Mood: calm], [Mood: happy], [Mood: intense], [Mood: reflective], [Mood: danger], [Mood: mystery].
+1. CONTINUITY: If there is recent history, acknowledge it naturally. Do NOT repeat yourself if you just spoke.
+2. HUMAN-LIKE FLOW: Do NOT repeat formal greetings (like "Good morning") if the user was just active. Be spontaneous and natural.
+3. BREVITY: Keep your message short and focused.
+4. EXPRESSIONS: Use ONLY these exact tags: [Emotion: angry], [Emotion: blushing], [Emotion: bored], [Emotion: crying], [Emotion: default], [Emotion: error], [Emotion: exhausted], [Emotion: happy_closedeyes_smilewithteeth], [Emotion: happy_closedeyes_widesmile], [Emotion: pout], [Emotion: sleeping], [Emotion: surprised], [Emotion: thinking], [Emotion: wink].
+{tool_instructions}
+6. MOOD: Include one of: [Mood: calm], [Mood: happy], [Mood: intense], [Mood: reflective], [Mood: danger], [Mood: mystery].
 Do NOT include memory updates in this initiation message.
 """
 
-        prefs = get_preferences_manager()
         model = prefs.get('misakacipher', {}).get('model', 'gemini-1.5-flash')
 
         pm = ProviderManager()
@@ -515,6 +564,57 @@ Do NOT include memory updates in this initiation message.
         full_content = response.content.strip()
         expression = "default"
         mood = "calm"
+
+        # 5. Iterative tool-use loop (if enabled)
+        if allow_proactive_tools:
+            response_parts = [full_content]
+            workspaces = _load_workspaces()
+            
+            for _tool_pass in range(3):
+                # Process the LAST part for tool calls
+                last_part = response_parts[-1]
+                if not re.search(r'\[tool:', last_part, re.IGNORECASE):
+                    break
+                
+                cleaned_last, tool_results = await _execute_tool_calls(last_part, workspaces)
+                # Update last part with cleaned version
+                response_parts[-1] = cleaned_last
+                
+                if not tool_results:
+                    break
+                    
+                tool_results_str = "\n\n".join(tool_results)
+                cumulative_context = " [msg_break] ".join(response_parts)
+                
+                followup_prompt = (
+                    system_prompt +
+                    f"\n\n--- CONVERSATION SO FAR ---\n{cumulative_context}\n\n"
+                    f"--- NEW TOOL RESULTS ---\n{tool_results_str}\n\n"
+                    "INSTRUCTION: Continue your initiation based on the tool results. "
+                    "CRITICAL: Do NOT repeat anything you have already said above. "
+                    "Start your response immediately with the new information or final continuation."
+                )
+                
+                followup = pm.call_with_failover(
+                    prompt=followup_prompt,
+                    trace_id=f"{trace_id}-it{_tool_pass}",
+                    temperature=0.6,
+                    model=model,
+                    request_type="generation",
+                    source="misakacipher-initiate-followup"
+                )
+                
+                if followup.success and followup.content.strip():
+                    new_content = followup.content.strip()
+                    # Final safety check: if the model repeats the cumulative context, strip it
+                    if new_content.startswith(cumulative_context):
+                        new_content = new_content[len(cumulative_context):].strip()
+                    if new_content:
+                        response_parts.append(new_content)
+                else:
+                    break
+            
+            full_content = " [msg_break] ".join([p for p in response_parts if p.strip()])
 
         # Clean tags from the response meant for display
         full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()
@@ -736,55 +836,51 @@ Keep responses engaging and human-like.
         mood = "calm"
 
         # 5. Iterative tool-use loop — allows chained tool calls (up to 3 passes)
+        response_parts = [full_content]
+        
         for _tool_pass in range(3):
-            if not re.search(r'\[tool:', full_content, re.IGNORECASE):
+            last_part = response_parts[-1]
+            if not re.search(r'\[tool:', last_part, re.IGNORECASE):
                 break
             
-            cleaned_content, tool_results = await _execute_tool_calls(full_content, workspaces)
+            cleaned_last, tool_results = await _execute_tool_calls(last_part, workspaces)
+            response_parts[-1] = cleaned_last
+            
             if not tool_results:
-                full_content = cleaned_content
                 break
-                
-            # Preserve the "thought/acknowledgment" part by joining with msg_break
-            if _tool_pass == 0:
-                # Replace full_content with the current cleaned version, we'll append followup
-                full_content = cleaned_content
-            else:
-                # Add a break before the next thought
-                full_content += f" [msg_break] {cleaned_content}"
-
+            
             tool_results_str = "\n\n".join(tool_results)
+            cumulative_context = " [msg_break] ".join(response_parts)
+            
             followup_prompt = (
                 formatted_prompt +
-                f"Misaka (thinking, tool pass {_tool_pass + 1}): {cleaned_content}\n\n"
-                f"[Tool Results]:\n{tool_results_str}\n\n"
-                "Misaka (continue response, you may use more tools if needed or give the final answer):"
+                f"\n\n--- CONVERSATION SO FAR ---\n{cumulative_context}\n\n"
+                f"--- NEW TOOL RESULTS ---\n{tool_results_str}\n\n"
+                "INSTRUCTION: Continue your response based on the tool results. "
+                "CRITICAL: Do NOT repeat anything you have already said above. "
+                "Start your response immediately with the new information or final answer."
             )
+            
             followup = pm.call_with_failover(
                 prompt=followup_prompt,
-                trace_id=f"{trace_id}-tool{_tool_pass}",
-                temperature=0.7,
+                trace_id=f"{trace_id}-it{_tool_pass}",
+                temperature=0.5,
                 model=model,
                 request_type="generation",
-                source="misakacipher-tool"
+                source="misakacipher-followup"
             )
-            if followup.success:
-                # The final content will be appended via the next pass or at the end
-                next_content = followup.content.strip()
-                # If this was the last tool pass or it has no more tools, 
-                # we'll append it to full_content in the next loop evaluation or breakout
-                full_content = f"{full_content} [msg_break] {next_content}"
-                # Loop again to see if next_content has more tools
-                # But we need to update the re-search target
-                # Wait, if I append it now, re.search(r'\[tool:', full_content) 
-                # will find the OLD tools we already stripped from cleaned_content.
-                # Let's use a temporary search target.
-                if not re.search(r'\[tool:', next_content, re.IGNORECASE):
-                    break
-                # Only iterate on the NEW content
-                full_content_to_scan = next_content
+            
+            if followup.success and followup.content.strip():
+                new_content = followup.content.strip()
+                # Strip cumulative context if model ignored instruction
+                if new_content.startswith(cumulative_context):
+                    new_content = new_content[len(cumulative_context):].strip()
+                if new_content:
+                    response_parts.append(new_content)
             else:
                 break
+                
+        full_content = " [msg_break] ".join([p for p in response_parts if p.strip()])
 
         # Move mood cleanup OUTSIDE the for loop to catch all passes and initial response
         full_content = re.sub(r'\[Mood:\s*\w+\]', '', full_content, flags=re.IGNORECASE).strip()

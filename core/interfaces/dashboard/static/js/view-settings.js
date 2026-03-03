@@ -187,6 +187,7 @@ async function loadPreferences() {
         { id: 'setting-misaka-session-interval-min', pref: 'misakacipher.session_interval_min', type: 'range', default: 45, valId: 'setting-misaka-session-interval-min-val' },
         { id: 'setting-misaka-session-interval-max', pref: 'misakacipher.session_interval_max', type: 'range', default: 90, valId: 'setting-misaka-session-interval-max-val' },
         { id: 'setting-misaka-session-chance', pref: 'misakacipher.session_chance', type: 'range', default: 60, valId: 'setting-misaka-session-chance-val' },
+        { id: 'setting-misakacipher-proactive-tools', pref: 'misakacipher.allow_proactive_tools', type: 'toggle', default: false },
     ];
 
     for (const s of proactiveSettings) {
