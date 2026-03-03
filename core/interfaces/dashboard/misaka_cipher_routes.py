@@ -510,6 +510,7 @@ It could be a question, an observation, or a light comment. Keep it short and fe
 
         # Load daily history for proactive context
         history_context = ""
+        prefs = get_preferences_manager()
         try:
             day_dir = HISTORY_DIR / month_str
             day_file = day_dir / f"chat_{day_str}.json"
@@ -529,7 +530,6 @@ It could be a question, an observation, or a light comment. Keep it short and fe
         except Exception as he:
             logger.error(f"Failed to load history for initiation: {he}")
 
-        prefs = get_preferences_manager()
         allow_proactive_tools = prefs.get('misakacipher', {}).get('allow_proactive_tools', False)
         
         tool_instructions = ""

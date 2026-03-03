@@ -54,3 +54,4 @@ Thumbs.db
 
 # Modules
 modules/aethvion/specter/models/*
+modules/misakacipher/*
