@@ -428,7 +428,8 @@
 .tab-dropdown-menu {
     display: none;
     position: absolute;
-    top: calc(100% + 0.5rem);
+    top: 100%;
+    margin-top: 0.5rem;
     left: 0;
     background: rgba(24, 24, 27, 0.95);
     backdrop-filter: blur(16px);
@@ -437,9 +438,17 @@
     min-width: 220px;
     z-index: 200;
     box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.02);
-    overflow: hidden;
     padding: 0.5rem;
     animation: dropIn 0.2s ease-out;
+}
+
+.tab-dropdown-menu::before {
+    content: '';
+    position: absolute;
+    top: -0.5rem;
+    left: 0;
+    width: 100%;
+    height: 0.5rem;
 }
 
 @keyframes dropIn {
@@ -509,7 +518,8 @@
 .nav-dropdown-menu {
     display: none;
     position: absolute;
-    top: calc(100% + 0.5rem);
+    top: 100%;
+    margin-top: 0.5rem;
     left: 0;
     background: rgba(24, 24, 27, 0.95);
     backdrop-filter: blur(16px);
@@ -520,6 +530,15 @@
     box-shadow: var(--shadow-lg);
     padding: 0.5rem;
     animation: dropIn 0.2s ease-out;
+}
+
+.nav-dropdown-menu::before {
+    content: '';
+    position: absolute;
+    top: -0.5rem;
+    left: 0;
+    width: 100%;
+    height: 0.5rem;
 }
 
 .nav-dropdown:hover .nav-dropdown-menu {
