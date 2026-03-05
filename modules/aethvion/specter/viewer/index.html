@@ -89,6 +89,7 @@
             text-transform: uppercase;
             background: linear-gradient(90deg, var(--accent), var(--accent2));
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -720,6 +721,12 @@
                         <p style="font-size:0.78rem; color:var(--text-dim); margin-bottom:10px;">
                             Upload an existing character image and Specter will analyse and rig it automatically.
                         </p>
+                        <div style="margin-bottom:8px;">
+                            <label>Image Model <span style="color:var(--text-dim)">(for concept preview)</span></label>
+                            <select id="image-model-select-simple">
+                                <option value="">Default (Auto)</option>
+                            </select>
+                        </div>
                         <button class="btn btn-primary" id="simple-upload-btn"><i class="fas fa-upload"></i> Upload
                             &amp; Rig</button>
                         <input type="file" id="simple-upload-input" style="display:none;" accept="image/*">
@@ -797,7 +804,7 @@
                 </div>
             </div>
 
-            <!-- ── EDIT TAB ── -->
+            <!-- Edit Tab -->
             <div class="tab-panel" id="tab-edit">
                 <div class="section-title"><i class="fas fa-layer-group"></i> Rig Layers</div>
                 <div id="layer-list">
@@ -806,15 +813,38 @@
                 <button class="btn btn-secondary spacer" id="save-layers-btn"><i class="fas fa-save"></i> Save Layer
                     Order</button>
 
-                <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
+                <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 8px;">
                     <div class="section-title"><i class="fas fa-project-diagram"></i> Bone Editor</div>
-                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                    <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:8px;">
                         <input type="checkbox" id="bone-edit-toggle" onchange="window.toggleBoneEditor(this.checked)">
                         <span>Show Vertex Nodes</span>
                     </label>
+                    <div class="param-label"><span>Node Size</span><span id="bone-size-val">5</span></div>
+                    <input type="range" min="2" max="20" step="1" value="5" id="bone-size-slider"
+                        oninput="document.getElementById('bone-size-val').textContent=this.value; window.setBoneNodeSize(parseInt(this.value))">
                 </div>
 
-                <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
+                <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 8px;">
+                    <div class="section-title"><i class="fas fa-brain"></i> AI Bone Generator</div>
+                    <p style="font-size:0.78rem; color:var(--text-dim); margin-bottom:8px;">
+                        Regenerate physics and bone mappings for a specific layer or all layers at once.
+                    </p>
+                    <div style="margin-bottom:8px;">
+                        <label>Target Layer</label>
+                        <select id="bone-layer-select">
+                            <option value="">All Layers</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <label>Extra Instructions <span style="color:var(--text-dim)">(optional)</span></label>
+                        <input type="text" id="bone-instructions" placeholder="e.g. make ear bones more reactive">
+                    </div>
+                    <button class="btn btn-primary" id="regen-bones-btn"><i class="fas fa-bone"></i> Regenerate
+                        Bones</button>
+                    <div id="bone-status" style="font-size:0.75rem; color:var(--text-dim); margin-top:6px;"></div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 8px;">
                     <div class="section-title"><i class="fas fa-film"></i> Animations</div>
                     <div id="animations-group" style="display:none;">
                         <div class="anim-controls" style="margin-bottom:8px;">
@@ -827,7 +857,7 @@
                     </div>
                 </div>
 
-                <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px;">
+                <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 8px;">
                     <div class="section-title"><i class="fas fa-sliders-h"></i> Parameters</div>
                     <div id="params-list">
                         <div style="font-size:0.78rem; color:var(--text-dim);">No model loaded.</div>
@@ -924,12 +954,16 @@
             // ── Layer UI builder (called by engine) ──
             window.rebuildLayerUI = (layersObj) => {
                 const list = document.getElementById('layer-list');
+                const boneLayerSel = document.getElementById('bone-layer-select');
                 list.innerHTML = '';
+                boneLayerSel.innerHTML = '<option value="">All Layers</option>';
+
                 const sortedIds = Object.keys(layersObj).sort((a, b) => layersObj[b].zIndex - layersObj[a].zIndex);
                 if (!sortedIds.length) {
                     list.innerHTML = '<div style="font-size:0.78rem;color:var(--text-dim)">No layers.</div>';
                     return;
                 }
+                const modelId = engine.currentModelConfigPath ? engine.currentModelConfigPath.split('/')[2] : null;
                 sortedIds.forEach(id => {
                     const layer = layersObj[id];
                     const div = document.createElement('div');
@@ -941,6 +975,9 @@
                     <span class="layer-z">z:${layer.zIndex}</span>
                 </div>
                 <div class="layer-controls">
+                    <button class="layer-btn" title="Remove Background" onclick="removeBg('${id}')">
+                        <i class="fas fa-eraser"></i>
+                    </button>
                     <button class="layer-btn ${layer.visible ? '' : 'hidden'}" title="Toggle Visibility" onclick="engine.toggleLayerVisibility('${id}')">
                         <i class="fas ${layer.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
                     </button>
@@ -952,6 +989,11 @@
                     </button>
                 </div>`;
                     list.appendChild(div);
+
+                    // Populate bone layer selector
+                    const opt = document.createElement('option');
+                    opt.value = id; opt.textContent = id;
+                    boneLayerSel.appendChild(opt);
                 });
             };
 
@@ -996,7 +1038,7 @@
                         const div = document.createElement('div');
                         div.className = 'model-item';
                         div.setAttribute('data-id', m.id);
-                        div.innerHTML = `<i class="fas fa-user"></i> ${m.name}`;
+                        div.innerHTML = `<i class="fas fa-user"></i> ${m.name}<span class="pipeline-tag">${m.asset_count || 0} assets</span>`;
                         div.onclick = () => {
                             document.querySelectorAll('.model-item').forEach(el => el.classList.remove('active'));
                             div.classList.add('active');
@@ -1016,6 +1058,7 @@
             fetch('/api/provider-models').then(r => r.json()).then(data => {
                 const chatSel = document.getElementById('chat-model-select');
                 const imgSel = document.getElementById('image-model-select');
+                const imgSelSimple = document.getElementById('image-model-select-simple');
                 data.chat_models.forEach(m => {
                     const o = document.createElement('option');
                     o.value = m.id; o.textContent = `${m.id} (${m.provider})`;
@@ -1024,7 +1067,8 @@
                 data.image_models.forEach(m => {
                     const o = document.createElement('option');
                     o.value = m.id; o.textContent = `${m.id} (${m.provider})`;
-                    imgSel.appendChild(o);
+                    imgSel.appendChild(o.cloneNode(true));
+                    imgSelSimple.appendChild(o);
                 });
             });
 
@@ -1079,6 +1123,71 @@
                 const data = await r.json();
                 if (data.status === 'success') alert('Layer order saved!');
                 else alert('Failed: ' + data.message);
+            });
+
+            // ── Remove BG per layer ──
+            window.removeBg = async (layerId) => {
+                if (!engine.currentModelConfigPath) { alert('No model loaded.'); return; }
+                const modelId = engine.currentModelConfigPath.split('/')[2];
+                showLoading(`Removing background for layer: ${layerId}...`);
+                try {
+                    const r = await fetch('/api/remove-background', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ model_id: modelId, layer_id: layerId })
+                    });
+                    const data = await r.json();
+                    if (data.status === 'success') {
+                        // Reload the texture in the engine
+                        const layer = engine.layers[layerId];
+                        if (layer && layer.texture) {
+                            const newTex = PIXI.Texture.from(data.texture + '?t=' + Date.now());
+                            layer.texture = newTex;
+                        }
+                        hideLoading();
+                        alert(`Background removed for ${layerId}.`);
+                    } else {
+                        alert('Remove BG failed: ' + data.message);
+                        hideLoading();
+                    }
+                } catch (err) { alert('Error: ' + err.message); hideLoading(); }
+            };
+
+            // ── Regenerate Bones ──
+            document.getElementById('regen-bones-btn').addEventListener('click', async () => {
+                if (!engine.currentModelConfigPath) { alert('No model loaded.'); return; }
+                const modelId = engine.currentModelConfigPath.split('/')[2];
+                const layerId = document.getElementById('bone-layer-select').value || null;
+                const instructions = document.getElementById('bone-instructions').value.trim() || null;
+                const chatModel = document.getElementById('chat-model-select').value || null;
+                const statusEl = document.getElementById('bone-status');
+
+                statusEl.textContent = 'Regenerating...';
+                statusEl.style.color = 'var(--warning)';
+                showLoading(layerId ? `Regenerating bones for layer: ${layerId}...` : 'Regenerating all bones...');
+                try {
+                    const r = await fetch('/api/regenerate-bones', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ model_id: modelId, layer_id: layerId, instructions, chat_model: chatModel })
+                    });
+                    const data = await r.json();
+                    if (data.status === 'success') {
+                        statusEl.textContent = 'Done! Reload model to see changes.';
+                        statusEl.style.color = 'var(--success)';
+                        hideLoading();
+                        // Reload the model to pick up new rig
+                        engine.loadModel(engine.currentModelConfigPath);
+                    } else {
+                        statusEl.textContent = 'Failed: ' + data.message;
+                        statusEl.style.color = '#ff4757';
+                        hideLoading();
+                    }
+                } catch (err) {
+                    statusEl.textContent = 'Error: ' + err.message;
+                    statusEl.style.color = '#ff4757';
+                    hideLoading();
+                }
             });
 
             // ── Simple mode: upload ──

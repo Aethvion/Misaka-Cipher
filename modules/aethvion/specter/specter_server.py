@@ -92,10 +92,16 @@ async def list_models():
             if entry.is_dir():
                 config_path = os.path.join(entry.path, "avatar.specter.json")
                 if os.path.exists(config_path):
+                    # Count texture assets
+                    tex_dir = os.path.join(entry.path, "textures")
+                    asset_count = 0
+                    if os.path.exists(tex_dir):
+                        asset_count = len([f for f in os.listdir(tex_dir) if f.endswith(".png")])
                     models.append({
                         "id": entry.name,
                         "name": entry.name.replace("_", " ").title(),
-                        "path": f"/models/{entry.name}/avatar.specter.json"
+                        "path": f"/models/{entry.name}/avatar.specter.json",
+                        "asset_count": asset_count
                     })
     return models
 
@@ -228,6 +234,107 @@ async def generate_rig_modular_api(request: GenerateRigRequest):
             rig_path = pip.generate_rig_from_image(concept_abs, output_dir, model_name, request.instructions)
 
         return JSONResponse({"status": "success", "model_id": model_name, "path": f"/models/{model_name}/avatar.specter.json"})
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
+# API: Remove Background (opt-in per layer)
+# ---------------------------------------------------------------------------
+
+class RemoveBgRequest(BaseModel):
+    model_id: str
+    layer_id: str   # The part name e.g. "head"
+
+
+@app.post("/api/remove-background")
+async def remove_background_api(request: RemoveBgRequest):
+    """Apply background removal to a single layer texture."""
+    from pipelines.utils import remove_background
+    import json
+
+    tex_dir = os.path.join(MODELS_DIR, request.model_id, "textures")
+    raw_path = os.path.join(tex_dir, f"{request.layer_id}_raw.png")
+    out_path = os.path.join(tex_dir, f"{request.layer_id}.png")
+
+    if not os.path.exists(raw_path):
+        # Fall back to .png if raw doesn't exist (e.g. older models)
+        raw_path = out_path
+    if not os.path.exists(raw_path):
+        return JSONResponse({"status": "error", "message": "Texture not found."}, status_code=404)
+
+    try:
+        remove_background(raw_path, out_path)
+        return JSONResponse({"status": "success", "texture": f"/models/{request.model_id}/textures/{request.layer_id}.png"})
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
+# ---------------------------------------------------------------------------
+# API: Per-layer Bone / Rig Regeneration
+# ---------------------------------------------------------------------------
+
+class RegenerateBonesRequest(BaseModel):
+    model_id: str
+    layer_id: Optional[str] = None   # None = regenerate all layers
+    instructions: Optional[str] = None
+    chat_model: Optional[str] = None
+
+
+@app.post("/api/regenerate-bones")
+async def regenerate_bones_api(request: RegenerateBonesRequest):
+    """Ask the LLM to regenerate physics/bone mappings for one or all layers."""
+    import json
+    from pipelines.utils import generate_rig
+
+    rig_path = os.path.join(MODELS_DIR, request.model_id, "avatar.specter.json")
+    if not os.path.exists(rig_path):
+        return JSONResponse({"status": "error", "message": "Model not found."}, status_code=404)
+
+    try:
+        with open(rig_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        provider, model_id = _get_google_provider_and_model(request.chat_model)
+
+        # Filter to just the target layer if specified
+        parts = config.get("parts", [])
+        if request.layer_id:
+            target_parts = [p for p in parts if p["id"] == request.layer_id]
+            if not target_parts:
+                return JSONResponse({"status": "error", "message": f"Layer '{request.layer_id}' not found."}, status_code=404)
+        else:
+            target_parts = parts
+
+        # Get fresh rig logic from AI for these parts
+        new_config = generate_rig(target_parts, provider, model_id, request.instructions)
+
+        if request.layer_id:
+            # Merge: keep existing params/mappings for OTHER layers, replace only current layer's entries
+            layer_params = new_config.get("params", {})
+            layer_mappings = [m for m in new_config.get("mappings", []) if m.get("layer") == request.layer_id]
+            layer_anims = new_config.get("animations", {})
+
+            # Remove old mappings for this layer
+            existing_mappings = [m for m in config.get("mappings", []) if m.get("layer") != request.layer_id]
+            # Remove old params that target this layer (params named with layer id)
+            existing_params = {k: v for k, v in config.get("params", {}).items()
+                               if request.layer_id.lower() not in k.lower()}
+
+            config["params"] = {**existing_params, **layer_params}
+            config["mappings"] = existing_mappings + layer_mappings
+            # Merge animations
+            config.setdefault("animations", {}).update(layer_anims)
+        else:
+            # Full replacement
+            config["params"] = new_config.get("params", config.get("params", {}))
+            config["mappings"] = new_config.get("mappings", config.get("mappings", []))
+            config["animations"] = new_config.get("animations", config.get("animations", {}))
+
+        with open(rig_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=4)
+
+        return JSONResponse({"status": "success", "message": f"Regenerated bones for '{request.layer_id or 'all layers'}'"})
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
 

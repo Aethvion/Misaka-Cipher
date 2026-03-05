@@ -4,13 +4,14 @@ class SpecterEngine {
         this.app = null;
         this.currentModel = null;
         this.params = {};
-        this.layers = {}; // Map of layer names to Pixi objects (Sprite or Mesh)
+        this.layers = {};
         this.animations = {};
         this.activeAnimations = new Set();
         this.time = 0;
         this.currentModelConfigPath = null;
         this.editBonesMode = false;
         this.bonesContainer = null;
+        this.boneNodeSize = 5; // Adjustable — set by UI slider
 
         // Effects
         this.bloomFilter = null;
@@ -55,9 +56,12 @@ class SpecterEngine {
         window.pauseAnimation = () => this.pauseAnimation();
         window.stopAllAnimations = () => this.stopAllAnimations();
         window.isPlayingAnimation = (name) => this.activeAnimations.has(name) && this.isTickerRunning;
-
         window.updateEffect = (name, val) => this.setEffect(name, parseFloat(val));
         window.toggleBoneEditor = (active) => this.setBoneEditor(active);
+        window.setBoneNodeSize = (size) => {
+            this.boneNodeSize = size;
+            if (this.editBonesMode) this.setBoneEditor(true); // Redraw with new size
+        };
 
         // Setup PIXI filters
         // For standard we use standard Blur as bloom proxy for now to avoid external dependencies if not present.
@@ -292,7 +296,8 @@ class SpecterEngine {
 
         if (!active || !this.currentModel) return;
 
-        // Create interactive bone nodes for any meshes
+        const nodeRadius = this.boneNodeSize;
+
         for (const [partId, layer] of Object.entries(this.layers)) {
             if (layer instanceof PIXI.SimpleMesh) {
                 const partConfig = this.currentModel.parts.find(p => p.id === partId);
@@ -301,9 +306,9 @@ class SpecterEngine {
                 // Create a node for each vertex
                 for (let i = 0; i < partConfig.mesh.vertices.length; i += 2) {
                     const node = new PIXI.Graphics();
-                    node.beginFill(0xffffff, 0.8);
-                    node.lineStyle(2, 0x00d9ff, 1);
-                    node.drawCircle(0, 0, 8);
+                    node.beginFill(0xffffff, 0.75);
+                    node.lineStyle(1.5, 0x7c6ff7, 1);
+                    node.drawCircle(0, 0, nodeRadius);
                     node.endFill();
 
                     // Position node relative to the layer's local space

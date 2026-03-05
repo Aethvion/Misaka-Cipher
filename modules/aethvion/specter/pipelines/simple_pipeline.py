@@ -1,20 +1,20 @@
 """
 Specter Simple Pipeline
-Mode: Single image → Vision AI bounding-box extraction → Layer slice → Rig
-Use when you already have character concept art you want to rig.
+Mode: Single image -> Vision AI bounding-box extraction -> Layer slice -> Rig
+Background removal is NOT applied automatically - it's opt-in per layer via the Edit tab.
+All originals are always saved.
 """
 import os
 import sys
-import uuid
+import json
 import shutil
 from PIL import Image
-from typing import Dict, Any
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
-from .utils import create_part_entry, remove_background, generate_rig, extract_bounding_boxes
+from .utils import create_part_entry, generate_rig, extract_bounding_boxes
 
 
 VISION_PROMPT = """
@@ -40,23 +40,21 @@ class SimplePipeline:
 
     def generate_rig_from_image(self, image_path: str, output_dir: str,
                                  output_name: str, instructions: str = None) -> str:
-        """Analyze a single image, slice it, and generate the rig JSON."""
+        """
+        Analyze a single image, slice it, and generate the rig JSON.
+        All originals are always saved. BG removal is a separate opt-in step.
+        """
         os.makedirs(output_dir, exist_ok=True)
         textures_dir = os.path.join(output_dir, "textures")
         os.makedirs(textures_dir, exist_ok=True)
 
-        # 1. Optional background removal
-        nobg_path = os.path.join(textures_dir, "source_nobg.png")
-        if remove_background(image_path, nobg_path):
-            source_path = nobg_path
-        else:
-            source_path = image_path
+        # Always save original
+        original_path = os.path.join(textures_dir, "original.png")
+        shutil.copy2(image_path, original_path)
 
-        shutil.copy2(image_path, os.path.join(textures_dir, "original.png"))
-
-        # 2. Vision: extract bounding boxes
-        print("🔍 Simple Pipeline: Analysing image anatomy via Vision AI...")
-        with open(source_path, "rb") as f:
+        # 1. Vision: extract bounding boxes
+        print("Analysing image anatomy via Vision AI...")
+        with open(image_path, "rb") as f:
             image_data = f.read()
 
         coords = extract_bounding_boxes(image_data, VISION_PROMPT, self.provider, self.model_id)
@@ -64,45 +62,45 @@ class SimplePipeline:
         if not coords:
             raise ValueError("Vision AI returned no bounding boxes. Cannot slice image.")
 
-        print(f"✅ Vision mapped {len(coords)} parts.")
+        print(f"Vision mapped {len(coords)} parts.")
 
-        # 3. Slice image
-        img = Image.open(source_path).convert("RGBA")
+        # 2. Slice image — save raw crop. By default the active texture equals the raw slice.
+        img = Image.open(image_path).convert("RGBA")
         width, height = img.size
         parts_config = []
         canvas_w, canvas_h = 1000, 1000
 
         for name, box in coords.items():
             if not box or len(box) != 4:
-                print(f"   ⚠️ Skipping {name}: invalid box.")
+                print(f"Skipping {name}: invalid box.")
                 continue
 
-            left = (box[1] / 1000) * width
-            top = (box[0] / 1000) * height
-            right = (box[3] / 1000) * width
+            left   = (box[1] / 1000) * width
+            top    = (box[0] / 1000) * height
+            right  = (box[3] / 1000) * width
             bottom = (box[2] / 1000) * height
 
             cropped = img.crop((left, top, right, bottom))
+
+            # _raw.png = permanent backup, .png = active texture (overwritten by BG removal later)
             raw_path = os.path.join(textures_dir, f"{name}_raw.png")
+            tex_path = os.path.join(textures_dir, f"{name}.png")
             cropped.save(raw_path)
+            shutil.copy2(raw_path, tex_path)
 
-            nobg_part = os.path.join(textures_dir, f"{name}.png")
-            remove_background(raw_path, nobg_part)
+            parts_config.append(create_part_entry(name, f"textures/{name}.png",
+                                                   left, top, right, bottom, canvas_w, canvas_h))
+            print(f"Sliced: {name}")
 
-            tex_filename = f"textures/{name}.png"
-            parts_config.append(create_part_entry(name, tex_filename, left, top, right, bottom, canvas_w, canvas_h))
-            print(f"   -> Sliced: {name}")
-
-        # 4. Generate rig
-        print("✨ Generating physics rig...")
+        # 3. Generate rig
+        print("Generating physics rig...")
         config = generate_rig(parts_config, self.provider, self.model_id, instructions)
         config["name"] = output_name.replace("_", " ").title()
         config["pipeline"] = "simple"
 
-        import json
         rig_path = os.path.join(output_dir, "avatar.specter.json")
-        with open(rig_path, "w") as f:
+        with open(rig_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=4)
 
-        print(f"✅ Simple Pipeline complete: {output_name}")
+        print(f"Simple Pipeline complete: {output_name}")
         return rig_path
