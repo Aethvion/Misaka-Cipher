@@ -141,6 +141,39 @@
             }
         }
 
+        /* Concept Modals */
+        #concept-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .concept-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .concept-card img {
+            max-width: 100%;
+            border-radius: 4px;
+            border: 1px solid var(--accent);
+        }
+
         /* Library Panel */
         .library-panel {
             position: absolute;
@@ -197,6 +230,22 @@
         </div>
         <div id="model-list">
             <div class="placeholder-text" style="font-size: 0.8rem; opacity: 0.5;">Loading models...</div>
+        </div>
+    </div>
+
+    <div id="concept-modal">
+        <div class="concept-card">
+            <h2 style="margin:0; color:var(--accent);">Design Concept</h2>
+            <img id="concept-img" src="" alt="Concept Art">
+            <div style="font-size: 0.85rem; color: #888;">If you like this design, we can generate the modular
+                piece-by-piece rig.</div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button id="concept-cancel-btn"
+                    style="flex:1; padding: 10px; background: transparent; border: 1px solid #ff4757; color: #ff4757; cursor:pointer; border-radius:4px;">Cancel</button>
+                <button id="concept-rig-btn"
+                    style="flex:1; padding: 10px; background: var(--accent); border: none; color: black; font-weight:bold; cursor:pointer; border-radius:4px;"><i
+                        class="fas fa-hammer"></i> Rig Modular Components</button>
+            </div>
         </div>
     </div>
 
@@ -286,18 +335,25 @@
             <input type="file" id="auto-rig-input" style="display: none;" accept="image/*">
 
             <div style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 5px;">
-                <div style="margin-bottom: 10px; font-size: 0.85rem; color: var(--text);">Or create from design:</div>
+                <div style="margin-bottom: 10px; font-size: 0.85rem; color: var(--text);">Modular Studio Generator:
+                </div>
                 <div style="margin-bottom: 5px; font-size: 0.8rem; color: var(--text-secondary);">Generation Model</div>
                 <select id="image-model-select"
                     style="width: 100%; padding: 0.6rem; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px; margin-bottom: 10px;">
                     <option value="">Default (Auto)</option>
                 </select>
+
+                <div style="margin-bottom: 5px; font-size: 0.8rem; color: var(--text-secondary);">Rigging Instructions
+                    (Optional)</div>
+                <input type="text" id="rig-instructions-input" placeholder="e.g. 'Add extra vertices for cat ears'"
+                    style="width: calc(100% - 1.2rem - 2px); padding: 0.6rem; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px; margin-bottom: 10px;">
+
                 <div style="display: flex; gap: 8px;">
                     <input type="text" id="gen-prompt-input" placeholder="VTuber character reference prompt..."
                         style="flex: 1; padding: 0.6rem; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px;">
                     <button id="gen-rig-btn"
                         style="padding: 0.6rem 0.8rem; background: #ff007f; border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">
-                        <i class="fas fa-paint-brush"></i> Generate
+                        <i class="fas fa-paint-brush"></i> Draft Concept
                     </button>
                 </div>
             </div>
@@ -488,9 +544,12 @@
                 }
             });
 
-            // AI Avatar Generation
+            // AI Avatar Generation - Step 1: Concept
             const genBtn = document.getElementById('gen-rig-btn');
             const genInput = document.getElementById('gen-prompt-input');
+            const rigInstructionsInput = document.getElementById('rig-instructions-input');
+
+            let currentConceptData = null;
 
             genBtn.addEventListener('click', async () => {
                 const promptVal = genInput.value.trim();
@@ -500,22 +559,60 @@
                 }
 
                 document.getElementById('loading-overlay').style.display = 'flex';
-                document.getElementById('loading-text').textContent = "AI is designing and rigging your avatar...";
+                document.getElementById('loading-text').textContent = "Step 1: Drafting Artificial Concept...";
+                document.getElementById('concept-modal').style.display = 'none';
 
-                const chatModel = document.getElementById('chat-model-select').value;
                 const imageModel = document.getElementById('image-model-select').value;
 
                 try {
-                    const response = await fetch('/api/generate-rig', {
+                    const response = await fetch('/api/generate-concept', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             prompt: promptVal,
-                            chat_model: chatModel || null,
                             image_model: imageModel || null
                         })
+                    });
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        document.getElementById('loading-overlay').style.display = 'none';
+                        document.getElementById('concept-img').src = result.concept_path + '?t=' + new Date().getTime();
+                        document.getElementById('concept-modal').style.display = 'flex';
+
+                        currentConceptData = {
+                            concept_path: result.concept_path,
+                            prompt: promptVal,
+                            image_model: imageModel,
+                            chat_model: document.getElementById('chat-model-select').value,
+                            instructions: rigInstructionsInput.value.trim()
+                        };
+                    } else {
+                        alert("Concept generation failed: " + result.message);
+                        document.getElementById('loading-overlay').style.display = 'none';
+                    }
+                } catch (err) {
+                    alert("Concept error: " + err.message);
+                    document.getElementById('loading-overlay').style.display = 'none';
+                }
+            });
+
+            document.getElementById('concept-cancel-btn').addEventListener('click', () => {
+                document.getElementById('concept-modal').style.display = 'none';
+            });
+
+            document.getElementById('concept-rig-btn').addEventListener('click', async () => {
+                if (!currentConceptData) return;
+
+                document.getElementById('concept-modal').style.display = 'none';
+                document.getElementById('loading-overlay').style.display = 'flex';
+                document.getElementById('loading-text').textContent = "Step 2: Rendering Modular Physics & Mesh Parts... (This takes a while!)";
+
+                try {
+                    const response = await fetch('/api/generate-rig-modular', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(currentConceptData)
                     });
                     const result = await response.json();
 
@@ -523,11 +620,11 @@
                         engine.loadModel(result.path);
                         loadLibrary();
                     } else {
-                        alert("Generation failed: " + result.message);
+                        alert("Modular Rigging failed: " + result.message);
                         document.getElementById('loading-overlay').style.display = 'none';
                     }
                 } catch (err) {
-                    alert("Generation error: " + err.message);
+                    alert("Modular Rigging error: " + err.message);
                     document.getElementById('loading-overlay').style.display = 'none';
                 }
             });

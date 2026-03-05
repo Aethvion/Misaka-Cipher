@@ -142,6 +142,72 @@ async def generate_rig_api(request: GenerateRigRequest):
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
+class GenerateConceptRequest(BaseModel):
+    prompt: str
+    image_model: Optional[str] = None
+
+@app.post("/api/generate-concept")
+async def generate_concept_api(request: GenerateConceptRequest):
+    """Phase 1: Generate just the concept art to show the user."""
+    import uuid
+    uid = uuid.uuid4().hex[:8]
+    model_name = f"concept_{uid}"
+    output_dir = os.path.join(MODELS_DIR, model_name)
+    os.makedirs(output_dir, exist_ok=True)
+    temp_path = os.path.join(output_dir, "concept.png")
+    
+    try:
+        rigger = AutoRigger()
+        # Generate the avatar image
+        rigger.generate_avatar(request.prompt, temp_path, image_model=request.image_model)
+        
+        return JSONResponse({
+            "status": "success",
+            "concept_id": model_name,
+            "concept_path": f"/models/{model_name}/concept.png"
+        })
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+class GenerateModularRigRequest(BaseModel):
+    concept_path: str
+    prompt: str
+    image_model: Optional[str] = None
+    chat_model: Optional[str] = None
+    instructions: Optional[str] = None
+
+@app.post("/api/generate-rig-modular")
+async def generate_rig_modular_api(request: GenerateModularRigRequest):
+    """Phase 2: Generate modular parts based on the concept and rig them."""
+    try:
+        rigger = AutoRigger()
+        # Extract the model_name from the concept_path (e.g. /models/concept_123/concept.png -> concept_123)
+        parts = request.concept_path.split('/')
+        if len(parts) >= 3:
+            model_name = parts[2]
+        else:
+            model_name = f"rigged_{uuid.uuid4().hex[:8]}"
+            
+        # The concept image is already saved in the MODELS_DIR under this model_name
+        concept_abs_path = os.path.join(MODELS_DIR, model_name, "concept.png")
+        
+        # Rig it using the new modular pipeline
+        rigger.process_model_modular(
+            concept_path=concept_abs_path, 
+            output_name=model_name,
+            image_model=request.image_model,
+            chat_model=request.chat_model,
+            instructions=request.instructions
+        )
+        
+        return JSONResponse({
+            "status": "success",
+            "model_id": model_name,
+            "path": f"/models/{model_name}/avatar.specter.json"
+        })
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
 # Mount static files (Viewer and Models)
 app.mount("/viewer", StaticFiles(directory=VIEWER_DIR), name="viewer")
 app.mount("/models", StaticFiles(directory=MODELS_DIR), name="models")

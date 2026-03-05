@@ -276,15 +276,18 @@ class GoogleAIProvider(BaseProvider):
                     number_of_images=n,
                     aspect_ratio=aspect_ratio,
                     negative_prompt=negative_prompt,
-                    seed=seed
+                    # seed=seed  # removing seed as it might cause API issues on some models if None
                 )
             )
             
             image_bytes_list = []
-            if hasattr(response, 'generated_images'):
+            if hasattr(response, 'generated_images') and response.generated_images:
                 for img in response.generated_images:
                     if hasattr(img, 'image') and hasattr(img.image, 'image_bytes'):
                         image_bytes_list.append(img.image.image_bytes)
+            
+            if not image_bytes_list:
+                raise ValueError("No images returned from Google API")
 
             self.record_success()
             logger.info(f"[{trace_id}] Successfully generated {len(image_bytes_list)} images with Google AI")

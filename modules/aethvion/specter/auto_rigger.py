@@ -54,43 +54,37 @@ class AutoRigger:
         Example: {"head": [100, 200, 500, 600], ...}
         """
         
-        target_model = chat_model or self.model_id
+        # Force Google AI for Vision (since it uses genai types)
+        vision_provider = self.provider
+        vision_model = self.model_id
         
-        # We need the appropriate provider based on the model if chat_model is provided
-        target_provider = None
         if target_model:
             provider_name = self.pm.model_to_provider_map.get(target_model)
-            if provider_name:
-                target_provider = self.pm.get_provider(provider_name)
-        
-        if not target_provider:
-             target_provider = self.provider # Fallback to google_ai
-             
-        if target_provider and target_provider.config.name == "google_ai":
-            try:
-                # Use generating client if it exists (Gemini specifically)
-                client = getattr(target_provider, 'client', self.client)
-                response = client.models.generate_content(
-                    model=target_model,
-                    contents=[
-                        types.Part.from_bytes(data=image_data, mime_type="image/png"),
-                        prompt
-                    ],
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json"
-                    )
-                )
-                return json.loads(response.text)
-            except Exception as e:
-                print(f"Error parsing Google AI response: {e}")
-                return {}
-        else:
-            # For OpenAI with vision or others, we'll route it through the provider generate if it supports multimodal.
-            # Usually Misaka base provider requires image formats for GPT vision depending on implementation.
-            # To be safe and simple: log and fallback, or we can just send text if base_provider supports it.
-            # For this MVP specter, if it's not Google we print warning since specter relies on Gemini Vision.
-             print(f"Warning: {target_provider.config.name} may not support Google AI Vision Part formats directly. Attempting text-only analysis.")
+            if provider_name == "google_ai":
+                vision_provider = self.pm.get_provider(provider_name)
+                vision_model = target_model
+                
+        if not vision_provider:
+             print("Warning: Google AI Provider is not available for Vision extraction.")
              return {}
+             
+        try:
+            # Use generating client if it exists (Gemini specifically)
+            client = getattr(vision_provider, 'client', self.client)
+            response = client.models.generate_content(
+                model=vision_model,
+                contents=[
+                    types.Part.from_bytes(data=image_data, mime_type="image/png"),
+                    prompt
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"Error parsing Google AI response: {e}")
+            return {}
 
 
 
@@ -119,9 +113,10 @@ class AutoRigger:
             raise ValueError("No viable image provider found.")
 
         full_prompt = (
-            "A front-facing, full-body 2D anime character concept art, perfect for VTuber rigging. "
-            "Clean white background, symmetrical A-pose, simple flat colors, no background clutter. "
-            "The character should have their arms slightly spread out and legs straight. "
+            "A VTuber character design sprite sheet on a pure white background. "
+            "The top half should show the complete character design (A-pose, front-facing, simple flat colors). "
+            "The bottom half MUST strictly contain clearly separated, floating modular parts laid out individually: "
+            "an isolated headless body, an isolated head with back-hair, isolated front hair bangs, isolated left and right eyes, and an isolated mouth. "
             f"Character design reference: {prompt}"
         )
 
@@ -241,41 +236,96 @@ class AutoRigger:
         }
         return z_map.get(part_name, 10)
 
-    def generate_rig(self, parts: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Generate a .specter.json configuration with advanced mesh animations."""
-        config = {
-            "name": "AI Mesh-Rigged Avatar",
-            "version": "1.1.0",
+    def generate_rig(self, parts: List[Dict[str, Any]], chat_model: str = None, instructions: str = None) -> Dict[str, Any]:
+        """Ask the LLM to write the physics mappings and parameters based on the parts list."""
+        print(f"🧠 Asking AI to wire up the physics mappings...")
+        
+        # Base fallback config if LLM fails or is missing
+        base_config = {
+            "name": "AI Modular Avatar",
+            "version": "1.2.0",
             "parts": parts,
             "params": {
                 "ParamBreath": {"name": "Breathing", "min": 0, "max": 1, "default": 0, "value": 0},
                 "ParamEyeOpenL": {"name": "Eye Open L", "min": 0, "max": 1, "default": 1, "value": 1},
                 "ParamEyeOpenR": {"name": "Eye Open R", "min": 0, "max": 1, "default": 1, "value": 1},
-                "ParamMouthOpenY": {"name": "Mouth Open", "min": 0, "max": 1, "default": 0, "value": 0},
-                "ParamBodyAngleX": {"name": "Body X", "min": -1, "max": 1, "default": 0, "value": 0},
-                "ParamHappiness": {"name": "Happiness", "min": 0, "max": 1, "default": 0, "value": 0}
+                "ParamMouthOpenY": {"name": "Mouth Open", "min": 0, "max": 1, "default": 0, "value": 0}
             },
             "animations": {
                 "idle": {
                     "ParamBreath": {"type": "sine", "speed": 1.0, "amplitude": 0.5}
-                },
-                "happy": {
-                    "ParamHappiness": {"type": "fixed", "value": 1.0},
-                    "ParamEyeOpenL": {"type": "fixed", "value": 0.5},
-                    "ParamEyeOpenR": {"type": "fixed", "value": 0.5}
                 }
             },
             "mappings": [
-                # Breathing (Mesh Deformation: stretch body Y)
                 {"param": "ParamBreath", "layer": "body", "type": "mesh_deform", "vertex_index": 4, "axis": "y", "multiplier": 0.1},
-                # Mouth Opening (Mesh: stretch mouth center down)
                 {"param": "ParamMouthOpenY", "layer": "mouth", "type": "mesh_deform", "vertex_index": 7, "axis": "y", "multiplier": 0.3},
-                # Eyes (Wink: scale mesh)
                 {"param": "ParamEyeOpenL", "layer": "eye_left", "type": "scale", "base": 0, "multiplier": 1.0},
                 {"param": "ParamEyeOpenR", "layer": "eye_right", "type": "scale", "base": 0, "multiplier": 1.0}
             ]
         }
-        return config
+        
+        target_model = chat_model or self.model_id
+        target_provider = None
+        if target_model:
+            provider_name = self.pm.model_to_provider_map.get(target_model)
+            if provider_name:
+                target_provider = self.pm.get_provider(provider_name)
+        
+        if not target_provider:
+             target_provider = self.provider
+
+        if not target_provider or target_provider.config.name != "google_ai":
+            print("⚠️ Chat provider is not Google AI or unavailable. Using default physics.")
+            return base_config
+
+        prompt = f"""
+You are the core logic engine for a VTuber rigging platform.
+I have generated the following bodily components for a 2D avatar. Each component is a 3x3 mesh grid (indices 0 to 8, where 4 is center).
+Parts array:
+{json.dumps([{'id': p['id'], 'z': p['z']} for p in parts], indent=2)}
+
+Please output a JSON object containing EXACTLY three root keys: "params", "animations", and "mappings".
+1. "params": Define logic parameters (min, max, default). (e.g. ParamBreath, ParamFaceAngleX).
+2. "animations": Give me an "idle" animation that oscillates ParamBreath using type "sine". You can add more animations if you want.
+3. "mappings": The physical wiring. Map your params to the parts!
+
+Mapping Types:
+- "mesh_deform": Needs param, layer (part id), vertex_index (0-8), axis ("x" or "y"), multiplier.
+- "scale": Needs param, layer, base (offset), multiplier.
+- "position_x" or "position_y": Needs param, layer, base, multiplier.
+- "rotation": Needs param, layer, base, multiplier.
+
+User specific rig instructions: {instructions or "Make a standard VTuber rig that breathes and blinks."}
+
+Return ONLY valid JSON covering the "params", "animations", and "mappings". Match the JSON structure I need. Do NOT include Markdown formatting like ```json.
+"""
+
+        try:
+            client = getattr(target_provider, 'client', self.client)
+            response = client.models.generate_content(
+                model=target_model,
+                contents=[prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
+            )
+            
+            ai_logic = json.loads(response.text)
+            
+            # Merge with parts
+            final_config = {
+                "name": "AI Modular Avatar",
+                "version": "1.2.0",
+                "parts": parts,
+                "params": ai_logic.get("params", base_config["params"]),
+                "animations": ai_logic.get("animations", base_config["animations"]),
+                "mappings": ai_logic.get("mappings", base_config["mappings"])
+            }
+            return final_config
+            
+        except Exception as e:
+            print(f"Error parsing AI Rigging Logic: {e}. Falling back to default physics.")
+            return base_config
 
     def remove_background(self, image_path: str, output_path: str) -> bool:
         """Attempt to remove background using rembg if installed."""
@@ -335,3 +385,113 @@ class AutoRigger:
             json.dump(config, f, indent=4)
             
         print(f"✅ Auto-rigging complete for {output_name}")
+
+    def process_model_modular(self, concept_path: str, output_name: str, image_model: str = None, chat_model: str = None, instructions: str = None):
+        """Phase 2 Pipeline: Interpret Sprite Sheet Concept -> Extract Parts -> Assemble -> Rig."""
+        print(f"🚀 Starting Sprite Sheet Modular Rigging for {output_name}...")
+        
+        output_dir = os.path.join(os.path.dirname(concept_path))
+        os.makedirs(output_dir, exist_ok=True)
+        textures_dir = os.path.join(output_dir, "textures")
+        os.makedirs(textures_dir, exist_ok=True)
+        
+        # 1. Analyze Sprite Sheet
+        print(f"🔍 Analyzing Sprite Sheet: {concept_path}...")
+        # We need a new prompt to extract the sliced parts from the concept
+        with open(concept_path, "rb") as f:
+            image_data = f.read()
+
+        prompt = """
+        Analyze this Concept Art Sprite Sheet. It contains a full character design AND disassembled modular parts floating separately.
+        Identify the bounding boxes [ymin, xmin, ymax, xmax] (normalized 0-1000) for ONLY the ISOLATED parts (ignore the fully assembled character).
+        I need the precise bounding boxes for these floating pieces:
+        1. body (the headless torso/arms/legs)
+        2. head (the head base with ears and back hair)
+        3. hair_front (the front bangs)
+        4. eye_left
+        5. eye_right
+        6. mouth
+
+        Return the results strictly as a JSON object with the part names as keys and the box as value.
+        Example: {"head": [100, 200, 500, 600], ...}
+        """
+        
+        # Force Google AI for Vision (since it uses genai types)
+        vision_provider = self.provider
+        vision_model = self.model_id
+        
+        target_model = chat_model or self.model_id
+        if target_model:
+            provider_name = self.pm.model_to_provider_map.get(target_model)
+            if provider_name == "google_ai":
+                vision_provider = self.pm.get_provider(provider_name)
+                vision_model = target_model
+                
+        if not vision_provider:
+             raise ValueError("Google AI Provider is not available for Vision extraction.")
+
+        coords = {}
+        try:
+            client = getattr(vision_provider, 'client', self.client)
+            response = client.models.generate_content(
+                model=vision_model,
+                contents=[
+                    types.Part.from_bytes(data=image_data, mime_type="image/png"),
+                    prompt
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
+            )
+            coords = json.loads(response.text)
+            print(f"✅ Vision extraction mapped {len(coords)} isolated parts.")
+        except Exception as e:
+            print(f"Error parsing Sprite Sheet response: {e}")
+            raise ValueError(f"Failed to extract sprite sheet bounding boxes: {e}")
+
+        # 2. Extract Layers and Remove Backgrounds
+        print(f"✂️ Slicing Sprite Sheet layers to {textures_dir}...")
+        os.makedirs(os.path.join(output_dir, "textures"), exist_ok=True)
+        img = Image.open(concept_path).convert("RGBA")
+        width, height = img.size
+        
+        parts_config = []
+        canvas_w = 1000
+        canvas_h = 1000
+        
+        import shutil
+        shutil.copy2(concept_path, os.path.join(textures_dir, "original_spritesheet.png"))
+
+        for name, box in coords.items():
+            print(f"   -> Processing: {name} (Box: {box})...")
+            
+            # Skip if the Vision Model failed to locate this piece
+            if not box or len(box) != 4:
+                print(f"      ⚠️ Skipping {name}: Invalid bounding box detected.")
+                continue
+                
+            left = (box[1] / 1000) * width
+            top = (box[0] / 1000) * height
+            right = (box[3] / 1000) * width
+            bottom = (box[2] / 1000) * height
+            
+            # Crop feature
+            cropped = img.crop((left, top, right, bottom))
+            raw_path = os.path.join(textures_dir, f"{name}_raw.png")
+            cropped.save(raw_path)
+            
+            # Remove Background
+            nobg_path = os.path.join(textures_dir, f"{name}.png")
+            self.remove_background(raw_path, nobg_path)
+            
+            tex_filename = f"textures/{name}.png"
+            parts_config.append(self._create_part_entry(name, tex_filename, left, top, right, bottom, canvas_w, canvas_h))
+
+        print(f"✨ Orchestrating dynamic Physics Engine mappings...")
+        config = self.generate_rig(parts_config, chat_model=chat_model, instructions=instructions)
+        config["name"] = output_name.replace("_", " ").title()
+        
+        with open(os.path.join(output_dir, "avatar.specter.json"), "w") as f:
+            json.dump(config, f, indent=4)
+            
+        print(f"✅ Modular Rigging complete for {output_name}")
