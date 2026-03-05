@@ -182,10 +182,22 @@
                 Reset Parameters
             </button>
             <button id="auto-rig-btn"
-                style="width: 100%; padding: 0.8rem; background: var(--accent); border: none; color: black; border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: bold;">
+                style="width: 100%; padding: 0.8rem; background: var(--accent); border: none; color: black; border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">
                 <i class="fas fa-magic"></i> AI Auto-Rig Image
             </button>
             <input type="file" id="auto-rig-input" style="display: none;" accept="image/*">
+
+            <div style="border-top: 1px solid var(--border); padding-top: 15px; margin-top: 5px;">
+                <div style="margin-bottom: 10px; font-size: 0.85rem; color: var(--text);">Or create from design:</div>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="gen-prompt-input" placeholder="VTuber character reference prompt..."
+                        style="flex: 1; padding: 0.6rem; background: #2a2e3f; border: 1px solid var(--border); color: white; border-radius: 4px;">
+                    <button id="gen-rig-btn"
+                        style="padding: 0.6rem 0.8rem; background: #ff007f; border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">
+                        <i class="fas fa-paint-brush"></i> Generate
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -284,6 +296,42 @@
                     }
                 } catch (err) {
                     alert("Upload error: " + err.message);
+                    document.getElementById('loading-overlay').style.display = 'none';
+                }
+            });
+
+            // AI Avatar Generation
+            const genBtn = document.getElementById('gen-rig-btn');
+            const genInput = document.getElementById('gen-prompt-input');
+
+            genBtn.addEventListener('click', async () => {
+                const promptVal = genInput.value.trim();
+                if (!promptVal) {
+                    alert('Please enter a character reference prompt.');
+                    return;
+                }
+
+                document.getElementById('loading-overlay').style.display = 'flex';
+                document.getElementById('loading-text').textContent = "AI is designing and rigging your avatar...";
+
+                try {
+                    const response = await fetch('/api/generate-rig', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ prompt: promptVal })
+                    });
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        engine.loadModel(result.path);
+                    } else {
+                        alert("Generation failed: " + result.message);
+                        document.getElementById('loading-overlay').style.display = 'none';
+                    }
+                } catch (err) {
+                    alert("Generation error: " + err.message);
                     document.getElementById('loading-overlay').style.display = 'none';
                 }
             });

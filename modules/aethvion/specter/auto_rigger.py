@@ -11,6 +11,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.append(PROJECT_ROOT)
 
 from core.providers.provider_manager import ProviderManager
+import uuid
 from google.genai import types
 
 class AutoRigger:
@@ -64,6 +65,46 @@ class AutoRigger:
         except Exception as e:
             print(f"Error parsing AI response: {e}")
             return {}
+
+    def generate_avatar(self, prompt: str, output_path: str) -> bool:
+        """Generate a character image from a design prompt."""
+        print(f"🎨 Generating avatar from design: {prompt}")
+        
+        # Determine image capability
+        image_provider = self.pm.get_provider_for_capability("IMAGE")
+        if not image_provider:
+            # Fallback
+            image_provider = self.pm.get_provider("openai") or self.pm.get_provider("google_ai")
+
+        if not image_provider:
+            raise ValueError("No viable image provider found.")
+
+        full_prompt = (
+            "A front-facing, full-body 2D anime character concept art, perfect for VTuber rigging. "
+            "Clean white background, symmetrical A-pose, simple flat colors, no background clutter. "
+            "The character should have their arms slightly spread out and legs straight. "
+            f"Character design reference: {prompt}"
+        )
+
+        trace_id = f"specter-gen-{uuid.uuid4().hex[:8]}"
+        model = "imagen-3.0-generate-002" if image_provider.config.name == "google_ai" else "dall-e-3"
+
+        response = image_provider.generate_image(
+            prompt=full_prompt,
+            trace_id=trace_id,
+            model=model,
+            size="1024x1024"
+        )
+
+        if response.success and response.metadata and 'images' in response.metadata:
+            image_bytes = response.metadata['images'][0]
+            with open(output_path, "wb") as f:
+                f.write(image_bytes)
+            print("✅ Avatar image generated successfully.")
+            return True
+        else:
+            print(f"❌ Avatar generation failed: {response.error}")
+            raise Exception(f"Image generation failed: {response.error}")
 
     def extract_layers(self, source_image: str, coords: Dict[str, List[int]], output_dir: str) -> List[Dict[str, Any]]:
         """Crop the image into layers and 'cut out' holes in the body to prevent ghosting."""

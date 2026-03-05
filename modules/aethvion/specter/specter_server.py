@@ -14,6 +14,7 @@ load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 from fastapi import FastAPI, Request, UploadFile, File
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from auto_rigger import AutoRigger
@@ -62,6 +63,38 @@ async def auto_rig(file: UploadFile = File(...)):
     try:
         rigger = AutoRigger()
         model_name = file.filename.split('.')[0] or "auto_rigged"
+        rigger.process_model(temp_path, model_name)
+        
+        return JSONResponse({
+            "status": "success",
+            "model_id": model_name,
+            "path": f"/models/{model_name}/avatar.specter.json"
+        })
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
+class GenerateRigRequest(BaseModel):
+    prompt: str
+
+@app.post("/api/generate-rig")
+async def generate_rig_api(request: GenerateRigRequest):
+    """Generate an avatar from a prompt and auto-rig it."""
+    import uuid
+    uid = uuid.uuid4().hex[:8]
+    temp_path = os.path.join(MODELS_DIR, f"temp_gen_{uid}.png")
+    os.makedirs(MODELS_DIR, exist_ok=True)
+    
+    try:
+        rigger = AutoRigger()
+        model_name = f"generated_avatar_{uid}"
+        
+        # Generate the avatar image
+        rigger.generate_avatar(request.prompt, temp_path)
+        
+        # Process and rig
         rigger.process_model(temp_path, model_name)
         
         return JSONResponse({
