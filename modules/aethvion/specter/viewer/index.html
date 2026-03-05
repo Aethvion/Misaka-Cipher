@@ -968,6 +968,7 @@
                     const layer = layersObj[id];
                     const div = document.createElement('div');
                     div.className = 'layer-item';
+                    const isNobg = layerBgState[id] === 'nobg';
                     div.innerHTML = `
                 <div class="layer-item-name">
                     <i class="fas fa-square" style="font-size:0.6rem; color:var(--accent);"></i>
@@ -975,8 +976,10 @@
                     <span class="layer-z">z:${layer.zIndex}</span>
                 </div>
                 <div class="layer-controls">
-                    <button class="layer-btn" title="Remove Background" onclick="removeBg('${id}')">
-                        <i class="fas fa-eraser"></i>
+                    <button class="layer-btn" id="bg-btn-${id}"
+                        title="${isNobg ? 'Restore Raw Texture' : 'Remove Background'}"
+                        onclick="${isNobg ? `window.restoreBg('${id}')` : `window.removeBg('${id}')`}">
+                        <i class="fas ${isNobg ? 'fa-undo' : 'fa-eraser'}" ${isNobg ? 'style="color:var(--success)"' : ''}></i>
                     </button>
                     <button class="layer-btn ${layer.visible ? '' : 'hidden'}" title="Toggle Visibility" onclick="engine.toggleLayerVisibility('${id}')">
                         <i class="fas ${layer.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
@@ -1125,11 +1128,14 @@
                 else alert('Failed: ' + data.message);
             });
 
-            // ── Remove BG per layer ──
+            // ── Layer texture state tracker ──
+            const layerBgState = {}; // {layerId: 'raw' | 'nobg'}
+
+            // ── Remove BG per layer (non-destructive) ──
             window.removeBg = async (layerId) => {
                 if (!engine.currentModelConfigPath) { alert('No model loaded.'); return; }
                 const modelId = engine.currentModelConfigPath.split('/')[2];
-                showLoading(`Removing background for layer: ${layerId}...`);
+                showLoading(`Removing background for: ${layerId}...`);
                 try {
                     const r = await fetch('/api/remove-background', {
                         method: 'POST',
@@ -1137,18 +1143,56 @@
                         body: JSON.stringify({ model_id: modelId, layer_id: layerId })
                     });
                     const data = await r.json();
+                    hideLoading();
                     if (data.status === 'success') {
-                        // Reload the texture in the engine
-                        const layer = engine.layers[layerId];
-                        if (layer && layer.texture) {
-                            const newTex = PIXI.Texture.from(data.texture + '?t=' + Date.now());
-                            layer.texture = newTex;
+                        layerBgState[layerId] = 'nobg';
+                        // Hot-swap the texture in engine without a full reload
+                        const pixi_layer = engine.layers[layerId];
+                        if (pixi_layer) {
+                            PIXI.Texture.removeFromCache(data.texture);
+                            pixi_layer.texture = PIXI.Texture.from(data.texture + '?t=' + Date.now());
                         }
-                        hideLoading();
-                        alert(`Background removed for ${layerId}.`);
+                        // Update button to show restore option
+                        const btn = document.getElementById(`bg-btn-${layerId}`);
+                        if (btn) {
+                            btn.title = 'Restore Raw Texture';
+                            btn.innerHTML = '<i class="fas fa-undo" style="color:var(--success)"></i>';
+                            btn.onclick = () => window.restoreBg(layerId);
+                        }
                     } else {
                         alert('Remove BG failed: ' + data.message);
-                        hideLoading();
+                    }
+                } catch (err) { alert('Error: ' + err.message); hideLoading(); }
+            };
+
+            // ── Restore raw texture per layer ──
+            window.restoreBg = async (layerId) => {
+                if (!engine.currentModelConfigPath) return;
+                const modelId = engine.currentModelConfigPath.split('/')[2];
+                showLoading(`Restoring original texture for: ${layerId}...`);
+                try {
+                    const r = await fetch('/api/restore-background', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ model_id: modelId, layer_id: layerId })
+                    });
+                    const data = await r.json();
+                    hideLoading();
+                    if (data.status === 'success') {
+                        layerBgState[layerId] = 'raw';
+                        const pixi_layer = engine.layers[layerId];
+                        if (pixi_layer) {
+                            PIXI.Texture.removeFromCache(data.texture);
+                            pixi_layer.texture = PIXI.Texture.from(data.texture + '?t=' + Date.now());
+                        }
+                        const btn = document.getElementById(`bg-btn-${layerId}`);
+                        if (btn) {
+                            btn.title = 'Remove Background';
+                            btn.innerHTML = '<i class="fas fa-eraser"></i>';
+                            btn.onclick = () => window.removeBg(layerId);
+                        }
+                    } else {
+                        alert('Restore failed: ' + data.message);
                     }
                 } catch (err) { alert('Error: ' + err.message); hideLoading(); }
             };

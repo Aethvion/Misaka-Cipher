@@ -118,8 +118,10 @@ def generate_rig(parts: List[Dict[str, Any]], provider, model_id: str,
         ]
     }
 
-    if not provider or provider.config.name != "google_ai":
-        print("⚠️ No Google AI provider available. Using default physics.")
+    # Check if provider is usable — any provider with a .client is fine
+    client = getattr(provider, 'client', None) if provider else None
+    if not client:
+        print("No AI provider client available. Using default physics.")
         return base_config
 
     prompt = f"""
@@ -129,9 +131,9 @@ Parts array:
 {json.dumps([{{'id': p['id'], 'z': p['z']}} for p in parts], indent=2)}
 
 Please output a JSON object containing EXACTLY three root keys: "params", "animations", and "mappings".
-1. "params": Define logic parameters (min, max, default). (e.g. ParamBreath, ParamFaceAngleX).
-2. "animations": Give me an "idle" animation that oscillates ParamBreath using type "sine". You can add more animations if you want.
-3. "mappings": The physical wiring. Map your params to the parts!
+1. "params": Define one or more logic parameters per part. Name them after the part, e.g. Param{part_id.title()}X, Param{part_id.title()}Y, ParamBreath, etc.
+2. "animations": Give me an "idle" animation that oscillates ParamBreath using type "sine". You can add more animations.
+3. "mappings": Wire params to parts using the part IDs from the list above.
 
 Mapping Types:
 - "mesh_deform": Needs param, layer (part id), vertex_index (0-8), axis ("x" or "y"), multiplier.
@@ -145,10 +147,6 @@ Return ONLY valid JSON covering the "params", "animations", and "mappings". Do N
 """
 
     try:
-        client = getattr(provider, 'client', None)
-        if not client:
-            return base_config
-
         response = client.models.generate_content(
             model=model_id,
             contents=[prompt],

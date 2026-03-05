@@ -239,7 +239,7 @@ async def generate_rig_modular_api(request: GenerateRigRequest):
 
 
 # ---------------------------------------------------------------------------
-# API: Remove Background (opt-in per layer)
+# API: Remove Background (non-destructive, per layer)
 # ---------------------------------------------------------------------------
 
 class RemoveBgRequest(BaseModel):
@@ -249,25 +249,98 @@ class RemoveBgRequest(BaseModel):
 
 @app.post("/api/remove-background")
 async def remove_background_api(request: RemoveBgRequest):
-    """Apply background removal to a single layer texture."""
-    from pipelines.utils import remove_background
+    """
+    Apply background removal to a single layer texture.
+    Non-destructive: saves output as {layer_id}_nobg.png and updates the
+    avatar.specter.json texture pointer. _raw.png is NEVER modified.
+    """
     import json
+    from pipelines.utils import remove_background
 
-    tex_dir = os.path.join(MODELS_DIR, request.model_id, "textures")
-    raw_path = os.path.join(tex_dir, f"{request.layer_id}_raw.png")
-    out_path = os.path.join(tex_dir, f"{request.layer_id}.png")
+    model_dir = os.path.join(MODELS_DIR, request.model_id)
+    tex_dir   = os.path.join(model_dir, "textures")
+    raw_path  = os.path.join(tex_dir, f"{request.layer_id}_raw.png")
+    nobg_path = os.path.join(tex_dir, f"{request.layer_id}_nobg.png")
 
+    # Source must exist (_raw preferred, fall back to .png for older models)
     if not os.path.exists(raw_path):
-        # Fall back to .png if raw doesn't exist (e.g. older models)
-        raw_path = out_path
+        raw_path = os.path.join(tex_dir, f"{request.layer_id}.png")
     if not os.path.exists(raw_path):
-        return JSONResponse({"status": "error", "message": "Texture not found."}, status_code=404)
+        return JSONResponse({"status": "error", "message": "Source texture not found."}, status_code=404)
 
     try:
-        remove_background(raw_path, out_path)
-        return JSONResponse({"status": "success", "texture": f"/models/{request.model_id}/textures/{request.layer_id}.png"})
+        # Generate nobg — never touch raw
+        remove_background(raw_path, nobg_path)
+
+        # Update the rig JSON to point this part at the nobg texture
+        rig_path = os.path.join(model_dir, "avatar.specter.json")
+        if os.path.exists(rig_path):
+            with open(rig_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+            for part in config.get("parts", []):
+                if part["id"] == request.layer_id:
+                    # Store the original texture path the first time so restore can find it
+                    if "original_texture" not in part:
+                        part["original_texture"] = part.get("texture", f"textures/{request.layer_id}.png")
+                    part["texture"] = f"textures/{request.layer_id}_nobg.png"
+                    break
+            with open(rig_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=4)
+
+        return JSONResponse({
+            "status": "success",
+            "active": "nobg",
+            "texture": f"/models/{request.model_id}/textures/{request.layer_id}_nobg.png"
+        })
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
+@app.post("/api/restore-background")
+async def restore_background_api(request: RemoveBgRequest):
+    """
+    Restore the original (raw) texture for a layer.
+    Updates the rig JSON pointer back to _raw.png. The _nobg.png is kept on disk.
+    """
+    import json
+
+    model_dir = os.path.join(MODELS_DIR, request.model_id)
+    tex_dir   = os.path.join(model_dir, "textures")
+    raw_path  = os.path.join(tex_dir, f"{request.layer_id}_raw.png")
+
+    if not os.path.exists(raw_path):
+        raw_path = os.path.join(tex_dir, f"{request.layer_id}.png")
+    if not os.path.exists(raw_path):
+        return JSONResponse({"status": "error", "message": "Raw texture not found."}, status_code=404)
+
+    try:
+        rig_path = os.path.join(model_dir, "avatar.specter.json")
+        restore_tex = f"textures/{request.layer_id}_raw.png"  # fallback
+        if os.path.exists(rig_path):
+            with open(rig_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+            for part in config.get("parts", []):
+                if part["id"] == request.layer_id:
+                    # Use stored original if available (preserves the real original name)
+                    restore_tex = part.get("original_texture", restore_tex)
+                    part["texture"] = restore_tex
+                    # Remove the helper key so it doesn't clutter the file
+                    part.pop("original_texture", None)
+                    break
+            with open(rig_path, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=4)
+
+        # Derive the web-accessible URL from the relative path stored in JSON
+        tex_url = f"/models/{request.model_id}/{restore_tex}"
+        return JSONResponse({
+            "status": "success",
+            "active": "raw",
+            "texture": tex_url
+        })
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)}, status_code=500)
+
+
 
 
 # ---------------------------------------------------------------------------
