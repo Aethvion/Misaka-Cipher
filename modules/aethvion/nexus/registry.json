@@ -68,6 +68,18 @@
                 "take_screenshot": "Capture a specific monitor (0=all merged, 1=primary, 2+=secondary) and save as PNG. Optional arg: 'monitor' (int)."
             },
             "settings": []
+        },
+        {
+            "id": "webcam_capture",
+            "name": "Webcam Capture",
+            "description": "Captures images from a connected webcam.",
+            "module_path": "modules.aethvion.nexus.webcam_capture",
+            "requires_auth": false,
+            "is_authorized": true,
+            "available_commands": {
+                "capture_image": "Capture a photo from specified camera (index=0 for default)."
+            },
+            "settings": []
         }
     ]
 }

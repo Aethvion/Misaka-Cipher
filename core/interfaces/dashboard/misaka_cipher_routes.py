@@ -987,6 +987,7 @@ Keep responses engaging and human-like.
             mood = "calm"
             synthesis_ran = False
             memory_updated = False
+            captured_attachments = []
 
             # Tool Loop (Standard processing for the remainder)
             response_parts = [full_content]
@@ -998,6 +999,8 @@ Keep responses engaging and human-like.
                 
                 # WAIT FOR TOOLS WITH HEARTBEAT (Single generator instance)
                 tool_gen = _execute_tool_calls_stream(last_part, workspaces)
+                cleaned_last = last_part
+                tool_results = []
                 
                 while True:
                     try:
@@ -1034,25 +1037,36 @@ Keep responses engaging and human-like.
                     yield json.dumps({"type": "tool_end"}) + "\n"
                     break
                 
-                # POST-TOOL HOOK: Check for screenshots to inject into Vision
+                # POST-TOOL HOOK: Check for captured media (screenshots/webcam) to inject into Vision
                 for res in tool_results:
-                    if "Screenshot captured successfully" in res and "Saved to: " in res:
+                    if ("Screenshot captured successfully" in res or "Webcam image captured successfully" in res) and "Saved to: " in res:
                         try:
-                            # Extract path: "Saved to: C:\...screenshot_xxx.png"
+                            # Extract path: "Saved to: C:\...xxx.png" or "Saved to: C:\...xxx.jpg"
                             path_line = [line for line in res.splitlines() if "Saved to: " in line][0]
-                            ss_path = path_line.replace("Saved to: ", "").strip()
-                            p = Path(ss_path)
+                            media_path = path_line.replace("Saved to: ", "").strip()
+                            p = Path(media_path)
                             if p.exists():
                                 with open(p, "rb") as f:
                                     img_bytes = f.read()
+                                
+                                mime_type = "image/png" if media_path.lower().endswith(".png") else "image/jpeg"
                                 images.append({
                                     "data": img_bytes,
-                                    "mime_type": "image/png",
-                                    "is_screenshot": True
+                                    "mime_type": mime_type,
+                                    "is_peripheral_capture": True
                                 })
-                                logger.info(f"Auto-injected screenshot into vision context: {ss_path}")
+                                
+                                # TRACK FOR HISTORY UI
+                                captured_attachments.append({
+                                    "filename": p.name,
+                                    "url": f"/api/workspace/files/content?path={media_path}",
+                                    "is_image": True,
+                                    "mime_type": mime_type,
+                                    "path": str(media_path)
+                                })
+                                logger.info(f"Auto-injected peripheral capture into vision context: {media_path}")
                         except Exception as ve:
-                            logger.error(f"Failed to auto-inject screenshot: {ve}")
+                            logger.error(f"Failed to auto-inject peripheral capture: {ve}")
 
                 tool_results_str = "\n\n".join(tool_results)
                 cumulative_context = "\n\n".join(response_parts)
@@ -1143,13 +1157,17 @@ Keep responses engaging and human-like.
                     user_history_entry["attachments"] = request.attached_files
                     
                 day_history.append(user_history_entry)
-                day_history.append({
+                assistant_entry = {
                     "role": "assistant", 
                     "content": full_content_for_history, 
                     "timestamp": timestamp,
                     "mood": mood,
                     "expression": expression
-                })
+                }
+                if captured_attachments:
+                    assistant_entry["attachments"] = captured_attachments
+                
+                day_history.append(assistant_entry)
                 
                 with open(day_file, "w", encoding="utf-8") as df:
                     json.dump(day_history, df, indent=4)
