@@ -194,7 +194,8 @@ class BaseAgent(ABC):
                 'iteration': self.iterations_count
             },
             temperature=temperature or self.spec.temperature,
-            max_tokens=max_tokens or self.spec.max_tokens
+            max_tokens=max_tokens or self.spec.max_tokens,
+            images=self.spec.images
         )
         
         response = self.nexus.route_request(request)

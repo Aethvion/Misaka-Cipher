@@ -307,7 +307,8 @@ class ProviderManager:
                             temperature=0.0,
                             model=route_picker,
                             request_type="generation",
-                            source="auto_router"
+                            source="auto_router",
+                            images=kwargs.get('images')
                         )
                         if routing_response.success:
                             raw_content = routing_response.content.strip()

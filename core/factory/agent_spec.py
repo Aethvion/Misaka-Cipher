@@ -4,7 +4,7 @@ Defines agent tasks using Aethvion Standard: [Domain]_[Action]_[Object]
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 
@@ -37,9 +37,9 @@ class AgentSpec:
     temperature: float = 0.7
     max_tokens: Optional[int] = None
     
-    # Metadata
     description: Optional[str] = None
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    images: Optional[List[Dict[str, Any]]] = None
     
     def __post_init__(self):
         """Validate agent specification."""

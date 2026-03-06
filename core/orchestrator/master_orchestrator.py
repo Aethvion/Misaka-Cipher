@@ -38,6 +38,7 @@ class ActionPlan:
     memory_query: Optional[str] = None
     direct_response: Optional[str] = None
     model_used: Optional[str] = None
+    images: Optional[List[Dict[str, Any]]] = None
 
 
 @dataclass
@@ -240,7 +241,8 @@ class MasterOrchestrator:
         plan = ActionPlan(
             trace_id=trace_id,
             intent=intent,
-            actions=actions
+            actions=actions,
+            images=images
         )
         
         # Route based on intent type
@@ -277,7 +279,7 @@ class MasterOrchestrator:
             # Spawn agent
             actions.append("spawn_agent")
             plan.requires_factory = True
-            plan.agent_spec = self._build_agent_spec(intent)
+            plan.agent_spec = self._build_agent_spec(intent, images=images)
             # Pass model preference to agent spec/context if possible?
             # For now, agents depend on factory/provider manager config which we split.
             # If model_id is specific, we might want to override it here.
@@ -581,7 +583,7 @@ class MasterOrchestrator:
         tools = self.knowledge_graph.get_tools_by_domain(None)  # All tools
         return any(t == tool_name for t in tools)
     
-    def _build_agent_spec(self, intent: IntentAnalysis) -> AgentSpec:
+    def _build_agent_spec(self, intent: IntentAnalysis, images: Optional[List[Dict[str, Any]]] = None) -> AgentSpec:
         """Build AgentSpec from intent."""
         return AgentSpec(
             domain=intent.domain or "General",
@@ -592,7 +594,8 @@ class MasterOrchestrator:
                 'parameters': intent.parameters
             },
             description=f"{intent.action} {intent.object}" if intent.action and intent.object else "Execute task",
-            temperature=0.7
+            temperature=0.7,
+            images=images
         )
     
     def _generate_chat_response(self, intent: IntentAnalysis, model_id: Optional[str] = None, trace_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None) -> Response:
