@@ -14,6 +14,8 @@ let currentMisakaMood = 'calm';
 
 let _proactiveSessionTimer = null;
 let _typingTimeout = null; // Timer to resume proactive check-ins after typing stops
+let _misakaAttachedFile = null;
+let currentToolBubble = null; // Added for tool status display
 
 async function initializeMisakaCipher() {
     // Always deliver any queued proactive message when switching to this tab
@@ -402,10 +404,10 @@ async function sendMisakaMessage() {
         ...(attachedFiles ? { attached_files: attachedFiles } : {})
     };
 
-    const statusLine = document.getElementById('misaka-status-line');
-    if (statusLine) statusLine.textContent = "Processing neural paths...";
-
     try {
+        const statusLine = document.getElementById('misaka-status-line');
+        if (statusLine) statusLine.textContent = "Processing neural paths...";
+
         const response = await fetch('/api/misakacipher/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -417,40 +419,76 @@ async function sendMisakaMessage() {
             throw new Error(err.detail || "API Error");
         }
 
-        const data = await response.json();
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-        misakaChatHistory.push({ role: 'user', content: displayText });
-        misakaChatHistory.push({ role: 'assistant', content: data.response });
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                try {
+                    const data = JSON.parse(line);
+
+                    if (data.type === 'message') {
+                        // Remove status if any
+                        removeAssistantToolStatus();
+                        // Deliver message immediately
+                        await addAssistantMessageTyped(data.content);
+                        misakaChatHistory.push({ role: 'assistant', content: data.content });
+                    }
+                    else if (data.type === 'tool_start') {
+                        addAssistantToolStatus(data.content || "Executing neural tools...");
+                        if (statusLine) statusLine.textContent = data.content || "Executing neural tools...";
+                    }
+                    else if (data.type === 'tool_end') {
+                        // We can keep it until the next message or remove it
+                        // The user wants it to disappear when done and responds
+                    }
+                    else if (data.type === 'done') {
+                        removeAssistantToolStatus();
+                        // Final metadata
+                        if (data.mood) updateMisakaMood(data.mood);
+                        if (data.expression) {
+                            // Update expressions if any
+                        }
+
+                        if (data.memory_updated || data.synthesis_ran) {
+                            await refreshMisakaMemory();
+                            if (data.synthesis_ran) {
+                                if (statusLine) statusLine.textContent = "Memory synthesis complete. Neural patterns updated.";
+                            } else {
+                                if (statusLine) statusLine.textContent = "Memory synchronized.";
+                            }
+                            setTimeout(() => { if (statusLine) statusLine.textContent = "Neural core engaged."; }, 4000);
+                        } else {
+                            if (statusLine) statusLine.textContent = "Neural core engaged.";
+                        }
+                    }
+                    else if (data.type === 'error') {
+                        throw new Error(data.content);
+                    }
+                } catch (e) {
+                    console.error("Error parsing NDJSON line:", e, line);
+                }
+            }
+        }
 
         if (misakaChatHistory.length > misakaMaxHistory) {
             misakaChatHistory = misakaChatHistory.slice(-misakaMaxHistory);
         }
 
-        // Apply mood environment
-        if (data.mood) updateMisakaMood(data.mood);
-
-        // Deliver messages — supports multi-message via data.responses
-        const parts = (data.responses && data.responses.length > 0) ? data.responses : [data.response];
-        for (let i = 0; i < parts.length; i++) {
-            if (i > 0) await new Promise(r => setTimeout(r, 700));
-            await addAssistantMessageTyped(parts[i]);
-        }
-
-        if (data.memory_updated || data.synthesis_ran) {
-            await refreshMisakaMemory();
-            if (data.synthesis_ran) {
-                if (statusLine) statusLine.textContent = "Memory synthesis complete. Neural patterns updated.";
-            } else {
-                if (statusLine) statusLine.textContent = "Memory synchronized.";
-            }
-            setTimeout(() => { if (statusLine) statusLine.textContent = "Neural core engaged."; }, 4000);
-        } else {
-            if (statusLine) statusLine.textContent = "Neural core engaged.";
-        }
-
-    } catch (e) {
-        console.error("Chat Error:", e);
-        addAssistantMessageStatic('assistant', "I encountered a neural desync. Please try again.");
+    } catch (err) {
+        console.error("Misaka send error:", err);
+        addAssistantMessageStatic('misaka', `I encountered a neural synchronization error: ${err.message}`, ts);
+        const statusLine = document.getElementById('misaka-status-line');
+        if (statusLine) statusLine.textContent = "Neural core error.";
     }
 }
 
@@ -469,6 +507,55 @@ function renderMarkdown(text) {
         if (typeof marked === 'function') return marked(text);
     }
     return text.replace(/\n/g, '<br>');
+}
+
+function addAssistantToolStatus(text) {
+    const container = document.getElementById('misaka-chat-messages');
+    if (!container) return;
+
+    if (currentToolBubble) {
+        const textSpan = currentToolBubble.querySelector('.tool-text');
+        if (textSpan) textSpan.textContent = text;
+        return;
+    }
+
+    const div = document.createElement('div');
+    div.className = 'chat-message assistant tool-indicator';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'message-bubble tool-bubble';
+    bubble.style.padding = '8px 12px';
+    bubble.style.fontSize = '0.85rem';
+    bubble.style.opacity = '0.8';
+    bubble.style.fontStyle = 'italic';
+    bubble.style.display = 'flex';
+    bubble.style.alignItems = 'center';
+    bubble.style.gap = '8px';
+    bubble.style.background = 'rgba(255, 255, 255, 0.05)';
+    bubble.style.border = '1px dashed rgba(255, 255, 255, 0.2)';
+
+    const icon = document.createElement('span');
+    icon.innerHTML = '⚙️';
+    icon.style.animation = 'spin 2s linear infinite';
+
+    const span = document.createElement('span');
+    span.className = 'tool-text';
+    span.textContent = text;
+
+    bubble.appendChild(icon);
+    bubble.appendChild(span);
+    div.appendChild(bubble);
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+
+    currentToolBubble = div;
+}
+
+function removeAssistantToolStatus() {
+    if (currentToolBubble) {
+        currentToolBubble.remove();
+        currentToolBubble = null;
+    }
 }
 
 async function addAssistantMessageTyped(fullText) {
@@ -828,7 +915,7 @@ function deliverQueuedProactiveMessage() {
 
 // ===== FILE ATTACHMENT =====
 
-let _misakaAttachedFile = null; // { name, file }
+_misakaAttachedFile = null; // { name, file }
 
 async function handleMisakaFileSelected(e) {
     const file = e.target.files[0];

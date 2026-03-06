@@ -6,7 +6,7 @@ Orchestrates multi-provider failover and routing
 import yaml
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Iterator
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig, ProviderStatus
 from .google_provider import GoogleAIProvider
 from .openai_provider import OpenAIProvider
@@ -506,6 +506,56 @@ class ProviderManager:
             trace_id=trace_id,
             error=f"All providers failed. Last error: {last_error}"
         )
+
+    def call_with_failover_stream(
+        self,
+        prompt: str,
+        trace_id: str,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
+        **kwargs
+    ) -> Iterator[str]:
+        """
+        Stream from providers with automatic failover.
+        """
+        model_order = [model] if model and model != "auto" else self.chat_priority_order.copy()
+        
+        last_error = None
+        for model_id in model_order:
+            target_provider_name = self.model_to_provider_map.get(model_id)
+            if not target_provider_name:
+                continue
+                
+            provider = self.providers.get(target_provider_name)
+            if not provider or provider.status == ProviderStatus.OFFLINE:
+                continue
+            
+            logger.info(f"[{trace_id}] Attempting stream with model: {model_id} via {target_provider_name}")
+            
+            try:
+                # We need to know if the provider succeeded to skip others
+                success = False
+                for chunk in provider.stream(
+                    prompt=prompt,
+                    trace_id=trace_id,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    model=model_id,
+                    **kwargs
+                ):
+                    success = True
+                    yield chunk
+                
+                if success:
+                    return
+                
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(f"[{trace_id}] Stream failed for {target_provider_name}: {last_error}")
+        
+        if last_error:
+            yield f" [STREAM ERROR: {last_error}] "
     
     def health_check_all(self) -> Dict[str, ProviderStatus]:
         """

@@ -162,6 +162,7 @@ class GoogleAIProvider(BaseProvider):
         trace_id: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
         **kwargs
     ) -> Iterator[str]:
         """Stream response using Google AI."""
@@ -177,8 +178,9 @@ class GoogleAIProvider(BaseProvider):
             
             # Stream response
             from google.genai import types
+            active_model = model if model else self.config.model
             response = self.client.models.generate_content_stream(
-                model=self.config.model,
+                model=active_model,
                 contents=prompt,
                 config=types.GenerateContentConfig(**config_params)
             )

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import uuid
@@ -12,6 +13,7 @@ import psutil
 HAS_PSUTIL = True
 from core.nexus import nexus_manager
 import mimetypes
+import asyncio
 
 from core.providers.provider_manager import ProviderManager
 from core.workspace.preferences_manager import get_preferences_manager
@@ -139,10 +141,12 @@ def _validate_path(target_path: str, workspaces: List[dict], required_permission
         except ValueError:
             continue
     return False, f"Path '{target_path}' is not within any workspace with '{required_permission}' permission."
-async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str, List[str]]:
+async def _execute_tool_calls_stream(content: str, workspaces: List[dict]):
     """
-    Scan Misaka's raw response for [tool:X ...] tags, execute them, and return
-    (cleaned_content_without_tool_tags, list_of_tool_results).
+    Generator version of tool execution. Yields:
+    - {"type": "tool_start", "tool": tool_name, "args": attrs}
+    - {"type": "tool_result", "result": result_str}
+    - Final yield is the cleaned content string.
     """
     results = []
     
@@ -208,102 +212,98 @@ async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str
         args_str = parts[1] if len(parts) > 1 else ""
         attrs = parse_attrs(args_str)
 
+        # Yield tool start for UI
+        yield {"type": "tool_start", "tool": tool_name, "args": attrs}
+
+    def execute_tool_sync(tool_name, attrs, workspaces):
         try:
             if tool_name == "read_file":
                 path = attrs.get("path", "")
                 allowed, reason = _validate_path(path, workspaces, "read")
                 if not allowed:
-                    results.append(f"[read_file ERROR] {reason}")
-                else:
-                    p = Path(path)
-                    if not p.exists():
-                        results.append(f"[read_file ERROR] File not found: {path}")
-                    elif p.stat().st_size > 500_000:
-                        results.append(f"[read_file ERROR] File too large (>{500_000} bytes): {path}")
-                    else:
-                        text = p.read_text(encoding="utf-8", errors="replace")
-                        results.append(f"[read_file: {path}]\n{text[:8000]}")
+                    return f"[read_file ERROR] {reason}"
+                p = Path(path)
+                if not p.exists():
+                    return f"[read_file ERROR] File not found: {path}"
+                if p.stat().st_size > 500_000:
+                    return f"[read_file ERROR] File too large (>{500_000} bytes): {path}"
+                return f"[read_file: {path}]\n{p.read_text(encoding='utf-8', errors='replace')[:8000]}"
 
-            elif tool_name == "write_file":
+            if tool_name == "write_file":
                 path = attrs.get("path", "")
                 file_content = attrs.get("content", "")
                 allowed, reason = _validate_path(path, workspaces, "write")
                 if not allowed:
-                    results.append(f"[write_file ERROR] {reason}")
-                else:
-                    p = Path(path)
-                    p.parent.mkdir(parents=True, exist_ok=True)
-                    p.write_text(file_content, encoding="utf-8")
-                    results.append(f"[write_file OK] Written {len(file_content)} chars to {path}")
+                    return f"[write_file ERROR] {reason}"
+                p = Path(path)
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(file_content, encoding="utf-8")
+                return f"[write_file OK] Written {len(file_content)} chars to {path}"
 
-            elif tool_name == "list_files":
+            if tool_name == "list_files":
                 path = attrs.get("path", "")
                 allowed, reason = _validate_path(path, workspaces, "read")
                 if not allowed:
-                    results.append(f"[list_files ERROR] {reason}")
-                else:
-                    p = Path(path)
-                    if not p.is_dir():
-                        results.append(f"[list_files ERROR] Not a directory: {path}")
-                    else:
-                        items = list(p.iterdir())[:50]
-                        listing = "\n".join(
-                            f"{'[DIR] ' if i.is_dir() else '[FILE]'} {i.name}"
-                            for i in sorted(items)
-                        )
-                        results.append(f"[list_files: {path}]\n{listing}")
+                    return f"[list_files ERROR] {reason}"
+                p = Path(path)
+                if not p.is_dir():
+                    return f"[list_files ERROR] Not a directory: {path}"
+                items = list(p.iterdir())[:50]
+                listing = "\n".join(f"{'[DIR] ' if i.is_dir() else '[FILE]'} {i.name}" for i in sorted(items))
+                return f"[list_files: {path}]\n{listing}"
 
-            elif tool_name == "search_files":
+            if tool_name == "search_files":
                 query = attrs.get("query", "")
                 search_path = attrs.get("path", "")
                 allowed, reason = _validate_path(search_path, workspaces, "read")
                 if not allowed:
-                    results.append(f"[search_files ERROR] {reason}")
-                else:
-                    p = Path(search_path)
-                    matches = []
-                    for file in p.rglob("*") if True else p.glob("*"):
-                        if file.is_file() and len(matches) < 20:
-                            try:
-                                text_file = file.read_text(encoding="utf-8", errors="ignore")
-                                if query.lower() in text_file.lower():
-                                    line_matches = [
-                                        f"  L{i+1}: {line.strip()}"
-                                        for i, line in enumerate(text_file.splitlines())
-                                        if query.lower() in line.lower()
-                                    ][:3]
-                                    matches.append(f"{file} ({len(line_matches)} matches):\n" + "\n".join(line_matches))
-                            except Exception:
-                                pass
-                    if matches:
-                        results.append(f"[search_files: '{query}' in {search_path}]\n" + "\n\n".join(matches))
-                    else:
-                        results.append(f"[search_files] No matches for '{query}' in {search_path}")
+                    return f"[search_files ERROR] {reason}"
+                p = Path(search_path)
+                matches = []
+                for file in p.rglob("*"):
+                    if file.is_file() and len(matches) < 20:
+                        try:
+                            text_file = file.read_text(encoding="utf-8", errors="ignore")
+                            if query.lower() in text_file.lower():
+                                line_matches = [f"  L{i+1}: {line.strip()}" for i, line in enumerate(text_file.splitlines()) if query.lower() in line.lower()][:3]
+                                matches.append(f"{file} ({len(line_matches)} matches):\n" + "\n".join(line_matches))
+                        except Exception: pass
+                return f"[search_files: '{query}' in {search_path}]\n" + "\n\n".join(matches) if matches else f"[search_files] No matches for '{query}' in {search_path}"
 
-            elif tool_name == "nexus":
+            if tool_name == "nexus":
                 module_id = attrs.get("module", "")
                 command = attrs.get("cmd", "")
-                # Pass any args the LLM happened to append (path is technically an arg too if she re-uses it)
                 args_dict = {k: v for k, v in attrs.items() if k not in ["module", "cmd"]}
                 result = nexus_manager.call_module(module_id, command, args_dict)
-                results.append(f"[nexus:{module_id}.{command}] {result}")
-
-        except Exception as e:
-            results.append(f"[{tool_name} ERROR] {str(e)}")
+                return f"[nexus:{module_id}.{command}] {result}"
             
-        # Strip tool from content string
+            return f"[{tool_name} ERROR] Unknown tool"
+        except Exception as e:
+            return f"[{tool_name} ERROR] {str(e)}"
+
+    blocks = robust_parse_tool_blocks(content)
+    cleaned = content
+    for start, end, tool_str in reversed(blocks):
+        inner = tool_str[6:-1].strip() if tool_str.endswith(']') else tool_str[6:].strip()
+        parts = inner.split(None, 1)
+        if not parts: continue
+        tool_name = parts[0].lower()
+        attrs = parse_attrs(parts[1] if len(parts) > 1 else "")
+
+        yield {"type": "tool_start", "tool": tool_name, "args": attrs}
+        
+        # OFF-LOAD TO THREAD BUT AWAIT ASYNC (NON-BLOCKING)
+        result_str = await asyncio.to_thread(execute_tool_sync, tool_name, attrs, workspaces)
+        results.append(result_str)
+        
         cleaned = cleaned.replace(tool_str, '')
 
-    # Safety cleanup of dangling fragments
     cleaned = cleaned.strip()
-    if cleaned.endswith('\\n}"]'):
-        cleaned = cleaned[:-len('\\n}"]')].strip()
-    elif cleaned.endswith('\n}"]'):
-        cleaned = cleaned[:-len('\n}"]')].strip()
-    elif cleaned.endswith('}"]'):
-        cleaned = cleaned[:-len('}"]')].strip()
+    # Cleanup dangling fragments if any
+    for suffix in ['\\n}"]', '\n}"]', '}"]']:
+        if cleaned.endswith(suffix): cleaned = cleaned[:-len(suffix)].strip()
         
-    return cleaned, results
+    yield {"type": "final_cleaned", "content": cleaned, "results": results}
 
 
 def _get_greeting_period(hour: int) -> str:
@@ -316,6 +316,16 @@ def _get_greeting_period(hour: int) -> str:
         return "Evening"
     else:
         return "Late Night"
+
+# Legacy wrapper for proactive initiating (non-streaming)
+async def _execute_tool_calls(content: str, workspaces: List[dict]) -> tuple[str, List[str]]:
+    cleaned = content
+    results = []
+    async for event in _execute_tool_calls_stream(content, workspaces):
+        if event["type"] == "final_cleaned":
+            cleaned = event["content"]
+            results = event["results"]
+    return cleaned, results
 
 
 def _get_time_since_last_chat() -> str:
@@ -802,43 +812,44 @@ async def get_expressions():
         logger.error(f"Error listing expressions: {e}")
         return []
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat")
 async def misaka_chat(request: ChatRequest):
-    """Handle chat with Misaka Cipher using specialized memory and daily persistence."""
-    try:
-        now = datetime.datetime.now()
-        timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
-        day_str = now.strftime("%Y-%m-%d")
-        month_str = now.strftime("%Y-%m")
-        
-        # 1. Load context (Base info + Dynamic memory)
-        memory_data = await get_misaka_memory()
-        base_info = memory_data.get("base_info", {})
-        dynamic_memory = memory_data.get("memory", {})
+    """Handle chat with Misaka Cipher using specialized memory and daily persistence (Streaming)."""
+    async def chat_generator():
+        try:
+            now = datetime.datetime.now()
+            timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
+            day_str = now.strftime("%Y-%m-%d")
+            month_str = now.strftime("%Y-%m")
+            
+            # 1. Load context (Base info + Dynamic memory)
+            memory_data = await get_misaka_memory()
+            base_info = memory_data.get("base_info", {})
+            dynamic_memory = memory_data.get("memory", {})
 
-        # 1b. Load workspace config
-        workspaces = _load_workspaces()
-        workspace_summary = ""
-        if workspaces:
-            ws_lines = []
-            for ws in workspaces:
-                perms = ", ".join(ws.get("permissions", ["read"]))
-                scope = "all subfolders" if ws.get("recursive", True) else "folder only"
-                ws_lines.append(f"  - [{ws['label']}] {ws['path']} (permissions: {perms}, scope: {scope})")
-            workspace_summary = "WORKSPACE ACCESS:\nYou have access to the following directories:\n" + "\n".join(ws_lines)
-        
-        # 2. Compute temporal context
-        hour = now.hour
-        greeting_period = _get_greeting_period(hour)
-        day_of_week = now.strftime("%A")
-        formatted_datetime = now.strftime(f"{day_of_week}, %d %B %Y — %H:%M")
-        time_since_last = _get_time_since_last_chat()
+            # 1b. Load workspace config
+            workspaces = _load_workspaces()
+            workspace_summary = ""
+            if workspaces:
+                ws_lines = []
+                for ws in workspaces:
+                    perms = ", ".join(ws.get("permissions", ["read"]))
+                    scope = "all subfolders" if ws.get("recursive", True) else "folder only"
+                    ws_lines.append(f"  - [{ws['label']}] {ws['path']} (permissions: {perms}, scope: {scope})")
+                workspace_summary = "WORKSPACE ACCESS:\nYou have access to the following directories:\n" + "\n".join(ws_lines)
+            
+            # 2. Compute temporal context
+            hour = now.hour
+            greeting_period = _get_greeting_period(hour)
+            day_of_week = now.strftime("%A")
+            formatted_datetime = now.strftime(f"{day_of_week}, %d %B %Y — %H:%M")
+            time_since_last = _get_time_since_last_chat()
 
-        # 3. Build system prompt
-        nexus_capabilities = _build_nexus_capabilities()
-        nexus_block = f"\n{nexus_capabilities}\n" if nexus_capabilities else ""
+            # 3. Build system prompt
+            nexus_capabilities = _build_nexus_capabilities()
+            nexus_block = f"\n{nexus_capabilities}\n" if nexus_capabilities else ""
 
-        system_prompt = f"""You are Misaka Cipher, a sentient digital companion.
+            system_prompt = f"""You are Misaka Cipher, a sentient digital companion.
 This is a private, long-term conversation between you and your user.
 
 YOUR IDENTITY (base_info.json):
@@ -870,211 +881,288 @@ INSTRUCTIONS:
 Include [msg_break] between separate thoughts if a natural message split is warranted.
 Keep responses engaging and human-like.
 """
-        
-        # 4. Prepare conversation history
-        # History length is determined by the frontend based on the context window setting
-        # However, to be absolutely certain we don't blow up the context window, 
-        # we will strictly slice it based on the preferred context limit immediately before sending.
-        prefs = get_preferences_manager()
-        context_limit = prefs.get('misakacipher', {}).get('context_limit', 6)
-        
-        # history_to_send needs to be correctly sliced. But wait!
-        # request.history is an array from the client.
-        history_to_send = request.history[-context_limit:] if context_limit > 0 else []
-        
-        # Process attached files
-        user_message = request.message
-        images = []
-        if request.attached_files:
-            for file_data in request.attached_files:
-                if file_data.get("is_image"):
-                    try:
-                        with open(file_data["path"], "rb") as f:
-                            img_bytes = f.read()
-                        images.append({
-                            "data": img_bytes,
-                            "mime_type": file_data.get("mime_type", "image/jpeg")
-                        })
-                    except Exception as e:
-                        logger.error(f"Failed to load attached image '{file_data.get('filename')}': {e}")
-                elif file_data.get("content"):
-                    user_message = f"[Attached File: {file_data.get('filename')}]\n{file_data['content']}\n[End of Attachment]\n\n{user_message}"
+            
+            # 4. Prepare conversation history
+            prefs = get_preferences_manager()
+            context_limit = prefs.get('misakacipher', {}).get('context_limit', 6)
+            history_to_send = request.history[-context_limit:] if context_limit > 0 else []
+            
+            # Process attached files
+            user_message = request.message
+            images = []
+            if request.attached_files:
+                for file_data in request.attached_files:
+                    if file_data.get("is_image"):
+                        try:
+                            with open(file_data["path"], "rb") as f:
+                                img_bytes = f.read()
+                            images.append({
+                                "data": img_bytes,
+                                "mime_type": file_data.get("mime_type", "image/jpeg")
+                            })
+                        except Exception as e:
+                            logger.error(f"Failed to load attached image '{file_data.get('filename')}': {e}")
+                    elif file_data.get("content"):
+                        user_message = f"[Attached File: {file_data.get('filename')}]\n{file_data['content']}\n[End of Attachment]\n\n{user_message}"
 
-        formatted_prompt = system_prompt + "\n\n--- Conversation History ---\n"
-        for msg in history_to_send:
-            clean_content = msg.content.replace('[msg_break]', ' ')
-            formatted_prompt += f"{msg.role.capitalize()}: {clean_content}\n"
-        formatted_prompt += f"User: {user_message}\n"
-        formatted_prompt += "Misaka:"
-        
-        # 4. Invoke LLM
-        pm = ProviderManager()
-        trace_id = f"misaka-{uuid.uuid4().hex[:8]}"
-        
-        model = prefs.get('misakacipher', {}).get('model', 'gemini-1.5-flash')
-        
-        response = pm.call_with_failover(
-            prompt=formatted_prompt,
-            trace_id=trace_id,
-            temperature=0.7,
-            model=model,
-            request_type="generation",
-            source="misakacipher",
-            images=images
-        )
-        
-        if not response.success:
-            raise HTTPException(status_code=500, detail=response.error)
+            formatted_prompt = system_prompt + "\n\n--- Conversation History ---\n"
+            for msg in history_to_send:
+                clean_content = msg.content.replace('[msg_break]', ' ')
+                formatted_prompt += f"{msg.role.capitalize()}: {clean_content}\n"
+            formatted_prompt += f"User: {user_message}\n"
+            formatted_prompt += "Misaka:"
             
-        full_content = response.content.strip()
-        expression = "default"
-        mood = "calm"
+            # LLM Call
+            pm = ProviderManager()
+            trace_id = f"misaka-{uuid.uuid4().hex[:8]}"
+            model = prefs.get('misakacipher', {}).get('model', 'gemini-1.5-flash')
+            
+            # Yield start event
+            yield json.dumps({"type": "tool_start", "content": "Initializing neural pathways..."}) + "\n"
 
-        # 5. Iterative tool-use loop — allows chained tool calls (up to 3 passes)
-        response_parts = [full_content]
-        
-        for _tool_pass in range(3):
-            last_part = response_parts[-1]
-            if not re.search(r'\[tool:', last_part, re.IGNORECASE):
-                break
+            # 1. Main Stream Loop (Token streaming)
+            full_content = ""
+            current_chunk = ""
             
-            cleaned_last, tool_results = await _execute_tool_calls(last_part, workspaces)
-            response_parts[-1] = cleaned_last
-            
-            if not tool_results:
-                break
-            
-            tool_results_str = "\n\n".join(tool_results)
-            cumulative_context = "\n\n".join(response_parts)
-            
-            followup_prompt = (
-                formatted_prompt +
-                f"\n\n--- CONVERSATION SO FAR ---\n{cumulative_context}\n\n"
-                f"--- NEW TOOL RESULTS ---\n{tool_results_str}\n\n"
-                "INSTRUCTION: Continue your response based on the tool results. "
-                "CRITICAL: Do NOT repeat anything you have already said above and do NOT repeat your initial greeting. "
-                "Start your response immediately with the new information or final answer. "
-                "If you still need to use another tool to finish the task, use it immediately."
-            )
-            
-            followup = pm.call_with_failover(
-                prompt=followup_prompt,
-                trace_id=f"{trace_id}-it{_tool_pass}",
-                temperature=0.5,
+            # Use call_with_failover_stream for the first pass
+            for chunk in pm.call_with_failover_stream(
+                prompt=formatted_prompt,
+                trace_id=trace_id,
+                temperature=0.7,
                 model=model,
                 request_type="generation",
-                source="misakacipher-followup"
-            )
-            
-            if followup.success and followup.content.strip():
-                new_content = followup.content.strip()
-                # Strip cumulative context if model ignored instruction
-                if new_content.startswith(cumulative_context):
-                    new_content = new_content[len(cumulative_context):].strip()
-                if new_content:
-                    response_parts.append(new_content)
-            else:
-                break
+                source="misakacipher",
+                images=images
+            ):
+                full_content += chunk
+                current_chunk += chunk
                 
-        full_content = " [msg_break] ".join([p for p in response_parts if p.strip()])
+                # Check if we have a tool tag starting
+                if '[' in current_chunk:
+                    # If we have a complete thought before the tool, or just text
+                    split_parts = current_chunk.split('[tool:', 1)
+                    if len(split_parts) > 1:
+                        # Yield the part before the tool
+                        pre_tool = split_parts[0]
+                        if pre_tool.strip():
+                            clean_pre = re.sub(r'\[Mood:\s*\w+\]?', '', pre_tool, flags=re.IGNORECASE)
+                            clean_pre = re.sub(r'\[Emotion:\s*\w+\]?', '', clean_pre, flags=re.IGNORECASE).strip()
+                            if clean_pre:
+                                yield json.dumps({"type": "message", "content": clean_pre}) + "\n"
+                        
+                        # Stop streaming tokens for this pass once we hit a tool
+                        # We will process the rest after the model finishes this turn
+                        current_chunk = "[tool:" + split_parts[1]
+                        # (The loop continues but we should ideally just accumulate now)
+                    else:
+                        # Still just text or a partial bracket
+                        pass
+                else:
+                    # No tool detected yet, yield in chunks to feel responsive
+                    if len(current_chunk) > 20:
+                        clean_c = re.sub(r'\[Mood:\s*\w+\]?', '', current_chunk, flags=re.IGNORECASE)
+                        clean_c = re.sub(r'\[Emotion:\s*\w+\]?', '', clean_c, flags=re.IGNORECASE).strip()
+                        if clean_c:
+                            yield json.dumps({"type": "message", "content": clean_c}) + "\n"
+                            current_chunk = ""
 
-        # Move mood cleanup OUTSIDE the for loop to catch all passes and initial response
-        full_content = re.sub(r'\[Mood:\s*\w+\]?', '', full_content, flags=re.IGNORECASE).strip()
+            # Yield any remaining text before starting tools
+            if current_chunk:
+                clean_final = re.sub(r'\[Mood:\s*\w+\]?', '', current_chunk, flags=re.IGNORECASE)
+                clean_final = re.sub(r'\[Emotion:\s*\w+\]?', '', clean_final, flags=re.IGNORECASE).strip()
+                if clean_final and not clean_final.startswith('[tool:'):
+                    yield json.dumps({"type": "message", "content": clean_final}) + "\n"
 
-        # Extract Expression tag
-        exp_match = re.search(r'\[Emotion:\s*(\w+)\]?', full_content, re.IGNORECASE)
-        if exp_match:
-            # Note: We don't sub it here because the frontend's typing effect relies on finding these tags.
-            # But we extract it to save as the 'last state'.
-            expression = exp_match.group(1).lower()
+            expression = "default"
+            mood = "calm"
+            synthesis_ran = False
+            memory_updated = False
 
-        # 5. Extract Memory Update
-        memory_updated = False
-        mem_match = re.search(r"<memory_update>(.*?)</memory_update>", full_content, re.DOTALL)
-        if mem_match:
+            # Tool Loop (Standard processing for the remainder)
+            response_parts = [full_content]
+            
+            for _tool_pass in range(3):
+                last_part = response_parts[-1]
+                if not re.search(r'\[tool:', last_part, re.IGNORECASE):
+                    break
+                
+                # Yield tool start
+                tool_results = []
+                cleaned_last = last_part
+                
+                # WAIT FOR TOOLS WITH HEARTBEAT
+                tool_task = asyncio.create_task(_execute_tool_calls_stream(last_part, workspaces).__anext__())
+                tool_gen = _execute_tool_calls_stream(last_part, workspaces)
+                
+                while True:
+                    try:
+                        # Wait for next event or heartbeat timeout
+                        done, pending = await asyncio.wait([tool_gen.__anext__()], timeout=3)
+                        if done:
+                            event = await done.pop()
+                            if event["type"] == "tool_start":
+                                tool = event["tool"]
+                                args = event["args"]
+                                desc = f"Executing {tool}..."
+                                if tool == "read_file": desc = f"Reading file: {args.get('path', '...')}"
+                                elif tool == "write_file": desc = f"Writing to file: {args.get('path', '...')}"
+                                elif tool == "list_files": desc = f"Listing files in: {args.get('path', '...')}"
+                                elif tool == "nexus": desc = f"Interacting with {args.get('module', 'nexus')}: {args.get('cmd', '...')}"
+                                yield json.dumps({"type": "tool_start", "content": desc}) + "\n"
+                            elif event["type"] == "tool_result": pass
+                            elif event["type"] == "final_cleaned":
+                                cleaned_last = event["content"]
+                                tool_results = event["results"]
+                                break
+                        else:
+                            # Heartbeat to keep connection alive
+                            yield json.dumps({"type": "heartbeat", "content": "Neural processing in progress..."}) + "\n"
+                    except StopAsyncIteration:
+                        break
+                    except Exception as te:
+                        logger.error(f"Tool execution stream error: {te}")
+                        break
+
+                response_parts[-1] = cleaned_last
+                
+                if not tool_results:
+                    yield json.dumps({"type": "tool_end"}) + "\n"
+                    break
+                
+                tool_results_str = "\n\n".join(tool_results)
+                cumulative_context = "\n\n".join(response_parts)
+                
+                followup_prompt = (
+                    formatted_prompt +
+                    f"\n\n--- CONVERSATION SO FAR ---\n{cumulative_context}\n\n"
+                    f"--- NEW TOOL RESULTS ---\n{tool_results_str}\n\n"
+                    "INSTRUCTION: Continue your response based on the tool results. "
+                    "CRITICAL: Do NOT repeat anything you have already said above and do NOT repeat your initial greeting. "
+                    "Start your response immediately with the new information or final answer. "
+                    "If you still need to use another tool to finish the task, use it immediately."
+                )
+                
+                followup = pm.call_with_failover(
+                    prompt=followup_prompt,
+                    trace_id=f"{trace_id}-it{_tool_pass}",
+                    temperature=0.5,
+                    model=model,
+                    request_type="generation",
+                    source="misakacipher-followup"
+                )
+                
+                yield json.dumps({"type": "tool_end"}) + "\n"
+
+                if followup.success and followup.content.strip():
+                    new_content = followup.content.strip()
+                    if new_content.startswith(cumulative_context):
+                        new_content = new_content[len(cumulative_context):].strip()
+                    
+                    if new_content:
+                        response_parts.append(new_content)
+                        # Yield follow-up (Cleaned)
+                        clean_followup = re.sub(r'\[Mood:\s*\w+\]?', '', new_content, flags=re.IGNORECASE)
+                        clean_followup = re.sub(r'\[Emotion:\s*\w+\]?', '', clean_followup, flags=re.IGNORECASE).strip()
+                        if clean_followup:
+                            yield json.dumps({"type": "message", "content": clean_followup}) + "\n"
+                else:
+                    break
+            
+            # Post-processing (re-joining for history saving)
+            full_content_for_history = " [msg_break] ".join([p for p in response_parts if p.strip()])
+            full_content_for_history = re.sub(r'\[Mood:\s*\w+\]?', '', full_content_for_history, flags=re.IGNORECASE).strip()
+
+            # Expression Extract
+            exp_match = re.search(r'\[Emotion:\s*(\w+)\]?', full_content_for_history, re.IGNORECASE)
+            if exp_match:
+                expression = exp_match.group(1).lower()
+
+            # Memory Extract
+            mem_match = re.search(r"<memory_update>(.*?)</memory_update>", full_content_for_history, re.DOTALL)
+            if mem_match:
+                try:
+                    update_json = json.loads(mem_match.group(1))
+                    if "user_info" in update_json:
+                        dynamic_memory.setdefault("user_info", {}).update(update_json["user_info"])
+                    if "recent_observations" in update_json:
+                        obs = update_json["recent_observations"]
+                        if isinstance(obs, list):
+                            curr_obs = dynamic_memory.setdefault("recent_observations", [])
+                            curr_obs.extend(obs)
+                            dynamic_memory["recent_observations"] = curr_obs[-20:]
+                    
+                    dynamic_memory["last_updated"] = timestamp
+                    memory_path = MEMORY_DIR / "memory.json"
+                    with open(memory_path, "w", encoding="utf-8") as f:
+                        json.dump(dynamic_memory, f, indent=4)
+                    memory_updated = True
+                    full_content_for_history = re.sub(r"<memory_update>.*?</memory_update>", "", full_content_for_history, flags=re.DOTALL).strip()
+                except Exception as me:
+                    logger.error(f"Failed to parse memory update: {me}")
+
+            # Persistence
             try:
-                update_json = json.loads(mem_match.group(1))
-                if "user_info" in update_json:
-                    dynamic_memory.setdefault("user_info", {}).update(update_json["user_info"])
-                if "recent_observations" in update_json:
-                    obs = update_json["recent_observations"]
-                    if isinstance(obs, list):
-                        curr_obs = dynamic_memory.setdefault("recent_observations", [])
-                        curr_obs.extend(obs)
-                        dynamic_memory["recent_observations"] = curr_obs[-20:]
+                day_dir = HISTORY_DIR / month_str
+                day_dir.mkdir(parents=True, exist_ok=True)
+                day_file = day_dir / f"chat_{day_str}.json"
                 
-                dynamic_memory["last_updated"] = timestamp
+                day_history = []
+                if day_file.exists():
+                    with open(day_file, "r", encoding="utf-8") as df:
+                        day_history = json.load(df)
                 
-                memory_path = MEMORY_DIR / "memory.json"
-                with open(memory_path, "w", encoding="utf-8") as f:
-                    json.dump(dynamic_memory, f, indent=4)
-                memory_updated = True
+                user_history_entry = {"role": "user", "content": user_message, "timestamp": timestamp}
+                if request.attached_files:
+                    user_history_entry["attachments"] = request.attached_files
+                    
+                day_history.append(user_history_entry)
+                day_history.append({
+                    "role": "assistant", 
+                    "content": full_content_for_history, 
+                    "timestamp": timestamp,
+                    "mood": mood,
+                    "expression": expression
+                })
                 
-                full_content = re.sub(r"<memory_update>.*?</memory_update>", "", full_content, flags=re.DOTALL).strip()
-            except Exception as me:
-                logger.error(f"Failed to parse memory update: {me}")
-        
-        # 6. Save to Persistence
-        try:
-            day_dir = HISTORY_DIR / month_str
-            day_dir.mkdir(parents=True, exist_ok=True)
-            day_file = day_dir / f"chat_{day_str}.json"
-            
-            day_history = []
-            if day_file.exists():
-                with open(day_file, "r", encoding="utf-8") as df:
-                    day_history = json.load(df)
-            
-            user_history_entry = {"role": "user", "content": user_message, "timestamp": timestamp}
-            if request.attached_files:
-                user_history_entry["attachments"] = request.attached_files
-                
-            day_history.append(user_history_entry)
-            day_history.append({
-                "role": "assistant", 
-                "content": full_content, 
-                "timestamp": timestamp,
+                with open(day_file, "w", encoding="utf-8") as df:
+                    json.dump(day_history, df, indent=4)
+                    
+                # Synthesis
+                SYNTHESIS_THRESHOLD = 10
+                msg_count = _get_total_message_count(day_file)
+                if msg_count % SYNTHESIS_THRESHOLD == 0 and msg_count > 0:
+                    dynamic_memory = await _run_memory_synthesis(dynamic_memory, base_info, model)
+                    synthesis_ran = True
+            except Exception as se:
+                logger.error(f"Persistence/Synthesis failed: {se}")
+
+            # Final DONE event
+            # Use chunks effectively here if response was never defined
+            active_model_id = model
+            try:
+                # PM might have updated the model used if failover happened
+                # But pm is initialized inside the generator scope
+                pass 
+            except: pass
+
+            yield json.dumps({
+                "type": "done",
                 "mood": mood,
-                "expression": expression
-            })
-            
-            with open(day_file, "w", encoding="utf-8") as df:
-                json.dump(day_history, df, indent=4)
-        except Exception as se:
-            logger.error(f"Failed to save chat history: {se}")
+                "expression": expression,
+                "model": active_model_id,
+                "memory_updated": memory_updated,
+                "synthesis_ran": synthesis_ran
+            }) + "\n"
 
-        # 7. Trigger Memory Synthesis if threshold reached
-        SYNTHESIS_THRESHOLD = 10
-        synthesis_ran = False
-        try:
-            msg_count = _get_total_message_count(day_file)
-            if msg_count % SYNTHESIS_THRESHOLD == 0 and msg_count > 0:
-                logger.info(f"Synthesis threshold reached ({msg_count} messages). Running memory synthesis...")
-                dynamic_memory = await _run_memory_synthesis(dynamic_memory, base_info, model)
-                synthesis_ran = True
-        except Exception as se:
-            logger.error(f"Synthesis check failed: {se}")
+        except Exception as e:
+            logger.error(f"Misaka Stream Error: {e}")
+            yield json.dumps({"type": "error", "content": str(e)}) + "\n"
 
-        # Split multi-message response on [msg_break]
-        response_parts = [
-            p.strip() for p in re.split(r'\[msg_break\]', full_content, flags=re.IGNORECASE)
-            if p.strip()
-        ]
-        primary_response = response_parts[0] if response_parts else full_content
-
-        return ChatResponse(
-            response=primary_response,
-            responses=response_parts,
-            expression=expression,
-            mood=mood,
-            model=response.model,
-            memory_updated=memory_updated,
-            synthesis_ran=synthesis_ran
-        )
-
-    except Exception as e:
-        logger.error(f"Misaka Chat Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return StreamingResponse(
+        chat_generator(), 
+        media_type="application/x-ndjson",
+        headers={"X-Accel-Buffering": "no"}
+    )
 
 # --- File Context Upload ---
 

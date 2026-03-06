@@ -137,6 +137,7 @@ class OpenAIProvider(BaseProvider):
         trace_id: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        model: Optional[str] = None,
         **kwargs
     ) -> Iterator[str]:
         """Stream response using OpenAI."""
@@ -147,8 +148,9 @@ class OpenAIProvider(BaseProvider):
             messages = [{"role": "user", "content": prompt}]
             
             # Stream response
+            active_model = model if model else self.config.model
             stream = self.client.chat.completions.create(
-                model=self.config.model,
+                model=active_model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
