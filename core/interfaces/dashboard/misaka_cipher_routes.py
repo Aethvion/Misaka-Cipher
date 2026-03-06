@@ -964,7 +964,7 @@ Keep responses engaging and human-like.
                         buffer = "[tool:" + parts[1]
                         inside_tool = True
                     else:
-                        if len(buffer) > 20:
+                        if len(buffer) > 120:
                             c_buf = clean_text(buffer)
                             if c_buf:
                                 yield json.dumps({"type": "message", "content": c_buf}) + "\n"
@@ -1034,6 +1034,26 @@ Keep responses engaging and human-like.
                     yield json.dumps({"type": "tool_end"}) + "\n"
                     break
                 
+                # POST-TOOL HOOK: Check for screenshots to inject into Vision
+                for res in tool_results:
+                    if "Screenshot captured successfully" in res and "Saved to: " in res:
+                        try:
+                            # Extract path: "Saved to: C:\...screenshot_xxx.png"
+                            path_line = [line for line in res.splitlines() if "Saved to: " in line][0]
+                            ss_path = path_line.replace("Saved to: ", "").strip()
+                            p = Path(ss_path)
+                            if p.exists():
+                                with open(p, "rb") as f:
+                                    img_bytes = f.read()
+                                images.append({
+                                    "data": img_bytes,
+                                    "mime_type": "image/png",
+                                    "is_screenshot": True
+                                })
+                                logger.info(f"Auto-injected screenshot into vision context: {ss_path}")
+                        except Exception as ve:
+                            logger.error(f"Failed to auto-inject screenshot: {ve}")
+
                 tool_results_str = "\n\n".join(tool_results)
                 cumulative_context = "\n\n".join(response_parts)
                 
@@ -1047,13 +1067,15 @@ Keep responses engaging and human-like.
                     "If you still need to use another tool to finish the task, use it immediately."
                 )
                 
+                # Pass images=images here so she can see the screenshot she just took!
                 followup = pm.call_with_failover(
                     prompt=followup_prompt,
                     trace_id=f"{trace_id}-it{_tool_pass}",
                     temperature=0.5,
                     model=model,
                     request_type="generation",
-                    source="misakacipher-followup"
+                    source="misakacipher-followup",
+                    images=images
                 )
                 
                 yield json.dumps({"type": "tool_end"}) + "\n"
