@@ -1384,7 +1384,8 @@ async def upload_context(file: UploadFile = File(...)):
                     pass # Leave text_content as None
 
         # Save to disk
-        uploads_dir = PROJECT_ROOT / "data" / "workspace" / "uploads"
+        month_str = datetime.datetime.now().strftime("%Y-%m")
+        uploads_dir = PROJECT_ROOT / "data" / "workspace" / "uploads" / month_str
         uploads_dir.mkdir(parents=True, exist_ok=True)
         
         safe_filename = f"{uuid.uuid4().hex[:8]}_{filename}"

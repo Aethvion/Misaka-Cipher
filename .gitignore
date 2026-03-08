@@ -11,6 +11,8 @@ data/memory/storage/*
 data/memory/file_search/*
 data/outputfiles/*
 data/config/*
+data/workspace/media/*
+data/workspace/uploads/*
 !data/config/*.example
 
 # Ignore internal DB and graph files to prevent leaking research history.
