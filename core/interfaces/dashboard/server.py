@@ -254,6 +254,14 @@ async def initialize_system_background():
         await task_manager.start()
         
         startup_status["status"] = "All systems operational"
+        startup_status["progress"] = 95
+        
+        # Ensure system-metrics.json exists on startup
+        metrics_path = Path(__file__).parent / "static" / "assets" / "system-metrics.json"
+        if not metrics_path.exists():
+            startup_status["status"] = "Generating System Metrics..."
+            await _perform_telemetry_sync()
+            
         startup_status["progress"] = 100
         startup_status["initialized"] = True
         logger.info("Misaka Cipher Web Server ready!")
@@ -490,39 +498,56 @@ async def get_system_status():
 async def sync_system_telemetry():
     """Sync system telemetry."""
     try:
-        project_size = 0
-        db_size = 0
-        try:
-            root_dir = Path(__file__).parent.parent.parent.parent
-            for path in root_dir.rglob('*'):
-                if path.is_file():
-                    size = path.stat().st_size
-                    project_size += size
-                    if 'chroma' in str(path) or '.db' in path.name:
-                        db_size += size
-        except Exception: pass 
-
-        episodic_count = 0
-        if orchestrator and hasattr(orchestrator, 'episodic_memory') and hasattr(orchestrator.episodic_memory, 'collection'):
-            episodic_count = orchestrator.episodic_memory.collection.count()
-
-        metrics = {
-            "system": {
-                "project_size_bytes": project_size,
-                "db_size_bytes": db_size,
-                "last_sync": datetime.now().isoformat()
-            },
-            "memory": {"episodic_count": episodic_count}
-        }
-
-        metrics_path = Path(__file__).parent / "static" / "assets" / "system-metrics.json"
-        metrics_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(metrics_path, 'w') as f:
-            json.dump(metrics, f, indent=2)
-        return metrics
+        return await _perform_telemetry_sync()
     except Exception as e:
         logger.error(f"Telemetry sync error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+async def _perform_telemetry_sync() -> Dict[str, Any]:
+    """Helper to calculate and save system metrics."""
+    project_size = 0
+    db_size = 0
+    try:
+        # Use project root (top-level)
+        root_dir = Path(__file__).parent.parent.parent.parent
+        for path in root_dir.rglob('*'):
+            if path.is_file():
+                try:
+                    size = path.stat().st_size
+                    project_size += size
+                    # Heuristic for DB files
+                    if 'chroma' in str(path) or '.db' in path.name:
+                        db_size += size
+                except (PermissionError, OSError):
+                    continue
+    except Exception as e:
+        logger.warning(f"Error calculating project size: {e}")
+
+    episodic_count = 0
+    if orchestrator and hasattr(orchestrator, 'episodic_memory') and hasattr(orchestrator.episodic_memory, 'collection'):
+        try:
+            episodic_count = orchestrator.episodic_memory.collection.count()
+        except Exception: pass
+
+    metrics = {
+        "system": {
+            "project_size_bytes": project_size,
+            "db_size_bytes": db_size,
+            "last_sync": datetime.now().isoformat()
+        },
+        "memory": {"episodic_count": episodic_count}
+    }
+
+    metrics_path = Path(__file__).parent / "static" / "assets" / "system-metrics.json"
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Use thread for file writing to avoid blocking event loop
+    def save_json():
+        with open(metrics_path, 'w') as f:
+            json.dump(metrics, f, indent=2)
+            
+    await asyncio.to_thread(save_json)
+    return metrics
 
 
 @app.get("/api/agents/active")
