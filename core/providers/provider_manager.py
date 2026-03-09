@@ -40,6 +40,7 @@ class ProviderManager:
         self.model_to_provider_map: Dict[str, str] = {}
         self.model_descriptor_map: Dict[str, Dict] = {}
         self.auto_routing_config: Dict = {}
+        self.registry: Dict = {}
         
         # Load configuration
         if config_path is None:
@@ -77,6 +78,7 @@ class ProviderManager:
             with open(registry_path, 'r') as f:
                 registry = json.load(f)
             
+            self.registry = registry
             registry_providers = registry.get('providers', {})
             
             self.model_to_provider_map = {}
@@ -106,6 +108,18 @@ class ProviderManager:
             self.chat_priority_order = chat_profiles.get('default', [])
             self.agent_priority_order = agent_profiles.get('default', [])
 
+            # Fallback if profiles are empty
+            if not self.chat_priority_order:
+                self.chat_priority_order = [
+                    mid for mid, info in self.model_descriptor_map.items()
+                    if 'CHAT' in [c.upper() for c in info.get('capabilities', [])]
+                ]
+            if not self.agent_priority_order:
+                self.agent_priority_order = [
+                    mid for mid, info in self.model_descriptor_map.items()
+                    if 'CHAT' in [c.upper() for c in info.get('capabilities', [])]
+                ]
+
             # Load Auto Routing config
             self.auto_routing_config = registry.get('auto_routing', {})
             if not self.auto_routing_config:
@@ -121,6 +135,7 @@ class ProviderManager:
             self.agent_priority_order = []
             self.model_descriptor_map = {}
             self.auto_routing_config = {}
+            self.registry = {}
 
     def reload_config(self):
         """Reload configuration from disk and update active providers."""

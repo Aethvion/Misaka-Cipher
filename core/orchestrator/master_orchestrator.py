@@ -619,6 +619,7 @@ class MasterOrchestrator:
             return Response(
                 content=f"I encountered an error: {response.error}",
                 trace_id=response.trace_id,
+                provider=response.provider or "none",
                 success=False,
                 error=response.error,
                 metadata={}
