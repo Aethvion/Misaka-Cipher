@@ -55,7 +55,7 @@ class WorkspaceManager:
     
     ALLOWED_DOMAINS = ['Finance', 'System', 'Data', 'Code', 'Audio', 'General']
     
-    def __init__(self, workspace_root: Optional[Path] = None):
+    def __init__(self, workspace_root: Optional[Path] = None, create_dirs: bool = True):
         """
         Initialize Workspace Manager.
         
