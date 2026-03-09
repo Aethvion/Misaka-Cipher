@@ -487,7 +487,11 @@ function generateCategorizedModelOptions(data, type = 'chat', selectedId = null)
     // 1. Group Profiles
     let profilesHtml = `<optgroup label="${type === 'chat' ? 'Chat' : 'Agent'} Profiles">`;
     const autoSelected = (selectedId === 'auto' || !selectedId) ? 'selected' : '';
-    profilesHtml += `<option value="auto" ${autoSelected}>Auto (Complexity Routing)</option>`;
+
+    // Only add Auto option if there is more than one model
+    if (data.models && data.models.length > 1) {
+        profilesHtml += `<option value="auto" ${autoSelected}>Auto (Complexity Routing)</option>`;
+    }
 
     const profiles = type === 'chat' ? (data.chat_profiles || {}) : (data.agent_profiles || {});
     for (const [pName, pList] of Object.entries(profiles)) {
