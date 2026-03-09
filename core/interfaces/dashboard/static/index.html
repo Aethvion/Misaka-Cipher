@@ -123,8 +123,6 @@
                         <div class="dropdown-category">[Workflow]</div>
                         <button class="tab-dropdown-item active" data-subtab="chat"><span
                                 class="tab-icon">💬</span>Chat</button>
-                        <button class="tab-dropdown-item" data-subtab="agent"><span
-                                class="tab-icon">🤖</span>Agent</button>
                         <button class="tab-dropdown-item" data-subtab="image"><span
                                 class="tab-icon">🎨</span>Image</button>
                         <button class="tab-dropdown-item" data-subtab="audio"><span
@@ -221,48 +219,12 @@
                                 <div class="thread-title"></div>
                                 <div class="thread-meta">
                                     <span class="thread-date"></span>
-                                    <span class="thread-mode-badge"
-                                        style="display:none; font-size:0.7em; padding:2px 6px; border-radius:4px; background:var(--primary); color:var(--bg-primary);">CHAT</span>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- Settings Toggle -->
-                        <div class="thread-settings-toggle" style="display:none; margin-top:4px;">
-                            <span class="toggle-icon">▶</span> <span
-                                style="font-size:0.85em; opacity:0.8;">SETTINGS</span>
-                        </div>
-
-                        <!-- Vertical Stack Settings Panel -->
-                        <div class="thread-settings-panel terminal-stack">
-                            <!-- Context Mode -->
-                            <div class="term-stack-item">
-                                <label title="Context Mode: How much history to include">CTX:</label>
-                                <select class="term-select" name="contextMode">
-                                    <option value="none">None</option>
-                                    <option value="smart">Smart</option>
-                                    <option value="full">Full</option>
-                                </select>
-                            </div>
-
-                            <!-- Window -->
-                            <div class="term-stack-item">
-                                <label title="Context Window: Number of message pairs to remember">WIN:</label>
-                                <div style="display:flex; align-items:center; gap:4px;">
-                                    <input type="number" class="term-input context-window-input" min="1" max="50"
-                                        value="5" style="width:40px; text-align:center;">
-                                </div>
-                            </div>
-
-                            <!-- Transfer -->
-                            <div class="term-stack-item">
-                                <button class="term-btn transfer-btn"
-                                    title="Transfer thread between Chat and Agent">TRANSFER</button>
-                            </div>
-
-                            <!-- Delete -->
-                            <div class="term-stack-item" style="margin-top:4px;">
-                                <button class="term-btn delete-btn" title="Delete Thread">DELETE THREAD</button>
+                            <div class="thread-actions">
+                                <button class="thread-action-btn delete-btn" title="Delete Thread">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -271,7 +233,31 @@
                 <div class="column chat-column">
                     <div class="column-header">
                         <h2 id="active-thread-title">Main Thread</h2>
-                        <div class="header-actions">
+                        <div class="global-chat-controls">
+                            <!-- CTX -->
+                            <div class="control-item" title="Context Mode">
+                                <label>CTX</label>
+                                <select id="global-ctx-mode" class="control-select">
+                                    <option value="none">None</option>
+                                    <option value="smart" selected>Smart</option>
+                                    <option value="full">Full</option>
+                                </select>
+                            </div>
+                            <!-- WIN -->
+                            <div class="control-item" title="Context Window">
+                                <label>WIN</label>
+                                <input type="number" id="global-ctx-window" class="control-select" min="1" max="50"
+                                    value="5" style="width: 45px; text-align: center;">
+                            </div>
+                            <div class="status-divider">|</div>
+                            <!-- Agents Toggle -->
+                            <div class="control-item">
+                                <label>AGENTS</label>
+                                <div class="toggle-switch-mini" title="Enable Autonomous Agent Orchestration">
+                                    <input type="checkbox" id="global-agent-toggle">
+                                    <label for="global-agent-toggle"></label>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

@@ -20,10 +20,25 @@ function initThreadManagement() {
     // Set up event listeners
     document.getElementById('new-thread-button').addEventListener('click', createNewThread);
 
-    // Bind Send Button explicitly (overriding app.js legacy behavior)
+    // Global Settings Listeners
+    ['global-ctx-mode', 'global-ctx-window', 'global-agent-toggle'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', () => {
+                saveGlobalChatSettings();
+                if (id === 'global-agent-toggle') {
+                    if (typeof updateChatLayout === 'function') updateChatLayout();
+                }
+            });
+        }
+    });
+
+    // Load persisted global settings
+    loadGlobalChatSettings();
+
+    // Bind Send Button explicitly
     const sendButton = document.getElementById('send-button');
     if (sendButton) {
-        // Clone and replace to strip old listeners
         const newBtn = sendButton.cloneNode(true);
         sendButton.parentNode.replaceChild(newBtn, sendButton);
         newBtn.addEventListener('click', sendMessage);
@@ -110,13 +125,12 @@ async function createNewThread() {
 
     const threadId = `thread-${Date.now()}`;
 
-    // Create thread locally — inherit mode from current tab
-    const threadMode = (typeof currentMainTab !== 'undefined' && currentMainTab === 'agent') ? 'auto' : 'chat_only';
+    // Create thread locally
     threads[threadId] = {
         id: threadId,
         title: title,
         task_ids: [],
-        mode: threadMode,
+        mode: 'chat_only', // Legacy field, we'll use global toggle now
         settings: {},
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -133,7 +147,7 @@ async function createNewThread() {
             body: JSON.stringify({
                 thread_id: threadId,
                 title: title,
-                mode: threadMode
+                mode: 'chat_only'
             })
         });
     } catch (e) {
@@ -158,19 +172,6 @@ function switchThread(threadId) {
     document.querySelectorAll('.thread-item').forEach(item => {
         const isActive = item.dataset.threadId === threadId;
         item.classList.toggle('active', isActive);
-
-        // Handle settings toggle visibility immediately
-        const settingsToggle = item.querySelector('.thread-settings-toggle');
-        if (settingsToggle) {
-            settingsToggle.style.display = isActive ? 'block' : 'none';
-            settingsToggle.classList.remove('open'); // Ensure updated toggle is closed
-        }
-
-        // Close any open panels
-        const settingsPanel = item.querySelector('.thread-settings-panel');
-        if (settingsPanel) {
-            settingsPanel.style.display = 'none';
-        }
     });
 
     // Update chat header
@@ -432,119 +433,26 @@ function renderThreadList() {
     threadsList.innerHTML = '';
     const template = document.getElementById('thread-item-template');
 
-    // Filter threads based on current tab mode
-    const showChat = (typeof currentMainTab === 'undefined' || currentMainTab === 'chat');
-    const showAgent = (typeof currentMainTab !== 'undefined' && currentMainTab === 'agent');
+    // Sort threads by date desc
+    const sortedThreads = Object.values(threads).sort((a, b) =>
+        new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+    );
 
-    Object.values(threads).forEach(thread => {
-        const isChatOnly = (thread.mode === 'chat_only');
-
-        // Filter: Chat tab shows chat_only threads, Agent tab shows non-chat_only threads
-        if (showChat && !isChatOnly) return;
-        if (showAgent && isChatOnly) return;
-
-        const taskCount = thread.task_ids ? thread.task_ids.length : 0;
-
+    sortedThreads.forEach(thread => {
         // Clone template
         const clone = template.content.cloneNode(true);
         const threadItem = clone.querySelector('.thread-item');
 
         // Set ID and Active State
         threadItem.dataset.threadId = thread.id;
-        const isActive = (thread.id === currentThreadId);
-        if (isActive) threadItem.classList.add('active');
+        if (thread.id === currentThreadId) threadItem.classList.add('active');
 
         // Populate Data
         clone.querySelector('.thread-title').textContent = thread.title;
 
-        // Date/Meta
+        // Date
         const date = new Date(thread.updated_at || thread.created_at).toLocaleDateString();
         clone.querySelector('.thread-date').textContent = date;
-
-        // Mode Badge
-        const modeBadge = clone.querySelector('.thread-mode-badge');
-        if (thread.mode === 'chat_only') {
-            modeBadge.style.display = 'inline-block';
-            modeBadge.textContent = 'CHAT';
-        } else {
-            modeBadge.style.display = 'inline-block';
-            modeBadge.textContent = 'AGENT';
-            modeBadge.style.background = 'var(--success, #22c55e)';
-        }
-
-        // --- Settings Logic (Vertical Stack Foldout) ---
-        const settingsToggle = clone.querySelector('.thread-settings-toggle');
-        const settingsPanel = clone.querySelector('.thread-settings-panel');
-
-        // Ensure inline style doesn't block class-based toggling
-        settingsPanel.style.display = '';
-
-        // Only show toggle if active
-        if (isActive) {
-            settingsToggle.style.display = 'block'; // Flex defined in CSS usually, but block works with flex container
-            settingsToggle.style.display = 'flex';
-        }
-
-        // Toggle Click Handler
-        settingsToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            // Check based on class since display might vary (flex/block)
-            const isOpen = settingsToggle.classList.contains('open');
-            if (isOpen) {
-                settingsPanel.classList.remove('open');
-                settingsToggle.classList.remove('open');
-                if (isActive) isSettingsPanelOpen = false;
-            } else {
-                settingsPanel.classList.add('open');
-                settingsToggle.classList.add('open');
-                if (isActive) isSettingsPanelOpen = true;
-            }
-        });
-
-        // Restore State (Persistence across re-renders)
-        if (isActive && isSettingsPanelOpen) {
-            settingsPanel.classList.add('open');
-            settingsToggle.classList.add('open');
-        } else {
-            settingsPanel.classList.remove('open');
-            if (settingsToggle) settingsToggle.classList.remove('open');
-        }
-
-        // Initialize Settings Inputs
-        const contextSelect = clone.querySelector('select[name="contextMode"]');
-        const windowInput = clone.querySelector('.context-window-input');
-
-        // Context Mode (Dropdown)
-        if (contextSelect) {
-            contextSelect.value = (thread.settings && thread.settings.context_mode) || 'smart';
-            contextSelect.addEventListener('change', () => {
-                // Update local state temporarily for responsiveness
-                if (!thread.settings) thread.settings = {};
-                thread.settings.context_mode = contextSelect.value;
-                saveThreadSettings(thread.id)
-            });
-        }
-
-        // Window Size
-        if (windowInput) {
-            windowInput.value = (thread.settings && thread.settings.context_window) || 5;
-            windowInput.addEventListener('change', () => saveThreadSettings(thread.id));
-        }
-
-        // Transfer Button
-        const transferBtn = clone.querySelector('.transfer-btn');
-        if (transferBtn) {
-            // Label based on current mode
-            transferBtn.textContent = thread.mode === 'chat_only' ? '→ TRANSFER TO AGENT' : '→ TRANSFER TO CHAT';
-            transferBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const newMode = thread.mode === 'chat_only' ? 'auto' : 'chat_only';
-                toggleThreadMode(thread.id, newMode);
-            });
-        }
-
-        // Prevent thread switch clicks inside panel
-        settingsPanel.addEventListener('click', (e) => e.stopPropagation());
 
         // Delete Action
         clone.querySelector('.delete-btn').addEventListener('click', (e) => {
@@ -582,43 +490,29 @@ async function deleteThread(threadId) {
     }
 }
 
-// Toggle thread mode (transfer)
-async function toggleThreadMode(threadId, mode) {
-    const wasActive = (threadId === currentThreadId);
+function saveGlobalChatSettings() {
+    const settings = {
+        context_mode: document.getElementById('global-ctx-mode').value,
+        context_window: parseInt(document.getElementById('global-ctx-window').value) || 5,
+        agents_enabled: document.getElementById('global-agent-toggle').checked
+    };
+    localStorage.setItem('global_chat_settings', JSON.stringify(settings));
+}
 
-    // Optimistic update
-    if (threads[threadId]) {
-        threads[threadId].mode = mode;
-        renderThreadList();
-
-        // If the transferred thread was active, select next visible thread
-        if (wasActive) {
-            const visibleThreads = document.querySelectorAll('.thread-item');
-            if (visibleThreads.length > 0) {
-                switchThread(visibleThreads[0].dataset.threadId);
-            } else {
-                currentThreadId = null;
-                toggleChatInput(false);
-                const chatMessages = document.getElementById('chat-messages');
-                if (chatMessages) chatMessages.innerHTML = '';
-                document.getElementById('active-thread-title').textContent = 'No threads';
-            }
-        }
-    }
-
+function loadGlobalChatSettings() {
     try {
-        await fetch(`/api/tasks/thread/${threadId}/mode`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mode: mode })
-        });
-    } catch (error) {
-        console.error('Failed to update thread mode:', error);
-        // Revert
-        if (threads[threadId]) {
-            threads[threadId].mode = mode === 'chat_only' ? 'auto' : 'chat_only';
-            renderThreadList();
+        const saved = localStorage.getItem('global_chat_settings');
+        if (saved) {
+            const settings = JSON.parse(saved);
+            document.getElementById('global-ctx-mode').value = settings.context_mode || 'smart';
+            document.getElementById('global-ctx-window').value = settings.context_window || 5;
+            document.getElementById('global-agent-toggle').checked = !!settings.agents_enabled;
+
+            // Trigger layout update based on loaded setting
+            if (typeof updateChatLayout === 'function') updateChatLayout();
         }
+    } catch (e) {
+        console.error("Failed to load global chat settings:", e);
     }
 }
 
@@ -716,11 +610,20 @@ async function sendMessage() {
 
     try {
         // Submit task to queue
+        const ctxMode = document.getElementById('global-ctx-mode').value;
+        const ctxWin = parseInt(document.getElementById('global-ctx-window').value) || 5;
+        const agentsEnabled = document.getElementById('global-agent-toggle').checked;
+
         const payload = {
             prompt: message || `Please review the attached file: ${attachedFileName || 'file'}`,
             thread_id: messageThreadId,
             thread_title: threads[messageThreadId]?.title,
-            model_id: modelId || 'auto'  // Always send a value; 'auto' triggers routing
+            model_id: modelId || 'auto',
+            mode: agentsEnabled ? 'auto' : 'chat_only',
+            settings: {
+                context_mode: ctxMode,
+                context_window: ctxWin
+            }
         };
 
         if (attachedFiles) {

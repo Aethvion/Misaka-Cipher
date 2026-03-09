@@ -575,6 +575,55 @@ textarea.term-input {
     }
 }
 
+/* Mini Toggle Switch */
+.toggle-switch-mini {
+    position: relative;
+    width: 32px;
+    height: 18px;
+}
+
+.toggle-switch-mini input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-switch-mini label {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: .3s;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+}
+
+.toggle-switch-mini label:before {
+    position: absolute;
+    content: "";
+    height: 12px;
+    width: 12px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--text-secondary);
+    transition: .3s;
+    border-radius: 50%;
+}
+
+.toggle-switch-mini input:checked+label {
+    background-color: rgba(99, 102, 241, 0.2);
+    border-color: var(--primary);
+}
+
+.toggle-switch-mini input:checked+label:before {
+    transform: translateX(14px);
+    background-color: var(--primary);
+    box-shadow: 0 0 8px var(--primary);
+}
+
 /* Base utility classes */
 .blur-backdrop {
     backdrop-filter: blur(12px);

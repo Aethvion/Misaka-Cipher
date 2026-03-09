@@ -297,57 +297,61 @@ function initializeUI() {
 function switchMainTab(tabName, save = true) {
     if (!tabName) return;
 
-    currentMainTab = tabName;
+    let actualTabName = tabName;
+    if (tabName === 'agent') actualTabName = 'chat'; // Legacy mapping
+
+    currentMainTab = actualTabName;
     if (save && typeof savePreference === 'function') {
-        savePreference('active_tab', tabName);
+        savePreference('active_tab', actualTabName);
     }
 
     // Update tab buttons
     document.querySelectorAll('.main-tab').forEach(tab => {
         if (tab.closest('.main-tab-dropdown')) {
-            const categories = ['chat', 'agent', 'image', 'audio', 'arena', 'aiconv', 'advaiconv'];
-            const isActive = categories.includes(tabName);
-
             if (tab.classList.contains('split-main-action')) {
+                const categories = ['chat', 'image', 'audio', 'arena', 'aiconv', 'advaiconv'];
+                const isActive = categories.includes(actualTabName);
                 tab.classList.toggle('active', isActive);
 
                 if (isActive) {
-                    tab.dataset.maintab = tabName;
+                    tab.dataset.maintab = actualTabName;
                     let icon = '💬';
                     let label = 'Chat';
-                    if (tabName === 'agent') { icon = '🤖'; label = 'Agent'; }
-                    if (tabName === 'image') { icon = '🎨'; label = 'Image'; }
-                    if (tabName === 'audio') { icon = '🎙️'; label = 'Audio'; }
-                    if (tabName === 'arena') { icon = '⚔️'; label = 'Arena'; }
-                    if (tabName === 'aiconv') { icon = '🎭'; label = 'AI Conv'; }
-                    if (tabName === 'advaiconv') { icon = '🧪'; label = 'Adv AI Conv'; }
+                    if (actualTabName === 'image') { icon = '🎨'; label = 'Image'; }
+                    if (actualTabName === 'audio') { icon = '🎙️'; label = 'Audio'; }
+                    if (actualTabName === 'arena') { icon = '⚔️'; label = 'Arena'; }
+                    if (actualTabName === 'aiconv') { icon = '🎭'; label = 'AI Conv'; }
+                    if (actualTabName === 'advaiconv') { icon = '🧪'; label = 'Adv AI Conv'; }
                     tab.innerHTML = `<span class="tab-icon">${icon}</span>${label}`;
                 }
             } else if (tab.classList.contains('split-arrow-action')) {
+                const categories = ['chat', 'image', 'audio', 'arena', 'aiconv', 'advaiconv'];
+                const isActive = categories.includes(actualTabName);
                 tab.classList.toggle('active', isActive);
             }
-        } else if (tab.classList.contains('dropdown-trigger')) {
-            // Check if any sub-item of this dropdown is active
-            const parent = tab.closest('.nav-dropdown');
-            const subItems = parent.querySelectorAll('.nav-dropdown-item');
-            let isParentActive = false;
-            subItems.forEach(item => {
-                if (item.dataset.subtab === tabName) isParentActive = true;
-            });
-            tab.classList.toggle('active', isParentActive);
+        } else if (tab.closest('.nav-dropdown')) {
+            const dropdownTrigger = tab.closest('.nav-dropdown').querySelector('.dropdown-trigger');
+            if (dropdownTrigger) {
+                const subItems = tab.closest('.nav-dropdown').querySelectorAll('.nav-dropdown-item');
+                let isParentActive = false;
+                subItems.forEach(item => {
+                    if (item.dataset.subtab === actualTabName) isParentActive = true;
+                });
+                dropdownTrigger.classList.toggle('active', isParentActive);
+            }
         } else {
-            tab.classList.toggle('active', tab.dataset.maintab === tabName);
+            tab.classList.toggle('active', tab.dataset.maintab === actualTabName);
         }
     });
 
     // Update Nav Dropdown active state
     document.querySelectorAll('.nav-dropdown-item').forEach(item => {
-        item.classList.toggle('active', item.dataset.subtab === tabName);
+        item.classList.toggle('active', item.dataset.subtab === actualTabName);
     });
 
     // Update Sub-tab active state in split dropdown
     document.querySelectorAll('.tab-dropdown-item').forEach(item => {
-        item.classList.toggle('active', item.dataset.subtab === tabName);
+        item.classList.toggle('active', item.dataset.subtab === actualTabName);
     });
 
     // Update panels
@@ -355,35 +359,34 @@ function switchMainTab(tabName, save = true) {
         panel.classList.remove('active');
     });
 
-    // Agent mode re-uses chat-panel, Files sub-tabs re-use files-panel
-    let panelId = `${tabName}-panel`;
+    // Files sub-tabs re-use files-panel
+    let panelId = `${actualTabName}-panel`;
     const filesTabs = ['output', 'screenshots', 'camera', 'uploads'];
-    if (tabName === 'agent') panelId = 'chat-panel';
-    else if (filesTabs.includes(tabName)) panelId = 'files-panel';
+    if (filesTabs.includes(actualTabName)) panelId = 'files-panel';
 
     const targetPanel = document.getElementById(panelId);
     if (targetPanel) targetPanel.classList.add('active');
 
     // Load data for tab dynamically
-    if (filesTabs.includes(tabName) && typeof loadFiles === 'function') loadFiles(tabName);
-    else if (tabName === 'files' && typeof loadFiles === 'function') loadFiles('output');
-    else if (tabName === 'tools' && typeof loadTools === 'function') loadTools();
-    else if (tabName === 'settings' && typeof loadProviderSettings === 'function') loadProviderSettings();
-    else if (tabName === 'usage' && typeof loadUsageDashboard === 'function') loadUsageDashboard();
-    else if (tabName === 'image' && typeof loadImageModels === 'function') loadImageModels();
-    else if (tabName === 'arena' && typeof loadArenaModels === 'function') {
+    if (filesTabs.includes(actualTabName) && typeof loadFiles === 'function') loadFiles(actualTabName);
+    else if (actualTabName === 'files' && typeof loadFiles === 'function') loadFiles('output');
+    else if (actualTabName === 'tools' && typeof loadTools === 'function') loadTools();
+    else if (actualTabName === 'settings' && typeof loadProviderSettings === 'function') loadProviderSettings();
+    else if (actualTabName === 'usage' && typeof loadUsageDashboard === 'function') loadUsageDashboard();
+    else if (actualTabName === 'image' && typeof loadImageModels === 'function') loadImageModels();
+    else if (actualTabName === 'arena' && typeof loadArenaModels === 'function') {
         loadArenaModels();
         if (typeof loadArenaLeaderboard === 'function') loadArenaLeaderboard();
     }
-    else if (tabName === 'aiconv' && typeof loadArenaModels === 'function') loadArenaModels();
-    else if (tabName === 'status' && typeof loadSystemStatusTab === 'function') loadSystemStatusTab();
-    else if (tabName === 'audio' && typeof initializeAudioStudio === 'function') {
+    else if (actualTabName === 'aiconv' && typeof loadArenaModels === 'function') loadArenaModels();
+    else if (actualTabName === 'status' && typeof loadSystemStatusTab === 'function') loadSystemStatusTab();
+    else if (actualTabName === 'audio' && typeof initializeAudioStudio === 'function') {
         initializeAudioStudio();
     }
-    else if (tabName === 'misaka-cipher' && typeof initializeMisakaCipher === 'function') {
+    else if (actualTabName === 'misaka-cipher' && typeof initializeMisakaCipher === 'function') {
         initializeMisakaCipher();
     }
-    else if (tabName === 'misaka-memory' && typeof refreshMisakaMemory === 'function') {
+    else if (actualTabName === 'misaka-memory' && typeof refreshMisakaMemory === 'function') {
         refreshMisakaMemory();
     }
 
@@ -429,10 +432,24 @@ function updateChatLayout() {
     if (!layout) return;
 
     const agentsCol = document.querySelector('.agents-column');
-    const showAgents = currentMainTab === 'agent';
+    const agentToggle = document.getElementById('global-agent-toggle');
 
-    if (agentsCol) agentsCol.style.display = showAgents ? 'flex' : 'none';
-    layout.style.gridTemplateColumns = showAgents ? '15% 1fr 20%' : '15% 1fr';
+    // Show agents column if chat panel is active AND agents are enabled
+    const showAgents = (currentMainTab === 'chat' || currentMainTab === 'agent') && agentToggle && agentToggle.checked;
+
+    if (agentsCol) {
+        agentsCol.style.display = showAgents ? 'flex' : 'none';
+        if (showAgents) {
+            // Apply a slight fade in if it was hidden
+            agentsCol.style.opacity = '1';
+        }
+    }
+
+    if (showAgents) {
+        layout.style.gridTemplateColumns = '260px 1fr 320px';
+    } else {
+        layout.style.gridTemplateColumns = '260px 1fr';
+    }
 }
 
 // ===== Common Utilities =====

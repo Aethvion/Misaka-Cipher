@@ -171,3 +171,49 @@
     align-self: flex-start;
     margin-top: 0.2rem;
 }
+
+/* Global Chat Controls */
+.global-chat-controls {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border);
+}
+
+.control-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.control-item label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.control-select {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.control-select:focus {
+    border-color: var(--primary);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.status-divider {
+    color: var(--border);
+    font-weight: 300;
+    opacity: 0.5;
+}
