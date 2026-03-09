@@ -72,7 +72,7 @@ async def _call_ai(session: AIGameSession, user_message: str, expected_action: O
                     prompt=latest_prompt,
                     system_prompt=system_prompt,
                     trace_id=f"game-{session.session_id[:8]}",
-                    temperature=0.1 if attempt == 0 else 0.5 if attempt == 1 else 0.9,
+                    temperature=0.7 if attempt == 0 else 0.85 if attempt == 1 else 1.0,
                     max_tokens=1024,
                     model=session.model,
                     json_mode=use_json_mode,   

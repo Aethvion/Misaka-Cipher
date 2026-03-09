@@ -23,9 +23,10 @@
         resetBtn: 'pc-reset-btn',
         hintBtn: 'pc-hint-btn',
         revealBtn: 'pc-reveal-btn',
-        overlay: 'game-overlay-playing-cards',
-        overlayTitle: 'pc-overlay-title',
-        overlayMsg: 'pc-overlay-msg'
+        overlay: 'game-overlay-playing-cards', // obsolete but keeping for safety
+        statusBanner: 'pc-status-banner',
+        statusTitle: 'pc-status-title',
+        statusMsg: 'pc-status-msg'
     };
 
     /**
@@ -37,6 +38,7 @@
 
         setDealerBubble('Shuffling deck...', true);
         hideOverlay();
+        document.getElementById(elements.statusBanner).style.display = 'none';
 
         try {
             const data = await gameApiPost('new', {
@@ -189,15 +191,57 @@
     function updateUI(data) {
         console.log("[Blackjack] Updating Table UI:", data);
 
-        if (data.player_hand) renderHand(document.getElementById(elements.playerHand), data.player_hand);
-        if (data.ai_hand) renderHand(document.getElementById(elements.aiHand), data.ai_hand, data.hide_ai_card);
+        if (data.player_hand) {
+            renderHand(document.getElementById(elements.playerHand), data.player_hand);
+            const calculated = calculateHandScore(data.player_hand);
+            // Use AI score if it seems correct, otherwise use calculated
+            const finalScore = (data.player_score !== undefined && Math.abs(data.player_score - calculated) < 1)
+                ? data.player_score
+                : calculated;
+            document.getElementById(elements.playerScore).textContent = finalScore;
+        }
 
-        if (data.player_score !== undefined) document.getElementById(elements.playerScore).textContent = data.player_score;
-        if (data.ai_score !== undefined) document.getElementById(elements.aiScore).textContent = data.ai_score;
+        if (data.ai_hand) {
+            renderHand(document.getElementById(elements.aiHand), data.ai_hand, data.hide_ai_card);
+            if (!data.hide_ai_card) {
+                const aiCalculated = calculateHandScore(data.ai_hand);
+                const finalAiScore = (data.ai_score !== undefined && Math.abs(data.ai_score - aiCalculated) < 1)
+                    ? data.ai_score
+                    : aiCalculated;
+                document.getElementById(elements.aiScore).textContent = finalAiScore;
+            } else if (data.ai_score !== undefined) {
+                // When hiding hole card, we still show whatever score the AI claims (usually just the visible card)
+                document.getElementById(elements.aiScore).textContent = data.ai_score;
+            }
+        }
 
         if (data.message && !data.completed) {
             setDealerBubble(data.message);
         }
+    }
+
+    /**
+     * Safety Score Calculation
+     */
+    function calculateHandScore(hand) {
+        let score = 0;
+        let aces = 0;
+        hand.forEach(card => {
+            const rank = String(card.rank).toUpperCase();
+            if (['J', 'Q', 'K', '10'].includes(rank)) score += 10;
+            else if (rank === 'A') {
+                aces += 1;
+                score += 11;
+            } else {
+                const val = parseInt(rank);
+                score += isNaN(val) ? 0 : val;
+            }
+        });
+        while (score > 21 && aces > 0) {
+            score -= 10;
+            aces -= 1;
+        }
+        return score;
     }
 
     /**
@@ -250,9 +294,9 @@
     function handleGameOver(data) {
         session.completed = true;
 
-        const overlay = document.getElementById(elements.overlay);
-        const title = document.getElementById(elements.overlayTitle);
-        const msg = document.getElementById(elements.overlayMsg);
+        const banner = document.getElementById(elements.statusBanner);
+        const title = document.getElementById(elements.statusTitle);
+        const msg = document.getElementById(elements.statusMsg);
 
         setTimeout(() => {
             if (data.result === 'win') {
@@ -270,12 +314,13 @@
 
             document.getElementById(elements.streakDisplay).textContent = streak;
             msg.textContent = data.message || 'Game Over.';
-            overlay.style.display = 'flex';
+            banner.style.display = 'block';
         }, 1200); // Small delay to see final cards
     }
 
     function hideOverlay() {
-        document.getElementById(elements.overlay).style.display = 'none';
+        const el = document.getElementById(elements.overlay);
+        if (el) el.style.display = 'none';
     }
 
     // Register with framework

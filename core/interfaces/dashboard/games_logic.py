@@ -53,9 +53,16 @@ class AIGameSession:
         return "You are a game master AI. Respond in JSON."
 
     def get_opening_message(self) -> Dict[str, Any]:
+        from datetime import datetime
+        import random
+        
         content = "Start a new game."
         if self.game:
             content = self.game.get_opening_prompt()
+            
+        # Add entropy to ensure AI variety
+        entropy = f"\n(Session: {self.session_id[:8]}, Time: {datetime.now().isoformat()}, Seed: {random.randint(1000, 9999)})"
+        content += entropy
             
         return {
             "role": "user",

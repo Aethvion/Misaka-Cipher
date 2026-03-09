@@ -32,7 +32,10 @@ JSON TEMPLATE:
 RULES:
 - Objective: Total closer to 21 than dealer wins.
 - Values: 10/J/Q/K = 10. Ace = 1 or 11.
-- Dealer hits on 16 or lower, stays 17+.
+- Initial Deal: DEALT action MUST provide exactly 2 cards for Player and exactly 2 cards for Dealer. 
+- Dealer's Hand: One of the dealer's cards is considered the "hole card" (hidden from player initially, but provided in JSON).
+- Dealer Strategy: Hits on 16 or lower, stays on 17+.
+- RANDOMIZATION: Each hand MUST be newly shuffled. Use variety in suits and ranks.
 - DIFFICULTY: {self.difficulty}.
 
 PERSONALITY:

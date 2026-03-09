@@ -1990,11 +1990,12 @@
 
                 <!-- The Blackjack Table -->
                 <div class="blackjack-table" id="pc-table">
-                    <div class="table-markings">
-                        <div class="table-text">Aethvion Casino</div>
+                    <!-- Status Banner (Replaces Overlay) -->
+                    <div id="pc-status-banner" class="game-status-banner" style="display:none;">
+                        <h2 id="pc-status-title">YOU WIN</h2>
+                        <p id="pc-status-msg"></p>
                     </div>
 
-                    <!-- Hands Area -->
                     <div class="bj-hands-area">
                         <!-- Dealer Zone -->
                         <div class="bj-dealer-hand">
@@ -2012,23 +2013,15 @@
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="player-controls-area">
-                        <button id="pc-hit-btn" class="bj-btn bj-btn-primary">Hit</button>
-                        <button id="pc-stay-btn" class="bj-btn bj-btn-secondary">Stay</button>
-                        <button id="pc-reset-btn" class="bj-btn bj-btn-secondary">New Hand</button>
-                        <button id="pc-hint-btn" class="bj-btn bj-btn-secondary"
-                            style="font-size: 1.2rem; padding: 10px 15px;">💡</button>
-                        <button id="pc-reveal-btn" class="bj-btn bj-btn-secondary" style="color: #ff7675;">Fold</button>
-                    </div>
-
-                    <!-- Overlay -->
-                    <div id="game-overlay-playing-cards" class="game-overlay" style="display:none;">
-                        <div class="overlay-title" id="pc-overlay-title">BUSTED</div>
-                        <div class="overlay-subtitle" id="pc-overlay-msg"></div>
-                        <button class="bj-btn bj-btn-primary" onclick="startPlayingCards()" style="margin-top:20px;">New
-                            Hand</button>
-                    </div>
+                <div class="player-controls-area">
+                    <button id="pc-hit-btn" class="bj-btn bj-btn-primary">Hit</button>
+                    <button id="pc-stay-btn" class="bj-btn bj-btn-secondary">Stay</button>
+                    <button id="pc-reset-btn" class="bj-btn bj-btn-secondary">New Hand</button>
+                    <button id="pc-hint-btn" class="bj-btn bj-btn-secondary"
+                        style="font-size: 1.2rem; padding: 10px 15px;">💡</button>
+                    <button id="pc-reveal-btn" class="bj-btn bj-btn-secondary" style="color: #ff7675;">Fold</button>
                 </div>
             </div>
         </div>
