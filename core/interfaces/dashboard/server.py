@@ -557,14 +557,60 @@ async def search_memory(request: MemorySearchRequest):
 
 
 @app.get("/api/workspace/files")
-async def list_workspace_files():
-    """List workspace files recursively and get stats."""
+async def list_workspace_files(category: str = 'output'):
+    """List files recursively based on category."""
     try:
-        from core.workspace import get_workspace_manager
-        workspace = get_workspace_manager()
-        return workspace.list_outputs()
+        from core.workspace.workspace_manager import WorkspaceManager
+        project_root = Path(__file__).parent.parent.parent.parent
+        
+        # We use project_root as the manager root so that 'path' is relative to project root
+        # and works across all categories for 'serve' and 'explorer'
+        # Crucial: set create_dirs=False to prevent scanning from polluting the root with domain folders
+        manager = WorkspaceManager(workspace_root=project_root, create_dirs=False)
+        
+        # Determine target subdirectory relative to project root
+        sub_dir = ""
+        if category in ['files', 'output']:
+            sub_dir = "data/outputfiles"
+        elif category == 'screenshots':
+            sub_dir = "data/workspace/media/screenshots"
+        elif category == 'camera':
+            sub_dir = "data/workspace/media/webcam"
+        elif category == 'uploads':
+            sub_dir = "data/workspace/uploads"
+        else:
+            sub_dir = "data/outputfiles"
+            
+        # Get all outputs from the project root
+        all_data = manager.list_outputs()
+        
+        # Filter files that belong to the target sub_dir
+        filtered_files = [
+            f for f in all_data.get('files', []) 
+            if f['path'].startswith(sub_dir) or f['path'].startswith(sub_dir.replace('/', '\\'))
+        ]
+        
+        # Recalculate stats for the filtered set
+        total_files = sum(1 for f in filtered_files if not f.get('is_dir'))
+        stats = {}
+        for f in filtered_files:
+            if not f.get('is_dir'):
+                ext = f.get('file_type', 'txt')
+                stats[ext] = stats.get(ext, 0) + 1
+        
+        stats_percentages = {}
+        if total_files > 0:
+            for ext, count in stats.items():
+                stats_percentages[ext] = round((count / total_files) * 100, 1)
+                
+        return {
+            "count": len(filtered_files),
+            "files": filtered_files,
+            "stats": stats_percentages
+        }
+        
     except Exception as e:
-        logger.error(f"Workspace file listing error: {str(e)}", exc_info=True)
+        logger.error(f"Workspace file listing error for category {category}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/workspace/files/search")
@@ -745,11 +791,9 @@ class ExplorerOpenRequest(BaseModel):
 async def open_in_explorer(req: ExplorerOpenRequest):
     """Open a file or folder in the system's external explorer."""
     try:
-        from core.workspace import get_workspace_manager
-        workspace = get_workspace_manager()
-        
-        # Resolve full path
-        target_path = workspace.workspace_root / req.path
+        # Resolve full path relative to project root
+        project_root = Path(__file__).parent.parent.parent.parent
+        target_path = project_root / req.path
         if not target_path.exists():
             raise HTTPException(status_code=404, detail=f"Path not found: {req.path}")
             
@@ -796,17 +840,16 @@ async def download_workspace_file(domain: str, filename: str):
 async def serve_workspace_file(path: str):
     """Serve a workspace file directly (useful for image previews)."""
     try:
-        from core.workspace import get_workspace_manager
-        workspace = get_workspace_manager()
-        file_path = workspace.workspace_root / path
+        project_root = Path(__file__).parent.parent.parent.parent
+        file_path = project_root / path
         
-        # Security check: ensure the path resolves within the workspace root
+        # Security check: ensure the path resolves within the project root
         try:
             resolved_path = file_path.resolve()
-            workspace_resolved = workspace.workspace_root.resolve()
-            if not str(resolved_path).startswith(str(workspace_resolved)):
+            project_resolved = project_root.resolve()
+            if not str(resolved_path).startswith(str(project_resolved)):
                 raise HTTPException(status_code=403, detail="Access denied")
-        except Exception:
+        except (Exception, ValueError):
             raise HTTPException(status_code=403, detail="Invalid path")
 
         if not resolved_path.exists() or not resolved_path.is_file():

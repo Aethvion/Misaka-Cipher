@@ -355,15 +355,18 @@ function switchMainTab(tabName, save = true) {
         panel.classList.remove('active');
     });
 
-    // Agent mode re-uses chat-panel
+    // Agent mode re-uses chat-panel, Files sub-tabs re-use files-panel
     let panelId = `${tabName}-panel`;
+    const filesTabs = ['output', 'screenshots', 'camera', 'uploads'];
     if (tabName === 'agent') panelId = 'chat-panel';
+    else if (filesTabs.includes(tabName)) panelId = 'files-panel';
 
     const targetPanel = document.getElementById(panelId);
     if (targetPanel) targetPanel.classList.add('active');
 
     // Load data for tab dynamically
-    if (tabName === 'files' && typeof loadFiles === 'function') loadFiles();
+    if (filesTabs.includes(tabName) && typeof loadFiles === 'function') loadFiles(tabName);
+    else if (tabName === 'files' && typeof loadFiles === 'function') loadFiles('output');
     else if (tabName === 'tools' && typeof loadTools === 'function') loadTools();
     else if (tabName === 'settings' && typeof loadProviderSettings === 'function') loadProviderSettings();
     else if (tabName === 'usage' && typeof loadUsageDashboard === 'function') loadUsageDashboard();

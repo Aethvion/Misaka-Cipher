@@ -60,18 +60,18 @@ class WorkspaceManager:
         Initialize Workspace Manager.
         
         Args:
-            workspace_root: Root directory for user outputs (default: outputfiles/)
+            workspace_root: Root directory for user outputs (default: data/outputfiles/)
+            create_dirs: Whether to create the directory structure automatically (default: True)
         """
         if workspace_root is None:
-            # Default to outputfiles in project root
-            # __file__ = core/workspace/workspace_manager.py → parent.parent.parent = project root
-            project_root = Path(__file__).parent.parent.parent
+            project_root = Path(__file__).parent.parent.parent.parent
             workspace_root = project_root / "data" / "outputfiles"
         
         self.workspace_root = Path(workspace_root)
         
-        # Create workspace and domain subdirectories
-        self._initialize_workspace()
+        # Create workspace and domain subdirectories if requested
+        if create_dirs:
+            self._initialize_workspace()
         
         logger.info(f"Workspace Manager initialized (root: {self.workspace_root})")
     
@@ -326,9 +326,9 @@ class WorkspaceManager:
 _workspace_manager = None
 
 
-def get_workspace_manager(workspace_root: Optional[Path] = None) -> WorkspaceManager:
+def get_workspace_manager(workspace_root: Optional[Path] = None, create_dirs: bool = True) -> WorkspaceManager:
     """Get the global WorkspaceManager instance."""
     global _workspace_manager
     if _workspace_manager is None:
-        _workspace_manager = WorkspaceManager(workspace_root)
+        _workspace_manager = WorkspaceManager(workspace_root, create_dirs=create_dirs)
     return _workspace_manager

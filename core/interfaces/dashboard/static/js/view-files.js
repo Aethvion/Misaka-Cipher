@@ -2,6 +2,7 @@
 // Handles interacting with the local workspace files table
 
 let currentFiles = [];
+let currentCategory = 'output'; // Track active category for refresh/etc.
 let currentViewMode = 'grid'; // 'grid' or 'list'
 let hideFolders = false;
 let semanticMode = false;
@@ -11,7 +12,7 @@ let searchDebounceTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Setup event listeners for the files page
-    document.getElementById('refresh-files')?.addEventListener('click', loadFiles);
+    document.getElementById('refresh-files')?.addEventListener('click', () => loadFiles(currentCategory));
     document.getElementById('file-search')?.addEventListener('input', handleSearchInput);
     document.getElementById('type-filter')?.addEventListener('change', renderFiles);
     document.getElementById('semantic-search-toggle')?.addEventListener('click', toggleSemanticMode);
@@ -126,9 +127,10 @@ function setViewMode(mode, save = true) {
     renderFiles();
 }
 
-async function loadFiles() {
+async function loadFiles(category = 'output') {
+    currentCategory = category;
     try {
-        const url = '/api/workspace/files';
+        const url = `/api/workspace/files?category=${category}`;
 
         const response = await fetch(url);
         const data = await response.json();
@@ -137,7 +139,12 @@ async function loadFiles() {
         if (!grid) return;
 
         if (data.count === 0) {
-            grid.innerHTML = '<p class="placeholder-text">No files yet. Ask Misaka to create reports, analysis, or other outputs!</p>';
+            let placeholder = 'No files yet. Ask Misaka to create reports, analysis, or other outputs!';
+            if (category === 'screenshots') placeholder = 'No screenshots found in media/screenshots.';
+            if (category === 'camera') placeholder = 'No webcam captures found in media/webcam.';
+            if (category === 'uploads') placeholder = 'No uploaded files found in workspace/uploads.';
+
+            grid.innerHTML = `<p class="placeholder-text">${placeholder}</p>`;
             renderStats({}, 0);
             return;
         }
