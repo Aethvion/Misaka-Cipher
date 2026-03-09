@@ -21,37 +21,60 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (refreshMemory) refreshMemory.addEventListener('click', loadMemoryData);
 
     initializeUI();
-    initDevMode();
-    await loadInitialData();
 
-    // Restore persisted tab from server
-    const response = await fetch('/api/preferences/get?key=active_tab');
-    if (response.ok) {
-        const data = await response.json();
-        if (data.value) switchMainTab(data.value, false);
-    }
+    // Apply default mode immediately so nothing looks broken on load
+    setDashboardMode('enterprise', false);
 
-    // Restore persisted dashboard mode
-    const modeResponse = await fetch('/api/preferences/get?key=dashboard_mode');
-    if (modeResponse.ok) {
-        const modeData = await modeResponse.json();
-        if (modeData.value) {
-            setDashboardMode(modeData.value, false); // Load without saving again
+    try {
+        // Load preferences safely before heavy data initialization
+        if (typeof prefs !== 'undefined' && typeof prefs.load === 'function') {
+            await prefs.load();
+
+            // Restore dashboard mode
+            const mode = prefs.get('dashboard_mode', 'enterprise');
+            setDashboardMode(mode, false);
+
+            // Restore sidebar state
+            const sidebarCollapsed = prefs.get('sidebar_collapsed', false);
+            if (sidebarCollapsed === true || sidebarCollapsed === 'true') {
+                const sidebarNav = document.getElementById('sidebar-nav');
+                if (sidebarNav) sidebarNav.classList.add('collapsed');
+            }
+
+            // Restore active tab
+            const activeTab = prefs.get('active_tab', 'chat');
+            if (activeTab) switchMainTab(activeTab, false);
         } else {
-            setDashboardMode('enterprise', false); // Default to enterprise if not set
+            // Fallback (redundant fetch but keeping for safety if view-settings isn't loaded)
+            const modeRes = await fetch('/api/preferences/get?key=dashboard_mode');
+            if (modeRes.ok) {
+                const modeData = await modeRes.json();
+                if (modeData.value) setDashboardMode(modeData.value, false);
+            }
+            const tabRes = await fetch('/api/preferences/get?key=active_tab');
+            if (tabRes.ok) {
+                const tabData = await tabRes.json();
+                if (tabData.value) switchMainTab(tabData.value, false);
+            }
+            const sidebarRes = await fetch('/api/preferences/get?key=sidebar_collapsed');
+            if (sidebarRes.ok) {
+                const sidebarData = await sidebarRes.json();
+                if (sidebarData.value === true || sidebarData.value === 'true') {
+                    const sidebarNav = document.getElementById('sidebar-nav');
+                    if (sidebarNav) sidebarNav.classList.add('collapsed');
+                }
+            }
         }
-    } else {
-        setDashboardMode('enterprise', false); // Default to enterprise if fetch fails
+    } catch (e) {
+        console.warn("Error restoring UI state:", e);
     }
 
-    // Restore persisted sidebar state
-    const sidebarResponse = await fetch('/api/preferences/get?key=sidebar_collapsed');
-    if (sidebarResponse.ok) {
-        const sidebarData = await sidebarResponse.json();
-        if (sidebarData.value === true || sidebarData.value === 'true') {
-            const sidebarNav = document.getElementById('sidebar-nav');
-            if (sidebarNav) sidebarNav.classList.add('collapsed');
-        }
+    // Now proceed with potentially failing heavier data loads
+    try {
+        initDevMode();
+        await loadInitialData();
+    } catch (e) {
+        console.error("Error during initial data load:", e);
     }
 });
 
@@ -174,9 +197,6 @@ function initializeUI() {
             setDashboardMode(this.dataset.value);
         });
     });
-
-    // Start checking for external changes periodically
-    pollForExternalChanges();
 
     // Chat interaction
     const chatInput = document.getElementById('chat-input');

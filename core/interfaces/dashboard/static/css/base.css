@@ -62,8 +62,12 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
-    -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utility to hide mode-specific elements */
+.mode-hidden {
+    display: none !important;
 }
 
 h1,
