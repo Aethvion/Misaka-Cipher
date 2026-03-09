@@ -1961,85 +1961,73 @@
             </div>
         </div>
 
-        <!-- Games Panel: Playing Cards -->
+        <!-- Games Panel: Blackjack -->
         <div class="main-tab-panel" id="game-blackjack-panel">
-            <div class="game-layout" id="pc-container">
+            <div class="game-layout">
+                <!-- Premium Game Header -->
                 <div class="game-header">
                     <div class="game-header-left">
                         <span class="game-icon">🃏</span>
                         <div class="game-title-block">
                             <h2>Blackjack</h2>
-                            <p class="game-subtitle">AI Dealer — Blackjack Variant</p>
+                            <p class="game-subtitle">AI Dealer Duel</p>
                         </div>
                     </div>
-                    <div class="game-vitals">
-                        <div class="game-stat">
-                            <span class="stat-label">WIN STREAK</span>
-                            <span id="pc-streak" class="stat-value">0</span>
-                        </div>
-                        <div class="game-stat">
-                            <span class="stat-label">DECK</span>
-                            <span id="pc-deck-count" class="stat-value">52</span>
+                    <div class="game-toolbar" style="background:transparent; border:none; margin:0; padding:0 15px;">
+                        <select id="pc-model-select" style="background: rgba(255,255,255,0.05);"></select>
+                        <select id="pc-difficulty-select" style="background: rgba(255,255,255,0.05);">
+                            <option value="easy">Passive</option>
+                            <option value="medium" selected>Rational</option>
+                            <option value="hard">Aggressive</option>
+                            <option value="expert">Card Counter</option>
+                        </select>
+                        <div class="game-stat" style="margin-left:20px;">
+                            <span class="stat-label">STREAK</span>
+                            <span id="pc-streak" class="stat-value" style="color:var(--primary)">0</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="game-toolbar">
-                    <label>Model:</label>
-                    <select id="pc-model-select"></select>
-                    <div class="game-toolbar-divider"></div>
-                    <label>Aggro:</label>
-                    <select id="pc-difficulty-select">
-                        <option value="easy">Passive</option>
-                        <option value="medium" selected>Rational</option>
-                        <option value="hard">Aggressive</option>
-                        <option value="expert">Card Counter</option>
-                    </select>
-                    <div class="toolbar-spacer"></div>
-                    <button class="game-btn secondary" id="pc-hint-btn"
-                        style="padding: 0.35rem 0.8rem; font-size: 0.75rem;">Get AI Tip</button>
-                    <button class="game-btn danger" id="pc-reveal-btn"
-                        style="padding: 0.35rem 0.8rem; font-size: 0.75rem; margin-left: 0.5rem;">Fold</button>
-                </div>
+                <!-- The Blackjack Table -->
+                <div class="blackjack-table" id="pc-table">
+                    <div class="table-markings">
+                        <div class="table-text">Aethvion Casino</div>
+                    </div>
 
-                <div class="game-main">
-                    <div class="game-canvas" id="pc-table">
-                        <!-- AI Side -->
-                        <div class="pc-side pc-ai-side">
-                            <div class="pc-label">AI DEALER <span id="pc-ai-score" class="pc-score-badge">0</span></div>
+                    <!-- Hands Area -->
+                    <div class="bj-hands-area">
+                        <!-- Dealer Zone -->
+                        <div class="bj-dealer-hand">
+                            <div class="bj-label">DEALER <span id="pc-ai-score" class="pc-score-badge">0</span></div>
                             <div id="pc-ai-hand" class="pc-hand"></div>
                         </div>
 
-                        <div class="pc-divider"></div>
+                        <!-- Thought Bubble -->
+                        <div id="pc-display" class="dealer-bubble">Good luck, player. The house always wins...</div>
 
-                        <!-- Player Side -->
-                        <div class="pc-side pc-player-side">
-                            <div class="pc-label">PLAYER <span id="pc-player-score" class="pc-score-badge">0</span>
-                            </div>
+                        <!-- Player Zone -->
+                        <div class="bj-player-hand">
                             <div id="pc-player-hand" class="pc-hand"></div>
-                        </div>
-
-                        <!-- Game Message -->
-                        <div id="pc-display" class="game-ai-comment">Table is open. Start a new duel.</div>
-
-                        <!-- Overlay -->
-                        <div id="game-overlay-playing-cards" class="game-overlay" style="display:none;">
-                            <div class="overlay-title" id="pc-overlay-title">BUSTED</div>
-                            <div class="overlay-subtitle" id="pc-overlay-msg"></div>
-                            <button class="game-btn" onclick="startPlayingCards()">New Hand</button>
+                            <div class="bj-label">YOUR HAND <span id="pc-player-score" class="pc-score-badge">0</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="game-card">
-                        <div class="section-label">DUEL LOG</div>
-                        <div id="pc-history" class="game-history">
-                            <div class="placeholder-text" style="padding:0.5rem;">No history</div>
-                        </div>
+                    <!-- Floating Player Controls -->
+                    <div class="player-controls-area">
+                        <button id="pc-hit-btn" class="bj-btn bj-btn-primary">Hit</button>
+                        <button id="pc-stay-btn" class="bj-btn bj-btn-secondary">Stay</button>
+                        <button id="pc-hint-btn" class="bj-btn bj-btn-secondary"
+                            style="font-size: 1.2rem; padding: 10px 15px;">💡</button>
+                        <button id="pc-reveal-btn" class="bj-btn bj-btn-secondary" style="color: #ff7675;">Fold</button>
+                    </div>
 
-                        <div class="game-controls">
-                            <button id="pc-hit-btn" class="game-btn">Hit / Draw</button>
-                            <button id="pc-stay-btn" class="game-btn secondary">Stay / End Turn</button>
-                        </div>
+                    <!-- Overlay -->
+                    <div id="game-overlay-playing-cards" class="game-overlay" style="display:none;">
+                        <div class="overlay-title" id="pc-overlay-title">BUSTED</div>
+                        <div class="overlay-subtitle" id="pc-overlay-msg"></div>
+                        <button class="bj-btn bj-btn-primary" onclick="startPlayingCards()" style="margin-top:20px;">New
+                            Hand</button>
                     </div>
                 </div>
             </div>

@@ -14,7 +14,8 @@ class BaseGame(ABC):
 
 class BlackJackGame(BaseGame):
     def get_system_prompt(self) -> str:
-        return f"""You are the AI Dealer in 'Blackjack'. Respond ONLY with valid JSON.
+        return f"""You are a professional AI Casino Dealer in 'Aethvion Blackjack'. 
+Respond ONLY with valid JSON. Use a charismatic, professional yet competitive dealer persona in the 'message' field.
 
 JSON TEMPLATE:
 {{
@@ -23,8 +24,7 @@ JSON TEMPLATE:
   "ai_hand": [{{"rank":"rank","suit":"symbol"}}, ...],
   "player_score": int,
   "ai_score": int,
-  "deck_count": int,
-  "message": "text",
+  "message": "charismatic dealer comment",
   "completed": bool,
   "result": "win"|"loss"|"push"|null
 }}
@@ -35,6 +35,12 @@ RULES:
 - Dealer hits on 16 or lower, stays 17+.
 - DIFFICULTY: {self.difficulty}.
 
+PERSONALITY:
+- Passive: Friendly, cheering the player on.
+- Rational: Professional, mathematically precise.
+- Aggressive: Taunting, confident, enjoys when you bust.
+- Expert: Stoic, cold, comments on "unlikely odds".
+
 CRITICAL:
 1. ALWAYS provide BOTH hands.
 2. USE SYMBOLS: ♥, ♦, ♣, ♠.
@@ -42,4 +48,4 @@ CRITICAL:
 """
 
     def get_opening_prompt(self) -> str:
-        return "Deal a new hand of Blackjack. Response MUST be valid JSON with 'player_hand', 'ai_hand', and 'player_score'."
+        return "Deal a new hand. Response MUST be valid JSON with 'player_hand', 'ai_hand', and scores."

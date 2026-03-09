@@ -1,5 +1,5 @@
 /**
- * Playing Cards: AI Duel (Blackjack Variant)
+ * Blackjack AI - Premium Table Logic
  */
 
 (function () {
@@ -11,7 +11,6 @@
         modelSelect: 'pc-model-select',
         difficultySelect: 'pc-difficulty-select',
         streakDisplay: 'pc-streak',
-        deckDisplay: 'pc-deck-count',
         display: 'pc-display',
         aiHand: 'pc-ai-hand',
         playerHand: 'pc-player-hand',
@@ -21,7 +20,6 @@
         stayBtn: 'pc-stay-btn',
         hintBtn: 'pc-hint-btn',
         revealBtn: 'pc-reveal-btn',
-        history: 'pc-history',
         overlay: 'game-overlay-playing-cards',
         overlayTitle: 'pc-overlay-title',
         overlayMsg: 'pc-overlay-msg'
@@ -34,7 +32,7 @@
         const model = document.getElementById(elements.modelSelect)?.value || 'auto';
         const difficulty = document.getElementById(elements.difficultySelect)?.value || 'medium';
 
-        setGameDisplay(document.getElementById(elements.display), 'Shuffling deck...', 'loading');
+        setDealerBubble('Shuffling deck...', true);
         hideOverlay();
 
         try {
@@ -47,17 +45,15 @@
             if (data.success) {
                 session = {
                     id: data.session_id,
-                    deckCount: 48, // approximate after deal
-                    history: []
+                    completed: false
                 };
-
                 updateUI(data);
-                setGameDisplay(document.getElementById(elements.display), 'Cards dealt. Your move.');
+                setTimeout(() => setDealerBubble('Cards dealt. Your move.'), 800);
             } else {
-                setGameDisplay(document.getElementById(elements.display), `Error: ${data.error}`, 'error');
+                setDealerBubble(`Error: ${data.error}`, true);
             }
         } catch (err) {
-            setGameDisplay(document.getElementById(elements.display), 'Failed to start duel.', 'error');
+            setDealerBubble('Failed to start duel.', true);
         }
     }
 
@@ -66,6 +62,7 @@
      */
     async function hit() {
         if (!session || session.completed) return;
+        setDealerBubble('Dealing...', true);
 
         try {
             const data = await gameApiPost('action', {
@@ -77,6 +74,7 @@
             if (data.success) {
                 updateUI(data);
                 if (data.completed) handleGameOver(data);
+                else setTimeout(() => setDealerBubble('Hit again, or stay?'), 500);
             }
         } catch (err) { }
     }
@@ -86,6 +84,7 @@
      */
     async function stay() {
         if (!session || session.completed) return;
+        setDealerBubble('Dealer\'s turn...', true);
 
         try {
             const data = await gameApiPost('action', {
@@ -106,11 +105,13 @@
      */
     async function getTip() {
         if (!session) return;
+        setDealerBubble('Hm, let me think about that...', true);
+
         try {
             const data = await gameApiPost('action', { session_id: session.id, action: 'hint', data: {} });
             if (data.success) {
                 const tip = data.message || data.hint || "The dealer looks confident.";
-                setGameDisplay(document.getElementById(elements.display), `AI Tip: ${tip}`);
+                setTimeout(() => setDealerBubble(tip), 600);
             }
         } catch (err) { }
     }
@@ -135,37 +136,21 @@
      * Update UI state
      */
     function updateUI(data) {
-        console.log("[Blackjack] Updating UI with data:", data);
-        // Update Hands
+        console.log("[Blackjack] Updating Table UI:", data);
+
         if (data.player_hand) renderHand(document.getElementById(elements.playerHand), data.player_hand);
         if (data.ai_hand) renderHand(document.getElementById(elements.aiHand), data.ai_hand, data.hide_ai_card);
 
-        // Update Scores
         if (data.player_score !== undefined) document.getElementById(elements.playerScore).textContent = data.player_score;
         if (data.ai_score !== undefined) document.getElementById(elements.aiScore).textContent = data.ai_score;
 
-        // Update Deck
-        if (data.deck_count !== undefined) document.getElementById(elements.deckDisplay).textContent = data.deck_count;
-
-        // Update Display
-        if (data.message) setGameDisplay(document.getElementById(elements.display), data.message);
-
-        // Update History
-        if (data.log) {
-            const history = document.getElementById(elements.history);
-            history.innerHTML = '';
-            data.log.forEach(entry => {
-                const item = document.createElement('div');
-                item.className = 'history-item';
-                item.textContent = entry;
-                history.appendChild(item);
-            });
-            history.scrollTop = history.scrollHeight;
+        if (data.message && !data.completed) {
+            setDealerBubble(data.message);
         }
     }
 
     /**
-     * Render Cards
+     * Render Cards with premium layout
      */
     function renderHand(container, cards, hideHole = false) {
         container.innerHTML = '';
@@ -173,11 +158,15 @@
         const suitMap = {
             'Hearts': '♥', 'Diamonds': '♦', 'Clubs': '♣', 'Spades': '♠',
             'Heart': '♥', 'Diamond': '♦', 'Club': '♣', 'Spade': '♠',
-            'H': '♥', 'D': '♦', 'C': '♣', 'S': '♠'
+            'H': '♥', 'D': '♦', 'C': '♣', 'S': '♠',
+            '♥': '♥', '♦': '♦', '♣': '♣', '♠': '♠'
         };
 
         cards.forEach((card, idx) => {
             const div = document.createElement('div');
+            // Z-index fanning
+            div.style.zIndex = idx + 1;
+            div.style.animationDelay = `${idx * 0.15}s`;
 
             if (hideHole && idx === 1) {
                 div.className = 'pc-card back';
@@ -186,18 +175,27 @@
                 const isRed = suit === '♥' || suit === '♦';
                 div.className = `pc-card ${isRed ? 'red' : ''}`;
                 div.innerHTML = `
-                    <div class="card-rank-top">${card.rank}</div>
-                    <div class="card-suit-large">${suit}</div>
-                    <div class="card-rank-bottom" style="transform: rotate(180deg)">${card.rank}</div>
+                    <div class="card-top">${card.rank}<span>${suit}</span></div>
+                    <div class="card-suit-center">${suit}</div>
+                    <div class="card-bottom">${card.rank}<span>${suit}</span></div>
                 `;
             }
             container.appendChild(div);
         });
     }
 
-    /**
-     * Handle Duel End
-     */
+    function setDealerBubble(text, isThinking = false) {
+        const bubble = document.getElementById(elements.display);
+        if (!bubble) return;
+
+        bubble.classList.remove('active');
+
+        setTimeout(() => {
+            bubble.textContent = isThinking ? '...' : text;
+            bubble.classList.add('active');
+        }, 100);
+    }
+
     function handleGameOver(data) {
         session.completed = true;
 
@@ -205,22 +203,24 @@
         const title = document.getElementById(elements.overlayTitle);
         const msg = document.getElementById(elements.overlayMsg);
 
-        if (data.result === 'win') {
-            title.textContent = 'YOU WIN';
-            title.style.color = 'var(--primary)';
-            streak++;
-        } else if (data.result === 'push') {
-            title.textContent = 'PUSH';
-            title.style.color = 'var(--text-muted)';
-        } else {
-            title.textContent = 'DEALER WINS';
-            title.style.color = '#ff4444';
-            streak = 0;
-        }
+        setTimeout(() => {
+            if (data.result === 'win') {
+                title.textContent = 'YOU WIN';
+                title.style.color = '#55efc4';
+                streak++;
+            } else if (data.result === 'push') {
+                title.textContent = 'PUSH';
+                title.style.color = '#ffeaa7';
+            } else {
+                title.textContent = 'DEALER WINS';
+                title.style.color = '#ff7675';
+                streak = 0;
+            }
 
-        document.getElementById(elements.streakDisplay).textContent = streak;
-        msg.textContent = data.message || 'Game Over.';
-        overlay.style.display = 'flex';
+            document.getElementById(elements.streakDisplay).textContent = streak;
+            msg.textContent = data.message || 'Game Over.';
+            overlay.style.display = 'flex';
+        }, 1200); // Small delay to see final cards
     }
 
     function hideOverlay() {
