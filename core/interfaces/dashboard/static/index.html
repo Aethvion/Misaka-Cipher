@@ -49,6 +49,7 @@
     <link rel="stylesheet" href="/static/games/common/games-shared.css">
     <link rel="stylesheet" href="/static/games/logic-quest/logic-quest.css">
     <link rel="stylesheet" href="/static/games/blackjack/blackjack.css">
+    <link rel="stylesheet" href="/static/games/results/results.css">
     <style>
         /* Audio Studio Specific Feedback */
         #audio-panel .radio-toggle input:checked+span {
@@ -151,6 +152,8 @@
                                 class="tab-icon">🧩</span>Logic Quest</button>
                         <button class="nav-dropdown-item" data-subtab="game-blackjack"><span
                                 class="tab-icon">🃏</span>Blackjack</button>
+                        <button class="nav-dropdown-item" data-subtab="game-results"><span
+                                class="tab-icon">📊</span>Results</button>
                     </div>
                 </div>
 
@@ -1900,6 +1903,60 @@
             </div>
         </div>
 
+        <!-- Games Panel: Results -->
+        <div class="main-tab-panel" id="game-results-panel">
+            <div class="results-container">
+                <div class="game-header">
+                    <div class="game-header-left">
+                        <span class="game-icon">📊</span>
+                        <div class="game-title-block">
+                            <h2>Game Statistics</h2>
+                            <p class="game-subtitle">Your Lifetime Performance</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button id="results-refresh-btn" class="action-btn">Refresh Data</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span id="res-total-games" class="stat-val">0</span>
+                        <span class="stat-lbl">Total Games</span>
+                    </div>
+                    <div class="stat-card">
+                        <span id="res-win-rate" class="stat-val">0%</span>
+                        <span class="stat-lbl">Win Rate</span>
+                    </div>
+                    <div class="stat-card">
+                        <span id="res-total-wins" class="stat-val">0</span>
+                        <span class="stat-lbl">Wins</span>
+                    </div>
+                    <div class="stat-card">
+                        <span id="res-total-losses" class="stat-val">0</span>
+                        <span class="stat-lbl">Losses</span>
+                    </div>
+                </div>
+
+                <div class="games-table-container">
+                    <table class="games-table">
+                        <thead>
+                            <tr>
+                                <th>Session</th>
+                                <th>Game Type</th>
+                                <th>Result</th>
+                                <th>Score</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="res-history-body">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- Games Panel: Playing Cards -->
         <div class="main-tab-panel" id="game-blackjack-panel">
             <div class="game-layout" id="pc-container">
@@ -2120,6 +2177,7 @@
         <script src="/static/games/common/games-shared.js?v=1"></script>
         <script src="/static/games/logic-quest/logic-quest.js?v=1"></script>
         <script src="/static/games/blackjack/blackjack.js?v=1"></script>
+        <script src="/static/games/results/results.js?v=1"></script>
 </body>
 
 </html>

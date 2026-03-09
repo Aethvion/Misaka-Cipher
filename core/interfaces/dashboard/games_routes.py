@@ -197,8 +197,12 @@ async def create_game(req: NewGameRequest):
         "difficulty": req.difficulty
     }
     
-    # Merge AI fields (like player_hand, hint, etc.)
+    # Merge AI fields
     resp.update(parsed)
+    
+    # Save initial session state
+    session.save_history()
+    
     return resp
 
 
@@ -232,6 +236,7 @@ async def game_action(req: GameActionRequest):
         comment = parsed.get("comment", "")
 
         session.history.append({"input": input_val, "output": output})
+        session.save_history()
 
         return {
             "success": True,
@@ -257,8 +262,10 @@ async def game_action(req: GameActionRequest):
         action_type = parsed.get("action", "wrong")
 
         if action_type == "correct":
+            session.history.append({"action": "guess", "guess": guess, "result": "correct"})
             session.completed = True
             session.score = max(100 - (session.attempts * 8), 10)
+            session.save_history()
             return {
                 "success": True,
                 "action": "correct",
@@ -270,6 +277,8 @@ async def game_action(req: GameActionRequest):
                 "history": session.history,
             }
         else:
+            session.history.append({"action": "guess", "guess": guess, "result": "wrong"})
+            session.save_history()
             return {
                 "success": True,
                 "action": "wrong",
@@ -280,7 +289,6 @@ async def game_action(req: GameActionRequest):
             }
 
     # ── HINT ──────────────────────────────────────────────────────
-    # ── HINT ──────────────────────────────────────────────────────
     elif action == "hint":
         ai_msg = "Give me a hint please."
         result = await _call_ai(session, ai_msg, expected_action="hint")
@@ -289,6 +297,7 @@ async def game_action(req: GameActionRequest):
             return {"success": False, "error": result.get("error")}
 
         parsed = result["parsed"]
+        session.save_history()
         return {
             "success": True,
             "action": "hint",
@@ -306,6 +315,7 @@ async def game_action(req: GameActionRequest):
 
         parsed = result["parsed"]
         session.completed = True
+        session.save_history()
         return {
             "success": True,
             "action": "reveal",
@@ -322,6 +332,7 @@ async def game_action(req: GameActionRequest):
         
         parsed = result["parsed"]
         if parsed.get("completed"): session.completed = True
+        session.save_history()
         return {"success": True, **parsed}
 
     # ── STAY (Generic / Card Specific) ────────────────────────────
@@ -332,6 +343,7 @@ async def game_action(req: GameActionRequest):
         
         parsed = result["parsed"]
         session.completed = True
+        session.save_history()
         return {"success": True, **parsed}
 
     # ── CATCH-ALL FOR NEW GAMES ──────────────────────────────────
@@ -343,6 +355,7 @@ async def game_action(req: GameActionRequest):
         
         parsed = result["parsed"]
         if parsed.get("completed"): session.completed = True
+        session.save_history()
         return {"success": True, **parsed}
 
 
@@ -370,6 +383,80 @@ async def delete_session(session_id: str):
     manager = get_ai_game_manager()
     manager.delete_session(session_id)
     return {"success": True}
+
+
+@router.get("/stats")
+async def get_game_stats():
+    """Retrieve statistics and history for all games."""
+    try:
+        from pathlib import Path
+        root = Path(__file__).parent.parent.parent.parent
+        storage_dir = root / "data" / "memory" / "storage" / "games"
+        
+        stats = {
+            "total_games": 0,
+            "wins": 0,
+            "losses": 0,
+            "game_types": {}
+        }
+        recent_games = []
+
+        if storage_dir.exists():
+            for game_type_dir in storage_dir.iterdir():
+                if game_type_dir.is_dir():
+                    history_file = game_type_dir / "history.json"
+                    if history_file.exists():
+                        try:
+                            with open(history_file, 'r', encoding='utf-8') as f:
+                                history = json.load(f)
+                            
+                            type_stats = {"total": 0, "wins": 0, "losses": 0, "pushes": 0}
+                            for entry in history:
+                                if not entry.get("completed"): continue
+                                
+                                type_stats["total"] += 1
+                                stats["total_games"] += 1
+                                
+                                # Blackjack results
+                                result = entry.get("result")
+                                if result == "win":
+                                    type_stats["wins"] += 1
+                                    stats["wins"] += 1
+                                elif result == "loss":
+                                    type_stats["losses"] += 1
+                                    stats["losses"] += 1
+                                elif result == "push":
+                                    type_stats["pushes"] += 1
+                                
+                                # Logic Quest results
+                                if entry.get("game_type") == "logic-quest" and entry.get("completed"):
+                                    # Logic quest is always a win if completed
+                                    type_stats["wins"] += 1
+                                    stats["wins"] += 1
+
+                                recent_games.append({
+                                    "id": entry.get("session_id", "")[:8],
+                                    "type": entry.get("game_type", ""),
+                                    "result": result or ("win" if entry.get("completed") else "active"),
+                                    "score": entry.get("score", 0),
+                                    "date": entry.get("created_at") or entry.get("updated_at", "")
+                                })
+                            
+                            stats["game_types"][game_type_dir.name] = type_stats
+                        except:
+                            continue
+
+        # Sort recent games and take last 10
+        recent_games.sort(key=lambda x: x["date"], reverse=True)
+        recent_games = recent_games[:10]
+
+        return {
+            "success": True,
+            "stats": stats,
+            "recent": recent_games
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 @router.get("/models")

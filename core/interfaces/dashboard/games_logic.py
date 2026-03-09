@@ -61,6 +61,65 @@ class AIGameSession:
             "content": content
         }
 
+    def save_history(self):
+        """Persist the game session to memory storage."""
+        try:
+            from datetime import datetime
+            
+            root = Path(__file__).parent.parent.parent.parent
+            storage_dir = root / "data" / "memory" / "storage" / "games" / self.game_type
+            storage_dir.mkdir(parents=True, exist_ok=True)
+            
+            history_file = storage_dir / "history.json"
+            
+            all_history = []
+            if history_file.exists():
+                try:
+                    with open(history_file, 'r', encoding='utf-8') as f:
+                        all_history = json.load(f)
+                except:
+                    all_history = []
+
+            # Session data snapshot
+            session_data = {
+                "session_id": self.session_id,
+                "game_type": self.game_type,
+                "difficulty": self.difficulty,
+                "model": self.model,
+                "attempts": self.attempts,
+                "completed": self.completed,
+                "score": self.score,
+                "history": self.history,
+                "updated_at": datetime.now().isoformat()
+            }
+
+            # Update existing or append
+            found_idx = -1
+            for i, entry in enumerate(all_history):
+                if entry.get("session_id") == self.session_id:
+                    found_idx = i
+                    break
+            
+            if found_idx >= 0:
+                # Preserve created_at if it existed
+                if "created_at" in all_history[found_idx]:
+                    session_data["created_at"] = all_history[found_idx]["created_at"]
+                all_history[found_idx] = session_data
+            else:
+                session_data["created_at"] = session_data["updated_at"]
+                all_history.append(session_data)
+            
+            # Keep only last 200 sessions per game
+            if len(all_history) > 200:
+                all_history = all_history[-200:]
+
+            with open(history_file, 'w', encoding='utf-8') as f:
+                json.dump(all_history, f, indent=2)
+                
+            logger.debug(f"[{self.session_id[:8]}] Session history updated in {history_file}")
+        except Exception as e:
+            logger.error(f"Failed to save game history: {e}")
+
 class AIGameManager:
     def __init__(self):
         self.sessions: Dict[str, AIGameSession] = {}
