@@ -117,7 +117,7 @@ if not exist "data\config\model_registry.json" (
 :: --- 6. Launch -------------------------------------------------
 echo.
 echo [START] Launching Misaka Cipher...
-echo         Dashboard -^> http://localhost:8000
+echo         Dashboard -^> http://localhost:8080 (or your configured PORT)
 echo         Press CTRL+C to stop.
 echo.
 

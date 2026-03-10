@@ -132,7 +132,7 @@ python -m core.main          # web dashboard (default)
 python -m core.main --cli    # interactive CLI
 python -m core.main --test   # run verification tests
 ```
-Open [http://localhost:8000](http://localhost:8000) after launch.
+Open [http://localhost:8080](http://localhost:8080) (or your configured `PORT`) after launch.
 
 ---
 

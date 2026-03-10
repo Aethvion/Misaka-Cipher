@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Main Entry Point
 M.I.S.A.K.A.: Multitask Intelligence & Strategic Analysis Kernel Architecture
 
@@ -42,25 +42,27 @@ def is_dashboard_open():
     except Exception:
         return False
 
-def open_browser():
+def open_browser(port=8080):
     """Wait for server to start and then open browser if not already open."""
     time.sleep(1.0) # Slightly longer to ensure server bound
     if is_dashboard_open():
         logger.info("Dashboard is already open. Skipping browser launch.")
         return
         
-    logger.info("Automatically opening dashboard at http://localhost:8000")
-    webbrowser.open("http://localhost:8000")
+    logger.info(f"Automatically opening dashboard at http://localhost:{port}")
+    webbrowser.open(f"http://localhost:{port}")
 
 
 def run_web_server():
     """Launch web dashboard with orchestrator."""
+    port = int(os.environ.get("PORT", 8080))
+    
     print("\n" + "=" * 70)
     print("MISAKA CIPHER - NEXUS PORTAL (WEB)")
     print("=" * 70 + "\n")
     print("Launching web server...")
-    print("Dashboard will be available at: http://localhost:8000")
-    print("API documentation at: http://localhost:8000/docs\n")
+    print(f"Dashboard will be available at: http://localhost:{port}")
+    print(f"API documentation at: http://localhost:{port}/docs\n")
     print("Press CTRL+C to stop the server\n")
 
     # Auto-open browser if enabled in settings
@@ -68,7 +70,8 @@ def run_web_server():
         from core.workspace.preferences_manager import get_preferences_manager
         prefs = get_preferences_manager()
         if prefs.get('system.open_browser_on_startup', True):
-            threading.Thread(target=open_browser, daemon=True).start()
+            # Pass the port to open_browser
+            threading.Thread(target=open_browser, args=(port,), daemon=True).start()
     except Exception as e:
         logger.debug(f"Could not auto-start browser: {e}")
 
@@ -79,7 +82,7 @@ def run_web_server():
         uvicorn.run(
             app,
             host="0.0.0.0",
-            port=8000,
+            port=port,
             log_level="info"
         )
     except KeyboardInterrupt:
