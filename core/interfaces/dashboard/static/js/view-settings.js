@@ -9,6 +9,13 @@ window.prefs = {
         try {
             const response = await fetch('/api/preferences');
             this.data = await response.json();
+            
+            // On very first load, trigger update check logic async
+            if (!window._hasCheckedUpdates) {
+                window._hasCheckedUpdates = true;
+                setTimeout(() => runStartupUpdateCheck(), 2500);
+            }
+
             console.log('Loaded preferences:', this.data);
             return this.data;
         } catch (error) {
@@ -1934,3 +1941,110 @@ async function saveAutoRoutingProfile(type) {
         showNotification('Network error saving auto routing.', 'error');
     }
 }
+
+// ===== Version Control & Update Checker =====
+const REMOTE_VERSION_URL = "https://raw.githubusercontent.com/Aethvion/Misaka-Cipher/main/core/interfaces/dashboard/static/assets/system-status.json";
+
+async function checkForUpdates(manual = false) {
+    try {
+        // Fetch local version
+        const localResp = await fetch('/static/assets/system-status.json');
+        const localData = await localResp.json();
+        const localVersion = parseFloat(localData.system.version) || 0;
+        
+        // Show loading if manual
+        const btn = document.getElementById('settings-check-update-btn');
+        if (manual && btn) {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+            btn.disabled = true;
+        }
+
+        // Fetch remote version
+        const remoteResp = await fetch(REMOTE_VERSION_URL, { cache: "no-store" });
+        if (!remoteResp.ok) throw new Error("Failed to fetch remote status");
+        
+        const remoteData = await remoteResp.json();
+        const remoteVersion = parseFloat(remoteData.system.version) || 0;
+
+        const isUpdateAvailable = remoteVersion > localVersion;
+
+        if (manual && btn) {
+            btn.innerHTML = isUpdateAvailable ? '<i class="fas fa-download"></i> Update Available on GitHub' : '<i class="fas fa-check"></i> Up to Date';
+            btn.disabled = false;
+        }
+
+        // Render dot in sidebar if update available
+        const dot = document.getElementById('sidebar-update-dot');
+        if (dot) dot.style.display = isUpdateAvailable ? 'block' : 'none';
+
+        if (manual || document.getElementById('settings-version-banner')) {
+            renderVersionTabContent(localData, remoteData, isUpdateAvailable);
+        }
+
+        return isUpdateAvailable;
+    } catch (err) {
+        console.error("Update check failed:", err);
+        const btn = document.getElementById('settings-check-update-btn');
+        if (manual && btn) {
+            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Check Failed';
+            btn.disabled = false;
+        }
+        return false;
+    }
+}
+
+async function renderVersionTabContent(localData = null, remoteData = null, isUpdateAvailable = false) {
+    // If no data provided, fetch local to at least show current version
+    if (!localData) {
+        try {
+            const resp = await fetch('/static/assets/system-status.json');
+            localData = await resp.json();
+        } catch (e) {
+            console.error("Failed to load local version data");
+            return;
+        }
+    }
+
+    const versionBanner = document.getElementById('settings-version-banner');
+    const changelogList = document.getElementById('settings-changelog-list');
+    
+    if (versionBanner) {
+        let html = `
+            <h3>Misaka Cipher v${localData.system.version}</h3>
+            <p>Last Updated: ${localData.system.last_sync || 'Unknown'}</p>
+        `;
+        if (isUpdateAvailable && remoteData) {
+            html += `
+                <div style="margin-top: 15px; padding: 10px; background: rgba(85, 239, 196, 0.1); border-left: 3px solid #55efc4; border-radius: 4px;">
+                    <strong style="color: #55efc4;">Update Available!</strong>
+                    <br>Version ${remoteData.system.version} is available on <a href="https://github.com/Aethvion/Misaka-Cipher" target="_blank" style="color:var(--text-primary);">GitHub</a>.
+                </div>
+            `;
+        } else if (remoteData) {
+            html += `<p style="color:var(--text-secondary); margin-top:10px;"><i class="fas fa-check-circle" style="color:#55efc4;"></i> You are running the latest version.</p>`;
+        }
+        versionBanner.innerHTML = html;
+    }
+
+    if (changelogList && localData.system.changelog) {
+        changelogList.innerHTML = localData.system.changelog.map(item => `<li>${item}</li>`).join('');
+    }
+}
+
+function runStartupUpdateCheck() {
+    const lastCheck = localStorage.getItem('last_update_check_time');
+    const now = new Date().getTime();
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+
+    if (!lastCheck || (now - parseInt(lastCheck)) > ONE_DAY) {
+        console.log("Running daily update check...");
+        localStorage.setItem('last_update_check_time', now.toString());
+        checkForUpdates(false);
+    } else {
+        // Silent check just to populate local UI states if wanted, but skipping network is better.
+        // We'll just fetch local to populate the Version tab.
+        renderVersionTabContent();
+    }
+}
+window.checkForUpdates = checkForUpdates;
+

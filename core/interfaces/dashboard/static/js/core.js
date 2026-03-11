@@ -105,6 +105,18 @@ async function pollStartupStatus() {
 
     if (!splash) return;
 
+    // Fetch version independently for the splash screen
+    const splashVersion = document.getElementById('splash-version');
+    if (splashVersion) {
+        fetch('/static/assets/system-status.json')
+            .then(r => r.json())
+            .then(data => {
+                if (data.system) {
+                    splashVersion.textContent = `BUILD v${data.system.version}`;
+                }
+            }).catch(e => console.warn("Could not load version for splash:", e));
+    }
+
     return new Promise((resolve) => {
         const checkStatus = async () => {
             try {
