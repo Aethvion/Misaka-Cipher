@@ -1974,7 +1974,7 @@ async function checkForUpdates(manual = false) {
         }
 
         // Render dot in sidebar if update available
-        const dot = document.getElementById('sidebar-update-dot');
+        const dot = document.getElementById('sidebar-version-dot');
         if (dot) dot.style.display = isUpdateAvailable ? 'block' : 'none';
 
         if (manual || document.getElementById('settings-version-banner')) {
@@ -2026,7 +2026,9 @@ async function renderVersionTabContent(localData = null, remoteData = null, isUp
         versionBanner.innerHTML = html;
     }
 
-    if (changelogList && localData.system.changelog) {
+    if (changelogList && remoteData && remoteData.system.changelog) {
+        changelogList.innerHTML = remoteData.system.changelog.map(item => `<li>${item}</li>`).join('');
+    } else if (changelogList && localData.system.changelog) {
         changelogList.innerHTML = localData.system.changelog.map(item => `<li>${item}</li>`).join('');
     }
 }
@@ -2047,4 +2049,13 @@ function runStartupUpdateCheck() {
     }
 }
 window.checkForUpdates = checkForUpdates;
+
+// Initialize Manual Update Button
+document.addEventListener('click', (e) => {
+    if (e.target && e.target.id === 'settings-check-update-btn') {
+        checkForUpdates(true);
+    } else if (e.target && e.target.closest('#settings-check-update-btn')) {
+        checkForUpdates(true);
+    }
+});
 

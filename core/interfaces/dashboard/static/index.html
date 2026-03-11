@@ -242,6 +242,14 @@
                 <button class="main-tab" data-maintab="settings" data-mode="both"><span class="tab-icon">⚙️</span><span
                         class="tab-label">Settings</span></button>
             </div>
+            
+            <div class="sidebar-bottom">
+                <button class="main-tab" data-maintab="version" data-mode="both" title="Version Control">
+                    <span class="tab-icon">🔖</span>
+                    <span class="tab-label">Version</span>
+                    <div id="sidebar-version-dot" style="display:none; width:8px; height:8px; background:#ff7675; border-radius:50%; margin-left:auto;"></div>
+                </button>
+            </div>
         </aside>
 
         <!-- Main Content Area -->
@@ -1450,10 +1458,6 @@
                         <button class="settings-nav-item" data-settingsubtab="modules">
                             <i class="fas fa-cubes"></i> Modules
                         </button>
-                        <button class="settings-nav-item" data-settingsubtab="version" style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.05);">
-                            <i class="fas fa-code-branch"></i> Version
-                            <div id="sidebar-update-dot" style="display:none; width:8px; height:8px; background:#ff7675; border-radius:50%; margin-left:auto;"></div>
-                        </button>
                     </div>
 
                     <!-- Settings Content Pane -->
@@ -1901,34 +1905,38 @@
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Panel: Version Control -->
-                        <div class="settings-panel" id="settings-panel-version">
-                            <div class="setting-card" id="card-version">
-                                <div class="card-header">
-                                    <div class="header-title">
-                                        <i class="fas fa-code-branch"></i>
-                                        <span>System Version</span>
-                                    </div>
-                                    <button id="settings-check-update-btn" class="action-btn xs-btn secondary" style="min-width: 140px;">
-                                        <i class="fas fa-sync"></i> Check for Updates
-                                    </button>
-                                </div>
-                                <div class="card-content">
-                                    <div id="settings-version-banner" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border);">
-                                        <div class="loading-placeholder">Loading version data...</div>
-                                    </div>
-                                    
-                                    <h3>Changelog</h3>
-                                    <ul id="settings-changelog-list" style="margin-top: 10px; padding-left: 20px; color: var(--text-secondary); line-height: 1.6;">
-                                        <li>Loading...</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
                     </div> <!-- closes settings-content-wrapper -->
                 </div> <!-- closes settings-dashboard -->
             </div> <!-- closes main-tab-panel (settings) -->
+
+            <!-- Version Tab -->
+            <div class="main-tab-panel" id="version-panel">
+                <div class="panel-header">
+                    <h2>Version Control</h2>
+                </div>
+                <div class="setting-card" id="card-version" style="max-width: 800px; margin: 0 auto;">
+                    <div class="card-header">
+                        <div class="header-title">
+                            <i class="fas fa-code-branch"></i>
+                            <span>System Build & Changelog</span>
+                        </div>
+                        <button id="settings-check-update-btn" class="action-btn xs-btn secondary" style="min-width: 140px;">
+                            <i class="fas fa-sync"></i> Check for Updates
+                        </button>
+                    </div>
+                    <div class="card-content">
+                        <div id="settings-version-banner" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border);">
+                            <div class="loading-placeholder">Loading version data...</div>
+                        </div>
+                        
+                        <h3>Remote Changelog (GitHub)</h3>
+                        <p class="section-hint">Recent improvements and fixes from the main repository.</p>
+                        <ul id="settings-changelog-list" style="margin-top: 10px; padding-left: 20px; color: var(--text-secondary); line-height: 1.6;">
+                            <li>Checking for remote changes...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
 
             <!-- Games Panel: Logic Quest -->
             <div class="main-tab-panel" id="game-logic-quest-panel">
