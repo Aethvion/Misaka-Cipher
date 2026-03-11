@@ -9,34 +9,46 @@
             {
                 "version": "3",
                 "date": "2026-03-11",
-                "changes": [
+                "added": [
                     "Checking for updates on startup.",
                     "Complete integration of Nexus Bridge for bidirectional Discord messaging.",
-                    "Added Discord Worker settings panel (Start/Stop controls, secure Main User ID binding).",
-                    "Unified Identity & Memory System: base personality and chat histories persist cross-platform.",
-                    "Upgraded Master Orchestrator with native Persona chat loops and automatic memory extraction.",
-                    "Strict Discord Security enforced: Tools and history mirroring allowed only in private DMs with Main User.",
-                    "Discord Tool Output support added (e.g., executing screen capture and uploading image files to DMs)."
+                    "Discord Worker settings panel (Start/Stop controls, secure Main User ID binding).",
+                    "Discord Tool Output support (e.g., executing screen capture and uploading image files to DMs)."
+                ],
+                "improved": [
+                    "Unified Identity & Memory System: base personality and chat histories persist cross-platform."
+                ],
+                "changed": [
+                    "Strict Discord Security enforced: Tools and history mirroring allowed only in private DMs with Main User."
+                ],
+                "upgraded": [
+                    "Master Orchestrator with native Persona chat loops and automatic memory extraction."
                 ]
             },
             {
                 "version": "2",
                 "date": "2026-03-11",
-                "changes": [
+                "added": [
+                    "Local version highlighting and status card."
+                ],
+                "improved": [
                     "Enhanced Version Tab with structured, grouped changelogs.",
-                    "Added local version highlighting and status card.",
-                    "Improved release history visibility."
+                    "Release history visibility."
                 ]
             },
             {
                 "version": "1",
                 "date": "2026-03-11",
-                "changes": [
+                "added": [
                     "Started keeping a detailed changelog.",
-                    "Implemented Instant Thread Creation & Auto-Titling for the Chat interface.",
-                    "Added Token Savers (manual start overlays) for Logic Quest and Blackjack.",
-                    "Refactored Version Tab into a standalone, bottom-pinned sidebar item.",
+                    "Instant Thread Creation & Auto-Titling for the Chat interface.",
+                    "Token Savers (manual start overlays) for Logic Quest and Blackjack."
+                ],
+                "improved": [
                     "Optimized installation dependencies (replaced winsdk with winrt)."
+                ],
+                "changed": [
+                    "Refactored Version Tab into a standalone, bottom-pinned sidebar item."
                 ]
             }
         ]

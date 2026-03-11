@@ -2067,17 +2067,48 @@ async function renderVersionTabContent(localData = null, remoteData = null, isUp
                 const highlightStyle = isCurrent ? 'border-left: 3px solid var(--primary); background: rgba(0, 217, 255, 0.03);' : '';
                 const currentBadge = isCurrent ? '<span style="background: var(--primary); color: #000; font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; font-weight: bold; margin-left: 10px;">INSTALLED</span>' : '';
 
+                // Define categories in expected order
+                const categories = [
+                    { key: 'added', label: 'Added', color: '#55efc4' },
+                    { key: 'improved', label: 'Improved', color: '#74b9ff' },
+                    { key: 'changed', label: 'Changed', color: '#a29bfe' },
+                    { key: 'fixed', label: 'Fixed', color: '#fdcb6e' },
+                    { key: 'upgraded', label: 'Upgraded', color: '#00cec9' },
+                    { key: 'removed', label: 'Removed', color: '#ff7675' }
+                ];
+                
+                let detailsHtml = '';
+                
+                // Backwards compatibility for flat "changes" array
+                if (entry.changes && Array.isArray(entry.changes) && entry.changes.length > 0) {
+                     detailsHtml += `<ul style="margin: 0 0 10px 0; padding-left: 20px; color: var(--text-secondary);">
+                        ${entry.changes.map(c => `<li style="margin-bottom: 5px;">${c}</li>`).join('')}
+                     </ul>`;
+                }
+
+                // Render categorized lists
+                categories.forEach(cat => {
+                    if (entry[cat.key] && Array.isArray(entry[cat.key]) && entry[cat.key].length > 0) {
+                        detailsHtml += `
+                            <div style="margin-bottom: 10px;">
+                                <span style="display: inline-block; font-size: 0.65rem; font-weight: bold; text-transform: uppercase; color: ${cat.color}; border: 1px solid ${cat.color}40; background: ${cat.color}15; padding: 2px 6px; border-radius: 4px; margin-bottom: 6px; letter-spacing: 0.5px;">${cat.label}</span>
+                                <ul style="margin: 0 0 6px 0; padding-left: 20px; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                                    ${entry[cat.key].map(item => `<li style="margin-bottom: 4px;">${item}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }
+                });
+
                 return `
                     <div style="margin-bottom: 25px; padding: 15px; border-radius: 8px; border: 1px solid var(--border); ${highlightStyle}">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <div style="font-weight: bold; color: var(--text-primary); font-size: 1.1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                            <div style="font-weight: bold; color: var(--text-primary); font-size: 1.1rem; display: flex; align-items: center;">
                                 Version ${entry.version} ${currentBadge}
                             </div>
                             <div style="font-size: 0.8rem; color: var(--text-secondary);">${entry.date || ''}</div>
                         </div>
-                        <ul style="margin: 0; padding-left: 20px; color: var(--text-secondary);">
-                            ${entry.changes.map(change => `<li style="margin-bottom: 5px;">${change}</li>`).join('')}
-                        </ul>
+                        ${detailsHtml}
                     </div>
                 `;
             }).join('');
