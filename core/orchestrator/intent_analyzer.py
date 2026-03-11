@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Intent Analyzer
 Classifies user messages into actionable intents
 """
@@ -60,7 +60,7 @@ class IntentAnalyzer:
         self.nexus = nexus
         logger.info("Intent Analyzer initialized")
     
-    def analyze(self, user_message: str, trace_id: str = None, force_chat: bool = False) -> IntentAnalysis:
+    def analyze(self, user_message: str, trace_id: str = None, force_chat: bool = False, source: str = "unknown") -> IntentAnalysis:
         """
         Analyze user message to determine intent.
         
@@ -68,6 +68,7 @@ class IntentAnalyzer:
             user_message: User's input message
             trace_id: Optional trace ID for context
             force_chat: If True, bypass analysis and force CHAT intent
+            source: Source of the request (dashboard, discord, etc.)
             
         Returns:
             IntentAnalysis with classified intent and parameters
@@ -91,7 +92,9 @@ class IntentAnalyzer:
             prompt=analysis_prompt,
             request_type="generation",
             temperature=0.3,  # Low temperature for consistent classification
-            max_tokens=500
+            max_tokens=500,
+            trace_id=trace_id,
+            metadata={"source": source}
         )
         
         response = self.nexus.route_request(request)

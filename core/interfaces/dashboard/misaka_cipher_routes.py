@@ -12,6 +12,7 @@ import re
 import psutil
 HAS_PSUTIL = True
 from core.nexus import nexus_manager
+from core.memory.history_manager import HistoryManager
 import mimetypes
 import asyncio
 
@@ -624,19 +625,18 @@ It could be a question, an observation, or a light comment. Keep it short and fe
         history_context = ""
         prefs = get_preferences_manager()
         try:
-            day_dir = HISTORY_DIR / month_str
-            day_file = day_dir / f"chat_{day_str}.json"
-            if day_file.exists():
-                with open(day_file, "r", encoding="utf-8") as df:
-                    day_history = json.load(df)
-                    # Get last N messages based on UI context limit, default fallback to 8
-                    context_limit = prefs.get('misakacipher', {}).get('context_limit', 8)
-                    recent = day_history[-context_limit:] if context_limit > 0 else []
+            # Get last N messages based on UI context limit, default fallback to 8
+            context_limit = prefs.get('misakacipher', {}).get('context_limit', 8)
+            if context_limit > 0:
+                history = HistoryManager.get_history(0, 1) # Get today's history
+                if history and history[0]["messages"]:
+                    recent = history[0]["messages"][-context_limit:]
                     history_lines = []
                     for h in recent:
                         role = "Misaka" if h["role"] == "assistant" else "User"
                         clean_content = h.get('content', '').replace('[msg_break]', ' ')
                         history_lines.append(f"{role}: {clean_content}")
+                    
                     if history_lines:
                         history_context = "RECENT CONVERSATION HISTORY:\n" + "\n".join(history_lines) + "\n\n"
         except Exception as he:
@@ -1319,38 +1319,29 @@ CRITICAL: Never output raw JSON or technical jargon unless specifically requeste
 
             # Persistence
             try:
-                day_dir = HISTORY_DIR / month_str
-                day_dir.mkdir(parents=True, exist_ok=True)
-                day_file = day_dir / f"chat_{day_str}.json"
-                
-                day_history = []
-                if day_file.exists():
-                    with open(day_file, "r", encoding="utf-8") as df:
-                        day_history = json.load(df)
-                
-                user_history_entry = {"role": "user", "content": user_message, "timestamp": timestamp}
-                if request.attached_files:
-                    user_history_entry["attachments"] = request.attached_files
-                    
-                day_history.append(user_history_entry)
-                assistant_entry = {
-                    "role": "assistant", 
-                    "content": full_content_for_history, 
-                    "timestamp": timestamp,
-                    "mood": mood,
-                    "expression": expression
-                }
-                if captured_attachments:
-                    assistant_entry["attachments"] = captured_attachments
-                
-                day_history.append(assistant_entry)
-                
-                with open(day_file, "w", encoding="utf-8") as df:
-                    json.dump(day_history, df, indent=4)
-                    
+                HistoryManager.log_message(
+                    role="user",
+                    content=user_message,
+                    platform="dashboard",
+                    timestamp=timestamp,
+                    attachments=request.attached_files
+                )
+
+                HistoryManager.log_message(
+                    role="assistant",
+                    content=full_content_for_history,
+                    platform="dashboard",
+                    timestamp=timestamp,
+                    attachments=captured_attachments,
+                    metadata={
+                        "mood": mood,
+                        "expression": expression
+                    }
+                )
+
                 # Synthesis
                 SYNTHESIS_THRESHOLD = 10
-                msg_count = _get_total_message_count(day_file)
+                msg_count = HistoryManager.get_total_message_count()
                 if msg_count % SYNTHESIS_THRESHOLD == 0 and msg_count > 0:
                     dynamic_memory = await _run_memory_synthesis(dynamic_memory, base_info, model)
                     synthesis_ran = True

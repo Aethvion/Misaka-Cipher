@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Master Orchestrator
 Autonomous coordinator for Factory, Forge, and Memory Tier
 """
@@ -100,7 +100,7 @@ class MasterOrchestrator:
         """Set callback for real-time step monitoring."""
         self.step_callback = callback
     
-    def process_message(self, user_message: str, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None) -> ExecutionResult:
+    def process_message(self, user_message: str, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, source: str = "unknown") -> ExecutionResult:
         """
         Process user message end-to-end.
         
@@ -135,7 +135,7 @@ class MasterOrchestrator:
             # Step 1: Analyze intent
             force_chat = (mode == "chat_only")
             # Pass model_id via kwargs if needed, but IntentAnalyzer mostly uses 'flash' or default
-            intent = self.intent_analyzer.analyze(user_message, trace_id, force_chat=force_chat)
+            intent = self.intent_analyzer.analyze(user_message, trace_id, force_chat=force_chat, source=source)
             logger.info(f"[{trace_id}] Intent: {intent.intent_type.value} (confidence: {intent.confidence:.2f})")
             
             if self.step_callback:

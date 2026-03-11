@@ -5,6 +5,7 @@ Persistent intelligence and knowledge management
 
 from .memory_spec import EpisodicMemory, EpisodicEntry, CoreInsight, generate_memory_id, generate_insight_id
 from .episodic_memory import EpisodicMemoryStore, get_episodic_memory
+from .history_manager import HistoryManager
 from .knowledge_graph import KnowledgeGraph, get_knowledge_graph
 from .summarization import Heartbeat, get_heartbeat
 

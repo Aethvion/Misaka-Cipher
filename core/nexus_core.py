@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Nexus Core
 Central routing, logging, and orchestration layer
 
@@ -143,6 +143,7 @@ class NexusCore:
         else:
             trace_id = self.trace_manager.start_trace(metadata={
                 'request_type': request.request_type,
+                'source': request.metadata.get('source', 'unknown') if request.metadata else 'unknown',
                 'timestamp': datetime.now().isoformat()
             })
 
@@ -187,6 +188,11 @@ class NexusCore:
             if routing_decision == RoutingDecision.EXTERNAL:
                 logger.info(f"[{trace_id}] Routing to external provider")
 
+                # Extract source from metadata if present
+                source = "unknown"
+                if request.metadata and 'source' in request.metadata:
+                    source = request.metadata['source']
+
                 provider_response = self.provider_manager.call_with_failover(
                     prompt=request.prompt,
                     trace_id=trace_id,
@@ -195,6 +201,7 @@ class NexusCore:
                     preferred_provider=request.preferred_provider,
                     model=request.model,
                     request_type=request.request_type,
+                    source=source,
                     images=request.images
                 )
 

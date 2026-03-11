@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Provider Manager
 Orchestrates multi-provider failover and routing
 """
@@ -13,6 +13,7 @@ from .openai_provider import OpenAIProvider
 from .grok_provider import GrokProvider
 from .anthropic_provider import AnthropicProvider
 from core.utils.logger import get_logger
+from core.workspace.usage_tracker import get_usage_tracker
 
 logger = get_logger(__name__)
 
@@ -537,6 +538,7 @@ class ProviderManager:
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
+        source: str = "chat",
         **kwargs
     ) -> Iterator[str]:
         """
@@ -559,6 +561,7 @@ class ProviderManager:
             try:
                 # We need to know if the provider succeeded to skip others
                 success = False
+                full_response = ""
                 for chunk in provider.stream(
                     prompt=prompt,
                     trace_id=trace_id,
@@ -568,9 +571,24 @@ class ProviderManager:
                     **kwargs
                 ):
                     success = True
+                    full_response += chunk
                     yield chunk
                 
                 if success:
+                    # Log usage for the completed stream
+                    try:
+                        tracker = get_usage_tracker()
+                        tracker.log_api_call(
+                            provider=target_provider_name,
+                            model=model_id,
+                            prompt=prompt,
+                            response_content=full_response,
+                            trace_id=trace_id,
+                            success=True,
+                            source=source
+                        )
+                    except Exception as usage_err:
+                        logger.debug(f"[{trace_id}] Stream usage tracking failed: {usage_err}")
                     return
                 
             except Exception as e:

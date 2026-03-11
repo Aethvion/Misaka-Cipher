@@ -220,11 +220,15 @@ function renderDayHistory(day, isInitial) {
         const parts = msg.content.split(/\[msg_break\]/i);
         parts.forEach((part, index) => {
             if (part.trim()) {
-                // Only attach timestamp to the last bubble of a multi-break message if possible, 
-                // or just attach to all. For now, attach to all for simplicity or just the last one.
                 const isLastPart = index === parts.length - 1;
                 const atts = isLastPart ? msg.attachments : null;
-                const msgDiv = createMessageElement(msg.role, part.trim(), isLastPart ? msg.timestamp : null, atts);
+                const msgDiv = createMessageElement(
+                    msg.role, 
+                    part.trim(), 
+                    isLastPart ? msg.timestamp : null, 
+                    atts,
+                    msg.platform // Pass platform for Discord badges
+                );
                 dayBlock.appendChild(msgDiv);
             }
         });
@@ -242,9 +246,17 @@ function renderDayHistory(day, isInitial) {
     }
 }
 
-function createMessageElement(role, text, timestamp = null, attachments = null) {
+function createMessageElement(role, text, timestamp = null, attachments = null, platform = 'dashboard') {
     const div = document.createElement('div');
-    div.className = `chat-message ${role}`;
+    const isDiscord = platform === 'discord' || platform === 'Discord';
+    div.className = `chat-message ${role}${isDiscord ? ' from-discord' : ''}`;
+
+    if (isDiscord) {
+        const badge = document.createElement('div');
+        badge.className = 'discord-badge';
+        badge.innerHTML = `<i class="fab fa-discord"></i> Discord`;
+        div.appendChild(badge);
+    }
 
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';

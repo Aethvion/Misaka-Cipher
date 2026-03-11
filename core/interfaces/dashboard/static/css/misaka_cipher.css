@@ -630,3 +630,39 @@
         transform: rotate(360deg);
     }
 }
+
+/* ===== DISCORD MIRRORING ===== */
+.chat-message.from-discord .message-bubble {
+    border-color: rgba(114, 137, 218, 0.4);
+    box-shadow: 0 0 15px rgba(114, 137, 218, 0.15);
+    background: linear-gradient(to right, rgba(114, 137, 218, 0.05), rgba(0, 0, 0, 0.6));
+}
+
+.discord-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #7289da;
+    background: rgba(114, 137, 218, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(114, 137, 218, 0.3);
+    margin-bottom: 4px;
+    width: fit-content;
+}
+
+.chat-message.user.from-discord .discord-badge {
+    align-self: flex-end;
+}
+
+.chat-message.assistant.from-discord .discord-badge {
+    align-self: flex-start;
+}
+
+.discord-badge i {
+    font-size: 0.7rem;
+}

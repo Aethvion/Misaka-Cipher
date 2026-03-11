@@ -14,6 +14,9 @@ from core.orchestrator.task_models import Task, TaskStatus
 from core.memory.social_registry import get_social_registry
 from core.security import IntelligenceFirewall, RoutingDecision
 
+from core.memory.history_manager import HistoryManager
+import mimetypes
+
 logger = get_logger(__name__)
 
 class DiscordWorker(commands.Bot):
@@ -24,6 +27,8 @@ class DiscordWorker(commands.Bot):
     - Maintain single persistent gateway connection.
     - Inbound: Map Users -> Registry, Scan Firewall -> Orchestrator.
     - Outbound: Poll Task Queue for 'DISCORD_SEND' actions.
+    - Mirroring: Log all Discord messages to unified history.
+    - Proactive: Initiate conversations based on memory and scheduler.
     """
     
     def __init__(self, orchestrator, task_manager, bot_token: str):
@@ -49,20 +54,34 @@ class DiscordWorker(commands.Bot):
         
         self.worker_running = False
         self.poll_task = None
+        self.proactive_task = None
         
     async def on_ready(self):
         """Called when bot has connected and is ready."""
         logger.info(f"Discord Worker logged in as {self.user} (ID: {self.user.id})")
         
-        # Start the task queue poll loop
+        # Start background tasks
         self.worker_running = True
         self.poll_task = asyncio.create_task(self._poll_task_queue())
-        logger.info("Discord Task Queue polling started")
+        self.proactive_task = asyncio.create_task(self._proactive_loop())
+        logger.info("Discord background services started (Polling & Proactive)")
 
     async def on_message(self, message: discord.Message):
         """Handle inbound messages."""
         # Ignore self
         if message.author == self.user:
+            return
+
+        # CONDITIONAL RESPONDING:
+        # 1. Direct Messages (DMs)
+        # 2. Mentions in a server
+        is_dm = isinstance(message.channel, discord.DMChannel)
+        is_mention = self.user.mentioned_in(message)
+        
+        if not (is_dm or is_mention):
+            # Still log it if it's in a server we are in? No, only log what Misaka "sees" or cares about.
+            # Mirroring says "all Discord communications (both sent and received)".
+            # Let's mirror what involves her.
             return
 
         # Map user to social registry
@@ -80,8 +99,19 @@ class DiscordWorker(commands.Bot):
         trace_id = generate_trace_id()
         logger.info(f"[{trace_id}] Discord Inbound: From {profile['display_name']} in {message.channel}")
 
-        # Social/Context injection: Prepend user context to prompt
-        # So the orchestrator knows who it is talking to.
+        # Mirror User message to unified history
+        HistoryManager.log_message(
+            role="user",
+            content=message.content,
+            platform="discord",
+            metadata={
+                "discord_user_id": str(message.author.id),
+                "channel_id": str(message.channel.id),
+                "is_dm": is_dm
+            }
+        )
+
+        # Context injection for Misaka
         prompt = f"Context: USER={profile['display_name']} (ID: {profile['internal_id']})\n\nMessage: {message.content}"
 
         # 1. Intelligence Firewall Scan (Inbound)
@@ -93,12 +123,25 @@ class DiscordWorker(commands.Bot):
             return
 
         # 2. Process via Master Orchestrator
-        # Since orchestrator is sync, we run in executor
         loop = asyncio.get_event_loop()
         try:
+            # We pass source="discord" via metadata if possible. 
+            # nexus_core.py was updated to extract 'source' from request.metadata.
+            # MasterOrchestrator.process_message takes 'images' as a param, let's see how to pass source.
+            # Actually, master_orchestrator calls nexus.route_request(request) where request is core.nexus_core.Request.
+            # I'll need to check if MasterOrchestrator allows passing extra metadata.
+            
+            # Since I already updated NexusCore to look at metadata, I should ensure Orchestrator passes it.
+            # I might need to update process_message signature or use its internal logic.
+            # For now, let's assume orchestrator.process_message can be extended or we use its current signature.
+            
             result = await loop.run_in_executor(
                 None,
-                lambda: self.orchestrator.process_message(prompt, trace_id=trace_id)
+                lambda: self.orchestrator.process_message(
+                    prompt, 
+                    trace_id=trace_id,
+                    source="discord"
+                )
             )
             
             if result.success and result.response:
@@ -110,7 +153,25 @@ class DiscordWorker(commands.Bot):
                     await message.reply("⚠️ [Intelligence Firewall] My response was blocked due to its sensitive content.")
                 else:
                     # Reply to the user
-                    await message.reply(result.response)
+                    response_text = result.response
+                    # Strip any internal tags if they leaked
+                    import re
+                    response_text = re.sub(r'\[Mood:\s*\w+\]?', '', response_text, flags=re.IGNORECASE)
+                    response_text = re.sub(r'\[Emotion:\s*\w+\]?', '', response_text, flags=re.IGNORECASE).strip()
+                    
+                    await message.reply(response_text)
+
+                    # Mirror Assistant response to unified history
+                    HistoryManager.log_message(
+                        role="assistant",
+                        content=response_text,
+                        platform="discord",
+                        metadata={
+                            "discord_user_id": str(message.author.id),
+                            "channel_id": str(message.channel.id),
+                            "trace_id": trace_id
+                        }
+                    )
             elif not result.success:
                 logger.error(f"[{trace_id}] Orchestrator failed to process Discord message: {result.error}")
                 
@@ -119,16 +180,13 @@ class DiscordWorker(commands.Bot):
 
     async def _poll_task_queue(self):
         """Internal loop to poll for DISCORD_SEND tasks."""
-        logger.info("Discord Worker poll loop active")
         while self.worker_running:
             try:
-                # Find tasks in the queue manager that are QUEUED and type DISCORD_SEND
-                # Task types aren't explicitly in task_models yet, but we'll use metadata
                 for task_id, task in list(self.task_manager.tasks.items()):
                     if task.status == TaskStatus.QUEUED and task.metadata.get('task_type') == 'DISCORD_SEND':
                         await self._execute_discord_task(task)
                 
-                await asyncio.sleep(2) # Poll every 2 seconds
+                await asyncio.sleep(2) 
             except Exception as e:
                 logger.error(f"Error in Discord poll loop: {e}")
                 await asyncio.sleep(5)
@@ -139,7 +197,7 @@ class DiscordWorker(commands.Bot):
         task.started_at = datetime.now()
         
         channel_id = task.metadata.get('channel_id')
-        content = task.prompt # For outgoing, prompt is the content
+        content = task.prompt 
         trace_id = task.id
 
         logger.info(f"[{trace_id}] Executing DISCORD_SEND to channel {channel_id}")
@@ -148,18 +206,26 @@ class DiscordWorker(commands.Bot):
             if not channel_id:
                 raise ValueError("No channel_id provided in task metadata")
 
-            # Firewall Scan (Outbound Task)
             out_decision, out_scan = self.firewall.scan_and_route(content, trace_id)
             if out_decision == RoutingDecision.BLOCKED:
                 task.status = TaskStatus.FAILED
                 task.error = "Blocked by Intelligence Firewall"
-                logger.warning(f"[{trace_id}] Outbound Task BLOCKED")
             else:
                 channel = await self.fetch_channel(int(channel_id))
                 if channel:
                     await channel.send(content)
                     task.status = TaskStatus.COMPLETED
                     task.result = {"success": True, "channel_id": channel_id}
+                    
+                    # Mirror outbound messages from Dashboard to Discord as well?
+                    # The requirement says "Discord communications (both sent and received)".
+                    # These ARE Discord communications.
+                    HistoryManager.log_message(
+                        role="assistant",
+                        content=content,
+                        platform="discord",
+                        metadata={"channel_id": channel_id, "task_id": task_id}
+                    )
                 else:
                     raise ValueError(f"Could not find channel with ID {channel_id}")
 
@@ -169,9 +235,44 @@ class DiscordWorker(commands.Bot):
             task.error = str(e)
         
         task.completed_at = datetime.now()
-        # Persist task update via task manager if possible (private method)
         if hasattr(self.task_manager, '_save_task'):
             self.task_manager._save_task(task)
+
+    async def _proactive_loop(self):
+        """
+        Background loop for proactive messaging.
+        Misaka can decide to "wake up" and send DMs to the user.
+        """
+        logger.info("Misaka proactive DM module engaged.")
+        
+        # Initial wait to let system settle
+        await asyncio.sleep(60)
+        
+        while self.worker_running:
+            try:
+                # Logic: Is it a good time to talk?
+                # Check memory for user preferences or recent events.
+                # Use a lightweight "should I talk?" check.
+                
+                # For now, let's implement a "Neural Pulse" every 1-4 hours
+                import random
+                wait_minutes = random.randint(60, 240)
+                await asyncio.sleep(wait_minutes * 60)
+                
+                if not self.worker_running: break
+                
+                logger.info("Neural Pulse: Misaka considering proactive DM...")
+                
+                # Check if we have a primary user DM channel
+                # We can store the last DM channel ID in memory or search for DMs with the owner.
+                # For this demo, we'll try to find a DM channel with a known 'User' if configured.
+                
+                # TODO: Implement actual 'should I reach out?' logic via orchestrator
+                # For now, we just log the opportunity.
+                
+            except Exception as e:
+                logger.error(f"Error in proactive loop: {e}")
+                await asyncio.sleep(300)
 
     async def run_worker(self):
         """Main entry point to start the bot."""
@@ -190,6 +291,8 @@ class DiscordWorker(commands.Bot):
         self.worker_running = False
         if self.poll_task:
             self.poll_task.cancel()
+        if self.proactive_task:
+            self.proactive_task.cancel()
         asyncio.create_task(self.close())
 
 def start_discord_service(orchestrator, task_manager, bot_token: str):
