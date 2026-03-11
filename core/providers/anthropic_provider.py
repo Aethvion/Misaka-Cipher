@@ -71,7 +71,7 @@ class AnthropicProvider(BaseProvider):
                 "model": active_model,
                 "messages": messages,
                 "temperature": temperature,
-                "max_tokens": max_tokens or 8096,
+                "max_tokens": max_tokens or 8192,
             }
             if system_prompt:
                 create_kwargs["system"] = system_prompt
@@ -133,7 +133,7 @@ class AnthropicProvider(BaseProvider):
                 "model": active_model,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": temperature,
-                "max_tokens": max_tokens or 8096,
+                "max_tokens": max_tokens or 8192,
             }
             if system_prompt:
                 create_kwargs["system"] = system_prompt

@@ -531,7 +531,7 @@ async function populateVoiceModelSelector(voiceSettings) {
                 if (!config.models) continue;
                 for (const [modelKey, info] of Object.entries(config.models)) {
                     const caps = (info.capabilities || []).map(c => c.toUpperCase());
-                    if (caps.includes('VOICEINPUT') || caps.includes('AUDIO')) {
+                    if (caps.includes('VOICEINPUT')) {
                         const option = document.createElement('option');
                         option.value = modelKey;
                         option.dataset.provider = providerName;

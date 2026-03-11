@@ -849,14 +849,19 @@ function _startMediaRecorderInput(voiceButton, model, provider) {
         }
         showNotification('Recording... click mic to stop', 'info');
 
-        _voiceMediaRecorder = new MediaRecorder(stream);
+        // Pick the best supported mimeType for cross-browser compatibility
+        const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+        const supportedMime = mimeTypes.find(m => MediaRecorder.isTypeSupported(m)) || '';
+        _voiceMediaRecorder = new MediaRecorder(stream, supportedMime ? { mimeType: supportedMime } : {});
+        const recordedMime = _voiceMediaRecorder.mimeType || 'audio/webm';
+
         _voiceMediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) _voiceAudioChunks.push(e.data);
         };
 
         _voiceMediaRecorder.onstop = async () => {
             stream.getTracks().forEach(t => t.stop());
-            const blob = new Blob(_voiceAudioChunks, { type: 'audio/webm' });
+            const blob = new Blob(_voiceAudioChunks, { type: recordedMime });
             _voiceAudioChunks = [];
 
             // Convert to base64 and send to backend for transcription
