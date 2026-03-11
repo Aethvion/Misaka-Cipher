@@ -50,7 +50,8 @@ dependencies = [
     "mss>=10.0.0",
     "opencv-python>=4.8.0",
     "spotipy>=2.23.0",
-    "winsdk>=1.0.0.post1",
+    "winrt-runtime",
+    "winrt-Windows.Media.Control",
 
     # Web server extensions
     "python-multipart>=0.0.7",
