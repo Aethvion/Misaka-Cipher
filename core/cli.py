@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Main CLI Interface
 Interactive command-line interface for Misaka Cipher system
 """
@@ -6,7 +6,7 @@ Interactive command-line interface for Misaka Cipher system
 import sys
 from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_banner, print_menu, get_user_choice,
-    print_success, print_error
+    print_success, print_error, print_warning
 )
 from core.interfaces.cli_modules.system_module import show_system_status
 from core.interfaces.cli_modules.nexus_module import nexus_core_module
@@ -60,6 +60,28 @@ class MisakaCLI:
             get_knowledge_graph()
             console.print(" [bold green]✓[/bold green]")
 
+            # History Manager (optional - does not block startup)
+            console.print("  • History Manager...", end="")
+            try:
+                from core.memory.history_manager import HistoryManager
+                count = HistoryManager.get_total_message_count()
+                console.print(f" [bold green]✓[/bold green] [dim]({count} messages today)[/dim]")
+            except Exception as e:
+                console.print(f" [yellow]⚠ unavailable[/yellow]")
+                logger.warning(f"HistoryManager not available: {e}")
+
+            # Discord worker status check (informational only)
+            console.print("  • Discord Worker...", end="")
+            try:
+                import os
+                token = os.environ.get("DISCORD_TOKEN") or _try_read_env_token()
+                if token:
+                    console.print(" [bold green]✓[/bold green] [dim](token found)[/dim]")
+                else:
+                    console.print(" [yellow]–[/yellow] [dim](no token, bot disabled)[/dim]")
+            except Exception:
+                console.print(" [yellow]–[/yellow] [dim](status unavailable)[/dim]")
+
             console.print("\n[bold green]All systems operational[/bold green]\n")
             return True
 
@@ -75,12 +97,15 @@ class MisakaCLI:
         print_banner()
 
         options = [
-            "Nexus Core - Direct AI Interaction",
-            "Memory - Query & Search State",
-            "Advanced AI Conversations - Research Lab",
-            "LLM Arena - Model vs Model Battles",
-            "Settings & Configuration",
-            "System Status - Diagnostics"
+            "Nexus Core          — Direct AI Interaction",
+            "The Factory         — Agent Spawning & Execution",
+            "The Forge           — Autonomous Tool Generation",
+            "Memory              — Query & Search State",
+            "Chat History        — Browse Unified History",
+            "Advanced AI Conv.   — Research Lab",
+            "LLM Arena           — Model vs Model Battles",
+            "Settings            — Configuration & Providers",
+            "System Status       — Diagnostics",
         ]
 
         print_menu("Main Menu", options)
@@ -111,24 +136,50 @@ class MisakaCLI:
                 nexus_core_module(self.nexus)
 
             elif choice == 2:
+                from core.interfaces.cli_modules.factory_module import factory_module
+                factory_module(self.factory)
+
+            elif choice == 3:
+                from core.interfaces.cli_modules.forge_module import forge_module
+                forge_module(self.forge)
+
+            elif choice == 4:
                 from core.interfaces.cli_modules.memory_module import memory_module
                 memory_module()
 
-            elif choice == 3:
+            elif choice == 5:
+                from core.interfaces.cli_modules.memory_module import chat_history_module
+                chat_history_module()
+
+            elif choice == 6:
                 from core.interfaces.cli_modules.research_module import research_module
                 research_module(self.nexus)
 
-            elif choice == 4:
+            elif choice == 7:
                 from core.interfaces.cli_modules.arena_module import arena_module
                 arena_module(self.nexus)
 
-            elif choice == 5:
+            elif choice == 8:
                 from core.interfaces.cli_modules.settings_module import settings_module
                 settings_module()
 
-            elif choice == 6:
+            elif choice == 9:
                 from core.interfaces.cli_modules.system_module import show_system_status
                 show_system_status(self.nexus, self.factory, self.forge)
+
+
+def _try_read_env_token() -> str:
+    """Try to read DISCORD_TOKEN from .env file as fallback."""
+    try:
+        from pathlib import Path
+        env_file = Path(__file__).parent.parent / ".env"
+        if env_file.exists():
+            for line in env_file.read_text().splitlines():
+                if line.startswith("DISCORD_TOKEN="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except Exception:
+        pass
+    return ""
 
 
 def main():

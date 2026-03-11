@@ -12,9 +12,15 @@ from core.interfaces.cli_modules.settings_module import load_settings
 from rich.panel import Panel
 from rich.columns import Columns
 from rich.table import Table
+from pathlib import Path
 import asyncio
 import time
 import uuid
+
+# Resolve project root relative to this file
+# core/interfaces/cli_modules/ -> interfaces/ -> core/ -> project root
+_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+_LEADERBOARD_FILE = _PROJECT_ROOT / "data" / "arena_leaderboard.json"
 
 def _get_active_models():
     """Extract list of available model strings from enabled providers."""
@@ -112,9 +118,8 @@ def run_battle(nexus, prompt: str, model1: str, model2: str):
         winner = model1 if win_choice == 1 else (model2 if win_choice == 2 else "tie")
         
         # Update Leaderboard JSON backing file
-        from pathlib import Path
         import json
-        lb_file = Path("c:/Aethvion/Misaka-Cipher/data/arena_leaderboard.json")
+        lb_file = _LEADERBOARD_FILE
         lb_file.parent.mkdir(parents=True, exist_ok=True)
         
         lb_data = {"models": {}}
@@ -202,9 +207,8 @@ def arena_module(nexus):
         elif choice == 2:
             clear_screen()
             print_header("Arena Leaderboard")
-            from pathlib import Path
             import json
-            lb_file = Path("c:/Aethvion/Misaka-Cipher/data/arena_leaderboard.json")
+            lb_file = _LEADERBOARD_FILE
             if not lb_file.exists():
                 print_error("No battles recorded yet.")
             else:
