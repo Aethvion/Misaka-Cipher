@@ -48,16 +48,24 @@ async function loadGameModels(selectEl) {
 
     if (!_cachedModels) {
         try {
-            const data = await gameApiFetch('models');
-            _cachedModels = data.models || [];
+            // Fetch directly from the main registry to get the same exact data as the chat (including profiles)
+            const res = await fetch('/api/registry/models/chat');
+            _cachedModels = await res.json();
         } catch (e) {
-            _cachedModels = [{ id: 'auto', description: 'Auto' }];
+            _cachedModels = { models: [], chat_profiles: {} };
         }
     }
 
-    selectEl.innerHTML = _cachedModels.map(m =>
-        `<option value="${m.id}">${m.id === 'auto' ? '⚡ Auto' : m.id}${m.description ? ` — ${m.description.slice(0, 40)}` : ''}</option>`
-    ).join('');
+    if (typeof generateCategorizedModelOptions === 'function') {
+        // Generate the identical <optgroup> architecture as the chat dropdown
+        selectEl.innerHTML = generateCategorizedModelOptions(_cachedModels, 'chat', 'auto');
+    } else {
+        // Fallback
+        const models = _cachedModels.models || [];
+        selectEl.innerHTML = models.map(m =>
+            `<option value="${m.id}">${m.id === 'auto' ? '⚡ Auto' : m.id}</option>`
+        ).join('');
+    }
 }
 
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
