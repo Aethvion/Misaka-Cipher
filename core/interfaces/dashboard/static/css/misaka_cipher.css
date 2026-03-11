@@ -636,6 +636,7 @@
     border-color: rgba(114, 137, 218, 0.4);
     box-shadow: 0 0 15px rgba(114, 137, 218, 0.15);
     background: linear-gradient(to right, rgba(114, 137, 218, 0.05), rgba(0, 0, 0, 0.6));
+    color: var(--text-primary);
 }
 
 .discord-badge {

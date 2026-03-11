@@ -2118,6 +2118,7 @@ let _discordStatusInterval = null;
 
 function initDiscordSettings() {
     const tokenInput = document.getElementById('setting-discord-token');
+    const mainUserIdInput = document.getElementById('setting-discord-main-user-id');
     const toggleBtn = document.getElementById('toggle-discord-token-visibility');
     const startBtn = document.getElementById('btn-discord-start');
     const stopBtn = document.getElementById('btn-discord-stop');
@@ -2126,6 +2127,13 @@ function initDiscordSettings() {
         tokenInput.value = prefs.get('nexus.discord_link.bot_token', '');
         tokenInput.onchange = async (e) => {
             await savePreference('nexus.discord_link.bot_token', e.target.value.trim());
+        };
+    }
+
+    if (mainUserIdInput) {
+        mainUserIdInput.value = prefs.get('nexus.discord_link.main_user_id', '');
+        mainUserIdInput.onchange = async (e) => {
+            await savePreference('nexus.discord_link.main_user_id', e.target.value.trim());
         };
     }
 

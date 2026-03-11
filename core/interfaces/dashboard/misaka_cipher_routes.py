@@ -13,6 +13,7 @@ import psutil
 HAS_PSUTIL = True
 from core.nexus import nexus_manager
 from core.memory.history_manager import HistoryManager
+from core.memory.identity_manager import IdentityManager
 import mimetypes
 import asyncio
 
@@ -1284,38 +1285,9 @@ CRITICAL: Never output raw JSON or technical jargon unless specifically requeste
             if exp_match:
                 expression = exp_match.group(1).lower()
 
-            # Memory Extract
-            mem_match = re.search(r"<memory_update>(.*?)</memory_update>", full_content_for_history, re.DOTALL)
-            if mem_match:
-                try:
-                    update_json = json.loads(mem_match.group(1).strip())
-                    
-                    # 1. Update Base Info (Personality Autonomy)
-                    if "base_info" in update_json:
-                        base_info.update(update_json["base_info"])
-                        base_info_path = MEMORY_DIR / "base_info.json"
-                        with open(base_info_path, "w", encoding="utf-8") as f:
-                            json.dump(base_info, f, indent=4)
-                        logger.info("Misaka updated her own base_info.json")
-
-                    # 2. Update Dynamic Memory
-                    if "user_info" in update_json:
-                        dynamic_memory.setdefault("user_info", {}).update(update_json["user_info"])
-                    if "recent_observations" in update_json:
-                        obs = update_json["recent_observations"]
-                        if isinstance(obs, list):
-                            curr_obs = dynamic_memory.setdefault("recent_observations", [])
-                            curr_obs.extend(obs)
-                            dynamic_memory["recent_observations"] = curr_obs[-20:]
-                    
-                    dynamic_memory["last_updated"] = timestamp
-                    memory_path = MEMORY_DIR / "memory.json"
-                    with open(memory_path, "w", encoding="utf-8") as f:
-                        json.dump(dynamic_memory, f, indent=4)
-                    memory_updated = True
-                    full_content_for_history = re.sub(r"<memory_update>.*?</memory_update>", "", full_content_for_history, flags=re.DOTALL).strip()
-                except Exception as me:
-                    logger.error(f"Failed to parse memory update: {me}")
+            # Memory Extract & Persistence
+            full_content_for_history = IdentityManager.extract_and_update(full_content_for_history)
+            memory_updated = True # Assume updated if tag was present and processed
 
             # Persistence
             try:

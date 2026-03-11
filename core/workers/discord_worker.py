@@ -52,6 +52,11 @@ class DiscordWorker(commands.Bot):
         self.registry = get_social_registry()
         self.firewall = IntelligenceFirewall()
         
+        # Load Main User ID from preferences for security
+        from core.workspace.preferences_manager import get_preferences_manager
+        prefs = get_preferences_manager()
+        self.main_user_id = prefs.get('nexus.discord_link.main_user_id')
+        
         self.worker_running = False
         self.poll_task = None
         self.proactive_task = None
@@ -125,20 +130,29 @@ class DiscordWorker(commands.Bot):
         # 2. Process via Master Orchestrator
         loop = asyncio.get_event_loop()
         try:
-            # We pass source="discord" via metadata if possible. 
-            # nexus_core.py was updated to extract 'source' from request.metadata.
-            # MasterOrchestrator.process_message takes 'images' as a param, let's see how to pass source.
-            # Actually, master_orchestrator calls nexus.route_request(request) where request is core.nexus_core.Request.
-            # I'll need to check if MasterOrchestrator allows passing extra metadata.
+            # Shared Context: Load recent history for Misaka to "remember" previous turns
+            history = HistoryManager.get_recent_history(limit=10)
+            context_lines = []
+            for h in history:
+                role = "Misaka" if h["role"] == "assistant" else "User"
+                context_lines.append(f"{role}: {h['content']}")
             
-            # Since I already updated NexusCore to look at metadata, I should ensure Orchestrator passes it.
-            # I might need to update process_message signature or use its internal logic.
-            # For now, let's assume orchestrator.process_message can be extended or we use its current signature.
+            history_context = "\n".join(context_lines) if context_lines else "No previous conversation history."
             
+            # Security: Allow sensitive tasks ONLY for the main user in DM
+            is_main_user = str(message.author.id) == str(self.main_user_id)
+            security_context = ""
+            if is_dm and is_main_user:
+                security_context = "\nSECURITY NOTICE: This is a Direct Message with the AUTHORIZED MAIN USER. Sensitive tools/tasks are ALLOWED."
+            elif is_dm:
+                security_context = "\nSECURITY NOTICE: This is a DM with an UNKNOWN user. Administrative tasks are restricted."
+            
+            full_prompt = f"SHARED CONVERSATION HISTORY:\n---\n{history_context}\n---\n\n{prompt}{security_context}"
+
             result = await loop.run_in_executor(
                 None,
                 lambda: self.orchestrator.process_message(
-                    prompt, 
+                    full_prompt, 
                     trace_id=trace_id,
                     source="discord"
                 )
@@ -213,17 +227,30 @@ class DiscordWorker(commands.Bot):
             else:
                 channel = await self.fetch_channel(int(channel_id))
                 if channel:
-                    await channel.send(content)
+                    # Check for specialized task results (like SCREENSHOT)
+                    # Screenshot tasks in nexus usually save to a path and return it.
+                    # We can check if the task prompt or result contains a path to an image.
+                    
+                    file_to_send = None
+                    if task.metadata.get('is_multimodal') and task.metadata.get('media_path'):
+                        media_path = task.metadata.get('media_path')
+                        if os.path.exists(media_path):
+                            file_to_send = discord.File(media_path)
+                    
+                    if file_to_send:
+                        await channel.send(content, file=file_to_send)
+                    else:
+                        await channel.send(content)
+                        
                     task.status = TaskStatus.COMPLETED
                     task.result = {"success": True, "channel_id": channel_id}
                     
-                    # Mirror outbound messages from Dashboard to Discord as well?
-                    # The requirement says "Discord communications (both sent and received)".
-                    # These ARE Discord communications.
+                    # Mirror outbound messages from Dashboard to Discord
                     HistoryManager.log_message(
                         role="assistant",
                         content=content,
                         platform="discord",
+                        attachments=[{"url": task.metadata.get('media_url')}] if task.metadata.get('media_url') else None,
                         metadata={"channel_id": channel_id, "task_id": task_id}
                     )
                 else:

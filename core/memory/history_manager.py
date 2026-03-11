@@ -149,3 +149,30 @@ class HistoryManager:
                 return len(history)
         except Exception:
             return 0
+
+    @staticmethod
+    def get_recent_history(limit: int = 15) -> List[Dict[str, Any]]:
+        """
+        Get the most recent messages across days up to the limit.
+        Used for providing context to new interactions.
+        """
+        all_messages = []
+        now = datetime.datetime.now()
+        
+        # Look back up to 7 days
+        for i in range(7):
+            dt = now - datetime.timedelta(days=i)
+            day_file = HistoryManager._get_history_file(dt)
+            if day_file.exists():
+                try:
+                    with open(day_file, "r", encoding="utf-8") as f:
+                        day_messages = json.load(f)
+                        # We want the MOST RECENT first for efficient limiting, 
+                        # but usually history is chronological.
+                        all_messages = day_messages + all_messages
+                        if len(all_messages) > limit * 2: # Buffer for safety
+                            break
+                except Exception as e:
+                    logger.error(f"Error reading history for {dt}: {e}")
+        
+        return all_messages[-limit:] if all_messages else []

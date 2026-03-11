@@ -20,6 +20,7 @@ from core.memory.memory_spec import EpisodicMemory, generate_memory_id
 from core.utils import get_logger, generate_trace_id
 
 from .intent_analyzer import IntentAnalyzer, IntentAnalysis, IntentType
+from core.memory.identity_manager import IdentityManager
 
 logger = get_logger(__name__)
 
@@ -199,6 +200,9 @@ class MasterOrchestrator:
                     logger.info(f"[{trace_id}] SUCCESSFULLY stored episodic memory: {memory.memory_id}")
                 else:
                     logger.error(f"[{trace_id}] EpisodicMemoryStore.store returned False")
+
+                # --- Identity & Dynamic Memory ---
+                result.response = IdentityManager.extract_and_update(result.response)
                 
             except Exception as mem_err:
                 logger.error(f"[{trace_id}] Failed to store memory: {mem_err}")
@@ -224,7 +228,7 @@ class MasterOrchestrator:
                 execution_time=execution_time,
                 error=str(e)
             )
-    
+
     def decide_action(self, intent: IntentAnalysis, trace_id: str, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None) -> ActionPlan:
         """
         Decide what actions to take based on intent.
