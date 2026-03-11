@@ -122,9 +122,12 @@ async function loadThreads() {
 
 // Create new thread
 async function createNewThread() {
-    const title = prompt('Enter thread title:', `Thread ${Object.keys(threads).length + 1}`);
-    if (!title) return;
+    // Determine Thread Count from localStorage for instant creation
+    let threadCount = parseInt(localStorage.getItem('total_threads_created')) || 0;
+    threadCount += 1;
+    localStorage.setItem('total_threads_created', threadCount);
 
+    const title = `Thread ${threadCount}`;
     const threadId = `thread-${Date.now()}`;
 
     // Create thread locally
@@ -605,6 +608,32 @@ async function sendMessage() {
 
     // Add user message to current thread
     addMessageToThread(messageThreadId, 'user', displayText, null, null, attachedFiles);
+
+    // Auto-Title Logic: If the thread is named "Thread N" and this is the first user message, rename it.
+    const currentThreadParams = threads[messageThreadId];
+    if (currentThreadParams && /^Thread \d+$/.test(currentThreadParams.title)) {
+        const userMessages = (threadMessages[messageThreadId] || []).filter(m => m.role === 'user');
+        if (userMessages.length === 1) { // It's the first message!
+            // First 40 chars
+            let autoTitle = message || attachedFileName || "New Chat";
+            autoTitle = autoTitle.trim().split('\n')[0]; // First line only
+            if (autoTitle.length > 40) autoTitle = autoTitle.substring(0, 37) + '...';
+            
+            currentThreadParams.title = autoTitle;
+            
+            // Update UI Header and Sidebar immediately
+            document.getElementById('active-thread-title').textContent = autoTitle;
+            const uiThreadLink = document.querySelector(`.thread-item[data-thread-id="${messageThreadId}"] .thread-title`);
+            if (uiThreadLink) uiThreadLink.textContent = autoTitle;
+
+            // Sync with backend async
+            fetch(`/api/tasks/thread/${messageThreadId}/title`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: autoTitle })
+            }).catch(e => console.error("Failed to auto-title thread remotely:", e));
+        }
+    }
 
     // Get model selection
     const modelSelect = document.getElementById('model-select');

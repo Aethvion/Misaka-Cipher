@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Task Queue Manager
 Manages async task execution with worker pool
 """
@@ -542,6 +542,30 @@ class TaskQueueManager:
         self._save_thread(thread_id)
         
         logger.info(f"Set thread {thread_id} mode to {mode}")
+        return True
+
+    def set_thread_title(self, thread_id: str, title: str) -> bool:
+        """
+        Update the title of an existing thread.
+        
+        Args:
+            thread_id: Thread ID
+            title: New title string
+            
+        Returns:
+            True if updated, False if thread not found or title invalid
+        """
+        if thread_id not in self.threads:
+            return False
+            
+        if not title or not isinstance(title, str):
+            return False
+            
+        self.threads[thread_id].title = title.strip()
+        self.threads[thread_id].updated_at = datetime.now()
+        self._save_thread(thread_id)
+        
+        logger.info(f"Updated thread {thread_id} title to: {title}")
         return True
 
     def _load_threads(self):

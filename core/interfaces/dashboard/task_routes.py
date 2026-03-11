@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Task Queue API Routes
 REST API endpoints for task queue management
 """
@@ -193,6 +193,28 @@ async def update_thread_mode(thread_id: str, request: Dict[str, str]):
     except TypeError as e:
         # JSON serialization error
         raise HTTPException(status_code=400, detail=f"Invalid data format: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/thread/{thread_id}/title")
+async def update_thread_title(thread_id: str, request: Dict[str, str]):
+    """Update thread title."""
+    try:
+        title = request.get('title')
+        if not title:
+            raise HTTPException(status_code=400, detail="Title is required")
+            
+        task_manager = get_task_queue_manager()
+        success = task_manager.set_thread_title(thread_id, title)
+        
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
+            
+        return {"status": "success", "title": title}
+        
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
