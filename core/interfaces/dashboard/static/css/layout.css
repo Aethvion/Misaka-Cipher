@@ -5,8 +5,28 @@
     display: grid;
     grid-template-columns: 260px 1fr 320px;
     height: 100%;
-    gap: 1rem;
-    padding: 1rem;
+    gap: 0;
+    padding: 0;
+}
+
+.three-column-layout.threads-collapsed {
+    grid-template-columns: 1fr 320px;
+}
+
+.three-column-layout.threads-collapsed .threads-column {
+    display: none;
+}
+
+.three-column-layout .column {
+    border-radius: 0;
+    border-top: none;
+    border-bottom: none;
+    border-right: none;
+    box-shadow: none;
+}
+
+.agents-column {
+    border-left: 1px solid var(--border);
 }
 
 .column {
@@ -41,7 +61,7 @@
 /* Threads Column */
 .threads-column {
     background: rgba(9, 9, 11, 0.5);
-    /* slightly darker for sidebar */
+    border-left: none;
 }
 
 .threads-list {
@@ -176,6 +196,11 @@
 .chat-column {
     display: flex;
     flex-direction: column;
+    border-left: 1px solid var(--border);
+}
+
+.three-column-layout.threads-collapsed .chat-column {
+    border-left: none;
 }
 
 .chat-messages {

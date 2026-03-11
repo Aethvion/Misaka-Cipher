@@ -280,7 +280,12 @@
                     <!-- Center: Chat Interface -->
                     <div class="column chat-column">
                         <div class="column-header">
-                            <h2 id="active-thread-title">Main Thread</h2>
+                            <div style="display: flex; align-items: center; gap: 0.8rem;">
+                                <button id="toggle-threads-btn" class="icon-btn" title="Toggle Threads History">
+                                    <i class="fas fa-history"></i>
+                                </button>
+                                <h2 id="active-thread-title">Main Thread</h2>
+                            </div>
                             <div class="global-chat-controls">
                                 <!-- CTX -->
                                 <div class="control-item" title="Context Mode">

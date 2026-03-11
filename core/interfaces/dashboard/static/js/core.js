@@ -40,6 +40,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const sidebarNav = document.getElementById('sidebar-nav');
                 if (sidebarNav) sidebarNav.classList.add('collapsed');
             }
+            
+            // Restore threads collapsed state
+            const threadsCollapsed = prefs.get('threads_collapsed', false);
+            if (threadsCollapsed === true || threadsCollapsed === 'true') {
+                const layout = document.querySelector('.three-column-layout');
+                if (layout) layout.classList.add('threads-collapsed');
+            }
 
             // The active tab is now restored automatically by setDashboardMode
         } else {
@@ -64,6 +71,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (sidebarData.value === true || sidebarData.value === 'true') {
                     const sidebarNav = document.getElementById('sidebar-nav');
                     if (sidebarNav) sidebarNav.classList.add('collapsed');
+                }
+            }
+            const threadsRes = await fetch('/api/preferences/get?key=threads_collapsed');
+            if (threadsRes.ok) {
+                const threadsData = await threadsRes.json();
+                if (threadsData.value === true || threadsData.value === 'true') {
+                    const layout = document.querySelector('.three-column-layout');
+                    if (layout) layout.classList.add('threads-collapsed');
                 }
             }
         }
@@ -199,6 +214,19 @@ function initializeUI() {
             setDashboardMode(this.dataset.value);
         });
     });
+
+    // Threads Collapse Toggle
+    const toggleThreadsBtn = document.getElementById('toggle-threads-btn');
+    const threeColumnLayout = document.querySelector('.three-column-layout');
+    
+    if (toggleThreadsBtn && threeColumnLayout) {
+        toggleThreadsBtn.addEventListener('click', () => {
+            threeColumnLayout.classList.toggle('threads-collapsed');
+            if (typeof savePreference === 'function') {
+                savePreference('threads_collapsed', threeColumnLayout.classList.contains('threads-collapsed'));
+            }
+        });
+    }
 
     // Chat interaction
     const chatInput = document.getElementById('chat-input');
