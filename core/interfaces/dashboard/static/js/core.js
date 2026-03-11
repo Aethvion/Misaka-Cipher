@@ -41,17 +41,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (sidebarNav) sidebarNav.classList.add('collapsed');
             }
 
-            // Restore active tab
-            const activeTab = prefs.get('active_tab', 'chat');
-            if (activeTab) switchMainTab(activeTab, false);
+            // The active tab is now restored automatically by setDashboardMode
         } else {
             // Fallback (redundant fetch but keeping for safety if view-settings isn't loaded)
+            let fallbackMode = 'enterprise';
             const modeRes = await fetch('/api/preferences/get?key=dashboard_mode');
             if (modeRes.ok) {
                 const modeData = await modeRes.json();
-                if (modeData.value) setDashboardMode(modeData.value, false);
+                if (modeData.value) {
+                    fallbackMode = modeData.value;
+                    setDashboardMode(fallbackMode, false);
+                }
             }
-            const tabRes = await fetch('/api/preferences/get?key=active_tab');
+            const tabRes = await fetch(`/api/preferences/get?key=active_tab_${fallbackMode}`);
             if (tabRes.ok) {
                 const tabData = await tabRes.json();
                 if (tabData.value) switchMainTab(tabData.value, false);
@@ -377,23 +379,21 @@ function setDashboardMode(mode, save = true) {
         }
     });
 
-    // Enforce active tab validation
-    // If the currently active tab belongs to the hidden mode, switch to the mode's default tab
-    let needsRedirect = false;
-    let fallbackTab = dashboardMode === 'enterprise' ? 'chat' : 'advaiconv';
-
-    // Check if current tab's button is hidden
-    const activeTabBtns = Array.from(document.querySelectorAll('.main-tab.active, .tab-dropdown-item.active, .nav-dropdown-item.active'));
-    for (const btn of activeTabBtns) {
-        if (btn.classList.contains('mode-hidden')) {
-            needsRedirect = true;
-            break;
-        }
+    // Restore the last active tab for this mode specifically
+    let targetTab = dashboardMode === 'enterprise' ? 'chat' : 'advaiconv';
+    
+    if (typeof prefs !== 'undefined' && typeof prefs.get === 'function') {
+        const savedTab = prefs.get(`active_tab_${dashboardMode}`);
+        if (savedTab) targetTab = savedTab;
+    }
+    
+    // Validate target tab is not hidden
+    const targetBtn = document.querySelector(`.main-tab[data-maintab="${targetTab}"]`);
+    if (targetBtn && targetBtn.classList.contains('mode-hidden')) {
+        targetTab = dashboardMode === 'enterprise' ? 'chat' : 'advaiconv';
     }
 
-    if (needsRedirect) {
-        switchMainTab(fallbackTab);
-    }
+    switchMainTab(targetTab, false);
 }
 
 function switchMainTab(tabName, save = true) {
@@ -404,7 +404,7 @@ function switchMainTab(tabName, save = true) {
 
     currentMainTab = actualTabName;
     if (save && typeof savePreference === 'function') {
-        savePreference('active_tab', actualTabName);
+        savePreference(`active_tab_${dashboardMode}`, actualTabName);
     }
 
     // Update tab buttons
