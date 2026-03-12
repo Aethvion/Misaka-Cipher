@@ -185,9 +185,10 @@ CRITICAL: Never output raw JSON or technical jargon unless requested. Do not bre
                 if not allowed: return f"[read_file ERROR] {reason}"
                 p = Path(path)
                 if not p.exists(): return f"[read_file ERROR] File not found: {path}"
+                logger.debug(f"[read_file] Found file at {path}, returning {len(content)} chars.")
                 return f"[read_file: {path}]\n{p.read_text(encoding='utf-8', errors='replace')[:8000]}"
 
-            if tool_name == "write_file":
+            elif tool_name == "write_file":
                 path, content = attrs.get("path", ""), attrs.get("content", "")
                 allowed, reason = validate_path(path, workspaces, "write")
                 if not allowed: return f"[write_file ERROR] {reason}"

@@ -106,10 +106,10 @@ if not exist ".env" (
     echo [OK]  .env found.
 )
 
-:: --- 6. Launch -------------------------------------------------
+:: --- 5. Launch -------------------------------------------------
 echo.
 echo [START] Launching Specter Engine...
-echo         Viewer -^> http://localhost:8001
+echo         Viewer -^> http://localhost:8081
 echo         Press CTRL+C to stop.
 echo.
 

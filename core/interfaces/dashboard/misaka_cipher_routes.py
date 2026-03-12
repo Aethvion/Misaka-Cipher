@@ -258,7 +258,7 @@ async def _execute_tool_calls_stream(content: str, workspaces: List[dict]):
                     return f"[read_file ERROR] File too large (>{500_000} bytes): {path}"
                 return f"[read_file: {path}]\n{p.read_text(encoding='utf-8', errors='replace')[:8000]}"
 
-            if tool_name == "write_file":
+            elif tool_name == "write_file":
                 path = attrs.get("path", "")
                 file_content = attrs.get("content", "")
                 allowed, reason = _validate_path(path, workspaces, "write")

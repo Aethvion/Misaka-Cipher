@@ -85,7 +85,7 @@ if not exist ".env" (
 :: --- 5. Launch -------------------------------------------------
 echo.
 echo [START] Launching Synapse Tracking Engine...
-echo         Viewer -^> http://localhost:8002
+echo         Viewer -^> http://localhost:8082
 echo         Press CTRL+C to stop.
 echo.
 

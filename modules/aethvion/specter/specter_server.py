@@ -730,7 +730,7 @@ async def index():
 # ---------------------------------------------------------------------------
 
 def launch():
-    port = int(os.getenv("SPECTER_PORT", "8001"))
+    port = int(os.getenv("SPECTER_PORT", "8081"))
     print(f"🎭 Specter VTuber Engine v{SPECTER_VERSION} → http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 

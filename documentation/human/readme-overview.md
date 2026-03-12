@@ -90,8 +90,8 @@ Multi-tiered memory architecture for learning and context retention.
 **Web Interface (Default):**
 ```bash
 python main.py
-# Access dashboard at http://localhost:8000
-# API docs at http://localhost:8000/docs
+# Access dashboard at http://localhost:8080
+# API docs at http://localhost:8080/docs
 ```
 
 **Interactive CLI:**

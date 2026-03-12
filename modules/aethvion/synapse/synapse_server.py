@@ -117,7 +117,7 @@ async def index():
 # ---------------------------------------------------------------------------
 
 def launch():
-    port = int(os.getenv("SYNAPSE_PORT", "8002"))
+    port = int(os.getenv("SYNAPSE_PORT", "8082"))
     print(f"👁️ Synapse Tracking Engine → http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 

@@ -90,7 +90,7 @@ class TrackingBridge:
 
 
 # WebSocket endpoint data format (for frontend communication)
-# The Specter editor connects to ws://localhost:8002/tracking
+# The Specter editor connects to ws://localhost:8082/tracking
 # and receives JSON messages of this format:
 TRACKING_MESSAGE_SCHEMA = {
     "type": "params",      # "params" | "status" | "error"
