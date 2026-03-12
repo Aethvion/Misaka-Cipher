@@ -484,12 +484,18 @@ async def get_startup_status():
     """Get system initialization status."""
     return startup_status
 
+@app.get("/api/system/ports")
+async def get_system_ports():
+    """Get dynamically registered system ports."""
+    from core.utils.port_manager import PortManager
+    return PortManager.get_registered_ports()
+
 
 @app.get("/api/system/status")
 async def get_system_status():
-    """Get lightweight system status."""
-    if not nexus:
-        raise HTTPException(status_code=503, detail="System not initialized")
+    """Get full system status including nexus, orchestrator, firewall."""
+    if not startup_status.get("initialized", False) or not nexus:
+        raise HTTPException(status_code=503, detail="System not fully initialized")
     
     try:
         status = nexus.get_status()

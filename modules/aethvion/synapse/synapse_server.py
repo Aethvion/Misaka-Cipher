@@ -117,7 +117,10 @@ async def index():
 # ---------------------------------------------------------------------------
 
 def launch():
-    port = int(os.getenv("SYNAPSE_PORT", "8082"))
+    from core.utils.port_manager import PortManager
+    base_port = int(os.getenv("SYNAPSE_PORT", "8082"))
+    port = PortManager.bind_port("Synapse Tracking", base_port)
+    
     print(f"👁️ Synapse Tracking Engine → http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 

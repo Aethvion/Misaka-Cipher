@@ -60,3 +60,4 @@ modules/misakacipher/*
 data/files.json
 .claude/worktrees/focused-williamson/
 .claude/worktrees/infallible-wilbur/
+data/system/ports.json

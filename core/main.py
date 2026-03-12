@@ -55,7 +55,9 @@ def open_browser(port=8080):
 
 def run_web_server():
     """Launch web dashboard with orchestrator."""
-    port = int(os.environ.get("PORT", 8080))
+    from core.utils.port_manager import PortManager
+    base_port = int(os.environ.get("PORT", 8080))
+    port = PortManager.bind_port("Misaka Cipher Nexus", base_port)
     
     print("\n" + "=" * 70)
     print("MISAKA CIPHER - NEXUS PORTAL (WEB)")

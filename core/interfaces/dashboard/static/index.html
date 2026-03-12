@@ -238,6 +238,8 @@
                         class="tab-icon">📊</span><span class="tab-label">Usage</span></button>
                 <button class="main-tab sidebar-subitem" data-maintab="status" data-mode="both"><span
                         class="tab-icon">🚦</span><span class="tab-label">Status</span></button>
+                <button class="main-tab sidebar-subitem" data-maintab="ports" data-mode="both"><span
+                        class="tab-icon">🔌</span><span class="tab-label">Port Manager</span></button>
 
                 <button class="main-tab" data-maintab="settings" data-mode="both"><span class="tab-icon">⚙️</span><span
                         class="tab-label">Settings</span></button>
@@ -1966,6 +1968,36 @@
                 </div> <!-- closes settings-dashboard -->
             </div> <!-- closes main-tab-panel (settings) -->
 
+            <!-- Ports Tab -->
+            <div class="main-tab-panel" id="ports-panel">
+                <div class="header-with-actions" style="display: flex; justify-content: space-between; align-items: center; padding: 20px 30px; border-bottom: 1px solid var(--border); background: var(--bg-card);">
+                    <h2 style="margin: 0;"><span class="tab-icon">🔌</span> Dynamic Port Manager</h2>
+                    <button id="refresh-ports-btn" class="action-btn primary" title="Refresh Port List"><i class="fas fa-sync"></i> Refresh</button>
+                </div>
+                <div class="status-cards" style="padding: 20px;">
+                    <div class="status-card" style="grid-column: 1 / -1; width: 100%;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 class="card-title" style="margin: 0;">Registered Modules</h3>
+                            <span class="badge success" id="ports-count-badge">0 Active</span>
+                        </div>
+                        <div class="table-container" style="background: rgba(0,0,0,0.2); border-radius: 8px; overflow: hidden; border: 1px solid var(--border);">
+                            <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                                <thead style="background: var(--bg-dark); text-align: left;">
+                                    <tr>
+                                        <th style="padding: 12px 15px; border-bottom: 1px solid var(--border);">Module / Application</th>
+                                        <th style="width: 15%; padding: 12px 15px; border-bottom: 1px solid var(--border);">Port</th>
+                                        <th style="width: 15%; padding: 12px 15px; border-bottom: 1px solid var(--border);">Local Link</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ports-tbody">
+                                    <tr><td colspan="3" class="loading-placeholder" style="padding: 15px; text-align: center;">Scanning active TCP ports...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Version Tab -->
             <div class="main-tab-panel" id="version-panel" style="overflow-y: auto; height: 100%;">
                 <div class="panel-header">
@@ -2514,6 +2546,7 @@
             <script src="/static/games/word_search/word_search.js?v=1"></script>
             <script src="/static/games/sudoku/sudoku.js?v=1"></script>
             <script src="/static/games/checkers/checkers.js?v=1"></script>
+            <script src="/static/js/view-ports.js?v=1"></script>
 </body>
 
 </html>
