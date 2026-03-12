@@ -102,6 +102,16 @@
             letter-spacing: 0.5px;
         }
 
+        /* Version Panel Scrollback Fix */
+        #version-panel.active {
+            display: block !important;
+        }
+
+        #version-panel .setting-card {
+            overflow: visible !important;
+            height: auto !important;
+        }
+
         .mode-btn.active {
             background: var(--primary);
             color: #000;
@@ -2164,7 +2174,7 @@
             </div>
 
             <!-- Version Tab -->
-            <div class="main-tab-panel" id="version-panel" style="overflow-y: auto; height: 100%;">
+            <div class="main-tab-panel" id="version-panel" style="display: none; overflow-y: auto; height: 100%;">
                 <div class="panel-header">
                     <h2>Version Control</h2>
                 </div>
