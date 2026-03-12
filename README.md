@@ -24,7 +24,7 @@
 
 ## 🎯 What Is Misaka Cipher?
 
-Misaka Cipher is a **self-hosted AI assistant platform** with a web dashboard. It connects to cloud AI providers (Google Gemini, OpenAI, xAI Grok) and provides a structured environment for running chat threads, generating tools, and spawning agents — all from a local server you control.
+Misaka Cipher is a **self-hosted AI assistant platform** with a web dashboard. It connects to cloud AI providers (Google Gemini, OpenAI, xAI Grok, Anthropic Claude) and provides a structured environment for running chat threads, generating tools, and spawning agents — all from a local server you control.
 
 **The long-term goal** is an autonomous system that can work toward complex goals by creating its own tools and delegating to specialized agents. That vision is the direction — not the current state.
 
@@ -35,7 +35,7 @@ Misaka Cipher is a **self-hosted AI assistant platform** with a web dashboard. I
 These features are functional in the current build:
 
 ### 💬 Chat & Threads
-- Multi-provider chat (Google, OpenAI, Grok) with automatic failover
+- Multi-provider chat (Google, OpenAI, Grok, Anthropic) with automatic failover
 - Persistent conversation threads with configurable context modes (none / smart / full)
 - Instant thread creation with automatic intelligent titling based on context
 - Collapsible, flush-edge chat UI with persistent layout state memory
@@ -57,25 +57,50 @@ These features are functional in the current build:
 - Every conversation stored as a task JSON with model, routing, and usage metadata
 - Memory can be queried in subsequent sessions
 
-### 📊 Dashboard Tabs (Working)
+### 🎙️ Audio
+- Text-to-speech and speech-to-text support
+- Configurable voice and audio output settings
+
+### 🎮 Games
+- Built-in games playable from the dashboard: Logic Quest, Blackjack, Sudoku, Word Search, Checkers (vs AI)
+- Leaderboard to track scores across sessions
+
+### 🎭 Specter & 🧠 Synapse
+- **Specter:** Visualization and animation engine for digital character presence — rigging, real-time deformation
+- **Synapse:** Face and body tracking module — streams real-time tracking parameters to Specter via WebSocket
+
+### 🔌 Nexus Module
+- Peripheral and sensor plugin hub — connects the AI to physical/digital inputs (screen capture, webcam, Spotify, weather, system info)
+- Registry-driven architecture for adding new integrations
+
+### 📊 Dashboard Tabs
 | Tab | Status | Notes |
 |-----|--------|-------|
 | Chat | ✅ Working | Threads, context, model selection, auto routing |
-| Agent | ✅ Working | Basic agent execution with terminal output |
-| Image Studio | ✅ Working | Imagen 3 / DALL-E 3 image generation |
-| LLM Arena | ✅ Working | Side-by-side model comparison |
-| AI Conversation | ✅ Working | Two-party model conversation |
+| Image | ✅ Working | Imagen 3 / DALL-E 3 image generation |
+| Audio | ✅ Working | Text-to-speech and speech-to-text |
+| Arena | ✅ Working | Side-by-side model comparison |
+| AI Conversations | ✅ Working | Two-party model conversation |
 | Advanced AI Conversation | ✅ Working | Multi-persona conversation threads |
-| Files | ✅ Working | Browse workspace files |
+| Leaderboards | ✅ Working | Game scores and rankings |
+| Logic Quest | 🎮 Game | AI-powered logic puzzles |
+| Blackjack | 🎮 Game | Classic card game |
+| Sudoku | 🎮 Game | Sudoku puzzles |
+| Word Search | 🎮 Game | Word search puzzles |
+| Checkers (vs AI) | 🎮 Game | Checkers against an AI opponent |
+| Misaka Cipher | ✅ Working | Main hub: output files, screenshots, camera, uploads |
 | Tools | ✅ Working | View registered tools and agents |
-| Memory | ✅ Working | Browse task history and episodic memory |
-| Usage | ✅ Working | Token usage, cost tracking, and detailed granular queries |
-| Logs | ✅ Working | Live log stream |
-| Status | ✅ Working | System and provider health |
-| Settings | ✅ Working | Providers, routing profiles, environment config |
 | Packages | 🧪 Experimental | Package install with safety scoring — unstable |
-| Discord | ✅ Working | Bot management, message history mirroring, Discord controls |
-| Assistant | 🛡️ Beta | Advanced in-dashboard AI assistant with tool-calling and feature awareness |
+| Memory | ✅ Working | Browse task history and episodic memory |
+| Misaka Cipher Memory | ✅ Working | Dedicated episodic memory browser |
+| Specter | ✅ Working | Character animation and visualization engine |
+| Synapse | ✅ Working | Face and body tracking module |
+| Logs | ✅ Working | Live log stream |
+| Documentation | ✅ Working | In-dashboard documentation viewer |
+| Usage | ✅ Working | Token usage, cost tracking, and detailed granular queries |
+| Status | ✅ Working | System and provider health |
+| Port Manager | ✅ Working | View and manage active service ports |
+| Settings | ✅ Working | Providers, routing profiles, Discord, assistant, environment config |
 
 ---
 
@@ -103,7 +128,7 @@ The system is structured around four components:
 | **The Forge** | Generates Python tools autonomously | 🧪 Works for simple tools |
 | **Memory Tier** | ChromaDB episodic memory + knowledge graph | ✅ Stores data, retrieval basic |
 
-**Providers supported:** Google AI (Gemini), OpenAI (GPT-4o family), xAI (Grok)
+**Providers supported:** Google AI (Gemini), OpenAI (GPT-4o family), xAI (Grok), Anthropic (Claude)
 
 **Intelligence Firewall:** PII/credential scanning before any external API call — blocks sensitive data from leaving.
 
@@ -121,7 +146,7 @@ pip install -e ".[memory]"
 
 # Copy and fill in your API keys
 copy .env.example .env
-# edit .env — add GOOGLE_AI_API_KEY / OPENAI_API_KEY / GROK_API_KEY
+# edit .env — add GOOGLE_AI_API_KEY / OPENAI_API_KEY / GROK_API_KEY / ANTHROPIC_API_KEY
 # Optional: add DISCORD_TOKEN to enable the Discord bot integration
 ```
 
@@ -146,7 +171,6 @@ Open [http://localhost:8080](http://localhost:8080) (or your configured `PORT`) 
 Misaka-Cipher/
 ├── Start_Misaka_Cipher.bat     # One-click install + launch
 ├── pyproject.toml              # All dependencies + project metadata
-├── nexus_core.py               # Shim → core/nexus_core.py
 │
 ├── core/                       # All Python source code
 │   ├── main.py                 # Entry point (web / CLI / test modes)
@@ -158,14 +182,22 @@ Misaka-Cipher/
 │   ├── factory/                # Agent spawning engine
 │   ├── forge/                  # Tool generation pipeline
 │   ├── memory/                 # Episodic memory + knowledge graph
+│   ├── nexus/                  # Nexus manager (peripheral plugin system)
 │   ├── orchestrator/           # Master orchestrator + task queue
-│   ├── providers/              # Google / OpenAI / Grok adapters
+│   ├── providers/              # Google / OpenAI / Grok / Anthropic adapters
 │   ├── security/               # Intelligence Firewall
+│   ├── utils/                  # Shared utilities (logger, trace, validators, port manager)
 │   ├── workers/                # Background workers
 │   ├── workspace/              # Usage tracker, package manager
 │   └── interfaces/
 │       ├── dashboard/          # Web dashboard (FastAPI + static files)
 │       └── cli_modules/        # CLI module implementations
+│
+├── modules/                    # Optional extension modules
+│   └── aethvion/
+│       ├── nexus/              # Peripheral & sensor plugin hub (screen capture, webcam, Spotify, etc.)
+│       ├── specter/            # Character animation & visualization engine
+│       └── synapse/            # Face & body tracking module
 │
 ├── data/                       # Runtime data — never committed
 │   ├── logs/                   # Application logs
@@ -188,12 +220,12 @@ Misaka-Cipher/
 ## 🗺️ Roadmap
 
 ### ✅ Done
-- Multi-provider chat with failover and auto-routing
+- Multi-provider chat with failover and auto-routing (Google, OpenAI, Grok, Anthropic)
 - Persistent threads and task memory
 - Tool forge (basic)
 - Agent spawning (basic)
 - Intelligence Firewall
-- Web dashboard with 14+ tabs
+- Web dashboard with 25+ tabs
 - API usage tracking with cost estimates
 - LLM Arena, Image Studio, Advanced AI Conversation
 - Routing profiles with configurable model pools
@@ -202,6 +234,14 @@ Misaka-Cipher/
 - PersonaManager (context + system prompt assembly)
 - IdentityManager and SocialRegistry (cross-platform identity)
 - File vector store (semantic workspace file search)
+- Audio tab (text-to-speech and speech-to-text)
+- Games suite (Logic Quest, Blackjack, Sudoku, Word Search, Checkers vs AI) with leaderboards
+- Specter module (character animation and visualization engine)
+- Synapse module (face and body tracking via WebSocket)
+- Nexus peripheral module (screen capture, webcam, Spotify, weather, system info)
+- Documentation viewer tab
+- Port Manager tab
+- In-dashboard assistant (Settings → Assistant)
 
 ### 🔄 In Progress / Near-Term
 - Improved agent reliability for multi-step goals
