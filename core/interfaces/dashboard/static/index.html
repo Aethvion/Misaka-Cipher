@@ -747,6 +747,7 @@
                         <div class="avatar-container">
                             <img id="misaka-expression-img"
                                 src="/static/misakacipher/expressions/misakacipher_default.png" alt="Misaka Cipher">
+                            <canvas id="misaka-particle-sphere" width="320" height="320"></canvas>
                         </div>
                         <div id="misaka-status-line" class="status-line">Neural core engaged.</div>
                     </div>
@@ -755,6 +756,9 @@
                     <div class="companion-chat-column">
                         <div class="chat-header">
                             <h2>Misaka Cipher</h2>
+                            <button id="misaka-settings-btn" class="misaka-settings-btn" title="Misaka Cipher Settings">
+                                <i class="fas fa-cog"></i>
+                            </button>
                         </div>
                         <div class="chat-messages" id="misaka-chat-messages">
                             <!-- Messages will scroll here -->
@@ -1566,6 +1570,21 @@
                                 </div>
                                 <div class="card-content">
                                     <p class="section-hint">Settings for the Misaka Cipher chat companion.</p>
+
+                                    <!-- Appearance Mode -->
+                                    <div class="compact-item toggle-item"
+                                        style="border-bottom: 1px solid var(--border); margin-bottom: 1rem; padding-bottom: 1rem;">
+                                        <div class="item-label">
+                                            <span>Hide Character</span>
+                                            <i class="fas fa-info-circle tooltip-trigger"
+                                                title="Replaces the character with an animated particle sphere. Perfect for a professional or minimal setup."></i>
+                                        </div>
+                                        <label class="switch small">
+                                            <input type="checkbox" id="setting-misakacipher-hide-character">
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+
                                     <div class="compact-item">
                                         <div class="item-label">
                                             <span>Primary Model</span>
@@ -2728,6 +2747,7 @@
             <script src="/static/js/mode-aiconv.js?v=2"></script>
             <script src="/static/js/mode-adv-aiconv.js?v=3"></script>
             <script src="/static/js/mode-chat.js?v=1"></script>
+            <script src="/static/js/particle-sphere.js?v=1"></script>
             <script src="/static/js/mode-misakacipher.js?v=1"></script>
             <script src="/static/js/assistant.js?v=1"></script>
             <!-- Games View -->

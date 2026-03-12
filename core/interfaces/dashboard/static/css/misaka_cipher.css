@@ -187,6 +187,68 @@
     animation: pulse 2s infinite ease-in-out;
 }
 
+/* ─── Settings Gear Button ─── */
+
+.companion-chat-column .chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.misaka-settings-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 6px 8px;
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    line-height: 1;
+}
+
+.misaka-settings-btn:hover {
+    color: var(--primary);
+    border-color: rgba(0, 217, 255, 0.3);
+    background: rgba(0, 217, 255, 0.06);
+}
+
+.misaka-settings-btn:hover i {
+    animation: misaka-spin 1.2s linear infinite;
+}
+
+@keyframes misaka-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+/* ─── Particle Sphere Canvas ─── */
+
+#misaka-particle-sphere {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: none;       /* hidden in character mode */
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+/* When character is hidden, show canvas and hide img */
+.avatar-container.sphere-mode #misaka-particle-sphere {
+    display: block;
+    opacity: 1;
+}
+
+.avatar-container.sphere-mode #misaka-expression-img {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#misaka-expression-img {
+    transition: opacity 0.5s ease;
+}
+
 /* Chat Column */
 .companion-chat-column {
     flex: 1;

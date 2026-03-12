@@ -94,12 +94,31 @@ async function initializeMisakaCipher() {
         if (e.detail && e.detail.proactive_change) {
             startProactiveScheduler();
         }
+
+        // Toggle character / particle sphere
+        if (e.detail && e.detail.hide_character !== undefined) {
+            applyCharacterMode(e.detail.hide_character);
+        }
     });
 
     // 7. Cache typing speed from prefs
     if (window.prefs) {
         misakaTypingSpeed = window.prefs.get('misakacipher.typing_speed', 20);
         console.log('[Misaka] Initial typing speed from prefs:', misakaTypingSpeed);
+    }
+
+    // 8. Apply character / sphere mode from saved pref
+    const hideChar = window.prefs ? window.prefs.get('misakacipher.hide_character', false) : false;
+    applyCharacterMode(hideChar);
+
+    // 9. Wire settings gear button → Settings › Misaka Cipher subtab
+    const settingsBtn = document.getElementById('misaka-settings-btn');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            if (typeof ensureTabAndSubTab === 'function') {
+                ensureTabAndSubTab('settings', 'misakacipher');
+            }
+        });
     }
 
     // 1. Setup Input interactions
@@ -474,6 +493,9 @@ async function sendMisakaMessage() {
     let untypedText = ""; // Text received but not yet revealed in bubbles
     let currentContentForHistory = ""; // Correct content including ALL turns
 
+    // Activate particle sphere while AI responds
+    if (window.ParticleSphere) ParticleSphere.setActive(true);
+
     try {
         const statusLine = document.getElementById('misaka-status-line');
         if (statusLine) statusLine.textContent = "Processing neural paths...";
@@ -560,6 +582,7 @@ async function sendMisakaMessage() {
                     }
                     else if (data.type === 'done') {
                         removeAssistantToolStatus();
+                        if (window.ParticleSphere) ParticleSphere.setActive(false);
 
                         if (currentStreamingBubble) {
                             currentStreamingBubble.classList.remove('typing-glow');
@@ -614,6 +637,7 @@ async function sendMisakaMessage() {
         console.error("Misaka send error:", err);
         addAssistantMessageStatic('misaka', `I encountered a neural synchronization error: ${err.message}`, ts);
         if (statusLine) statusLine.textContent = "Neural core error.";
+        if (window.ParticleSphere) ParticleSphere.setActive(false);
     }
 }
 
@@ -849,6 +873,45 @@ function updateMisakaMood(mood) {
 
     // Persistence
     localStorage.setItem('misaka_last_mood', mood);
+
+    // Sync particle sphere colour to current mood
+    if (window.ParticleSphere) {
+        const moodColors = {
+            calm:       [0,   217, 255],
+            happy:      [255, 185,   0],
+            intense:    [160,  60, 255],
+            reflective: [0,   180, 150],
+            danger:     [255,  60,  30],
+            mystery:    [220,  60, 120]
+        };
+        const [r, g, b] = moodColors[mood] || moodColors.calm;
+        ParticleSphere.setColor(r, g, b);
+    }
+}
+
+/**
+ * Toggle between character image and particle sphere.
+ * @param {boolean} hideCharacter — true = show sphere, false = show image
+ */
+function applyCharacterMode(hideCharacter) {
+    const avatarContainer = document.querySelector('.avatar-container');
+    const sphereCanvas    = document.getElementById('misaka-particle-sphere');
+    if (!avatarContainer || !sphereCanvas) return;
+
+    if (hideCharacter) {
+        avatarContainer.classList.add('sphere-mode');
+        // Initialise sphere on first activation
+        if (window.ParticleSphere) {
+            ParticleSphere.setVisible(true);
+            if (!sphereCanvas._sphereInited) {
+                ParticleSphere.init(sphereCanvas);
+                sphereCanvas._sphereInited = true;
+            }
+        }
+    } else {
+        avatarContainer.classList.remove('sphere-mode');
+        if (window.ParticleSphere) ParticleSphere.setVisible(false);
+    }
 }
 
 // ===== PROACTIVE MESSAGING SYSTEM =====

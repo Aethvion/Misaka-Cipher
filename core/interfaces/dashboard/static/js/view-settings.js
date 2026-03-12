@@ -220,6 +220,18 @@ async function loadPreferences() {
         };
     }
 
+    // Hide Character / Particle Sphere toggle
+    const hideCharToggle = document.getElementById('setting-misakacipher-hide-character');
+    if (hideCharToggle) {
+        hideCharToggle.checked = prefs.get('misakacipher.hide_character', false);
+        hideCharToggle.onchange = async (e) => {
+            await savePreference('misakacipher.hide_character', e.target.checked);
+            window.dispatchEvent(new CustomEvent('misakaSettingsUpdated', {
+                detail: { hide_character: e.target.checked }
+            }));
+        };
+    }
+
     // Initialize Other Sections
     loadGlobalSettings();
     initDevMode();
