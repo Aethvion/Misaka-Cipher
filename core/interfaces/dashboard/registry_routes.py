@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Registry Routes
 API endpoints for managing the Model Registry (config/model_registry.json)
 """
@@ -11,6 +11,7 @@ from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Request
 
 from core.utils import get_logger
+from core.utils.model_downloader import ModelDownloader
 
 logger = get_logger(__name__)
 
@@ -559,4 +560,77 @@ async def save_auto_routing(data: Dict[str, Any], request: Request):
         return {"status": "success"}
     except Exception as e:
         logger.error(f"Failed to save auto routing config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Local Model Management =====
+
+@router.get("/local/models/status")
+async def get_local_models_status():
+    """Check which local models are downloaded."""
+    try:
+        local_dir = PROJECT_ROOT / "LocalModels"
+        if not local_dir.exists():
+            return {"models": {}}
+        
+        status = {}
+        # Get all .gguf files
+        for f in local_dir.glob("*.gguf"):
+            status[f.name] = {
+                "exists": True,
+                "size_mb": round(f.stat().st_size / (1024 * 1024), 2),
+                "path": str(f)
+            }
+        return {"models": status}
+    except Exception as e:
+        logger.error(f"Failed to get local models status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/local/models/download")
+async def download_local_model(data: Dict[str, Any]):
+    """Initiate a model download from Hugging Face."""
+    try:
+        repo_id = data.get("repo_id")
+        filename = data.get("filename")
+        
+        if not repo_id or not filename:
+            raise HTTPException(status_code=400, detail="repo_id and filename are required")
+            
+        downloader = ModelDownloader()
+        # This will be synchronous for now, might need background task if it takes too long
+        # but for a 1B model it should be okay-ish if the user waits
+        path = downloader.download_model(repo_id, filename)
+        
+        return {
+            "status": "success",
+            "message": f"Model {filename} downloaded successfully",
+            "path": str(path)
+        }
+    except Exception as e:
+        logger.error(f"Model download failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/local/models/delete")
+async def delete_local_model(data: Dict[str, Any]):
+    """Delete a local model file."""
+    try:
+        filename = data.get("filename")
+        if not filename:
+            raise HTTPException(status_code=400, detail="filename is required")
+            
+        local_dir = PROJECT_ROOT / "LocalModels"
+        model_path = local_dir / filename
+        
+        if not model_path.exists():
+            raise HTTPException(status_code=404, detail="Model file not found")
+            
+        if not str(model_path).startswith(str(local_dir)):
+            raise HTTPException(status_code=400, detail="Invalid path")
+            
+        model_path.unlink()
+        return {"status": "success", "message": f"Model {filename} deleted"}
+    except Exception as e:
+        logger.error(f"Failed to delete model: {e}")
         raise HTTPException(status_code=500, detail=str(e))

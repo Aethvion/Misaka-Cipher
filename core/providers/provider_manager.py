@@ -12,6 +12,7 @@ from .google_provider import GoogleAIProvider
 from .openai_provider import OpenAIProvider
 from .grok_provider import GrokProvider
 from .anthropic_provider import AnthropicProvider
+from .local_provider import LocalProvider
 from core.utils.logger import get_logger
 from core.workspace.usage_tracker import get_usage_tracker
 
@@ -27,7 +28,8 @@ class ProviderManager:
         'google_ai': GoogleAIProvider,
         'openai': OpenAIProvider,
         'grok': GrokProvider,
-        'anthropic': AnthropicProvider
+        'anthropic': AnthropicProvider,
+        'local': LocalProvider
     }
     
     def __init__(self, config_path: Optional[str] = None):

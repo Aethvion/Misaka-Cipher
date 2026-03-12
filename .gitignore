@@ -13,6 +13,7 @@ data/outputfiles/*
 data/config/*
 data/workspace/media/*
 data/workspace/uploads/*
+data/system/ports.json
 !data/config/*.example
 
 # Ignore internal DB and graph files to prevent leaking research history.
@@ -60,4 +61,6 @@ modules/misakacipher/*
 data/files.json
 .claude/worktrees/focused-williamson/
 .claude/worktrees/infallible-wilbur/
-data/system/ports.json
+
+# Local Models
+LocalModels/*

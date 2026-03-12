@@ -228,6 +228,10 @@
                 <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="uploads"><span
                         class="tab-icon">📁</span><span class="tab-label">Uploads</span></button>
 
+                <div class="sidebar-category mode-enterprise">Models</div>
+                <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="local-models"><span
+                        class="tab-icon">🤖</span><span class="tab-label">Local Models</span></button>
+
                 <div class="sidebar-category mode-enterprise">ToolKit</div>
                 <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="tools"><span
                         class="tab-icon">🔧</span><span class="tab-label">Tools</span></button>
@@ -2725,6 +2729,76 @@
                     </div>
                 </div>
             </div>
+
+            <div class="main-tab-panel" id="local-models-panel">
+        <div class="panel-header">
+            <h2>Local Models Management</h2>
+            <div class="header-actions">
+                <button id="refresh-local-models" class="action-btn secondary">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+        <div class="panel-content">
+            <div class="setting-card">
+                <div class="card-header">
+                    <h3>Downloaded Models</h3>
+                </div>
+                <div class="card-body">
+                    <p class="section-desc">Manage models stored in the <code>/LocalModels</code> root directory.</p>
+                    <table class="usage-table">
+                        <thead>
+                            <tr>
+                                <th>Filename</th>
+                                <th>Size</th>
+                                <th>Path</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="local-models-list">
+                            <!-- Populated by JS -->
+                            <tr>
+                                <td colspan="4" class="placeholder-text">Checking for local models...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="setting-card">
+                <div class="card-header">
+                    <h3>Download New Models</h3>
+                </div>
+                <div class="card-body">
+                    <p class="section-desc">Download GGUF models directly from Hugging Face.</p>
+                    <div class="download-form" style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:250px;">
+                            <label style="display:block; margin-bottom:5px; font-size:0.85rem;">HuggingFace Repo ID</label>
+                            <input type="text" id="hf-repo-id" class="term-input" placeholder="e.g. unsloth/Llama-3.2-1-Instruct-GGUF" style="width:100%;">
+                        </div>
+                        <div style="flex:1; min-width:250px;">
+                            <label style="display:block; margin-bottom:5px; font-size:0.85rem;">Filename</label>
+                            <input type="text" id="hf-filename" class="term-input" placeholder="e.g. Llama-3.2-1B-Instruct-Q4_K_M.gguf" style="width:100%;">
+                        </div>
+                        <div style="display:flex; align-items:flex-end;">
+                            <button id="start-hf-download" class="action-btn primary" style="height:38px;">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                        </div>
+                    </div>
+                    <div id="download-progress-container" style="display:none; margin-top:15px;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <span id="download-status">Downloading...</span>
+                            <span id="download-percent">0%</span>
+                        </div>
+                        <div class="splash-loader-bar" style="height:8px;">
+                            <div id="download-progress-bar" class="splash-progress" style="width:0%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
             <!-- Scripts -->
             <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>

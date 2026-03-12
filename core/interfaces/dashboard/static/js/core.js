@@ -572,6 +572,9 @@ function switchMainTab(tabName, save = true) {
 
     // Update layout based on mode
     updateChatLayout();
+
+    // Dispatch event for other views to react
+    document.dispatchEvent(new CustomEvent('tabChanged', { detail: { tab: actualTabName } }));
 }
 
 /**

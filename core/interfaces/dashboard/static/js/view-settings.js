@@ -695,6 +695,7 @@ function initTooltips() {
 // ===== Provider & Profile Management =====
 
 let _registryData = null;
+let _localModelsStatus = {}; // { filename: { exists: bool, size_mb: num } }
 let _suggestedModels = {};
 let _settingsDirty = false;
 
@@ -713,13 +714,18 @@ function clearSettingsDirty() {
 
 async function loadProviderSettings() {
     try {
-        const [regRes, sugRes] = await Promise.all([
+        const [regRes, sugRes, localRes] = await Promise.all([
             fetch('/api/registry'),
-            fetch('/api/registry/suggested')
+            fetch('/api/registry/suggested'),
+            fetch('/api/registry/local/models/status')
         ]);
 
         if (regRes.ok) _registryData = await regRes.json();
         if (sugRes.ok) _suggestedModels = await sugRes.json();
+        if (localRes.ok) {
+            const localData = await localRes.json();
+            _localModelsStatus = localData.models || {};
+        }
 
         if (_registryData) {
             renderProviderCards(_registryData);
@@ -1210,9 +1216,26 @@ function renderProviderCards(registry, expandedProviderName = null) {
             const modelId = typeof m === 'string' ? m : (m.id || key);
             const caps = Array.isArray(m.capabilities) ? m.capabilities : [];
             const desc = (typeof m === 'object' && m.description) ? m.description : '';
+            
+            // Local model status
+            let localStatusHtml = '';
+            if (name === 'local') {
+                const status = _localModelsStatus[key] || { exists: false };
+                if (status.exists) {
+                    localStatusHtml = `<span style="color:#00ff88; font-size:0.7rem;"><i class="fas fa-check-circle"></i> ${status.size_mb} MB</span>`;
+                } else {
+                    localStatusHtml = `<button class="action-btn xs-btn download-local-btn" data-model="${key}" title="Download from HuggingFace"><i class="fas fa-download"></i> Download</button>`;
+                }
+            }
+
             return `
                                     <tr class="model-main-row" data-model="${key}">
-                                        <td><input type="text" class="model-id-input-small" value="${key}" data-key="${key}"></td>
+                                        <td>
+                                            <div style="display:flex; flex-direction:column; gap:4px;">
+                                                <input type="text" class="model-id-input-small" value="${key}" data-key="${key}">
+                                                ${localStatusHtml}
+                                            </div>
+                                        </td>
                                         <td>
                                             <div class="cost-inputs">
                                                 <input type="number" step="0.01" class="model-cost-in" value="${m.input_cost_per_1m_tokens || 0}">
@@ -1309,6 +1332,40 @@ function renderProviderCards(registry, expandedProviderName = null) {
         btn.onclick = () => {
             btn.closest('tr').remove();
             markSettingsDirty();
+        };
+    });
+
+    container.querySelectorAll('.download-local-btn').forEach(btn => {
+        btn.onclick = async () => {
+            const modelKey = btn.dataset.model;
+            // For now, hardcode the repo_id for the suggested Llama 3.2 1B
+            let repoId = "unsloth/Llama-3.2-1B-Instruct-GGUF";
+            let filename = modelKey;
+
+            if (confirm(`Download ${modelKey} from HuggingFace? This might take a few minutes.`)) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+                try {
+                    const res = await fetch('/api/registry/local/download', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ repo_id: repoId, filename: filename })
+                    });
+                    const result = await res.json();
+                    if (res.ok) {
+                        showNotification(result.message, 'success');
+                        await loadProviderSettings(); // Refresh UI
+                    } else {
+                        showNotification(result.detail || 'Download failed', 'error');
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-download"></i> Download';
+                    }
+                } catch (e) {
+                    showNotification('Error connecting to download service', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-download"></i> Download';
+                }
+            }
         };
     });
 
