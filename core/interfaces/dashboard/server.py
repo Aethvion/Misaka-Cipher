@@ -116,6 +116,10 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# Global cache for workspace files to avoid redundant disk scans
+# Format: { 'timestamp': float, 'data': { 'files': [], 'stats': {}, 'count': 0 } }
+FILES_CACHE = {}
+
 
 # WebSocket Log Handler
 class WebSocketLogHandler(logging.Handler):
@@ -620,34 +624,57 @@ async def search_memory(request: MemorySearchRequest):
 
 
 @app.get("/api/workspace/files")
-async def list_workspace_files(category: str = 'output'):
-    """List files recursively based on category."""
+async def list_workspace_files(category: str = 'output', refresh: bool = False):
+    """List files recursively based on category with optional caching."""
+    global FILES_CACHE
     try:
         from core.workspace.workspace_manager import WorkspaceManager
         project_root = Path(__file__).parent.parent.parent.parent
         
-        # We use project_root as the manager root so that 'path' is relative to project root
-        # and works across all categories for 'serve' and 'explorer'
-        # Crucial: set create_dirs=False to prevent scanning from polluting the root with domain folders
+        # Check cache if not refreshing
+        if not refresh and FILES_CACHE:
+            # We filter the cached data by category even if it's cached
+            all_data = FILES_CACHE.get('data')
+            if all_data:
+                # Re-apply filtering logic to the cached data
+                sub_dir = _get_subdir_for_category(category)
+                filtered_files = [
+                    f for f in all_data.get('files', []) 
+                    if f['path'].startswith(sub_dir) or f['path'].startswith(sub_dir.replace('/', '\\'))
+                ]
+                
+                # Recalculate stats for the filtered set
+                total_files = sum(1 for f in filtered_files if not f.get('is_dir'))
+                stats = {}
+                for f in filtered_files:
+                    if not f.get('is_dir'):
+                        ext = f.get('file_type', 'txt')
+                        stats[ext] = stats.get(ext, 0) + 1
+                
+                stats_percentages = {}
+                if total_files > 0:
+                    for ext, count in stats.items():
+                        stats_percentages[ext] = round((count / total_files) * 100, 1)
+                        
+                return {
+                    "count": len(filtered_files),
+                    "files": filtered_files,
+                    "stats": stats_percentages,
+                    "cached": True
+                }
+
+        # Perform a fresh scan
         manager = WorkspaceManager(workspace_root=project_root, create_dirs=False)
-        
-        # Determine target subdirectory relative to project root
-        sub_dir = ""
-        if category in ['files', 'output']:
-            sub_dir = "data/outputfiles"
-        elif category == 'screenshots':
-            sub_dir = "data/workspace/media/screenshots"
-        elif category == 'camera':
-            sub_dir = "data/workspace/media/webcam"
-        elif category == 'uploads':
-            sub_dir = "data/workspace/uploads"
-        else:
-            sub_dir = "data/outputfiles"
-            
-        # Get all outputs from the project root
         all_data = manager.list_outputs()
         
-        # Filter files that belong to the target sub_dir
+        # Update global cache
+        FILES_CACHE = {
+            'timestamp': datetime.now().timestamp(),
+            'data': all_data
+        }
+        
+        # Filter for the requested category
+        sub_dir = _get_subdir_for_category(category)
         filtered_files = [
             f for f in all_data.get('files', []) 
             if f['path'].startswith(sub_dir) or f['path'].startswith(sub_dir.replace('/', '\\'))
@@ -669,12 +696,25 @@ async def list_workspace_files(category: str = 'output'):
         return {
             "count": len(filtered_files),
             "files": filtered_files,
-            "stats": stats_percentages
+            "stats": stats_percentages,
+            "cached": False
         }
         
     except Exception as e:
         logger.error(f"Workspace file listing error for category {category}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+def _get_subdir_for_category(category: str) -> str:
+    """Helper to map categories to subdirectories."""
+    if category in ['files', 'output']:
+        return "data/outputfiles"
+    elif category == 'screenshots':
+        return "data/workspace/media/screenshots"
+    elif category == 'camera':
+        return "data/workspace/media/webcam"
+    elif category == 'uploads':
+        return "data/workspace/uploads"
+    return "data/outputfiles"
 
 @app.post("/api/workspace/files/search")
 async def search_workspace_files(req: SemanticSearchRequest):

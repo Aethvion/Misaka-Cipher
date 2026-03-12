@@ -151,29 +151,7 @@
     backdrop-filter: blur(5px);
 }
 
-.loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(0, 217, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: var(--primary);
-    animation: spin 1s ease-in-out infinite;
-    margin-bottom: 1rem;
-}
 
-.loading-text {
-    font-family: 'Orbitron', sans-serif;
-    color: var(--primary);
-    font-size: 1.2rem;
-    letter-spacing: 2px;
-    animation: pulse 1.5s infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
 
 /* AI Conversations Typing Indicator */
 .typing-indicator {

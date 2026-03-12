@@ -12,7 +12,7 @@ let searchDebounceTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // Setup event listeners for the files page
-    document.getElementById('refresh-files')?.addEventListener('click', () => loadFiles(currentCategory));
+    document.getElementById('refresh-files')?.addEventListener('click', () => loadFiles(currentCategory, true));
     document.getElementById('file-search')?.addEventListener('input', handleSearchInput);
     document.getElementById('type-filter')?.addEventListener('change', renderFiles);
     document.getElementById('semantic-search-toggle')?.addEventListener('click', toggleSemanticMode);
@@ -127,16 +127,25 @@ function setViewMode(mode, save = true) {
     renderFiles();
 }
 
-async function loadFiles(category = 'output') {
+async function loadFiles(category = 'output', refresh = false) {
     currentCategory = category;
+    
+    const grid = document.getElementById('files-grid');
+    if (!grid) return;
+
+    // 1. Clear grid immediately and show loading indicator
+    grid.innerHTML = `
+        <div class="loading-container" style="text-align: center; padding: 3rem;">
+            <div class="loading-spinner"></div>
+            <p style="margin-top: 1rem; color: var(--text-secondary); animation: pulse 1.5s infinite;">Scanning ${category}...</p>
+        </div>
+    `;
+
     try {
-        const url = `/api/workspace/files?category=${category}`;
+        const url = `/api/workspace/files?category=${category}${refresh ? '&refresh=true' : ''}`;
 
         const response = await fetch(url);
         const data = await response.json();
-
-        const grid = document.getElementById('files-grid');
-        if (!grid) return;
 
         if (data.count === 0) {
             let placeholder = 'No files yet. Ask Misaka to create reports, analysis, or other outputs!';

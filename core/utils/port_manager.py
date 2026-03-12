@@ -30,13 +30,37 @@ class PortManager:
                 return True
 
     @classmethod
-    def get_registered_ports(cls) -> dict:
+    def get_registered_ports(cls, perform_cleanup: bool = True) -> dict:
         cls._ensure_registry_exists()
+        registry = {}
         try:
             with open(REGISTRY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                registry = json.load(f)
         except Exception:
-            return {}
+            registry = {}
+
+        if not perform_cleanup:
+            return registry
+
+        # Cleanup logic: remove ports that are no longer physically in use
+        stale_found = False
+        for port_str in list(registry.keys()):
+            try:
+                if not cls._is_port_in_use(int(port_str)):
+                    del registry[port_str]
+                    stale_found = True
+            except (ValueError, TypeError):
+                del registry[port_str]
+                stale_found = True
+
+        if stale_found:
+            try:
+                with open(REGISTRY_FILE, "w", encoding="utf-8") as f:
+                    json.dump(registry, f, indent=4)
+            except Exception:
+                pass
+
+        return registry
 
     @classmethod
     def get_port_from_env(cls, env_var: str, default: int) -> int:
