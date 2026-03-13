@@ -10,6 +10,7 @@ const LocalModels = {
         if (typeof currentMainTab !== 'undefined' && currentMainTab === 'local-models') {
             console.log("[LocalModels] Already on tab, loading models...");
             this.loadModels();
+            this.loadSuggestedModels();
         }
     },
 
@@ -53,9 +54,127 @@ const LocalModels = {
                 btn.onclick = () => this.deleteModel(btn.dataset.filename);
             });
 
+            // Update suggested models badges
+            this.updateSuggestedBadges(Object.keys(models));
+
         } catch (e) {
             console.error("Failed to load local models:", e);
             tbody.innerHTML = '<tr><td colspan="4" class="placeholder-text" style="color:#ff7675;">Error loading models</td></tr>';
+        }
+    },
+
+    async loadSuggestedModels() {
+        const grid = document.getElementById('suggested-models-grid');
+        if (!grid) return;
+
+        try {
+            const res = await fetch('/api/registry/local/suggested');
+            const data = await res.json();
+            const suggestions = data.suggested || [];
+
+            if (suggestions.length === 0) {
+                grid.innerHTML = '<div class="placeholder-text">No suggestions available</div>';
+                return;
+            }
+
+            grid.innerHTML = suggestions.map(model => `
+                <div class="model-card suggestion-card" id="suggested-${model.id}" style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 1.25rem; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; transition: transform 0.2s, background 0.2s;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
+                        <h4 style="margin: 0; font-size: 1.1rem; color: #fff;">${model.name}</h4>
+                        <span class="installed-badge" style="display: none; background: #00b894; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold;">INSTALLED</span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: #b2bec3; margin: 0 0 1rem 0; flex-grow: 1;">${model.description}</p>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                        ${model.tags.map(tag => `<span style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem;">${tag}</span>`).join('')}
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.8rem; font-weight: bold; color: #fab1a0;">${model.size}</span>
+                        <button class="action-btn sm-btn install-btn" 
+                                onclick="LocalModels.installSuggestedModel('${model.id}', '${model.repo}', '${model.filename}')"
+                                style="font-size: 0.8rem; padding: 0.4rem 1rem;">
+                            <i class="fas fa-download"></i> Install
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            // After loading suggestions, check which ones are already installed
+            const localRes = await fetch('/api/registry/local/models/status');
+            const localData = await localRes.json();
+            this.updateSuggestedBadges(Object.keys(localData.models || {}));
+
+        } catch (e) {
+            console.error("Failed to load suggested models:", e);
+            grid.innerHTML = '<div class="placeholder-text" style="color:#ff7675;">Error loading suggestions</div>';
+        }
+    },
+
+    updateSuggestedBadges(installedFiles) {
+        const grid = document.getElementById('suggested-models-grid');
+        if (!grid) return;
+
+        grid.querySelectorAll('.suggestion-card').forEach(card => {
+            const installBtn = card.querySelector('.install-btn');
+            const badge = card.querySelector('.installed-badge');
+            
+            // This is a bit naive, ideally we check repo too, but filename match is usually enough for local
+            const modelId = card.id.replace('suggested-', '');
+            // We need to find the filename for this modelId in suggestions
+            // For now, let's just look at the button attributes or re-fetch (slow)
+            // Let's assume the button still has the filename if we haven't overwritten it
+            const installAction = installBtn.getAttribute('onclick');
+            const filenameMatch = installAction.match(/'([^']+)'\s*\)$/);
+            const filename = filenameMatch ? filenameMatch[1] : '';
+
+            if (installedFiles.includes(filename)) {
+                badge.style.display = 'block';
+                installBtn.disabled = true;
+                installBtn.innerHTML = '<i class="fas fa-check"></i> Installed';
+                installBtn.classList.add('secondary');
+            } else {
+                badge.style.display = 'none';
+                installBtn.disabled = false;
+                installBtn.innerHTML = '<i class="fas fa-download"></i> Install';
+                installBtn.classList.remove('secondary');
+            }
+        });
+    },
+
+    async installSuggestedModel(id, repo, filename) {
+        const card = document.getElementById(`suggested-${id}`);
+        const btn = card ? card.querySelector('.install-btn') : null;
+        
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installing...';
+        }
+
+        try {
+            showNotification(`Starting installation of ${filename}...`, 'info');
+            
+            const res = await fetch('/api/registry/local/models/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ repo_id: repo, filename: filename })
+            });
+
+            const result = await res.json();
+            if (res.ok) {
+                showNotification(`Successfully installed ${filename}`, 'success');
+                this.loadModels(); // This will also update suggested badges
+            } else {
+                showNotification(result.detail || 'Installation failed', 'error');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-download"></i> Install';
+                }
+            }
+        } catch (e) {
+            showNotification('Error connecting to download service', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-download"></i> Install';
+            }
         }
     },
 
@@ -135,6 +254,7 @@ const LocalModels = {
 document.addEventListener('tabChanged', (e) => {
     if (e.detail.tab === 'local-models') {
         LocalModels.loadModels();
+        LocalModels.loadSuggestedModels();
     }
 });
 

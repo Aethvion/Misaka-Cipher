@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/registry", tags=["registry"])
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 REGISTRY_PATH = PROJECT_ROOT / "data" / "config" / "model_registry.json"
-SUGGESTED_PATH = PROJECT_ROOT / "core" / "config" / "suggested_models.json"
+SUGGESTED_PATH = PROJECT_ROOT / "data" / "config" / "suggested_local_models.json"
 ENV_PATH = PROJECT_ROOT / ".env"
 ENV_EXAMPLE_PATH = PROJECT_ROOT / ".env.example"
 
@@ -584,6 +584,19 @@ async def get_local_models_status():
         return {"models": status}
     except Exception as e:
         logger.error(f"Failed to get local models status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/local/suggested")
+async def get_suggested_local_models():
+    """Get list of recommended local models."""
+    try:
+        if not SUGGESTED_PATH.exists():
+            return {"suggested": []}
+            
+        with open(SUGGESTED_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Failed to load suggested models: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
