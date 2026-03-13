@@ -15,6 +15,7 @@ data/workspace/media/*
 data/workspace/uploads/*
 data/system/ports.json
 !data/config/*.example
+!data/config/suggested_local_models.json
 
 # Ignore internal DB and graph files to prevent leaking research history.
 *.db
