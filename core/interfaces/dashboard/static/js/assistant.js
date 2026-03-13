@@ -353,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add typing indicator
     function showTyping() {
         const div = document.createElement('div');
-        div.id = 'misaka-typing-indicator';
+        div.id = 'chat-typing-indicator';
         div.className = 'misaka-typing';
         div.innerHTML = `
             <span class="typing-text">Working...</span>
@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function removeTyping() {
-        const indicator = document.getElementById('misaka-typing-indicator');
+        const indicator = document.getElementById('chat-typing-indicator');
         if (indicator) {
             indicator.remove();
         }

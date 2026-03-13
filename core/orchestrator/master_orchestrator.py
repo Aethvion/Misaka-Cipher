@@ -330,6 +330,7 @@ class MasterOrchestrator:
                     agents_spawned=[],
                     memories_queried=0,
                     execution_time=0,
+                    model_id=response.model if hasattr(response, 'model') else model_id,
                     media_paths=media_paths
                 )
             
@@ -343,7 +344,7 @@ class MasterOrchestrator:
             else:
                 full_prompt = f"{full_prompt}\n\n{current_response}\n\n--- NEW TOOL RESULTS ---\n{tool_results_str}"
 
-        return ExecutionResult(trace_id, True, current_response, actions_taken, [], [], 0, 0, media_paths=media_paths)
+        return ExecutionResult(trace_id, True, current_response, actions_taken, [], [], 0, 0, model_id=model_id, media_paths=media_paths)
 
     def decide_action(self, intent: IntentAnalysis, trace_id: str, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None) -> ActionPlan:
         """

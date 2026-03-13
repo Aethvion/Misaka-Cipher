@@ -191,6 +191,14 @@ class TaskWorker:
                                 task.metadata['routed_model'] = usage['routed_model']
                             if usage.get('routing_reason'):
                                 task.metadata['routing_reason'] = usage['routing_reason']
+                            
+                            # Surface the actual model ID if it was auto-routed but result.model_id is missing/auto
+                            if not result_dict.get('model_id') or result_dict.get('model_id') == 'auto':
+                                # Find the last model used if multiple, or the only one
+                                if usage.get('models_used'):
+                                    last_model = list(usage['models_used'].keys())[-1]
+                                    result_dict['model_id'] = last_model
+                                    task.metadata['actual_model'] = last_model
                     except Exception as usage_err:
                         logger.debug(f"[{task.id}] Usage tracking for task failed (non-critical): {usage_err}")
                     

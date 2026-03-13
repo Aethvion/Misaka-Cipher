@@ -375,6 +375,29 @@ class ProviderManager:
                     # 2.2 Handle Direct Answer Efficiency
                     if direct_answer and isinstance(direct_answer, str) and direct_answer.strip():
                         logger.info(f"[{trace_id}] ROUTER DIRECT ANSWER: Bypassing second model call.")
+                        
+                        # Log usage even for direct answers
+                        try:
+                            from core.workspace.usage_tracker import get_usage_tracker
+                            tracker = get_usage_tracker()
+                            tracker.log_api_call(
+                                provider=self.model_to_provider_map.get(route_picker, "unknown"),
+                                model=route_picker or "auto_router",
+                                prompt=prompt,
+                                response_content=direct_answer,
+                                trace_id=trace_id,
+                                success=True,
+                                metadata={
+                                    'auto_routed': True,
+                                    'route_picker': route_picker,
+                                    'routing_reason': routing_reason,
+                                    'direct_answer': True
+                                },
+                                source=source
+                            )
+                        except Exception as usage_err:
+                            logger.debug(f"[{trace_id}] Direct answer usage tracking failed: {usage_err}")
+
                         return ProviderResponse(
                             content=direct_answer,
                             model=route_picker or "auto_router",

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Usage Tracker
 Tracks API calls, token usage, and estimated costs.
 """
@@ -58,9 +58,10 @@ class UsageTracker:
         path = self._get_daily_log_path(dt)
         if path.exists():
             try:
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    return data if isinstance(data, list) else []
+                with _lock: # Use lock for reading to prevent race conditions during write
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        return data if isinstance(data, list) else []
             except Exception as e:
                 logger.error(f"Failed to load usage for {dt.date()}: {e}")
         return []
@@ -388,7 +389,9 @@ class UsageTracker:
         """Get aggregated usage summary for trace_id. Scans last 7 days."""
         start = datetime.utcnow() - timedelta(days=7)
         entries = self._get_entries_for_range(start)
-        calls = [e for e in entries if e.get("trace_id") == trace_id]
+        # Search for main ID and router-specific ID
+        router_trace_id = f"{trace_id}-router"
+        calls = [e for e in entries if e.get("trace_id") in [trace_id, router_trace_id]]
         if not calls:
             return {}
 
