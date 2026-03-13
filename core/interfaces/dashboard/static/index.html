@@ -181,12 +181,15 @@
     <div class="content-wrapper">
         <aside class="sidebar-nav" id="sidebar-nav">
             <div class="main-tabs">
-                <div class="sidebar-category mode-enterprise">Workflow</div>
-                <button class="main-tab active mode-enterprise" data-maintab="chat"><span
+                <button class="main-tab" data-maintab="misaka-cipher" data-mode="both"><span
+                        class="tab-icon">✨</span><span class="tab-label">Misaka Cipher</span></button>
+
+                <div class="sidebar-category" data-mode="both">Workflow</div>
+                <button class="main-tab active" data-maintab="chat" data-mode="both"><span
                         class="tab-icon">💬</span><span class="tab-label">Chat</span></button>
-                <button class="main-tab mode-enterprise" data-maintab="image"><span class="tab-icon">🎨</span><span
+                <button class="main-tab" data-maintab="image" data-mode="both"><span class="tab-icon">🎨</span><span
                         class="tab-label">Image</span></button>
-                <button class="main-tab mode-enterprise" data-maintab="audio"><span class="tab-icon">🎙️</span><span
+                <button class="main-tab" data-maintab="audio" data-mode="both"><span class="tab-icon">🎙️</span><span
                         class="tab-label">Audio</span></button>
 
                 <div class="sidebar-category mode-rd">Research</div>
@@ -215,9 +218,6 @@
                 <button class="main-tab mode-rd sidebar-subitem" data-maintab="game-checkers"><span
                         class="tab-icon">🔴</span><span class="tab-label">Checkers (vs AI)</span></button>
 
-                <button class="main-tab mode-enterprise" data-maintab="misaka-cipher"><span
-                        class="tab-icon">✨</span><span class="tab-label">Misaka Cipher</span></button>
-
                 <div class="sidebar-category mode-enterprise">Files</div>
                 <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="output"><span
                         class="tab-icon">📤</span><span class="tab-label">Output</span></button>
@@ -228,8 +228,8 @@
                 <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="uploads"><span
                         class="tab-icon">📁</span><span class="tab-label">Uploads</span></button>
 
-                <div class="sidebar-category mode-enterprise">Models</div>
-                <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="local-models"><span
+                <div class="sidebar-category" data-mode="both">Models</div>
+                <button class="main-tab sidebar-subitem" data-maintab="local-models" data-mode="both"><span
                         class="tab-icon">🤖</span><span class="tab-label">Local Models</span></button>
 
                 <div class="sidebar-category mode-enterprise">ToolKit</div>
