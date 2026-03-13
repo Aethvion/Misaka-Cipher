@@ -413,4 +413,24 @@
     .hub-grid {
         grid-template-columns: 1fr;
     }
-}
+}
+
+.hub-system-info {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.sys-badge {
+    background: rgba(0, 217, 255, 0.1);
+    color: var(--primary);
+    border: 1px solid rgba(0, 217, 255, 0.2);
+    padding: 0.4rem 1rem;
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+

@@ -484,10 +484,18 @@ function setDashboardMode(mode, save = true) {
         }
     });
 
+    document.querySelectorAll('.mode-suite').forEach(el => {
+        if (dashboardMode !== 'suite') {
+            el.classList.add('mode-hidden');
+        } else {
+            el.classList.remove('mode-hidden');
+        }
+    });
+
     // Restore the last active tab for this mode specifically
     let targetTab = 'chat';
     if (dashboardMode === 'rd') targetTab = 'advaiconv';
-    if (dashboardMode === 'suite') targetTab = 'suite';
+    if (dashboardMode === 'suite') targetTab = 'suite-home';
     
     if (typeof prefs !== 'undefined' && typeof prefs.get === 'function') {
         const savedTab = prefs.get(`active_tab_${dashboardMode}`);
@@ -497,7 +505,8 @@ function setDashboardMode(mode, save = true) {
     // Validate target tab is not hidden
     const targetBtn = document.querySelector(`.main-tab[data-maintab="${targetTab}"]`);
     if (targetBtn && targetBtn.classList.contains('mode-hidden')) {
-        targetTab = dashboardMode === 'enterprise' ? 'chat' : 'advaiconv';
+        if (dashboardMode === 'suite') targetTab = 'suite-home';
+        else targetTab = dashboardMode === 'enterprise' ? 'chat' : 'advaiconv';
     }
 
     switchMainTab(targetTab, false);

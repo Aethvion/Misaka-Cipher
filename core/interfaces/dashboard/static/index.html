@@ -171,7 +171,7 @@ body.theme-suite {
                 </div>
             </div>
             <div class="header-right">
-                <div class="compact-status" id="compact-status">
+                <div class="compact-status mode-enterprise mode-rd" id="compact-status">
                     <span title="Tokens Today">Tokens: <strong id="tokens-today">0</strong></span>
                     <span class="status-divider">|</span>
                     <span title="Cost Today">Cost: <strong id="cost-today">$0.00</strong></span>
@@ -191,15 +191,20 @@ body.theme-suite {
     <div class="content-wrapper">
         <aside class="sidebar-nav" id="sidebar-nav">
             <div class="main-tabs">
-                <button class="main-tab" data-maintab="misaka-cipher" data-mode="both"><span
-                        class="tab-icon">✨</span><span class="tab-label">Misaka Cipher</span></button>
+                <button class="main-tab mode-suite" data-maintab="suite-home">
+                    <span class="tab-icon">🏠</span><span class="tab-label">Home</span>
+                </button>
 
-                <div class="sidebar-category" data-mode="both">Workflow</div>
-                <button class="main-tab active" data-maintab="chat" data-mode="both"><span
+                <button class="main-tab mode-enterprise mode-rd" data-maintab="misaka-cipher">
+                    <span class="tab-icon">✨</span><span class="tab-label">Misaka Cipher</span>
+                </button>
+
+                <div class="sidebar-category mode-enterprise mode-rd">Workflow</div>
+                <button class="main-tab mode-enterprise mode-rd active" data-maintab="chat"><span
                         class="tab-icon">💬</span><span class="tab-label">Chat</span></button>
-                <button class="main-tab" data-maintab="image" data-mode="both"><span class="tab-icon">🎨</span><span
+                <button class="main-tab mode-enterprise mode-rd" data-maintab="image"><span class="tab-icon">🎨</span><span
                         class="tab-label">Image</span></button>
-                <button class="main-tab" data-maintab="audio" data-mode="both"><span class="tab-icon">🎙️</span><span
+                <button class="main-tab mode-enterprise mode-rd" data-maintab="audio"><span class="tab-icon">🎙️</span><span
                         class="tab-label">Audio</span></button>
 
                 <div class="sidebar-category mode-rd">Research</div>
@@ -238,8 +243,8 @@ body.theme-suite {
                 <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="uploads"><span
                         class="tab-icon">📁</span><span class="tab-label">Uploads</span></button>
 
-                <div class="sidebar-category" data-mode="both">Models</div>
-                <button class="main-tab sidebar-subitem" data-maintab="local-models" data-mode="both"><span
+                <div class="sidebar-category mode-enterprise mode-rd">Models</div>
+                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="local-models"><span
                         class="tab-icon">🤖</span><span class="tab-label">Local Models</span></button>
 
                 <div class="sidebar-category mode-enterprise">ToolKit</div>
@@ -254,13 +259,13 @@ body.theme-suite {
                 <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="misaka-memory"><span
                         class="tab-icon">🧬</span><span class="tab-label">Misaka Cipher Memory</span></button>
 
-                <div class="sidebar-category" data-mode="both">Aethvion Modules</div>
-                <button class="main-tab sidebar-subitem" data-maintab="specter" data-mode="both">
+                <div class="sidebar-category mode-enterprise mode-rd">Aethvion Modules</div>
+                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="specter">
                     <span class="tab-icon">🎭</span>
                     <span class="tab-label">Specter</span>
                 </button>
-                <button class="main-tab sidebar-subitem" data-maintab="synapse" data-mode="both">
-                    <span class="tab-icon">🧠</span>
+                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="synapse">
+                    <span class="tab-icon">📊</span>
                     <span class="tab-label">Synapse</span>
                 </button>
 
@@ -293,12 +298,16 @@ body.theme-suite {
 
         <!-- Main Content Area -->
         <main class="main-container">
-            <!-- Suite Hub Tab -->
-            <div class="main-tab-panel active" id="suite-panel">
+            <!-- Suite Home Panel -->
+            <div class="main-tab-panel active" id="suite-home-panel">
                 <div class="suite-hub">
                     <div class="hub-hero">
                         <h1>Aethvion Suite</h1>
                         <p>The Nervous System of your Digital Creativity</p>
+                        <div class="hub-system-info">
+                            <span class="sys-badge">Version 1.0.0-Nexus</span>
+                            <span class="sys-badge">Status: Online</span>
+                        </div>
                     </div>
                     
                     <div class="hub-grid">
