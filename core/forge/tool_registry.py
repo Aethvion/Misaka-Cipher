@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Tool Registry
 JSON-based catalog of generated tools
 """
@@ -32,7 +32,7 @@ class ToolRegistry:
         if registry_path is None:
             # __file__ = core/forge/tool_registry.py → parent.parent.parent = project root
             workspace = Path(__file__).parent.parent.parent
-            registry_path = workspace / "tools" / "registry.json"
+            registry_path = workspace / "data" / "ai" / "tools" / "registry.json"
         
         self.registry_path = Path(registry_path)
         self.registry_path.parent.mkdir(parents=True, exist_ok=True)

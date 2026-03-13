@@ -104,9 +104,8 @@ def get_system_map() -> str:
     return """Aethvion Suite Architectural Map:
 - /apps: User applications (Specter, Synapse).
 - /core: The Nervous System (Routing, Ports, Settings, AI interfaces).
-- /data: Runtime data (core config, ai history, app data).
+- /data: Runtime data (core config, ai history, tools, app data).
 - /assets: Static assets (character sprites, icons).
-- /tools: Tool registry and generated tools.
 - Start_Aethvion_Suite.bat: Primary launch script.
 """
 

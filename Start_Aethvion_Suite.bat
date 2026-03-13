@@ -105,6 +105,8 @@ if not exist "data\ai\outputfiles"             mkdir data\ai\outputfiles
 if not exist "data\ai\workspace"               mkdir data\ai\workspace
 if not exist "data\ai\workspace\media"         mkdir data\ai\workspace\media
 if not exist "data\ai\workspace\uploads"       mkdir data\ai\workspace\uploads
+if not exist "data\ai\tools"                   mkdir data\ai\tools
+if not exist "data\ai\tools\generated"         mkdir data\ai\tools\generated
 
 :: App Data
 if not exist "data\specter"                    mkdir data\specter

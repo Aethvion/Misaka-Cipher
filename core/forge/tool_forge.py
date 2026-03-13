@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Tool Forge
 Core tool generation engine
 """
@@ -46,9 +46,9 @@ class ToolForge:
         
         # Tools directory at project root
         if tools_dir is None:
-            # __file__ = core/forge/tool_forge.py → parent.parent.parent = project root
+            # Move to data/ai/tools/generated
             project_root = Path(__file__).parent.parent.parent
-            tools_dir = project_root / "tools" / "generated"
+            tools_dir = project_root / "data" / "ai" / "tools" / "generated"
         
         self.tools_dir = Path(tools_dir)
         self.tools_dir.mkdir(parents=True, exist_ok=True)
@@ -271,7 +271,7 @@ class ToolForge:
             module_name = spec.file_name.replace('.py', '')
             try:
                 # Invalidate cached module if it was previously imported
-                full_module = f"tools.generated.{module_name}"
+                full_module = f"data.ai.tools.generated.{module_name}"
                 if full_module in importlib.sys.modules:
                     del importlib.sys.modules[full_module]
                 
