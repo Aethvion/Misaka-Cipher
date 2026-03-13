@@ -6,18 +6,8 @@ core/config/security.yaml
 
 # Ignore all generated content in the data vault. 
 # Folders are created at runtime by the startup script.
-data/logs/*
-data/memory/storage/*
-data/memory/file_search/*
-data/outputfiles/*
-data/config/*
-data/workspace/media/*
-data/workspace/uploads/*
-data/system/ports.json
-data/files.json
-
+data/*
 # Allow Example + Suggestion files
-!data/config/*.example
 !data/config/suggested_local_models.json
 
 # Ignore internal DB and graph files to prevent leaking research history.
@@ -33,12 +23,9 @@ tools/generated/*
 tools/registry.json
 
 # Ignore local system metrics and personal preference files.
-data/usage_log.json
-data/arena_leaderboard.json
-data/workspace/packages.json
-data/workspace/user_preferences.json
 core/config/model_registry.json
 core/interfaces/dashboard/static/assets/system-metrics.json
+data/ai/history/misakacipher/*
 
 # Standard Python environment and build artifacts.
 __pycache__/

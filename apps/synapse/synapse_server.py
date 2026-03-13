@@ -15,9 +15,9 @@ for p in (MODULE_DIR, PROJECT_ROOT):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from modules.aethvion.synapse.synapse_core import synapse_core
-from modules.aethvion.synapse.trackers.capture_manager import capture_manager
-from modules.aethvion.synapse.osf_manager import osf_manager
+from apps.synapse.synapse_core import synapse_core
+from apps.synapse.trackers.capture_manager import capture_manager
+from apps.synapse.osf_manager import osf_manager
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -149,7 +149,7 @@ async def osf_log():
 @app.get("/api/osf/files")
 async def osf_files():
     """List all files in the OpenSeeFace install directory (for diagnostics)."""
-    from modules.aethvion.synapse.osf_manager import OSF_DIR
+    from apps.synapse.osf_manager import OSF_DIR
     if not OSF_DIR.exists():
         return JSONResponse({"error": "Not installed", "files": []})
     files = [str(p.relative_to(OSF_DIR)) for p in sorted(OSF_DIR.rglob("*")) if p.is_file()]

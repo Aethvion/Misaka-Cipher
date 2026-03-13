@@ -2,21 +2,21 @@
 SETLOCAL EnableDelayedExpansion
 
 :: Window always-open guarantee:
-:: When double-clicked, MISAKA_LAUNCHED is undefined.
+:: When double-clicked, AETHVION_LAUNCHED is undefined.
 :: We re-launch this same script inside `cmd /k` which holds the window open
 :: until the user explicitly closes it - regardless of errors or crashes.
-if not defined MISAKA_LAUNCHED (
-    set MISAKA_LAUNCHED=1
+if not defined AETHVION_LAUNCHED (
+    set AETHVION_LAUNCHED=1
     cmd /k ""%~f0""
     exit
 )
-TITLE Misaka Cipher - Aethvion Systems
+TITLE Aethvion Suite - Aethvion Systems
 SET PROJECT_DIR=%~dp0
 cd /d "%PROJECT_DIR%"
 
 echo.
 echo ============================================================
-echo          AETHVION - MISAKA CIPHER
+echo                AETHVION SUITE
 echo ============================================================
 echo.
 
@@ -90,15 +90,25 @@ if not exist ".env" (
 )
 
 :: --- 5. Required directories -----------------------------------
-if not exist "data"                              mkdir data
-if not exist "data\logs"                         mkdir data\logs
-if not exist "data\outputfiles"                  mkdir data\outputfiles
-if not exist "data\config"                       mkdir data\config
-if not exist "data\memory"                       mkdir data\memory
-if not exist "data\memory\storage"               mkdir data\memory\storage
-if not exist "data\memory\storage\workspaces"    mkdir data\memory\storage\workspaces
-if not exist "data\memory\storage\graphs"        mkdir data\memory\storage\graphs
-if not exist "tools\generated"                   mkdir tools\generated
+:: Core Nervous System
+if not exist "data\core"                       mkdir data\core
+if not exist "data\core\logs"                  mkdir data\core\logs
+if not exist "data\core\config"                mkdir data\core\config
+if not exist "data\core\system"                mkdir data\core\system
+
+:: AI Brain
+if not exist "data\ai"                         mkdir data\ai
+if not exist "data\ai\history"                 mkdir data\ai\history
+if not exist "data\ai\memory"                  mkdir data\ai\memory
+if not exist "data\ai\memory\storage"          mkdir data\ai\memory\storage
+if not exist "data\ai\outputfiles"             mkdir data\ai\outputfiles
+if not exist "data\ai\workspace"               mkdir data\ai\workspace
+if not exist "data\ai\workspace\media"         mkdir data\ai\workspace\media
+if not exist "data\ai\workspace\uploads"       mkdir data\ai\workspace\uploads
+
+:: App Data
+if not exist "data\specter"                    mkdir data\specter
+if not exist "data\synapse"                    mkdir data\synapse
 
 :: --- 5.1 Configuration Setup ----------------------------------
 if not exist "core\config\security.yaml" (
@@ -107,16 +117,10 @@ if not exist "core\config\security.yaml" (
         echo [OK]    Created security.yaml from template.
     )
 )
-if not exist "data\config\model_registry.json" (
-    if exist "data\config\model_registry.json.example" (
-        copy "data\config\model_registry.json.example" "data\config\model_registry.json" >nul
-        echo [OK]    Created model_registry.json from template.
-    )
-)
 
 :: --- 6. Launch -------------------------------------------------
 echo.
-echo [START] Launching Misaka Cipher...
+echo [START] Launching Aethvion Suite...
 echo         Dashboard -^> http://localhost:8080 (or your configured PORT)
 echo         Press CTRL+C to stop.
 echo.
@@ -127,7 +131,7 @@ set MAIN_EXIT=%errorlevel%
 :: --- 7. Result ------------------------------------------------
 if %MAIN_EXIT% neq 0 (
     echo.
-    echo [ERROR] Misaka Cipher crashed (exit code %MAIN_EXIT%).
+    echo [ERROR] Aethvion Suite crashed (exit code %MAIN_EXIT%).
     echo         Scroll up to find the error, then fix it and re-run.
     goto :FAIL
 )

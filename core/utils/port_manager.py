@@ -6,7 +6,7 @@ from pathlib import Path
 # Assuming this file is at core/utils/port_manager.py
 # Path to the shared port registry: data/system/ports.json
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-DATA_DIR = ROOT_DIR / "data" / "system"
+DATA_DIR = ROOT_DIR / "data" / "core" / "system"
 REGISTRY_FILE = DATA_DIR / "ports.json"
 
 class PortManager:

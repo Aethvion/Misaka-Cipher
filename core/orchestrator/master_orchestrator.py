@@ -10,7 +10,7 @@ from datetime import datetime
 import re
 import json
 from pathlib import Path
-from tools.standard.file_ops import WORKSPACE_ROOT
+from core.tools.standard.file_ops import WORKSPACE_ROOT
 
 from core.nexus_core import NexusCore, Request, Response
 from core.factory import AgentFactory, AgentSpec

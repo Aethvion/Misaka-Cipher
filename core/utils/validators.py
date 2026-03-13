@@ -152,7 +152,7 @@ class InputValidator:
         Returns:
             True if valid format
         """
-        pattern = re.compile(r"^MCTR-\d{14}-[A-Z0-9]{8}$")
+        pattern = re.compile(r"^ASTR-\d{14}-[A-Z0-9]{8}$")
         return bool(pattern.match(trace_id))
     
     @staticmethod

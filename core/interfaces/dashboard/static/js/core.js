@@ -1,4 +1,4 @@
-// Chat Cipher - Core
+// Aethvion Suite - Core
 // Handles WebSocket connections, global UI state, and initialization
 
 // Global variables

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Settings Manager
 Manages system configuration and user preferences
 """
@@ -10,8 +10,8 @@ from core.utils import get_logger
 
 logger = get_logger(__name__)
 
-# __file__ = core/config/settings_manager.py → up 3 levels = project root → data/config/settings.json
-SETTINGS_FILE = Path(__file__).parent.parent.parent / "data" / "config" / "settings.json"
+# __file__ = core/config/settings_manager.py → up 3 levels = project root → data/core/config/settings.json
+SETTINGS_FILE = Path(__file__).parent.parent.parent / "data" / "core" / "config" / "settings.json"
 
 
 

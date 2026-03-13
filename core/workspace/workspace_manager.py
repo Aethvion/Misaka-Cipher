@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Workspace Manager
 Manages user-facing output files in outputfiles
 """
@@ -62,7 +62,7 @@ class WorkspaceManager:
         self.project_root = Path(__file__).parent.parent.parent
         
         if workspace_root is None:
-            workspace_root = self.project_root / "data" / "outputfiles"
+            workspace_root = self.project_root / "data" / "ai" / "outputfiles"
         
         self.workspace_root = Path(workspace_root)
         
@@ -201,7 +201,7 @@ class WorkspaceManager:
         
         # Save cache
         # Always try to save in data/ folder
-        cache_dir = self.project_root / "data"
+        cache_dir = self.project_root / "data" / "ai"
         if not cache_dir.exists():
             cache_dir.mkdir(parents=True, exist_ok=True)
             

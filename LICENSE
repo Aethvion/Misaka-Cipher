@@ -5,8 +5,8 @@ The source code of this project (Python, JavaScript, HTML, CSS) is licensed unde
 
 2. ASSETS AND ARTWORK:
 The character assets, images, audio files, and "Misaka Cipher" intellectual property located in:
-   - 'web/static/misakacipher'
-   - 'assets/misakacipher'
+   - 'core/interfaces/dashboard/static/misakacipher'
+   - 'assets/'
 
 are NOT covered by this MIT License. They are proprietary and licensed under the terms found in the 'ASSET_LICENSE' file included in this repository.
 

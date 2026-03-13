@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Logger
+"""
+Aethvion Suite - Logger
 Structured logging with automatic Trace_ID injection
 """
 
@@ -24,9 +24,9 @@ class TraceIDFilter(logging.Filter):
         return True
 
 
-class MisakaLogger:
+class AethvionLogger:
     """
-    Centralized logging system for Misaka Cipher.
+    Centralized logging system for Aethvion Suite.
     Automatically injects Trace_IDs and manages log lifecycle.
     """
     
@@ -129,8 +129,8 @@ def get_logger(name: str) -> logging.Logger:
     Returns:
         Configured logger with Trace_ID support
     """
-    return MisakaLogger.get_logger(name)
+    return AethvionLogger.get_logger(name)
 
 
 # Initialize logging system on import
-MisakaLogger.initialize()
+AethvionLogger.initialize()

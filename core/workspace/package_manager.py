@@ -1,5 +1,5 @@
-﻿"""
-Misaka Cipher - Package Manager
+"""
+Aethvion Suite - Package Manager
 Manages Python package requests, approvals, and installations
 """
 
@@ -60,9 +60,9 @@ class PackageManager:
             workspace_root: Root directory for workspace files
         """
         self.workspace_root = workspace_root
-        # Data files live in data/workspace/, not alongside the source code
+        # Data files live in data/ai/workspace/, not alongside the source code
         # __file__ = core/workspace/package_manager.py → up 3 = project root
-        self.config_root = Path(__file__).parent.parent.parent / "data" / "workspace"
+        self.config_root = Path(__file__).parent.parent.parent / "data" / "ai" / "workspace"
         self.packages_file = self.config_root / "packages.json"
         self.intelligence = get_package_intelligence()
         
@@ -502,6 +502,6 @@ def get_package_manager() -> PackageManager:
     """Get the singleton PackageManager instance."""
     global _manager
     if _manager is None:
-        from tools.standard.file_ops import WORKSPACE_ROOT
+        from core.tools.standard.file_ops import WORKSPACE_ROOT
         _manager = PackageManager(WORKSPACE_ROOT)
     return _manager

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Episodic Memory
 Vector-based semantic memory storage using ChromaDB
 """
@@ -93,7 +93,7 @@ class EpisodicMemoryStore:
         except:
             self.collection = self.client.create_collection(
                 name=collection_name,
-                metadata={"description": "Misaka Cipher Episodic Memory"}
+                metadata={"description": "Aethvion Suite Episodic Memory"}
             )
             logger.info(f"Created new ChromaDB collection: {collection_name}")
         

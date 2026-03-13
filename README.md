@@ -1,18 +1,18 @@
-# Misaka Cipher
-**Multitask Intelligence & Strategic Analysis Kernel Architecture**
+# Aethvion Suite
+**The Integrated Neural Foundation for Autonomous Agents**
 
 <div align="center">
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-experimental-orange.svg)](https://github.com/Aethvion/Misaka-Cipher)
+[![Status](https://img.shields.io/badge/status-experimental-orange.svg)](https://github.com/Aethvion/Aethvion-Suite)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[📚 Documentation](/documentation/) | [🚀 Getting Started](/documentation/human/getting-started.md) | [💬 Discussions](https://github.com/Aethvion/Misaka-Cipher/discussions)
+[📚 Documentation](/core/documentation/) | [🚀 Getting Started](/core/documentation/human/getting-started.md) | [💬 Discussions](https://github.com/Aethvion/Aethvion-Suite/discussions)
 
 ---
 
-<img align="center" width="124px" src="https://raw.githubusercontent.com/Aethvion/Misaka-Cipher/refs/heads/main/core/interfaces/dashboard/static/misakacipher/chibi1/misakacipher_chibi_tablet.png">
+<img align="center" width="124px" src="https://raw.githubusercontent.com/Aethvion/Aethvion-Suite/refs/heads/main/core/interfaces/dashboard/static/misakacipher/chibi1/misakacipher_chibi_tablet.png">
 
 ### ⚠️ STATUS: EXPERIMENTAL — EARLY DEVELOPMENT ⚠️
 
@@ -26,21 +26,21 @@
 
 <div align="center">
 
-**Chat Interface**
+**Chat Interface (Misaka Cipher)**
 <img src="assets/showcase/MisakaCipher_Chat.png" alt="Misaka Cipher Chat Interface" width="100%">
 
 **Usage & Cost Tracking**
-<img src="assets/showcase/MisakaCipher_UsagePage.png" alt="Misaka Cipher Usage Page" width="100%">
+<img src="assets/showcase/MisakaCipher_UsagePage.png" alt="Aethvion Suite Usage Page" width="100%">
 
 </div>
 
 ---
 
-## 🎯 What Is Misaka Cipher?
+## 🎯 What Is Aethvion Suite?
 
-Misaka Cipher is a **self-hosted AI assistant platform** with a web dashboard. It connects to cloud AI providers (Google Gemini, OpenAI, xAI Grok, Anthropic Claude) and provides a structured environment for running chat threads, generating tools, and spawning agents — all from a local server you control.
+Aethvion Suite is a **self-hosted AI assistant platform** and application hub. It connects to cloud AI providers (Google Gemini, OpenAI, xAI Grok, Anthropic Claude) and provides a structured environment for running chat threads, generating tools, and spawning agents — all from a local server you control.
 
-**The long-term goal** is an autonomous system that can work toward complex goals by creating its own tools and delegating to specialized agents. That vision is the direction — not the current state.
+The core system features **Misaka Cipher**, a specialized chat interface and assistant kernel.
 
 ---
 
@@ -106,7 +106,7 @@ These features are functional in the current build:
 | Tools | ✅ Working | View registered tools and agents |
 | Packages | 🧪 Experimental | Package install with safety scoring — unstable |
 | Memory | ✅ Working | Browse task history and episodic memory |
-| Misaka Cipher Memory | ✅ Working | Dedicated episodic memory browser |
+| Misaka Memory | ✅ Working | Dedicated episodic memory browser |
 | Specter | ✅ Working | Character animation and visualization engine |
 | Synapse | ✅ Working | Face and body tracking module |
 | Logs | ✅ Working | Live log stream |
@@ -152,8 +152,8 @@ The system is structured around four components:
 
 ```bash
 # Clone
-git clone https://github.com/Aethvion/Misaka-Cipher.git
-cd Misaka-Cipher
+git clone https://github.com/Aethvion/Aethvion-Suite.git
+cd Aethvion-Suite
 
 # Install dependencies (uses pyproject.toml)
 pip install -e ".[memory]"
@@ -167,7 +167,7 @@ copy .env.example .env
 ### Launch
 
 **One-click (Windows):**  
-Double-click `Start_Misaka_Cipher.bat` — it creates the virtual environment, installs dependencies, and starts the dashboard automatically. It also includes a **Smart Tab** check to prevent opening duplicate browser tabs.
+Double-click `Start_Aethvion_Suite.bat` — it creates the virtual environment, installs dependencies, and starts the dashboard automatically. It also includes a **Smart Tab** check to prevent opening duplicate browser tabs.
 
 **Manual:**
 ```bash
@@ -182,7 +182,7 @@ Open [http://localhost:8080](http://localhost:8080) (or your configured `PORT`) 
 ## 📁 Directory Structure
 
 ```
-Misaka-Cipher/
+Aethvion-Suite/
 ├── Start_Misaka_Cipher.bat     # One-click install + launch
 ├── pyproject.toml              # All dependencies + project metadata
 │
@@ -278,8 +278,8 @@ Misaka-Cipher/
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
-git clone https://github.com/Aethvion/Misaka-Cipher.git
-cd Misaka-Cipher
+git clone https://github.com/Aethvion/Aethvion-Suite.git
+cd Aethvion-Suite
 pip install -e ".[memory]"
 cp .env.example .env  # or: copy .env.example .env  (Windows)
 ```
@@ -294,9 +294,9 @@ cp .env.example .env  # or: copy .env.example .env  (Windows)
 
 ## 🔗 Links
 
-- **Docs:** [/documentation/](/documentation/)
-- **Issues:** [GitHub Issues](https://github.com/Aethvion/Misaka-Cipher/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/Aethvion/Misaka-Cipher/discussions)
+- **Docs:** [/core/documentation/](/core/documentation/)
+- **Issues:** [GitHub Issues](https://github.com/Aethvion/Aethvion-Suite/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/Aethvion/Aethvion-Suite/discussions)
 
 ---
 
@@ -304,6 +304,6 @@ cp .env.example .env  # or: copy .env.example .env  (Windows)
 
 *An experimental AI platform — building toward something real, one sprint at a time.*
 
-[⭐ Star on GitHub](https://github.com/Aethvion/Misaka-Cipher)
+[⭐ Star on GitHub](https://github.com/Aethvion/Aethvion-Suite)
 
 </div>

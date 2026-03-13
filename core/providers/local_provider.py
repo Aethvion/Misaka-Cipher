@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Local Provider
+Aethvion Suite - Local Provider
 Implementation for local LLMs using llama-cpp-python
 """
 
@@ -107,7 +107,7 @@ class LocalProvider(BaseProvider):
 
         # Build the template
         formatted = "<|start_header_id|>system<|end_header_id|>\n\n"
-        formatted += system_part if system_part else "You are Misaka Cipher, a helpful digital companion."
+        formatted += system_part if system_part else "You are Misaka Cipher, a sentient AI assistant."
         formatted += "<|eot_id|>"
 
         if history_part:

@@ -26,10 +26,10 @@ router = APIRouter(prefix="/api/misakacipher", tags=["misakacipher"])
 
 # Path configuration
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-MEMORY_DIR = PROJECT_ROOT / "data" / "memory" / "storage" / "misakacipher"
-HISTORY_DIR = MEMORY_DIR / "chathistory"
+MEMORY_DIR = PROJECT_ROOT / "data" / "ai" / "history" / "misakacipher"
+HISTORY_DIR = MEMORY_DIR / "threads"
 EXPRESSIONS_DIR = PROJECT_ROOT / "core" / "interfaces" / "dashboard" / "static" / "misakacipher" / "expressions"
-WORKSPACES_FILE = MEMORY_DIR / "workspaces.json"
+WORKSPACES_FILE = PROJECT_ROOT / "data" / "ai" / "workspace" / "workspaces.json"
 
 # Ensure directories exist
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
@@ -1421,7 +1421,7 @@ async def get_nexus_registry():
 async def authorize_spotify(settings: Dict[str, str]):
     """Get the Spotify authorization URL."""
     try:
-        from modules.aethvion.nexus import spotify_link
+        from core.nexus import spotify_link
         url = spotify_link.get_auth_url(settings)
         return {"url": url}
     except Exception as e:
@@ -1433,7 +1433,7 @@ async def spotify_callback(code: str):
     """Handle the Spotify OAuth2 callback."""
     try:
         # We need the settings to exchange the code
-        from modules.aethvion.nexus import spotify_link
+        from core.nexus import spotify_link
         prefs_manager = get_preferences_manager()
         all_prefs = prefs_manager.get_all_preferences()
         settings = all_prefs.get("nexus", {}).get("spotify", {})

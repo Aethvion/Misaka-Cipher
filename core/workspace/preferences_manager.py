@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Preferences Manager
 Manages user UI preferences and persistence to a local JSON file.
 """
@@ -24,9 +24,9 @@ class PreferencesManager:
             workspace_root: Root directory for workspace files
         """
         self.workspace_root = workspace_root
-        # Data files live in data/workspace/, not alongside the source code
+        # Data files live in data/ai/workspace/, not alongside the source code
         # __file__ = core/workspace/preferences_manager.py → up 3 = project root
-        self.config_root = Path(__file__).parent.parent.parent / "data" / "workspace"
+        self.config_root = Path(__file__).parent.parent.parent / "data" / "ai" / "workspace"
         self.prefs_file = self.config_root / "user_preferences.json"
         self.preferences: Dict[str, Any] = {}
         self._load_prefs()
@@ -130,6 +130,6 @@ def get_preferences_manager() -> PreferencesManager:
     """Get the singleton PreferencesManager instance."""
     global _prefs_manager
     if _prefs_manager is None:
-        from tools.standard.file_ops import WORKSPACE_ROOT
+        from core.tools.standard.file_ops import WORKSPACE_ROOT
         _prefs_manager = PreferencesManager(WORKSPACE_ROOT)
     return _prefs_manager

@@ -4,7 +4,7 @@
             "id": "spotify",
             "name": "Spotify Link",
             "description": "Control playback and get track info from Spotify.",
-            "module_path": "modules.aethvion.nexus.spotify_link",
+            "module_path": "core.nexus.spotify_link",
             "requires_auth": true,
             "is_authorized": false,
             "available_commands": {
@@ -23,7 +23,7 @@
             "id": "media_sentinel",
             "name": "Media Sentinel",
             "description": "Read system-wide media info (SMTC) using Windows native hooks.",
-            "module_path": "modules.aethvion.nexus.media_sentinel",
+            "module_path": "core.nexus.media_sentinel",
             "requires_auth": false,
             "is_authorized": true,
             "available_commands": {
@@ -35,7 +35,7 @@
             "id": "weather_link",
             "name": "Weather Link",
             "description": "Get real-time weather data for any location.",
-            "module_path": "modules.aethvion.nexus.weather_link",
+            "module_path": "core.nexus.weather_link",
             "requires_auth": false,
             "is_authorized": true,
             "available_commands": {
@@ -49,7 +49,7 @@
             "id": "system_link",
             "name": "System Link",
             "description": "Read system hardware telemetry.",
-            "module_path": "modules.aethvion.nexus.system_link",
+            "module_path": "core.nexus.system_link",
             "requires_auth": false,
             "is_authorized": true,
             "available_commands": {
@@ -61,7 +61,7 @@
             "id": "screen_capture",
             "name": "Screen Capture",
             "description": "Take a screenshot of the screen and save it to disk.",
-            "module_path": "modules.aethvion.nexus.screen_capture",
+            "module_path": "core.nexus.screen_capture",
             "requires_auth": false,
             "is_authorized": true,
             "available_commands": {
@@ -73,7 +73,7 @@
             "id": "webcam_capture",
             "name": "Webcam Capture",
             "description": "Captures images from a connected webcam.",
-            "module_path": "modules.aethvion.nexus.webcam_capture",
+            "module_path": "core.nexus.webcam_capture",
             "requires_auth": false,
             "is_authorized": true,
             "available_commands": {
@@ -85,7 +85,7 @@
             "id": "discord_link",
             "name": "Discord Bridge",
             "description": "Send and receive messages via Discord.",
-            "module_path": "modules.aethvion.nexus.discord_link",
+            "module_path": "core.nexus.discord_link",
             "requires_auth": false,
             "is_authorized": true,
             "available_commands": {

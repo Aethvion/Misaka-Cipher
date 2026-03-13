@@ -9,7 +9,7 @@ from datetime import datetime
 import json
 from pathlib import Path
 from core.utils import get_logger, generate_trace_id
-from tools.standard.file_ops import WORKSPACE_ROOT
+from core.tools.standard.file_ops import WORKSPACE_ROOT
 from .task_models import Task, TaskStatus, ChatThread
 
 logger = get_logger(__name__)

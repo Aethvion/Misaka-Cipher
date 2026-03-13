@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Persona Manager
+Aethvion Suite - Persona Manager
 Unifies system prompt building and tool execution for all platforms.
 """
 
@@ -21,11 +21,11 @@ logger = logging.getLogger(__name__)
 
 # Base path relative to this file
 PROJECT_ROOT = Path(__file__).parent.parent.parent
-MEMORY_DIR = PROJECT_ROOT / "data" / "memory" / "storage" / "misakacipher"
-HISTORY_DIR = MEMORY_DIR / "chathistory"
+MEMORY_DIR = PROJECT_ROOT / "data" / "ai" / "history" / "misakacipher"
+HISTORY_DIR = MEMORY_DIR / "threads"
 
 class PersonaManager:
-    """Centralizes Misaka Cipher's persona, context, and capabilities."""
+    """Centralizes Aethvion Suite's persona, context, and capabilities."""
     
     @staticmethod
     def _get_greeting_period(hour: int) -> str:

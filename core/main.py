@@ -129,7 +129,7 @@ def run_verification_tests():
     print("-" * 70 + "\n")
 
     request = Request(
-        prompt="Hello! This is a test of the Misaka Cipher system. Please respond with a brief greeting.",
+        prompt="Hello! This is a test of the Aethvion Suite system. Please respond with a brief greeting.",
         request_type="generation"
     )
     response = nexus.route_request(request)

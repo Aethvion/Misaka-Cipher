@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Generic Agent
 General-purpose agent for executing prompts and code
 """
@@ -15,7 +15,7 @@ from contextlib import redirect_stdout, redirect_stderr
 from .base_agent import BaseAgent
 from .agent_result import AgentResult
 
-from tools.standard.file_ops import WORKSPACE_ROOT
+from core.tools.standard.file_ops import WORKSPACE_ROOT
 
 # Add workspace root to path for tool imports
 sys.path.append(str(Path(__file__).parent.parent))
@@ -92,7 +92,7 @@ class GenericAgent(BaseAgent):
                 "DO NOT import them. Just call them directly by name (e.g., `Finance_Analyze_Stockrisk(...)`).\n"
                 "CRITICAL: Do NOT write 'tool_code' or any placeholder text. Write actual Python code only.\n"
                 "When tools require file paths, use WORK_FOLDER to construct them (e.g., `str(WORK_FOLDER / 'report.pdf')`).\n"
-                "Example: `from tools.standard.file_ops import data_save_file` (Standard tools MUST be imported)."
+                "Example: `from core.tools.standard.file_ops import data_save_file` (Standard tools MUST be imported)."
             )
             instructions += tool_instructions
             

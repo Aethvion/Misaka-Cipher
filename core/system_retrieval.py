@@ -1,9 +1,9 @@
-﻿import os
+import os
 import json
 from pathlib import Path
 from core.workspace.usage_tracker import get_usage_tracker
 
-PROJECT_ROOT = Path("c:/Aethvion/Misaka-Cipher")
+PROJECT_ROOT = Path(__file__).parent.parent
 EXCLUDE_DIRS = {'.git', 'node_modules', '.venv', 'venv', '__pycache__', '.gemini', 'data'}
 
 def get_file_counts() -> str:
@@ -100,21 +100,14 @@ def query_usage_detailed(query: str) -> str:
     return f"Today's usage ({datetime.utcnow().strftime('%Y-%m-%d')}):\n- Tokens: {today.get('tokens', 0)}\n- Cost: ${today.get('cost', 0.0):.6f}"
 
 def get_system_map() -> str:
-    """Returns a textual map/overview of the Misaka Cipher architecture directories."""
-    return """Misaka Cipher Architectural Map:
-- /cli_modules: Python files handling the terminal/command-line interface menus.
-- /config: JSON registry files (settings.json, model_registry.json) for system state.
-- /core: System retrieval utilities and core intelligence hooks.
-- /docs (or /documentation): Architecture and prompt specs.
-- /factory: Agent Factory (creation and tracking of sub-agents).
-- /forge: Tool Forge (dynamic python tool generation and registry).
-- /memory: Knowledge graph and Episodic memory SQLite vector databases.
-- /providers: LLM API wrappers (Google, OpenAI, Grok, Local).
-- /web: FastAPI backend routes.
-  - /web/static: Frontend HTML, JS modules, CSS sheets, and Images.
-- /workspace: Task tracking, git integration, and usage metrics.
-- cli.py: The root terminal execution script.
-- standalone_fastapi.py: The root web server script.
+    """Returns a textual map/overview of the Aethvion Suite architecture directories."""
+    return """Aethvion Suite Architectural Map:
+- /apps: User applications (Specter, Synapse).
+- /core: The Nervous System (Routing, Ports, Settings, AI interfaces).
+- /data: Runtime data (core config, ai history, app data).
+- /assets: Static assets (character sprites, icons).
+- /tools: Tool registry and generated tools.
+- Start_Aethvion_Suite.bat: Primary launch script.
 """
 
 def search_scripts(keyword: str) -> str:
@@ -183,7 +176,7 @@ ASSISTANT_TOOLS = [
         "type": "function",
         "function": {
             "name": "get_system_map",
-            "description": "Returns a directory layout and description of the Misaka Cipher Architecture.",
+            "description": "Returns a directory layout and description of the Aethvion Suite Architecture.",
             "parameters": {"type": "object", "properties": {}, "required": []}
         }
     },

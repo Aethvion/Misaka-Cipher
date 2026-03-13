@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "misaka-cipher"
+name = "aethvion-suite"
 version = "0.2.0"
-description = "M.I.S.A.K.A. – Multitask Intelligence & Strategic Analysis Kernel Architecture: a self-hosted agentic AI platform"
+description = "Aethvion Suite: An integrated agentic AI platform and application hub"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
@@ -85,10 +85,10 @@ misaka = "core.main:main"
 misaka-cli = "core.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/Aethvion/Misaka-Cipher"
-Repository = "https://github.com/Aethvion/Misaka-Cipher"
-Documentation = "https://github.com/Aethvion/Misaka-Cipher/tree/main/documentation"
-"Bug Tracker" = "https://github.com/Aethvion/Misaka-Cipher/issues"
+Homepage = "https://github.com/Aethvion/Aethvion-Suite"
+Repository = "https://github.com/Aethvion/Aethvion-Suite"
+Documentation = "https://github.com/Aethvion/Aethvion-Suite/tree/main/core/documentation"
+"Bug Tracker" = "https://github.com/Aethvion/Aethvion-Suite/issues"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

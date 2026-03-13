@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Trace Manager
+Aethvion Suite - Trace Manager
 Generates and manages unique Trace_IDs for all transactions
 """
 
@@ -21,7 +21,7 @@ class TraceManager:
     Example: MCTR-20260131225500-A7B2C9D1
     """
     
-    PREFIX = "MCTR"  # Misaka Cipher Trace
+    PREFIX = "ASTR"  # Aethvion Suite Trace
     TIMESTAMP_FORMAT = "%Y%m%d%H%M%S"
     RANDOM_LENGTH = 8
     

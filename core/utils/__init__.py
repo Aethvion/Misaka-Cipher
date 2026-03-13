@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Utils Package
+Aethvion Suite - Utils Package
 Utilities for tracing, logging, and validation
 """
 
@@ -11,7 +11,7 @@ from .trace_manager import (
 )
 
 from .logger import (
-    MisakaLogger,
+    AethvionLogger,
     get_logger
 )
 
@@ -30,7 +30,7 @@ __all__ = [
     'get_current_trace_id',
     
     # Logging
-    'MisakaLogger',
+    'AethvionLogger',
     'get_logger',
     
     # Validation

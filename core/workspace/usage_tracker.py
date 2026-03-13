@@ -1,5 +1,5 @@
 """
-Misaka Cipher - Usage Tracker
+Aethvion Suite - Usage Tracker
 Tracks API calls, token usage, and estimated costs.
 """
 
@@ -20,10 +20,8 @@ _lock = threading.Lock()
 MAX_LOG_ENTRIES = 10000
 # __file__ = core/workspace/usage_tracker.py → parent.parent.parent = project root
 DATA_DIR = Path(__file__).parent.parent.parent / "data"
-# __file__ = core/workspace/usage_tracker.py → parent.parent.parent = project root
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
-# New structure: data/logs/usage/YYYY-MM/usage_YYYY-MM-DD.json
-LOGS_DIR = DATA_DIR / "logs" / "usage"
+# New structure: data/ai/logs/usage/YYYY-MM/usage_YYYY-MM-DD.json
+LOGS_DIR = DATA_DIR / "ai" / "logs" / "usage"
 
 
 def get_usage_tracker():
