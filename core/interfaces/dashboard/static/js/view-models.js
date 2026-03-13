@@ -27,7 +27,7 @@ const LocalModels = {
         if (!tbody) return;
 
         try {
-            const registryRes = await fetch('/api/registry/models');
+            const registryRes = await fetch('/api/registry');
             const registryData = await registryRes.json();
             const registeredModels = registryData.providers?.local?.models || {};
 

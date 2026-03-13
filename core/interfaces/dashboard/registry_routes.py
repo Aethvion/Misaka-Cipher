@@ -691,8 +691,7 @@ async def register_local_model(data: Dict[str, Any], request: Request):
                     models[filename] = {"enabled": True}
                     
         # 5. Save registry
-        with open(REGISTRY_PATH, "w", encoding="utf-8") as f:
-            json.dump(registry, f, indent=4)
+        _save_registry(registry)
             
         # 6. Reload config
         if hasattr(request.app.state, 'nexus'):
