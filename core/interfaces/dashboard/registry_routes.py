@@ -157,23 +157,32 @@ def _load_registry() -> Dict[str, Any]:
                 # Ensure basic structure
                 if "providers" not in data: data["providers"] = {}
                 if "profiles" not in data: data["profiles"] = {"chat_profiles": {}, "agent_profiles": {}}
+                if "auto_routing" not in data: 
+                    data["auto_routing"] = {
+                        "chat": {"route_picker": "gemini-3-flash-preview", "models": {}},
+                        "agent": {"route_picker": "gemini-3-flash-preview", "models": {}}
+                    }
                 return data
         
         # Return default structure if file doesn't exist
         return {
             "providers": {}, 
             "profiles": {
-                "chat_profiles": {
-                    "default": []
-                }, 
-                "agent_profiles": {
-                    "default": []
-                }
+                "chat_profiles": {"default": []}, 
+                "agent_profiles": {"default": []}
+            },
+            "auto_routing": {
+                "chat": {"route_picker": "gemini-3-flash-preview", "models": {}},
+                "agent": {"route_picker": "gemini-3-flash-preview", "models": {}}
             }
         }
     except Exception as e:
         logger.error(f"Failed to load model registry: {e}")
-        return {"providers": {}, "profiles": {"chat_profiles": {}, "agent_profiles": {}}}
+        return {
+            "providers": {}, 
+            "profiles": {"chat_profiles": {}, "agent_profiles": {}},
+            "auto_routing": {"chat": {}, "agent": {}}
+        }
 
 
 def _save_registry(data: Dict[str, Any]) -> None:
@@ -651,9 +660,10 @@ async def delete_local_model(data: Dict[str, Any]):
                     del models[filename]
                     
                     # Also remove from auto_routing
+                    auto_routing = registry.get("auto_routing", {})
                     for category in ["chat", "agent"]:
-                        if category in registry.get("auto_routing", {}):
-                            cat_models = registry["auto_routing"][category].get("models", {})
+                        if category in auto_routing:
+                            cat_models = auto_routing[category].get("models", {})
                             if filename in cat_models:
                                 del cat_models[filename]
                     
@@ -713,11 +723,14 @@ async def register_local_model(data: Dict[str, Any], request: Request):
             }
             
         # 4. Add to auto_routing
+        auto_routing = registry.get("auto_routing", {})
         for category in ["chat", "agent"]:
-            if category in registry["auto_routing"]:
-                models = registry["auto_routing"][category]["models"]
+            if category in auto_routing:
+                models = auto_routing[category].get("models", {})
                 if filename not in models:
                     models[filename] = {"enabled": True}
+        
+        # Ensure it's active in registry too (top level active check for local is handled in step 2)
                     
         # 5. Save registry
         _save_registry(registry)
