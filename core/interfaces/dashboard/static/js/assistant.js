@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // State
     let isAssistantEnabled = false;
-    let typingSpeed = 20; // Default typing speed
+    let typingSpeed = 75; // Default typing speed
     let contextHistoryLimit = 5; // Default pairs
     let messageHistory = [];
     let currentEmotion = 'default';
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (data.assistant) {
                     isAssistantEnabled = data.assistant.enabled !== undefined ? data.assistant.enabled : true;
-                    typingSpeed = data.assistant.typing_speed !== undefined ? data.assistant.typing_speed : 20;
+                    typingSpeed = data.assistant.typing_speed !== undefined ? data.assistant.typing_speed : 75;
                     contextHistoryLimit = data.assistant.context_limit !== undefined ? data.assistant.context_limit : 5;
 
                     if (data.assistant.position) {

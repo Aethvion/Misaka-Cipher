@@ -103,7 +103,7 @@ async function loadPreferences() {
     const assistantTypingSpeed = document.getElementById('setting-assistant-typing-speed');
     const assistantTypingVal = document.getElementById('setting-assistant-typing-speed-val');
     if (assistantTypingSpeed && assistantTypingVal) {
-        const currentSpeed = prefs.get('assistant.typing_speed', 20);
+        const currentSpeed = prefs.get('assistant.typing_speed', 75);
         assistantTypingSpeed.value = currentSpeed;
         assistantTypingVal.textContent = currentSpeed;
 
@@ -149,7 +149,7 @@ async function loadPreferences() {
     const misakaTypingSpeed = document.getElementById('setting-misakacipher-typing-speed');
     const misakaTypingVal = document.getElementById('setting-misakacipher-typing-speed-val');
     if (misakaTypingSpeed && misakaTypingVal) {
-        const currentSpeed = prefs.get('misakacipher.typing_speed', 20);
+        const currentSpeed = prefs.get('misakacipher.typing_speed', 75);
         misakaTypingSpeed.value = currentSpeed;
         misakaTypingVal.textContent = currentSpeed;
 

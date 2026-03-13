@@ -5,12 +5,17 @@
 // Global State
 let misakaChatHistory = [];
 let misakaMaxHistory = 20;
-let misakaTypingSpeed = 20;
+let misakaTypingSpeed = 75;
 let isMisakaTyping = false;
 let historyOffsetDays = 0;
 const HISTORY_LIMIT_DAYS = 3;
 let hasInitializedMisaka = false;
 let currentMisakaMood = 'calm';
+
+// Initialize from prefs if available, else default to 75
+if (typeof window.prefs !== 'undefined') {
+    misakaTypingSpeed = window.prefs.get('misakacipher.typing_speed', 75);
+}
 
 let _proactiveSessionTimer = null;
 let _typingTimeout = null; // Timer to resume proactive check-ins after typing stops
