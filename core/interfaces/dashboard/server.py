@@ -511,8 +511,8 @@ async def run_module_script(request: dict):
     
     # Map module names to their startup scripts (relative to project root)
     module_map = {
-        "specter": "modules/aethvion/specter/Start_Specter.bat",
-        "synapse": "modules/aethvion/synapse/Start_Synapse.bat"
+        "vtuber": "apps/vtuber/Start_VTuber.bat",
+        "tracking": "apps/tracking/Start_Tracking.bat"
     }
     
     if module_name not in module_map:

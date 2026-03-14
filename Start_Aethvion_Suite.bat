@@ -109,8 +109,8 @@ if not exist "data\ai\tools"                   mkdir data\ai\tools
 if not exist "data\ai\tools\generated"         mkdir data\ai\tools\generated
 
 :: App Data
-if not exist "data\specter"                    mkdir data\specter
-if not exist "data\synapse"                    mkdir data\synapse
+if not exist "data\vtuber"                     mkdir data\vtuber
+if not exist "data\tracking"                   mkdir data\tracking
 
 :: --- 5.1 Configuration Setup ----------------------------------
 if not exist "core\config\security.yaml" (

@@ -79,9 +79,9 @@ These features are functional in the current build:
 - Built-in games playable from the dashboard: Logic Quest, Blackjack, Sudoku, Word Search, Checkers (vs AI)
 - Leaderboard to track scores across sessions
 
-### 🎭 Specter & 🧠 Synapse
-- **Specter:** Visualization and animation engine for digital character presence — rigging, real-time deformation
-- **Synapse:** Face and body tracking module — streams real-time tracking parameters to Specter via WebSocket
+### 🎭 Aethvion VTuber & 📊 Aethvion Tracking
+- **Aethvion VTuber:** Visualization and animation engine for digital character presence — rigging, real-time deformation.
+- **Aethvion Tracking:** Advanced motion tracking module — streams real-time tracking parameters to VTuber via WebSocket.
 
 ### 🔌 Nexus Module
 - Peripheral and sensor plugin hub — connects the AI to physical/digital inputs (screen capture, webcam, Spotify, weather, system info)
@@ -107,8 +107,8 @@ These features are functional in the current build:
 | Packages | 🧪 Experimental | Package install with safety scoring — unstable |
 | Memory | ✅ Working | Browse task history and episodic memory |
 | Misaka Memory | ✅ Working | Dedicated episodic memory browser |
-| Specter | ✅ Working | Character animation and visualization engine |
-| Synapse | ✅ Working | Face and body tracking module |
+| Aethvion VTuber | ✅ Working | Character animation and visualization engine |
+| Aethvion Tracking | ✅ Working | Motion tracking module |
 | Logs | ✅ Working | Live log stream |
 | Documentation | ✅ Working | In-dashboard documentation viewer |
 | Usage | ✅ Working | Token usage, cost tracking, and detailed granular queries |
@@ -207,11 +207,9 @@ Aethvion-Suite/
 │       ├── dashboard/          # Web dashboard (FastAPI + static files)
 │       └── cli_modules/        # CLI module implementations
 │
-├── modules/                    # Optional extension modules
-│   └── aethvion/
-│       ├── nexus/              # Peripheral & sensor plugin hub (screen capture, webcam, Spotify, etc.)
-│       ├── specter/            # Character animation & visualization engine
-│       └── synapse/            # Face & body tracking module
+├── apps/                       # User applications
+│   ├── vtuber/                 # Character animation & visualization engine
+│   └── tracking/               # Motion tracking module
 │
 ├── data/                       # Runtime data — never committed
 │   ├── logs/                   # Application logs
@@ -253,8 +251,8 @@ Aethvion-Suite/
 - File vector store (semantic workspace file search)
 - Audio tab (text-to-speech and speech-to-text)
 - Games suite (Logic Quest, Blackjack, Sudoku, Word Search, Checkers vs AI) with leaderboards
-- Specter module (character animation and visualization engine)
-- Synapse module (face and body tracking via WebSocket)
+- Aethvion VTuber (character animation and visualization engine)
+- Aethvion Tracking (motion tracking via WebSocket)
 - Nexus peripheral module (screen capture, webcam, Spotify, weather, system info)
 - Documentation viewer tab
 - Port Manager tab

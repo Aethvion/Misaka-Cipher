@@ -588,7 +588,8 @@ function switchMainTab(tabName, save = true) {
     // Load data for tab dynamically
     if (filesTabs.includes(actualTabName) && typeof loadFiles === 'function') loadFiles(actualTabName);
     else if (actualTabName === 'files' && typeof loadFiles === 'function') loadFiles('output');
-    else if (actualTabName === 'tools' && typeof loadTools === 'function') loadTools();
+    else if (actualTabName === 'tracking' && typeof loadTrackingDashboard === 'function') loadTrackingDashboard();
+    else if (actualTabName === 'vtuber' && typeof loadVTuberDashboard === 'function') loadVTuberDashboard();
     else if (actualTabName === 'settings' && typeof loadProviderSettings === 'function') loadProviderSettings();
     else if (actualTabName === 'usage' && typeof loadUsageDashboard === 'function') loadUsageDashboard();
     else if (actualTabName === 'image' && typeof loadImageModels === 'function') loadImageModels();
@@ -700,7 +701,7 @@ async function launchModule(name) {
             window.open(`http://localhost:${port}`, '_blank');
         } else {
             // Fallback to default ports if not registered yet
-            const defaults = { 'specter': 8081, 'synapse': 8082 };
+            const defaults = { 'vtuber': 8081, 'tracking': 8082 };
             const defaultPort = defaults[name.toLowerCase()];
             if (defaultPort) {
                 console.warn(`Module ${name} not found in dynamic ports, trying default :${defaultPort}`);
@@ -788,7 +789,7 @@ async function updateModuleStatusBadges() {
         
         const registeredModules = Object.values(ports).map(m => m.toLowerCase());
         
-        ['specter', 'synapse'].forEach(mod => {
+        ['vtuber', 'tracking'].forEach(mod => {
             const badge = document.getElementById(`${mod}-status-badge`);
             const headerLaunchBtn = document.querySelector(`.module-launch-btn[data-launch="${mod}"]`);
             if (!badge) return;

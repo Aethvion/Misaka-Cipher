@@ -263,13 +263,13 @@
                         class="tab-icon">🧬</span><span class="tab-label">Misaka Cipher Memory</span></button>
 
                 <div class="sidebar-category mode-enterprise mode-rd">Aethvion Modules</div>
-                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="specter">
+                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="vtuber">
                     <span class="tab-icon">🎭</span>
-                    <span class="tab-label">Specter</span>
+                    <span class="tab-label">Aethvion VTuber</span>
                 </button>
-                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="synapse">
+                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="tracking">
                     <span class="tab-icon">📊</span>
-                    <span class="tab-label">Synapse</span>
+                    <span class="tab-label">Aethvion Tracking</span>
                 </button>
 
                 <div class="sidebar-category" data-mode="both">Diagnostics</div>
@@ -329,12 +329,12 @@
                             </div>
                         </div>
 
-                        <!-- Specter Card -->
-                        <div class="hub-card" onclick="switchMainTab('specter')">
+                        <!-- VTuber Card -->
+                        <div class="hub-card" onclick="switchMainTab('vtuber')">
                             <div class="card-icon"><i class="fas fa-palette"></i></div>
                             <div class="card-content">
-                                <h3>Specter</h3>
-                                <p>Neural image generation and professional layered asset management.</p>
+                                <h3>Aethvion VTuber</h3>
+                                <p>Neural character generation and professional layered asset management for digital presence.</p>
                                 <div class="card-footer">
                                     <span class="badge">Visuals</span>
                                     <span class="badge">V4-Ready</span>
@@ -342,12 +342,12 @@
                             </div>
                         </div>
 
-                        <!-- Synapse Card -->
-                        <div class="hub-card" onclick="switchMainTab('synapse')">
+                        <!-- Tracking Card -->
+                        <div class="hub-card" onclick="switchMainTab('tracking')">
                             <div class="card-icon"><i class="fas fa-project-diagram"></i></div>
                             <div class="card-content">
-                                <h3>Synapse</h3>
-                                <p>Advanced project tracking, knowledge synthesis, and performance metrics.</p>
+                                <h3>Aethvion Tracking</h3>
+                                <p>Advanced motion tracking, knowledge synthesis, and performance metrics.</p>
                                 <div class="card-footer">
                                     <span class="badge">Data</span>
                                     <span class="badge">Synthesis</span>
@@ -355,24 +355,24 @@
                             </div>
                         </div>
 
-                        <!-- Future Audio Card -->
+                        <!-- Audio Card -->
                         <div class="hub-card disabled">
                             <div class="card-icon"><i class="fas fa-wave-square"></i></div>
                             <div class="card-content">
-                                <h3>Audio Studio</h3>
-                                <p>Audacity-inspired multi-track neural audio editing and generation.</p>
+                                <h3>Aethvion Audio</h3>
+                                <p>Professional multi-track neural audio editing and generation.</p>
                                 <div class="card-footer">
                                     <span class="badge highlight">Coming Soon</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Future Image Card -->
+                        <!-- Photo Card -->
                         <div class="hub-card disabled">
                             <div class="card-icon"><i class="fas fa-layer-group"></i></div>
                             <div class="card-content">
-                                <h3>Image Forge</h3>
-                                <p>Photoshop-inspired professional image manipulation with AI integration.</p>
+                                <h3>Aethvion Photo</h3>
+                                <p>Professional image manipulation with advanced AI integration.</p>
                                 <div class="card-footer">
                                     <span class="badge highlight">Coming Soon</span>
                                 </div>
@@ -2191,23 +2191,23 @@
                 </div>
             </div>
 
-            <!-- Specter Module Panel -->
-            <div class="main-tab-panel" id="specter-panel">
+            <!-- VTuber Module Panel -->
+            <div class="main-tab-panel" id="vtuber-panel">
                 <div class="module-page-container">
                     <div class="module-header">
                         <div class="module-title">
                             <span class="module-icon">🎭</span>
                             <div>
-                                <h2>Specter Engine</h2>
-                                <p class="module-subtitle">Advanced Standalone VTuber Rigging & Animation</p>
+                                <h2>Aethvion VTuber</h2>
+                                <p class="module-subtitle">Advanced Standalone Character Rigging & Animation</p>
                             </div>
                         </div>
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="specter"
+                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="vtuber"
                                 disabled>
                                 <i class="fas fa-external-link-alt"></i> LAUNCH UI
                             </button>
-                            <div id="specter-status-badge" class="status-badge offline">
+                            <div id="vtuber-status-badge" class="status-badge offline">
                                 <span class="status-dot"></span>
                                 <span class="status-text">NOT RUNNING</span>
                             </div>
@@ -2216,31 +2216,31 @@
 
                     <div class="module-content">
                         <div class="module-description-card card">
-                            <h3>About Specter</h3>
-                            <p>Specter is a next-generation 2D avatar rigging engine. It allows you to transform static
-                                character sheets into fully articulated VTuber models with AI-assisted mesh generation
+                            <h3>About Aethvion VTuber</h3>
+                            <p>Aethvion VTuber is a next-generation 2D avatar rigging engine. It allows you to transform static
+                                character sheets into fully articulated models with AI-assisted mesh generation
                                 and bone weight prediction.</p>
                             <div class="feature-tags">
                                 <span class="tag">AI Rigging</span>
-                                <span class="tag">PIXI.js v7</span>
+                                <span class="tag">High-Perf WebGL</span>
                                 <span class="tag">Physics Engine</span>
-                                <span class="tag">LBS Deform</span>
+                                <span class="tag">Linear Skinning</span>
                             </div>
                         </div>
 
                         <div class="module-actions-grid">
-                            <div class="action-card run" id="specter-run-card">
+                            <div class="action-card run" id="vtuber-run-card">
                                 <i class="fas fa-play"></i>
                                 <h4>System Control</h4>
-                                <p>Start or stop the Specter backend service.</p>
-                                <button class="term-btn run-module-btn" data-module="specter" data-action="run">START
+                                <p>Start or stop the VTuber backend service.</p>
+                                <button class="term-btn run-module-btn" data-module="vtuber" data-action="run">START
                                     SERVICE</button>
                             </div>
-                            <div class="action-card folder" id="specter-folder-card">
+                            <div class="action-card folder" id="vtuber-folder-card">
                                 <i class="fas fa-folder-open"></i>
                                 <h4>Workspace</h4>
-                                <p>Open the Specter module directory in Explorer.</p>
-                                <button class="term-btn open-folder-btn" data-path="modules/aethvion/specter">OPEN
+                                <p>Open the VTuber module directory in Explorer.</p>
+                                <button class="term-btn open-folder-btn" data-path="apps/vtuber">OPEN
                                     FOLDER</button>
                             </div>
                         </div>
@@ -2248,23 +2248,23 @@
                 </div>
             </div>
 
-            <!-- Synapse Module Panel -->
-            <div class="main-tab-panel" id="synapse-panel">
+            <!-- Tracking Module Panel -->
+            <div class="main-tab-panel" id="tracking-panel">
                 <div class="module-page-container">
                     <div class="module-header">
                         <div class="module-title">
-                            <span class="module-icon">🧠</span>
+                            <span class="module-icon">📊</span>
                             <div>
-                                <h2>Synapse Bridge</h2>
+                                <h2>Aethvion Tracking</h2>
                                 <p class="module-subtitle">Universal AI Tracking & Data Distribution</p>
                             </div>
                         </div>
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="synapse"
+                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="tracking"
                                 disabled>
                                 <i class="fas fa-external-link-alt"></i> LAUNCH UI
                             </button>
-                            <div id="synapse-status-badge" class="status-badge offline">
+                            <div id="tracking-status-badge" class="status-badge offline">
                                 <span class="status-dot"></span>
                                 <span class="status-text">NOT RUNNING</span>
                             </div>
@@ -2273,12 +2273,12 @@
 
                     <div class="module-content">
                         <div class="module-description-card card">
-                            <h3>About Synapse</h3>
-                            <p>Synapse is the central nervous system for motion data. It integrates with MediaPipe and
-                                other tracking backends to provide high-fidelity face and pose data to Specter and other
+                            <h3>About Aethvion Tracking</h3>
+                            <p>Aethvion Tracking is the central nervous system for motion data. It integrates with advanced
+                                tracking backends to provide high-fidelity face and pose data to VTuber and other
                                 external consumers.</p>
                             <div class="feature-tags">
-                                <span class="tag">MediaPipe Tasks</span>
+                                <span class="tag">AI Tracking</span>
                                 <span class="tag">Motion Capture</span>
                                 <span class="tag">MJPEG Stream</span>
                                 <span class="tag">Low Latency</span>
@@ -2286,18 +2286,18 @@
                         </div>
 
                         <div class="module-actions-grid">
-                            <div class="action-card run" id="synapse-run-card">
+                            <div class="action-card run" id="tracking-run-card">
                                 <i class="fas fa-play"></i>
                                 <h4>System Control</h4>
-                                <p>Start or stop the Synapse tracking backend.</p>
-                                <button class="term-btn run-module-btn" data-module="synapse" data-action="run">START
+                                <p>Start or stop the tracking backend.</p>
+                                <button class="term-btn run-module-btn" data-module="tracking" data-action="run">START
                                     SERVICE</button>
                             </div>
-                            <div class="action-card folder" id="synapse-folder-card">
+                            <div class="action-card folder" id="tracking-folder-card">
                                 <i class="fas fa-folder-open"></i>
                                 <h4>Workspace</h4>
-                                <p>Open the Synapse module directory in Explorer.</p>
-                                <button class="term-btn open-folder-btn" data-path="modules/aethvion/synapse">OPEN
+                                <p>Open the tracking module directory in Explorer.</p>
+                                <button class="term-btn open-folder-btn" data-path="apps/tracking">OPEN
                                     FOLDER</button>
                             </div>
                         </div>
