@@ -183,7 +183,7 @@ Open [http://localhost:8080](http://localhost:8080) (or your configured `PORT`) 
 
 ```
 Aethvion-Suite/
-├── Start_Misaka_Cipher.bat     # One-click install + launch
+├── Start_Aethvion_Suite.bat     # One-click install + launch
 ├── pyproject.toml              # All dependencies + project metadata
 │
 ├── core/                       # All Python source code

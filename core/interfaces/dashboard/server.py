@@ -25,9 +25,9 @@ logger = get_logger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Misaka Cipher - Nexus Portal",
+    title="Aethvion Suite - Nexus Portal",
     description="Autonomous AI Orchestration System",
-    version="1.0.0"
+    version="4"
 )
 
 # CORS middleware

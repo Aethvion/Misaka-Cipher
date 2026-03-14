@@ -35,8 +35,9 @@ def run_cli():
 def is_dashboard_open():
     """Check if the dashboard is already open in a browser window using PowerShell."""
     try:
-        # Search for windows with the specific title "Misaka Cipher - Nexus Portal"
-        ps_cmd = 'Get-Process | Where-Object { $_.MainWindowTitle -like "*Misaka Cipher - Nexus Portal*" }'
+        # Search for windows with "Aethvion Suite" in the title
+        # -match is regex-based and case-insensitive by default in PowerShell
+        ps_cmd = 'Get-Process | Where-Object { $_.MainWindowTitle -match "Aethvion Suite" }'
         result = subprocess.run(['powershell', '-Command', ps_cmd], capture_output=True, text=True)
         return len(result.stdout.strip()) > 0
     except Exception:
@@ -57,10 +58,10 @@ def run_web_server():
     """Launch web dashboard with orchestrator."""
     from core.utils.port_manager import PortManager
     base_port = int(os.environ.get("PORT", 8080))
-    port = PortManager.bind_port("Misaka Cipher Nexus", base_port)
+    port = PortManager.bind_port("Aethvion Suite Nexus", base_port)
     
     print("\n" + "=" * 70)
-    print("MISAKA CIPHER - NEXUS PORTAL (WEB)")
+    print("AETHVION SUITE - NEXUS PORTAL (WEB)")
     print("=" * 70 + "\n")
     print("Launching web server...")
     print(f"Dashboard will be available at: http://localhost:{port}")
@@ -100,7 +101,7 @@ def run_verification_tests():
     from core.nexus_core import NexusCore, Request
 
     print("\n" + "=" * 70)
-    print("MISAKA CIPHER - VERIFICATION TEST")
+    print("AETHVION SUITE - VERIFICATION TEST")
     print("=" * 70 + "\n")
 
     nexus = NexusCore()
