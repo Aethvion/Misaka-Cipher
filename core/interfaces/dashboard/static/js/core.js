@@ -487,29 +487,17 @@ function setDashboardMode(mode, save = true) {
     document.body.classList.add(`theme-${dashboardMode}`);
 
     // Hide/Show navigation elements based on mode
-    // mode-enterprise should be hidden if mode===rd
-    // mode-rd should be hidden if mode===enterprise
-    document.querySelectorAll('.mode-enterprise').forEach(el => {
-        if (dashboardMode !== 'enterprise') {
-            el.classList.add('mode-hidden');
-        } else {
-            el.classList.remove('mode-hidden');
-        }
-    });
+    const modeClasses = ['mode-enterprise', 'mode-rd', 'mode-suite'];
+    document.querySelectorAll('[class*="mode-"]').forEach(el => {
+        // Find which mode classes this element has
+        const classes = Array.from(el.classList).filter(cls => modeClasses.includes(cls));
+        if (classes.length === 0) return;
 
-    document.querySelectorAll('.mode-rd').forEach(el => {
-        if (dashboardMode !== 'rd') {
-            el.classList.add('mode-hidden');
-        } else {
+        // Show if it matches current mode, hide otherwise
+        if (el.classList.contains(`mode-${dashboardMode}`)) {
             el.classList.remove('mode-hidden');
-        }
-    });
-
-    document.querySelectorAll('.mode-suite').forEach(el => {
-        if (dashboardMode !== 'suite') {
-            el.classList.add('mode-hidden');
         } else {
-            el.classList.remove('mode-hidden');
+            el.classList.add('mode-hidden');
         }
     });
 

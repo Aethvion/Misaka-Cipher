@@ -174,7 +174,7 @@
                 </div>
             </div>
             <div class="header-right">
-                <div class="compact-status mode-enterprise mode-rd" id="compact-status">
+                <div class="compact-status" id="compact-status">
                     <span title="Tokens Today">Tokens: <strong id="tokens-today">0</strong></span>
                     <span class="status-divider">|</span>
                     <span title="Cost Today">Cost: <strong id="cost-today">$0.00</strong></span>
@@ -205,13 +205,13 @@
                 <div class="sidebar-category mode-enterprise mode-rd">Workflow</div>
                 <button class="main-tab mode-enterprise mode-rd active" data-maintab="chat"><span
                         class="tab-icon">💬</span><span class="tab-label">Chat</span></button>
-                <button class="main-tab mode-enterprise mode-rd" data-maintab="image"><span
+                <button class="main-tab mode-enterprise" data-maintab="image"><span
                         class="tab-icon">🎨</span><span class="tab-label">Image</span></button>
-                <button class="main-tab mode-enterprise mode-rd" data-maintab="audio"><span
+                <button class="main-tab mode-enterprise" data-maintab="audio"><span
                         class="tab-icon">🎙️</span><span class="tab-label">Audio</span></button>
 
-                <div class="sidebar-category mode-rd">Research</div>
-                <button class="main-tab mode-rd" data-maintab="advaiconv"><span class="tab-icon">🧪</span><span
+                <div class="sidebar-category mode-enterprise">Research</div>
+                <button class="main-tab mode-enterprise" data-maintab="advaiconv"><span class="tab-icon">🧪</span><span
                         class="tab-label">Advanced AI Conversation</span></button>
 
                 <div class="sidebar-category mode-rd">Sandbox</div>
@@ -220,11 +220,10 @@
                 <button class="main-tab mode-rd" data-maintab="aiconv"><span class="tab-icon">🎭</span><span
                         class="tab-label">AI Conversations</span></button>
 
-                <button class="main-tab mode-rd" data-maintab="game-results"><span class="tab-icon">🏆</span><span
-                        class="tab-label">Leaderboards</span></button>
-
                 <!-- Games Dropdown -->
                 <div class="sidebar-category mode-rd">Games</div>
+                <button class="main-tab mode-rd sidebar-subitem" data-maintab="game-results"><span class="tab-icon">🏆</span><span
+                        class="tab-label">Leaderboards</span></button>
                 <button class="main-tab mode-rd sidebar-subitem" data-maintab="game-logic-quest"><span
                         class="tab-icon">🧩</span><span class="tab-label">Logic Quest</span></button>
                 <button class="main-tab mode-rd sidebar-subitem" data-maintab="game-blackjack"><span
@@ -246,8 +245,8 @@
                 <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="uploads"><span
                         class="tab-icon">📁</span><span class="tab-label">Uploads</span></button>
 
-                <div class="sidebar-category mode-enterprise mode-rd">Models</div>
-                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="local-models"><span
+                <div class="sidebar-category mode-enterprise">Models</div>
+                <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="local-models"><span
                         class="tab-icon">🤖</span><span class="tab-label">Local Models</span></button>
 
                 <div class="sidebar-category mode-enterprise">ToolKit</div>
@@ -262,42 +261,41 @@
                 <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="misaka-memory"><span
                         class="tab-icon">🧬</span><span class="tab-label">Misaka Cipher Memory</span></button>
 
-                <div class="sidebar-category mode-enterprise mode-rd">Aethvion Modules</div>
-                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="vtuber">
+                <div class="sidebar-category mode-hidden">Aethvion Modules</div>
+                <button class="main-tab mode-hidden sidebar-subitem" data-maintab="vtuber">
                     <span class="tab-icon">🎭</span>
                     <span class="tab-label">Aethvion VTuber</span>
                 </button>
-                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="tracking">
+                <button class="main-tab mode-hidden sidebar-subitem" data-maintab="tracking">
                     <span class="tab-icon">📊</span>
                     <span class="tab-label">Aethvion Tracking</span>
                 </button>
-                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="audio-editor">
+                <button class="main-tab mode-hidden sidebar-subitem" data-maintab="audio-editor">
                     <span class="tab-icon">🔊</span>
                     <span class="tab-label">Aethvion Audio</span>
                 </button>
-                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="photo">
+                <button class="main-tab mode-hidden sidebar-subitem" data-maintab="photo">
                     <span class="tab-icon">🎨</span>
                     <span class="tab-label">Aethvion Photo</span>
                 </button>
 
-                <div class="sidebar-category" data-mode="both">Diagnostics</div>
-                <button class="main-tab sidebar-subitem" data-maintab="logs" data-mode="both"><span
+                <div class="sidebar-category mode-enterprise mode-rd">Diagnostics</div>
+                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="logs"><span
                         class="tab-icon">📜</span><span class="tab-label">Logs</span></button>
-                <button class="main-tab sidebar-subitem" data-maintab="documentation" data-mode="both"><span
+                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="documentation"><span
                         class="tab-icon">📖</span><span class="tab-label">Documentation</span></button>
-                <button class="main-tab sidebar-subitem" data-maintab="usage" data-mode="both"><span
+                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="usage"><span
                         class="tab-icon">📊</span><span class="tab-label">Usage</span></button>
-                <button class="main-tab sidebar-subitem" data-maintab="status" data-mode="both"><span
+                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="status"><span
                         class="tab-icon">🚦</span><span class="tab-label">Status</span></button>
-                <button class="main-tab sidebar-subitem" data-maintab="ports" data-mode="both"><span
+                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="ports"><span
                         class="tab-icon">🔌</span><span class="tab-label">Port Manager</span></button>
-
-                <button class="main-tab" data-maintab="settings" data-mode="both"><span class="tab-icon">⚙️</span><span
-                        class="tab-label">Settings</span></button>
+                <button class="main-tab mode-enterprise mode-rd" data-maintab="settings"><span
+                        class="tab-icon">⚙️</span><span class="tab-label">Settings</span></button>
             </div>
 
             <div class="sidebar-bottom">
-                <button class="main-tab" data-maintab="version" data-mode="both" title="Version Control">
+                <button class="main-tab mode-enterprise mode-rd" data-maintab="version" title="Version Control">
                     <span class="tab-icon">🔖</span>
                     <span class="tab-label">Version</span>
                     <div id="sidebar-version-dot"
