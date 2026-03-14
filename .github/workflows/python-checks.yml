@@ -29,14 +29,14 @@ jobs:
 
     - name: Lint — syntax errors and undefined names
       run: |
-        flake8 core tests tools \
+        flake8 core apps \
           --count --select=E9,F63,F7,F82 \
           --show-source --statistics \
           --exclude=__pycache__,.venv,venv,env
 
     - name: Lint — style warnings (non-blocking)
       run: |
-        flake8 core tests tools \
+        flake8 core apps \
           --count --exit-zero \
           --max-complexity=10 --max-line-length=127 --statistics \
           --exclude=__pycache__,.venv,venv,env
