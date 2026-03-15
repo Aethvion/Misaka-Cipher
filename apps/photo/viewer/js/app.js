@@ -16,8 +16,7 @@ class AethvionPhoto {
     constructor() {
         this.workspaces = [];
         this.activeWorkspaceIndex = -1;
-        this.currentTool = 'select';
-        
+        this.activeColor = '#000000';
         this.init();
     }
 
@@ -25,6 +24,7 @@ class AethvionPhoto {
         this.bindEvents();
         this.bindDropdowns();
         this.bindFilters();
+        this.initColorPicker();
         
         // Create initial workspace
         this.addWorkspace("Untitled-1", true);
@@ -146,6 +146,8 @@ class AethvionPhoto {
             if (this.currentTool === 'brush' || this.currentTool === 'eraser') {
                 isDrawing = true;
                 this.handleDraw(e);
+            } else if (this.currentTool === 'eyedropper') {
+                this.handleEyedropper(x, y);
             } else if (this.currentTool === 'transform') {
                 const layer = ws.engine.getActiveLayer();
                 if (!layer) return;
@@ -393,6 +395,7 @@ class AethvionPhoto {
         switch(subAction) {
             case 'flip-h': ws.engine.flipHorizontal(); break;
             case 'flip-v': ws.engine.flipVertical(); break;
+            case 'rotate-90': ws.engine.rotate90CW(); break;
         }
     }
 
@@ -550,10 +553,43 @@ class AethvionPhoto {
         const y = (e.clientY - rect.top) * (ws.engine.height / rect.height);
         
         if (this.currentTool === 'brush') {
-            ws.engine.drawBrush(x, y, '#7c6ff7', 10);
+            ws.engine.drawBrush(x, y, this.activeColor, 10);
         } else if (this.currentTool === 'eraser') {
             ws.engine.drawEraser(x, y, 15);
         }
+    }
+
+    initColorPicker() {
+        const preview = document.getElementById('color-preview');
+        const input = document.getElementById('active-color');
+        
+        preview.style.backgroundColor = this.activeColor;
+        
+        preview.addEventListener('click', () => input.click());
+        input.addEventListener('input', (e) => {
+            this.activeColor = e.target.value;
+            preview.style.backgroundColor = this.activeColor;
+        });
+    }
+
+    handleEyedropper(x, y) {
+        const ws = this.getActiveWorkspace();
+        if (!ws) return;
+        
+        // We need to sample from the main canvas because layers are blended
+        const ctx = ws.engine.mainCanvas.getContext('2d');
+        const pixel = ctx.getImageData(x, y, 1, 1).data;
+        
+        const rgbToHex = (r, g, b) => '#' + [r, g, b].map(x => {
+            const hex = x.toString(16);
+            return hex.length === 1 ? '0' + hex : hex;
+        }).join('');
+        
+        const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+        this.activeColor = hex;
+        
+        document.getElementById('color-preview').style.backgroundColor = hex;
+        document.getElementById('active-color').value = hex;
     }
 
     updateCoords(e) {

@@ -312,14 +312,54 @@ export class CanvasEngine {
     invertColors() {
         const layer = this.getActiveLayer();
         if (!layer) return;
-        const imageData = layer.ctx.getImageData(0, 0, this.width, this.height);
+        const imageData = layer.ctx.getImageData(0, 0, layer.width, layer.height);
         const data = imageData.data;
         for (let i = 0; i < data.length; i += 4) {
-            data[i] = 255 - data[i];       // R
-            data[i+1] = 255 - data[i+1];   // G
-            data[i+2] = 255 - data[i+2];   // B
+            data[i] = 255 - data[i];
+            data[i+1] = 255 - data[i+1];
+            data[i+2] = 255 - data[i+2];
         }
         layer.ctx.putImageData(imageData, 0, 0);
+        this.render();
+    }
+
+    rotate90CW() {
+        const oldW = this.width;
+        const oldH = this.height;
+        
+        // Swap workspace dimensions
+        this.width = oldH;
+        this.height = oldW;
+        this.setupCanvas();
+
+        for (const layer of this.layers) {
+            const temp = document.createElement('canvas');
+            temp.width = layer.height;
+            temp.height = layer.width;
+            const tCtx = temp.getContext('2d');
+
+            tCtx.translate(temp.width, 0);
+            tCtx.rotate(Math.PI / 2);
+            tCtx.drawImage(layer.canvas, 0, 0);
+
+            layer.canvas.width = temp.width;
+            layer.canvas.height = temp.height;
+            layer.width = temp.width;
+            layer.height = temp.height;
+            
+            const oldDW = layer.displayWidth;
+            const oldDH = layer.displayHeight;
+            layer.displayWidth = oldDH;
+            layer.displayHeight = oldDW;
+
+            const oldX = layer.x;
+            const oldY = layer.y;
+            layer.x = oldH - (oldY + oldDH);
+            layer.y = oldX;
+
+            layer.ctx = layer.canvas.getContext('2d');
+            layer.ctx.drawImage(temp, 0, 0);
+        }
         this.render();
     }
 }
