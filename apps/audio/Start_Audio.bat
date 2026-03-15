@@ -80,12 +80,19 @@ if %errorlevel% neq 0 (
     echo [OK]  Audio dependencies verified.
 )
 
-:: --- 5. FFmpeg notice ------------------------------------------
-echo.
-echo [NOTE] MP3 import/export requires FFmpeg to be installed.
-echo        Download from: https://ffmpeg.org/download.html
-echo        WAV, OGG, and FLAC work without FFmpeg.
-echo.
+:: --- 5. Install static-ffmpeg (bundled MP3/codec support) ------
+python -c "import static_ffmpeg" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [SETUP] Installing static-ffmpeg for MP3 and codec support...
+    pip install static-ffmpeg
+    if %errorlevel% neq 0 (
+        echo [WARN]  static-ffmpeg installation reported an issue. MP3 may not work.
+    ) else (
+        echo [OK]  static-ffmpeg installed. MP3 support enabled.
+    )
+) else (
+    echo [OK]  static-ffmpeg verified.
+)
 
 :: --- 6. Environment file ---------------------------------------
 if not exist ".env" (

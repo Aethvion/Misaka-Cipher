@@ -20,6 +20,14 @@ try:
 except ImportError:
     PYDUB_AVAILABLE = False
 
+# Register bundled ffmpeg/ffprobe binaries so MP3 and other formats work
+# without requiring a manual system-wide ffmpeg install.
+try:
+    import static_ffmpeg
+    static_ffmpeg.add_paths()
+except ImportError:
+    pass
+
 
 class AudioSession:
     """Holds the current audio editing session state with undo history."""
@@ -42,15 +50,30 @@ class AudioSession:
             raise RuntimeError("pydub is not installed. Run: pip install pydub")
 
         ext = Path(filename).suffix.lower().lstrip(".")
-        fmt_map = {
-            "mp3": "mp3", "wav": "wav", "ogg": "ogg",
-            "flac": "flac", "aac": "aac", "m4a": "mp4",
-            "wma": "asf", "opus": "ogg",
-        }
-        fmt = fmt_map.get(ext, "wav")
-
         audio_io = io.BytesIO(data)
-        self.original = AudioSegment.from_file(audio_io, format=fmt)
+
+        # WAV and raw PCM can be decoded by pydub natively without ffmpeg.
+        # All other formats require ffmpeg — wrap with a clear error message.
+        try:
+            if ext == "wav":
+                self.original = AudioSegment.from_wav(audio_io)
+            elif ext == "ogg":
+                self.original = AudioSegment.from_ogg(audio_io)
+            elif ext == "flac":
+                self.original = AudioSegment.from_file(audio_io, format="flac")
+            elif ext == "mp3":
+                self.original = AudioSegment.from_mp3(audio_io)
+            else:
+                fmt_map = {"aac": "aac", "m4a": "mp4", "wma": "asf", "opus": "ogg"}
+                fmt = fmt_map.get(ext, ext)
+                self.original = AudioSegment.from_file(audio_io, format=fmt)
+        except FileNotFoundError:
+            raise RuntimeError(
+                f"FFmpeg is required to open .{ext} files. "
+                "Download it from https://ffmpeg.org and add it to your PATH, "
+                "or use a WAV file instead."
+            )
+
         self.current = self.original
         self.filename = filename
         self.history = []
@@ -61,12 +84,20 @@ class AudioSession:
         if not self.current:
             return b""
         buf = io.BytesIO()
-        if fmt == "mp3":
-            self.current.export(buf, format="mp3", bitrate="192k")
-        elif fmt == "ogg":
-            self.current.export(buf, format="ogg")
-        else:
-            self.current.export(buf, format="wav")
+        try:
+            if fmt == "mp3":
+                self.current.export(buf, format="mp3", bitrate="192k")
+            elif fmt == "ogg":
+                self.current.export(buf, format="ogg")
+            else:
+                self.current.export(buf, format="wav")
+        except FileNotFoundError:
+            if fmt in ("mp3", "ogg"):
+                raise RuntimeError(
+                    f"FFmpeg is required to export as {fmt.upper()}. "
+                    "Download it from https://ffmpeg.org or export as WAV instead."
+                )
+            raise
         return buf.getvalue()
 
     # ------------------------------------------------------------------
