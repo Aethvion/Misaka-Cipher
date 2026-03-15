@@ -136,10 +136,25 @@ export class CanvasEngine {
                 this.mainCtx.lineWidth = 2;
                 this.mainCtx.strokeRect(layer.x, layer.y, layer.displayWidth, layer.displayHeight);
 
-                // Resize handle (bottom right)
+                // Draw 8 handles: corners and midpoints
+                const handleSize = 10;
+                const half = handleSize / 2;
+                const x = layer.x;
+                const y = layer.y;
+                const w = layer.displayWidth;
+                const h = layer.displayHeight;
+
+                const positions = [
+                    [x, y], [x + w/2, y], [x + w, y], // Top
+                    [x, y + h/2], [x + w, y + h/2],       // Middle
+                    [x, y + h], [x + w/2, y + h], [x + w, y + h] // Bottom
+                ];
+
                 this.mainCtx.fillStyle = 'white';
-                this.mainCtx.fillRect(layer.x + layer.displayWidth - 6, layer.y + layer.displayHeight - 6, 12, 12);
-                this.mainCtx.strokeRect(layer.x + layer.displayWidth - 6, layer.y + layer.displayHeight - 6, 12, 12);
+                positions.forEach(pos => {
+                    this.mainCtx.fillRect(pos[0] - half, pos[1] - half, handleSize, handleSize);
+                    this.mainCtx.strokeRect(pos[0] - half, pos[1] - half, handleSize, handleSize);
+                });
             }
         }
     }

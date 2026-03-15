@@ -24,29 +24,24 @@ class AethvionPhoto {
     init() {
         this.bindEvents();
         this.bindDropdowns();
+        this.bindFilters();
         
         // Create initial workspace
-        this.addWorkspace("Untitled-1");
+        this.addWorkspace("Untitled-1", true);
         
         console.log("Aethvion Photo Multi-Workspace Initialized");
     }
 
-    addWorkspace(name) {
-        // We'll reuse the main-canvas for now by re-initializing the engine
-        // Or better: Each workspace gets a reference to the main canvas, 
-        // but when switching, we restore the engine's state if we can.
-        // Actually, let's keep it simple: Multiple engines, but only one is "active" 
-        // and its content is rendered to the main canvas.
-        // Wait, for performance, let's just have one CanvasEngine that LOAD/SAVE states.
-        
+    addWorkspace(name, withInitialLayer = true) {
         const engine = new CanvasEngine('main-canvas');
         const workspace = new Workspace(name, engine);
         this.workspaces.push(workspace);
         this.setActiveWorkspace(this.workspaces.length - 1);
         this.updateTabStrip();
         
-        // Initial layer
-        engine.addLayer('Background');
+        if (withInitialLayer) {
+            engine.addLayer('Background');
+        }
         this.updateLayerStack();
     }
 
@@ -127,17 +122,36 @@ class AethvionPhoto {
                 const layer = ws.engine.getActiveLayer();
                 if (!layer) return;
 
-                // Simple hit test for resize handle (bottom-right corner)
-                const handleSize = 20;
-                const hx = layer.x + layer.displayWidth;
-                const hy = layer.y + layer.displayHeight;
+                const lx = layer.x;
+                const ly = layer.y;
+                const lw = layer.displayWidth;
+                const lh = layer.displayHeight;
+                const handleSize = 15; // Hit area for handles
 
-                if (x >= hx - handleSize && x <= hx + handleSize &&
-                    y >= hy - handleSize && y <= hy + handleSize) {
+                const handles = [
+                    { name: 'nw', x: lx, y: ly },
+                    { name: 'n', x: lx + lw/2, y: ly },
+                    { name: 'ne', x: lx + lw, y: ly },
+                    { name: 'w', x: lx, y: ly + lh/2 },
+                    { name: 'e', x: lx + lw, y: ly + lh/2 },
+                    { name: 'sw', x: lx, y: ly + lh },
+                    { name: 's', x: lx + lw/2, y: ly + lh },
+                    { name: 'se', x: lx + lw, y: ly + lh }
+                ];
+
+                let hitHandle = null;
+                for (const h of handles) {
+                    if (x >= h.x - handleSize && x <= h.x + handleSize &&
+                        y >= h.y - handleSize && y <= h.y + handleSize) {
+                        hitHandle = h.name;
+                        break;
+                    }
+                }
+
+                if (hitHandle) {
                     isTransforming = true;
-                    transformMode = 'resize';
-                } else if (x >= layer.x && x <= layer.x + layer.displayWidth &&
-                           y >= layer.y && y <= layer.y + layer.displayHeight) {
+                    transformMode = hitHandle;
+                } else if (x >= lx && x <= lx + lw && y >= ly && y <= ly + lh) {
                     isTransforming = true;
                     transformMode = 'move';
                 }
@@ -145,10 +159,10 @@ class AethvionPhoto {
                 if (isTransforming) {
                     startX = x;
                     startY = y;
-                    startLayerX = layer.x;
-                    startLayerY = layer.y;
-                    startWidth = layer.displayWidth;
-                    startHeight = layer.displayHeight;
+                    startLayerX = lx;
+                    startLayerY = ly;
+                    startWidth = lw;
+                    startHeight = lh;
                 }
             }
         });
@@ -163,12 +177,59 @@ class AethvionPhoto {
                 this.handleDraw(e);
             } else if (isTransforming) {
                 const layer = ws.engine.getActiveLayer();
+                const dx = x - startX;
+                const dy = y - startY;
+                const ratio = startWidth / startHeight;
+
                 if (transformMode === 'move') {
-                    layer.x = startLayerX + (x - startX);
-                    layer.y = startLayerY + (y - startY);
-                } else if (transformMode === 'resize') {
-                    layer.displayWidth = Math.max(10, startWidth + (x - startX));
-                    layer.displayHeight = Math.max(10, startHeight + (y - startY));
+                    layer.x = startLayerX + dx;
+                    layer.y = startLayerY + dy;
+                } else {
+                    let newX = startLayerX;
+                    let newY = startLayerY;
+                    let newW = startWidth;
+                    let newH = startHeight;
+
+                    // Horizontal logic
+                    if (transformMode.includes('w')) {
+                        const dw = -dx;
+                        newW = Math.max(10, startWidth + dw);
+                        newX = startLayerX + (startWidth - newW);
+                    } else if (transformMode.includes('e')) {
+                        newW = Math.max(10, startWidth + dx);
+                    }
+
+                    // Vertical logic
+                    if (transformMode.includes('n')) {
+                        const dh = -dy;
+                        newH = Math.max(10, startHeight + dh);
+                        newY = startLayerY + (startHeight - newH);
+                    } else if (transformMode.includes('s')) {
+                        newH = Math.max(10, startHeight + dy);
+                    }
+
+                    // Proportional scaling (Shift)
+                    if (e.shiftKey) {
+                        if (transformMode === 'e' || transformMode === 'w' || transformMode.length === 2) {
+                            // Scale height based on width
+                            const side = (transformMode.includes('n') && transformMode.length === 2) ? -1 : 1;
+                            newH = newW / ratio;
+                            if (transformMode.includes('n')) {
+                                newY = startLayerY + (startHeight - newH);
+                            }
+                        } else if (transformMode === 'n' || transformMode === 's') {
+                            // Scale width based on height
+                            newW = newH * ratio;
+                            if (transformMode.includes('w')) {
+                                newX = startLayerX + (startWidth - newW);
+                            }
+                        }
+                    }
+
+                    layer.x = newX;
+                    layer.y = newY;
+                    layer.displayWidth = newW;
+                    layer.displayHeight = newH;
                 }
                 ws.engine.render();
             }
@@ -332,11 +393,13 @@ class AethvionPhoto {
                         this.updateLayerStack();
                     } else {
                         // Open as new project with auto-resolution
-                        this.addWorkspace(file.name.split('.')[0]);
+                        // Create workspace WITHOUT initial layer to avoid duplicates
+                        this.addWorkspace(file.name.split('.')[0], false);
                         const ws = this.getActiveWorkspace();
                         await ws.engine.loadImage(event.target.result, "Background", true);
                         this.updateLayerStack();
                         this.syncCanvasSettings();
+                        ws.engine.render(); // Explicitly render
                     }
                 }
             };
