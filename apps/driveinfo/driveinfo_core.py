@@ -154,7 +154,6 @@ def _collect_extensions(node: dict, ext_map: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def _run_scan(root_path: str) -> None:
-    global scan_state
     try:
         root = Path(root_path)
         if not root.exists():
@@ -221,7 +220,6 @@ def _run_scan(root_path: str) -> None:
 
 def start_scan(root_path: str) -> bool:
     """Launch a background scan.  Returns False if one is already running."""
-    global scan_state
     with _scan_lock:
         if scan_state.running:
             return False

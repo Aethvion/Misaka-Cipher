@@ -2103,7 +2103,7 @@ async function renderVersionTabContent(localData = null, remoteData = null, isUp
                 <div style="font-size: 2rem;">🛡️</div>
                 <div>
                     <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary);">Currently Installed</div>
-                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--primary);">Misaka Cipher v${localData.system.version}</div>
+                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--primary);">Aethvion Suite v${localData.system.version}</div>
                     <div style="font-size: 0.8rem; color: var(--text-secondary);">Build Sync: ${localData.system.last_sync || 'Unknown'}</div>
                 </div>
             </div>
@@ -2122,7 +2122,7 @@ async function renderVersionTabContent(localData = null, remoteData = null, isUp
                             Version <strong>${remoteData.system.version}</strong> is now live on GitHub.
                         </div>
                     </div>
-                    <a href="https://github.com/Aethvion/Misaka-Cipher" target="_blank" class="action-btn small primary" style="text-decoration: none;">View Repo</a>
+                    <a href="https://github.com/Aethvion/Aethvion-Suite" target="_blank" class="action-btn small primary" style="text-decoration: none;">View Repo</a>
                 </div>
             `;
         } else if (remoteData) {
