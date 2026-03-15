@@ -278,6 +278,14 @@
                     <span class="tab-icon">🎨</span>
                     <span class="tab-label">Aethvion Photo</span>
                 </button>
+                <button class="main-tab mode-hidden sidebar-subitem" data-maintab="driveinfo">
+                    <span class="tab-icon">💾</span>
+                    <span class="tab-label">Aethvion Drive Info</span>
+                </button>
+                <button class="main-tab mode-hidden sidebar-subitem" data-maintab="finance">
+                    <span class="tab-icon">💰</span>
+                    <span class="tab-label">Aethvion Finance</span>
+                </button>
 
                 <div class="sidebar-category mode-enterprise mode-rd">Diagnostics</div>
                 <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="logs"><span
@@ -350,6 +358,16 @@
                                 <div class="entry-tag creative">Creative</div>
                             </div>
 
+                            <!-- Finance -->
+                            <div class="app-entry finance-entry" onclick="switchMainTab('finance')">
+                                <div class="entry-icon"><i class="fas fa-chart-pie"></i></div>
+                                <div class="entry-info">
+                                    <h4>Aethvion Finance</h4>
+                                    <p>Comprehensive financial hub for asset tracking and analysis.</p>
+                                </div>
+                                <div class="entry-tag finance">Finance</div>
+                            </div>
+                            
                             <!-- Audio -->
                             <div class="app-entry audio-entry" onclick="switchMainTab('audio-editor')">
                                 <div class="entry-icon"><i class="fas fa-wave-square"></i></div>
@@ -358,6 +376,16 @@
                                     <p>Advanced waveform processing and effect pipelines.</p>
                                 </div>
                                 <div class="entry-tag audio">Audio</div>
+                            </div>
+
+                            <!-- Drive Info -->
+                            <div class="app-entry driveinfo-entry" onclick="switchMainTab('driveinfo')">
+                                <div class="entry-icon"><i class="fas fa-hard-drive"></i></div>
+                                <div class="entry-info">
+                                    <h4>Aethvion Drive Info</h4>
+                                    <p>WinDirStat-style disk usage analyser with treemap visualisation.</p>
+                                </div>
+                                <div class="entry-tag data">Disk</div>
                             </div>
 
                             <!-- Tracking -->
@@ -2434,6 +2462,135 @@
                                 <p>Open the audio module directory in Explorer.</p>
                                 <button class="term-btn open-folder-btn" data-path="apps/audio">OPEN
                                     FOLDER</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drive Info Module Panel -->
+            <div class="main-tab-panel" id="driveinfo-panel">
+                <div class="module-page-container">
+                    <div class="module-header">
+                        <button class="back-to-home-btn" onclick="switchMainTab('suite-home')" title="Back to Home">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="module-title">
+                            <span class="module-icon">💾</span>
+                            <div>
+                                <h2>Aethvion Drive Info</h2>
+                                <p class="module-subtitle">WinDirStat-style disk usage analyser with squarified treemap &amp; .eathscan files</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="driveinfo" disabled>
+                                <i class="fas fa-external-link-alt"></i> LAUNCH UI
+                            </button>
+                            <div id="driveinfo-status-badge" class="status-badge offline">
+                                <span class="status-dot"></span>
+                                <span class="status-text">NOT RUNNING</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-content">
+                        <div class="module-description-card card">
+                            <h3>About Aethvion Drive Info</h3>
+                            <p>Aethvion Drive Info scans any drive or folder and visualises disk usage as an interactive
+                               squarified treemap — files coloured by extension, directories drillable on click.
+                               Scan results are saved as <code>.eathscan</code> files in <code>data/driveinfo/</code>
+                               and can be reloaded instantly without rescanning.</p>
+                            <div class="feature-tags">
+                                <span class="tag">Squarified Treemap</span>
+                                <span class="tag">Directory Tree</span>
+                                <span class="tag">Extension Stats</span>
+                                <span class="tag">.eathscan Format</span>
+                                <span class="tag">Drill-down Navigation</span>
+                                <span class="tag">Background Scan</span>
+                            </div>
+                        </div>
+
+                        <div class="module-actions-grid">
+                            <div class="action-card run" id="driveinfo-run-card">
+                                <i class="fas fa-play"></i>
+                                <h4>System Control</h4>
+                                <p>Start or stop the Drive Info backend service.</p>
+                                <button class="term-btn run-module-btn" data-module="driveinfo" data-action="run">START SERVICE</button>
+                            </div>
+                            <div class="action-card folder" id="driveinfo-folder-card">
+                                <i class="fas fa-folder-open"></i>
+                                <h4>Module Folder</h4>
+                                <p>Open the Drive Info module directory in Explorer.</p>
+                                <button class="term-btn open-folder-btn" data-path="apps/driveinfo">OPEN FOLDER</button>
+                            </div>
+                            <div class="action-card folder" id="driveinfo-data-card">
+                                <i class="fas fa-database"></i>
+                                <h4>Scan Data</h4>
+                                <p>Open the folder where .eathscan files are stored.</p>
+                                <button class="term-btn open-folder-btn" data-path="data/driveinfo">OPEN DATA FOLDER</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Finance Module Panel -->
+            <div class="main-tab-panel" id="finance-panel">
+                <div class="module-page-container">
+                    <div class="module-header">
+                        <button class="back-to-home-btn" onclick="switchMainTab('suite-home')" title="Back to Home">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="module-title">
+                            <span class="module-icon">💰</span>
+                            <div>
+                                <h2>Aethvion Finance</h2>
+                                <p class="module-subtitle">Professional financial hub for asset orchestration and expense management</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="action-btn header-launch-btn primary module-launch-btn" data-launch="finance" disabled>
+                                <i class="fas fa-external-link-alt"></i> LAUNCH UI
+                            </button>
+                            <div id="finance-status-badge" class="status-badge offline">
+                                <span class="status-dot"></span>
+                                <span class="status-text">NOT RUNNING</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="module-content">
+                        <div class="module-description-card card">
+                            <h3>About Aethvion Finance</h3>
+                            <p>Track your net worth, income, and expenses with real-time visualisations. 
+                               Manage transactions across multiple categories and export your data as <code>.aethfinance</code> project files.</p>
+                            <div class="feature-tags">
+                                <span class="tag">Net Worth Tracking</span>
+                                <span class="tag">Expense Analytics</span>
+                                <span class="tag">Interactive Charts</span>
+                                <span class="tag">.aethfinance Format</span>
+                                <span class="tag">Transaction History</span>
+                            </div>
+                        </div>
+
+                        <div class="module-actions-grid">
+                            <div class="action-card run" id="finance-run-card">
+                                <i class="fas fa-play"></i>
+                                <h4>System Control</h4>
+                                <p>Start or stop the Finance backend service.</p>
+                                <button class="term-btn run-module-btn" data-module="finance" data-action="run">START SERVICE</button>
+                            </div>
+                            <div class="action-card folder" id="finance-folder-card">
+                                <i class="fas fa-folder-open"></i>
+                                <h4>Module Folder</h4>
+                                <p>Open the Finance module directory in Explorer.</p>
+                                <button class="term-btn open-folder-btn" data-path="apps/finance">OPEN FOLDER</button>
+                            </div>
+                            <div class="action-card folder" id="finance-data-card">
+                                <i class="fas fa-database"></i>
+                                <h4>Financial Data</h4>
+                                <p>Open the folder where .aethfinance project files are stored.</p>
+                                <button class="term-btn open-folder-btn" data-path="data/finance">OPEN DATA FOLDER</button>
                             </div>
                         </div>
                     </div>

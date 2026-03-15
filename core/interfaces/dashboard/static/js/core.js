@@ -710,7 +710,7 @@ async function launchModule(name) {
             window.open(`http://localhost:${port}`, '_blank');
         } else {
             // Fallback to default ports if not registered yet
-            const defaults = { 'vtuber': 8081, 'tracking': 8082, 'photo': 8083 };
+            const defaults = { 'vtuber': 8081, 'tracking': 8082, 'photo': 8083, 'audio': 8083, 'driveinfo': 8084, 'finance': 8085 };
             const defaultPort = defaults[name.toLowerCase()];
             if (defaultPort) {
                 console.warn(`Module ${name} not found in dynamic ports, trying default :${defaultPort}`);
@@ -798,7 +798,7 @@ async function updateModuleStatusBadges() {
         
         const registeredModules = Object.values(ports).map(m => m.toLowerCase());
         
-        ['vtuber', 'tracking', 'photo'].forEach(mod => {
+        ['vtuber', 'tracking', 'photo', 'audio', 'driveinfo', 'finance'].forEach(mod => {
             const badge = document.getElementById(`${mod}-status-badge`);
             const headerLaunchBtn = document.querySelector(`.module-launch-btn[data-launch="${mod}"]`);
             if (!badge) return;
