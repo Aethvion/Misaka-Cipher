@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 app = FastAPI(
     title="Aethvion Suite - Nexus Portal",
     description="Autonomous AI Orchestration System",
-    version="4"
+    version="5"
 )
 
 # CORS middleware
@@ -301,7 +301,12 @@ async def initialize_system_background():
             
         startup_status["progress"] = 100
         startup_status["initialized"] = True
-        logger.info("Misaka Cipher Web Server ready!")
+        logger.info("Aethvion Suite Web Server ready!")
+        
+        # Final console visibility block
+        print("\n" + "🚀" + " " + "=" * 66)
+        print(f"  SYSTEM ONLINE: http://localhost:{os.environ.get('PORT', 8080)}")
+        print("  =" * 34 + "\n")
         
     except Exception as e:
         logger.error(f"Startup failed: {str(e)}", exc_info=True)

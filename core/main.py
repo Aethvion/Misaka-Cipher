@@ -35,9 +35,10 @@ def run_cli():
 def is_dashboard_open():
     """Check if the dashboard is already open in a browser window using PowerShell."""
     try:
-        # Search for windows with "Aethvion Suite" in the title
-        # -match is regex-based and case-insensitive by default in PowerShell
-        ps_cmd = 'Get-Process | Where-Object { $_.MainWindowTitle -match "Aethvion Suite" }'
+        # Search for windows with the specific dashboard title
+        # We use -match to handle browser suffixes (e.g., " - Google Chrome")
+        # but the string "Aethvion Suite - Nexus Portal" is specific enough to avoid CMD/Terminals
+        ps_cmd = 'Get-Process | Where-Object { $_.MainWindowTitle -match "Aethvion Suite - Nexus Portal" }'
         result = subprocess.run(['powershell', '-Command', ps_cmd], capture_output=True, text=True)
         return len(result.stdout.strip()) > 0
     except Exception:
@@ -45,9 +46,15 @@ def is_dashboard_open():
 
 def open_browser(port=8080):
     """Wait for server to start and then open browser if not already open."""
-    time.sleep(1.0) # Slightly longer to ensure server bound
+    time.sleep(1.5) # Wait for server to be fully ready
+    
+    # Always display the info to ensure visibility in the console
+    print("\n" + "-" * 70)
+    print(f"WEB DASHBOARD READY: http://localhost:{port}")
+    print("-" * 70 + "\n")
+
     if is_dashboard_open():
-        logger.info("Dashboard is already open. Skipping browser launch.")
+        logger.info("Dashboard window detected. Skipping browser auto-launch.")
         return
         
     logger.info(f"Automatically opening dashboard at http://localhost:{port}")
