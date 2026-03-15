@@ -4,21 +4,68 @@
 import { CanvasEngine } from './canvas_engine.js';
 import { FilterEngine } from './filters.js';
 
+class Workspace {
+    constructor(name, engine) {
+        this.id = Math.random().toString(36).substr(2, 9);
+        this.name = name;
+        this.engine = engine;
+    }
+}
+
 class AethvionPhoto {
     constructor() {
-        this.engine = new CanvasEngine('main-canvas');
-        this.filters = new FilterEngine(this.engine);
+        this.workspaces = [];
+        this.activeWorkspaceIndex = -1;
+        this.currentTool = 'select';
+        
         this.init();
     }
 
     init() {
         this.bindEvents();
-        this.bindFilters();
-        console.log("Aethvion Photo Initialized");
+        this.bindDropdowns();
         
-        // Create initial layer
-        this.engine.addLayer('Background');
+        // Create initial workspace
+        this.addWorkspace("Untitled-1");
+        
+        console.log("Aethvion Photo Multi-Workspace Initialized");
+    }
+
+    addWorkspace(name) {
+        // We'll reuse the main-canvas for now by re-initializing the engine
+        // Or better: Each workspace gets a reference to the main canvas, 
+        // but when switching, we restore the engine's state if we can.
+        // Actually, let's keep it simple: Multiple engines, but only one is "active" 
+        // and its content is rendered to the main canvas.
+        // Wait, for performance, let's just have one CanvasEngine that LOAD/SAVE states.
+        
+        const engine = new CanvasEngine('main-canvas');
+        const workspace = new Workspace(name, engine);
+        this.workspaces.push(workspace);
+        this.setActiveWorkspace(this.workspaces.length - 1);
+        this.updateTabStrip();
+        
+        // Initial layer
+        engine.addLayer('Background');
         this.updateLayerStack();
+    }
+
+    setActiveWorkspace(index) {
+        if (index < 0 || index >= this.workspaces.length) return;
+        this.activeWorkspaceIndex = index;
+        const ws = this.getActiveWorkspace();
+        
+        // Ensure the engine is rendered
+        ws.engine.render();
+        this.updateTabStrip();
+        this.updateLayerStack();
+        this.syncFilters();
+        
+        document.getElementById('coord-display').textContent = `0 : 0 px`;
+    }
+
+    getActiveWorkspace() {
+        return this.workspaces[this.activeWorkspaceIndex];
     }
 
     bindEvents() {
@@ -30,50 +77,20 @@ class AethvionPhoto {
                 this.currentTool = btn.dataset.tool;
             });
         });
-        this.currentTool = 'select'; // Default
-
-        // Menu items
-        const menuMapping = {
-            'file': () => this.handleFileAction('open'), // Default to open for now
-            'edit': () => this.handleEditAction('clear_layer'),
-            'image': () => this.handleImageAction('flip_h'),
-            'layer': () => this.handleLayerAction('new'),
-            'filter': () => this.handleFilterAction('invert'),
-            'view': () => console.log("View options coming soon")
-        };
-
-        document.querySelectorAll('.menu-item').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const action = e.target.innerText.trim().toLowerCase();
-                if (menuMapping[action]) menuMapping[action]();
-                
-                // Allow specific project loading if Shift+Clicking File
-                if (action === 'file' && e.shiftKey) {
-                    this.triggerFileOpen('project');
-                }
-            });
-        });
-
-        // Export button
-        const exportBtn = document.getElementById('btn-export');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', () => this.handleExport());
-        }
 
         // Layer actions
         document.getElementById('add-layer-btn').addEventListener('click', () => {
-            this.engine.addLayer(`Layer ${this.engine.layers.length + 1}`);
+            const ws = this.getActiveWorkspace();
+            ws.engine.addLayer(`Layer ${ws.engine.layers.length + 1}`);
             this.updateLayerStack();
         });
 
+        // Add workspace button
+        document.getElementById('add-workspace-btn').addEventListener('click', () => {
+            this.addWorkspace(`Untitled-${this.workspaces.length + 1}`);
+        });
+
         // Canvas mouse events
-        const resetBtn = document.getElementById('reset-filters');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                this.filters.reset();
-                this.syncFilters();
-            });
-        }
         const canvas = document.getElementById('main-canvas');
         let isDrawing = false;
 
@@ -94,6 +111,36 @@ class AethvionPhoto {
         window.addEventListener('mouseup', () => {
             isDrawing = false;
         });
+
+        const resetBtn = document.getElementById('reset-filters');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                const ws = this.getActiveWorkspace();
+                const filters = new FilterEngine(ws.engine);
+                filters.reset();
+                this.syncFilters();
+            });
+        }
+    }
+
+    bindDropdowns() {
+        document.querySelectorAll('.dropdown-content button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.target.dataset.action;
+                this.handleAction(action);
+            });
+        });
+    }
+
+    handleAction(action) {
+        const [category, type] = action.split('-');
+        switch(category) {
+            case 'file': this.handleFileAction(type); break;
+            case 'edit': this.handleEditAction(type); break;
+            case 'image': this.handleImageAction(type); break;
+            case 'layer': this.handleLayerAction(type); break;
+            case 'filter': this.handleFilterAction(type); break;
+        }
     }
 
     handleMenuAction(action) {
@@ -116,16 +163,21 @@ class AethvionPhoto {
     async handleFileAction(subAction) {
         switch(subAction) {
             case 'new':
-                if (confirm("Create new project? Current work will be lost.")) {
-                    this.engine.layers = [];
-                    this.engine.addLayer('Background');
-                    this.updateLayerStack();
-                }
+                this.addWorkspace(`Untitled-${this.workspaces.length + 1}`);
                 break;
             case 'open':
-                this.triggerFileOpen('image');
+                this.triggerFileOpen('image', false); // false = not import, so new workspace
                 break;
-            case 'save_project':
+            case 'import':
+                this.triggerFileOpen('image', true); // true = import into active workspace
+                break;
+            case 'load':
+                this.triggerFileOpen('project');
+                break;
+            case 'recent':
+                console.log("Open Recent: Feature coming in future update!");
+                break;
+            case 'save':
                 this.handleSaveProject();
                 break;
             case 'export':
@@ -135,33 +187,36 @@ class AethvionPhoto {
     }
 
     handleEditAction(subAction) {
+        const ws = this.getActiveWorkspace();
         switch(subAction) {
-            case 'clear_layer':
-                const layer = this.engine.getActiveLayer();
+            case 'clear':
+                const layer = ws.engine.getActiveLayer();
                 if (layer) {
                     layer.clear();
-                    this.engine.render();
+                    ws.engine.render();
                 }
                 break;
         }
     }
 
     handleImageAction(subAction) {
+        const ws = this.getActiveWorkspace();
         switch(subAction) {
-            case 'flip_h': this.engine.flipHorizontal(); break;
-            case 'flip_v': this.engine.flipVertical(); break;
+            case 'flip-h': ws.engine.flipHorizontal(); break;
+            case 'flip-v': ws.engine.flipVertical(); break;
         }
     }
 
     handleLayerAction(subAction) {
+        const ws = this.getActiveWorkspace();
         switch(subAction) {
             case 'new':
-                this.engine.addLayer(`Layer ${this.engine.layers.length + 1}`);
+                ws.engine.addLayer(`Layer ${ws.engine.layers.length + 1}`);
                 this.updateLayerStack();
                 break;
             case 'delete':
-                if (this.engine.layers.length > 1) {
-                    this.engine.removeLayer(this.engine.activeLayerIndex);
+                if (ws.engine.layers.length > 1) {
+                    ws.engine.removeLayer(ws.engine.activeLayerIndex);
                     this.updateLayerStack();
                 }
                 break;
@@ -169,12 +224,13 @@ class AethvionPhoto {
     }
 
     handleFilterAction(subAction) {
+        const ws = this.getActiveWorkspace();
         switch(subAction) {
-            case 'invert': this.engine.invertColors(); break;
+            case 'invert': ws.engine.invertColors(); break;
         }
     }
 
-    triggerFileOpen(type) {
+    triggerFileOpen(type, isImport = false) {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = type === 'project' ? '.aethphoto' : 'image/*';
@@ -184,12 +240,29 @@ class AethvionPhoto {
             const reader = new FileReader();
             reader.onload = async (event) => {
                 if (type === 'project') {
-                    await this.engine.fromJSON(event.target.result);
+                    const ws = this.getActiveWorkspace();
+                    await ws.engine.fromJSON(event.target.result);
+                    ws.name = file.name.replace('.aethphoto', '');
+                    this.updateTabStrip();
                     this.updateLayerStack();
                     this.syncFilters();
                 } else {
-                    await this.engine.loadImage(event.target.result, file.name);
-                    this.updateLayerStack();
+                    if (isImport) {
+                        const ws = this.getActiveWorkspace();
+                        await ws.engine.loadImage(event.target.result, file.name);
+                        this.updateLayerStack();
+                    } else {
+                        this.addWorkspace(file.name.split('.')[0]);
+                        const ws = this.getActiveWorkspace();
+                        await ws.engine.loadImage(event.target.result, "Background");
+                        // Remove the default background layer if we just loaded an image as one
+                        if (ws.engine.layers.length > 1 && ws.engine.layers[0].name === "Background") {
+                            ws.engine.layers.shift();
+                            ws.engine.activeLayerIndex = 0;
+                            ws.engine.render();
+                        }
+                        this.updateLayerStack();
+                    }
                 }
             };
             if (type === 'project') reader.readAsText(file);
@@ -199,30 +272,71 @@ class AethvionPhoto {
     }
 
     handleSaveProject() {
-        const json = this.engine.toJSON();
+        const ws = this.getActiveWorkspace();
+        const json = ws.engine.toJSON();
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.download = `project-${Date.now()}.aethphoto`;
+        link.download = `${ws.name}.aethphoto`;
         link.href = url;
         link.click();
         URL.revokeObjectURL(url);
     }
 
     handleExport() {
-        const dataUrl = this.engine.exportToPNG();
+        const ws = this.getActiveWorkspace();
+        const dataUrl = ws.engine.exportToPNG();
         const link = document.createElement('a');
-        link.download = `aethvion-photo-${Date.now()}.png`;
+        link.download = `${ws.name}.png`;
         link.href = dataUrl;
         link.click();
+    }
+
+    updateTabStrip() {
+        const strip = document.getElementById('tab-bar');
+        // Clear all except the add button
+        const addBtn = document.getElementById('add-workspace-btn');
+        Array.from(strip.children).forEach(child => {
+            if (child !== addBtn) strip.removeChild(child);
+        });
+
+        this.workspaces.forEach((ws, idx) => {
+            const tab = document.createElement('div');
+            tab.className = `workspace-tab ${idx === this.activeWorkspaceIndex ? 'active' : ''}`;
+            tab.innerHTML = `
+                <span>${ws.name}</span>
+                <i class="fa-solid fa-xmark close-tab"></i>
+            `;
+            tab.onclick = () => this.setActiveWorkspace(idx);
+            
+            const closeBtn = tab.querySelector('.close-tab');
+            closeBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.closeWorkspace(idx);
+            };
+
+            strip.insertBefore(tab, addBtn);
+        });
+    }
+
+    closeWorkspace(index) {
+        if (this.workspaces.length <= 1) return;
+        this.workspaces.splice(index, 1);
+        if (this.activeWorkspaceIndex >= this.workspaces.length) {
+            this.activeWorkspaceIndex = this.workspaces.length - 1;
+        }
+        this.setActiveWorkspace(this.activeWorkspaceIndex);
     }
 
     bindFilters() {
         document.querySelectorAll('#filter-controls input[type="range"]').forEach(input => {
             input.addEventListener('input', (e) => {
+                const ws = this.getActiveWorkspace();
+                if (!ws) return;
                 const filter = e.target.dataset.filter;
                 const value = parseInt(e.target.value);
-                this.filters.setFilter(filter, value);
+                const filters = new FilterEngine(ws.engine);
+                filters.setFilter(filter, value);
             });
         });
     }
@@ -241,39 +355,43 @@ class AethvionPhoto {
 
     handleDraw(e) {
         const rect = e.target.getBoundingClientRect();
-        const x = (e.clientX - rect.left) * (this.engine.width / rect.width);
-        const y = (e.clientY - rect.top) * (this.engine.height / rect.height);
+        const ws = this.getActiveWorkspace();
+        const x = (e.clientX - rect.left) * (ws.engine.width / rect.width);
+        const y = (e.clientY - rect.top) * (ws.engine.height / rect.height);
         
         if (this.currentTool === 'brush') {
-            this.engine.drawBrush(x, y, '#7c6ff7', 10);
+            ws.engine.drawBrush(x, y, '#7c6ff7', 10);
         } else if (this.currentTool === 'eraser') {
-            this.engine.drawEraser(x, y, 15);
+            ws.engine.drawEraser(x, y, 15);
         }
     }
 
     updateCoords(e) {
         const rect = e.target.getBoundingClientRect();
-        const x = Math.round((e.clientX - rect.left) * (this.engine.width / rect.width));
-        const y = Math.round((e.clientY - rect.top) * (this.engine.height / rect.height));
+        const ws = this.getActiveWorkspace();
+        const x = Math.round((e.clientX - rect.left) * (ws.engine.width / rect.width));
+        const y = Math.round((e.clientY - rect.top) * (ws.engine.height / rect.height));
         document.getElementById('coord-display').textContent = `${x} : ${y} px`;
     }
 
     updateLayerStack() {
         const stack = document.getElementById('layer-stack');
         stack.innerHTML = '';
+        const ws = this.getActiveWorkspace();
+        if (!ws) return;
         
         // Reverse for display (top to bottom)
-        [...this.engine.layers].reverse().forEach((layer, revIdx) => {
-            const idx = this.engine.layers.length - 1 - revIdx;
+        [...ws.engine.layers].reverse().forEach((layer, revIdx) => {
+            const idx = ws.engine.layers.length - 1 - revIdx;
             const li = document.createElement('li');
-            li.className = `layer-item ${idx === this.engine.activeLayerIndex ? 'active' : ''}`;
+            li.className = `layer-item ${idx === ws.engine.activeLayerIndex ? 'active' : ''}`;
             li.innerHTML = `
                 <div class="layer-thumb"></div>
                 <span class="layer-name">${layer.name}</span>
                 <i class="fa-solid ${layer.visible ? 'fa-eye' : 'fa-eye-slash'}"></i>
             `;
             li.onclick = () => {
-                this.engine.setActiveLayer(idx);
+                ws.engine.setActiveLayer(idx);
                 this.updateLayerStack();
                 this.syncFilters();
             };
@@ -282,7 +400,7 @@ class AethvionPhoto {
             eye.onclick = (e) => {
                 e.stopPropagation();
                 const isVisible = !layer.visible;
-                this.engine.setLayerVisibility(idx, isVisible);
+                ws.engine.setLayerVisibility(idx, isVisible);
                 this.updateLayerStack();
             };
 

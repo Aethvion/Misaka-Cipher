@@ -18,11 +18,55 @@
                 <span>AETHVION PHOTO</span>
             </div>
             <div class="menu-bar">
-                <button class="menu-item">File</button>
-                <button class="menu-item">Edit</button>
-                <button class="menu-item">Image</button>
-                <button class="menu-item">Layer</button>
-                <button class="menu-item">Filter</button>
+                <div class="dropdown">
+                    <button class="menu-item">File</button>
+                    <div class="dropdown-content">
+                        <button data-action="file-new">New Workspace</button>
+                        <button data-action="file-open">Open Image...</button>
+                        <button data-action="file-import">Import Image... (to Layer)</button>
+                        <button data-action="file-load">Load Project (.aethphoto)</button>
+                        <hr>
+                        <button data-action="file-recent">Open Recent</button>
+                        <hr>
+                        <button data-action="file-save">Save Project</button>
+                        <button data-action="file-export">Export as PNG</button>
+                    </div>
+                </div>
+                <div class="dropdown">
+                    <button class="menu-item">Edit</button>
+                    <div class="dropdown-content">
+                        <button data-action="edit-undo">Undo</button>
+                        <button data-action="edit-redo">Redo</button>
+                        <hr>
+                        <button data-action="edit-clear">Clear Layer</button>
+                    </div>
+                </div>
+                <div class="dropdown">
+                    <button class="menu-item">Image</button>
+                    <div class="dropdown-content">
+                        <button data-action="image-flip-h">Flip Horizontal</button>
+                        <button data-action="image-flip-v">Flip Vertical</button>
+                        <hr>
+                        <button data-action="image-rotate-90">Rotate 90° CW</button>
+                    </div>
+                </div>
+                <div class="dropdown">
+                    <button class="menu-item">Layer</button>
+                    <div class="dropdown-content">
+                        <button data-action="layer-new">New Layer</button>
+                        <button data-action="layer-duplicate">Duplicate Layer</button>
+                        <button data-action="layer-delete">Delete Layer</button>
+                        <hr>
+                        <button data-action="layer-merge">Merge Down</button>
+                    </div>
+                </div>
+                <div class="dropdown">
+                    <button class="menu-item">Filter</button>
+                    <div class="dropdown-content">
+                        <button data-action="filter-invert">Invert Colors</button>
+                        <button data-action="filter-grayscale">Grayscale</button>
+                    </div>
+                </div>
                 <button class="menu-item">View</button>
                 <button class="menu-item">Window</button>
             </div>
@@ -31,6 +75,12 @@
                 <button id="btn-share" class="btn-icon"><i class="fa-solid fa-share-nodes"></i></button>
             </div>
         </header>
+
+        <!-- Workspace Tabs -->
+        <nav id="tab-bar">
+            <!-- Tabs added dynamically -->
+            <button id="add-workspace-btn" title="New Workspace"><i class="fa-solid fa-plus"></i></button>
+        </nav>
 
         <div class="main-container">
             <!-- Left Tool Palette -->
