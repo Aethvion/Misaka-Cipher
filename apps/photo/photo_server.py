@@ -140,6 +140,61 @@ async def remove_background(filename: str = Form(...)):
         logger.error(f"Background removal failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+class ProjectSave(BaseModel):
+    name: str
+    data: str # JSON string
+
+@app.post("/api/save-project")
+async def save_project(project: ProjectSave):
+    """Save an .aethphoto project to the server."""
+    try:
+        # Sanitize filename
+        filename = project.name.replace(" ", "_").replace("/", "_").replace("\\", "_")
+        if not filename.endswith(".aethphoto"):
+            filename += ".aethphoto"
+        
+        save_path = PROJECTS_DIR / filename
+        save_path.write_text(project.data, encoding="utf-8")
+        
+        return {
+            "success": True,
+            "filename": filename,
+            "path": str(save_path)
+        }
+    except Exception as e:
+        logger.error(f"Save project failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/projects")
+async def list_projects():
+    """List all saved projects on the server."""
+    try:
+        projects = []
+        for p in PROJECTS_DIR.glob("*.aethphoto"):
+            stats = p.stat()
+            projects.append({
+                "name": p.stem,
+                "filename": p.name,
+                "size": stats.st_size,
+                "modified": datetime.fromtimestamp(stats.st_mtime).isoformat()
+            })
+        return {"projects": sorted(projects, key=lambda x: x['modified'], reverse=True)}
+    except Exception as e:
+        logger.error(f"List projects failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/load-project/{filename}")
+async def load_project(filename: str):
+    """Load a specific project from the server."""
+    try:
+        path = PROJECTS_DIR / filename
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="Project not found")
+        return {"data": path.read_text(encoding="utf-8")}
+    except Exception as e:
+        logger.error(f"Load project failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     base_port = int(os.getenv("PHOTO_PORT", 8083))
     port = PortManager.bind_port("Aethvion Photo", base_port)

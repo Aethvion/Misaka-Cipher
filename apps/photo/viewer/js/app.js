@@ -368,6 +368,9 @@ class AethvionPhoto {
             case 'load':
                 this.triggerFileOpen('project');
                 break;
+            case 'load-server':
+                this.handleLoadProjectServer();
+                break;
             case 'save':
                 this.handleSaveProject();
                 break;
@@ -462,16 +465,76 @@ class AethvionPhoto {
         input.click();
     }
 
-    handleSaveProject() {
+    async handleSaveProject() {
         const ws = this.getActiveWorkspace();
         const json = ws.engine.toJSON();
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = `${ws.name}.aethphoto`;
-        link.href = url;
-        link.click();
-        URL.revokeObjectURL(url);
+        
+        try {
+            const response = await fetch('/api/save-project', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: ws.name,
+                    data: json
+                })
+            });
+            const result = await response.json();
+            if (result.success) {
+                console.log("Project saved to server:", result.filename);
+                // Visual feedback could be added here
+                alert(`Project saved: ${result.filename} (Server)`);
+            } else {
+                throw new Error(result.error || "Failed to save");
+            }
+        } catch (err) {
+            console.error("Server save failed, falling back to download:", err);
+            // Fallback to local download if server is offline or fails
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `${ws.name}.aethphoto`;
+            link.href = url;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+    }
+
+    async handleLoadProjectServer() {
+        try {
+            const response = await fetch('/api/projects');
+            const data = await response.json();
+            
+            if (!data.projects || data.projects.length === 0) {
+                alert("No projects found on server.");
+                return;
+            }
+            
+            const projectNames = data.projects.map(p => p.name).join('\n');
+            const selectedName = window.prompt(`Select a project to load:\n\n${projectNames}`);
+            
+            if (selectedName) {
+                const project = data.projects.find(p => p.name.toLowerCase() === selectedName.toLowerCase());
+                if (project) {
+                    const loadResp = await fetch(`/api/load-project/${project.filename}`);
+                    const loadData = await loadResp.json();
+                    
+                    if (loadData.data) {
+                        const ws = this.getActiveWorkspace();
+                        await ws.engine.fromJSON(loadData.data);
+                        ws.name = project.name;
+                        this.updateTabStrip();
+                        this.updateLayerStack();
+                        this.syncFilters();
+                        alert(`Project loaded: ${project.name}`);
+                    }
+                } else {
+                    alert("Project not found. Please type the exact name.");
+                }
+            }
+        } catch (err) {
+            console.error("Failed to load projects from server:", err);
+            alert("Failed to access server projects.");
+        }
     }
 
     handleExport() {
