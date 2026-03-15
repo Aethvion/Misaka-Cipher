@@ -8,9 +8,17 @@
  * @param {'success'|'error'|'warn'|'info'} type
  * @param {number} duration ms (default 3500)
  */
-function showToast(message, type = 'info', duration = 3500) {
+/**
+ * Show a toast notification.
+ * @param {string} message
+ * @param {'success'|'error'|'warn'|'info'} type
+ * @param {number} duration ms (default 3500)
+ * @param {{ undoLabel?: string, onUndo?: Function }} opts
+ * @returns {{ dismiss: Function }} handle to dismiss programmatically
+ */
+function showToast(message, type = 'info', duration = 3500, opts = {}) {
     const container = document.getElementById('toast-container');
-    if (!container) { console.warn('[toast]', message); return; }
+    if (!container) { console.warn('[toast]', message); return { dismiss: () => {} }; }
 
     const icons = {
         success: 'fa-circle-check',
@@ -21,6 +29,20 @@ function showToast(message, type = 'info', duration = 3500) {
     const toast = document.createElement('div');
     toast.className = `ae-toast ae-toast-${type}`;
     toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${message}</span>`;
+
+    if (opts.undoLabel && opts.onUndo) {
+        const undoBtn = document.createElement('button');
+        undoBtn.className = 'ae-toast-undo-btn';
+        undoBtn.textContent = opts.undoLabel;
+        undoBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearTimeout(timer);
+            opts.onUndo();
+            remove();
+        });
+        toast.appendChild(undoBtn);
+    }
+
     container.appendChild(toast);
 
     const remove = () => {
@@ -29,6 +51,7 @@ function showToast(message, type = 'info', duration = 3500) {
     };
     const timer = setTimeout(remove, duration);
     toast.addEventListener('click', () => { clearTimeout(timer); remove(); });
+    return { dismiss: () => { clearTimeout(timer); remove(); } };
 }
 window.showToast = showToast;
 
@@ -54,19 +77,36 @@ function showConfirm(title, body, onConfirm, opts = {}) {
     const iconEl = document.getElementById('confirm-modal-icon-i');
     if (iconEl) iconEl.className = `fas ${opts.icon || 'fa-exclamation-triangle'}`;
 
+    // Save focus so we can restore it on close
+    const previousFocus = document.activeElement;
     overlay.style.display = 'flex';
+    // Autofocus OK after paint
+    requestAnimationFrame(() => okBtn.focus());
 
     const close = () => {
         overlay.classList.add('hiding');
         overlay.addEventListener('animationend', () => {
             overlay.style.display = 'none';
             overlay.classList.remove('hiding');
+            // Restore focus to what was active before the modal
+            if (previousFocus && typeof previousFocus.focus === 'function') {
+                previousFocus.focus();
+            }
         }, { once: true });
     };
 
-    const handleOk = () => { close(); onConfirm(); cleanup(); };
+    const handleOk  = () => { close(); onConfirm(); cleanup(); };
     const handleCan = () => { close(); cleanup(); };
-    const handleKey = (e) => { if (e.key === 'Escape') { handleCan(); } if (e.key === 'Enter') { handleOk(); } };
+    const handleKey = (e) => {
+        if (e.key === 'Escape') { handleCan(); return; }
+        if (e.key === 'Enter')  { handleOk();  return; }
+        // Focus trap — keep Tab cycling inside modal
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            if (document.activeElement === okBtn) { canBtn.focus(); }
+            else { okBtn.focus(); }
+        }
+    };
 
     const cleanup = () => {
         okBtn.removeEventListener('click', handleOk);
@@ -668,8 +708,59 @@ function setDashboardMode(mode, save = true) {
     switchMainTab(targetTab, false);
 }
 
+// ─── Tab scroll-position memory ──────────────────────────────────
+const _tabScrollPos = {};  // tabName → scrollTop
+
+function _saveTabScroll(tabName) {
+    const panel = document.getElementById(`${tabName}-panel`);
+    if (panel) _tabScrollPos[tabName] = panel.scrollTop;
+}
+function _restoreTabScroll(tabName) {
+    requestAnimationFrame(() => {
+        const panel = document.getElementById(`${tabName}-panel`);
+        if (panel && _tabScrollPos[tabName] !== undefined) {
+            panel.scrollTop = _tabScrollPos[tabName];
+        }
+    });
+}
+
+// ─── Panel last-updated badge ─────────────────────────────────────
+const _panelFetchTimes = {};
+
+function markPanelUpdated(panelKey) {
+    _panelFetchTimes[panelKey] = Date.now();
+    _renderPanelTimestamp(panelKey);
+}
+
+function _renderPanelTimestamp(panelKey) {
+    const ts = _panelFetchTimes[panelKey];
+    if (!ts) return;
+    const el = document.querySelector(`[data-panel-ts="${panelKey}"]`);
+    if (!el) return;
+    const diff = Math.round((Date.now() - ts) / 1000);
+    let label = diff < 10 ? 'just now'
+        : diff < 60  ? `${diff}s ago`
+        : diff < 3600 ? `${Math.floor(diff/60)}m ago`
+        : `${Math.floor(diff/3600)}h ago`;
+    el.textContent = `Updated ${label}`;
+    el.title = new Date(ts).toLocaleTimeString();
+}
+
+// Refresh all displayed timestamps every 30s
+setInterval(() => {
+    Object.keys(_panelFetchTimes).forEach(_renderPanelTimestamp);
+}, 30000);
+window.markPanelUpdated = markPanelUpdated;
+
 function switchMainTab(tabName, save = true) {
     if (!tabName) return;
+
+    // Save scroll of the tab we're leaving
+    if (currentMainTab) _saveTabScroll(currentMainTab);
+    // Clear thread search when leaving chat
+    if (currentMainTab === 'chat' && tabName !== 'chat' && window._clearThreadSearch) {
+        window._clearThreadSearch();
+    }
 
     let actualTabName = tabName;
     if (tabName === 'agent') actualTabName = 'chat'; // Legacy mapping
@@ -771,6 +862,9 @@ function switchMainTab(tabName, save = true) {
 
     // Update layout based on mode
     updateChatLayout();
+
+    // Restore scroll position for the new tab
+    _restoreTabScroll(actualTabName);
 
     // Dispatch event for other views to react
     document.dispatchEvent(new CustomEvent('tabChanged', { detail: { tab: actualTabName } }));

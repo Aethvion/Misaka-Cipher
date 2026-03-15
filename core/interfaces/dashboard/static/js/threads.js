@@ -512,14 +512,38 @@ function initThreadSearch() {
     const input = document.getElementById('threads-search');
     if (!input || input.dataset.bound) return;
     input.dataset.bound = 'true';
+
+    let debounceTimer = null;
     input.addEventListener('input', () => {
-        const q = input.value.trim().toLowerCase();
-        document.querySelectorAll('.thread-item').forEach(item => {
-            const title = (item.querySelector('.thread-title')?.textContent || '').toLowerCase();
-            const preview = (item.querySelector('.thread-preview')?.textContent || '').toLowerCase();
-            item.style.display = (title.includes(q) || preview.includes(q)) ? '' : 'none';
-        });
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            const q = input.value.trim().toLowerCase();
+            let visible = 0;
+            document.querySelectorAll('.thread-item').forEach(item => {
+                const title   = (item.querySelector('.thread-title')?.textContent   || '').toLowerCase();
+                const preview = (item.querySelector('.thread-preview')?.textContent || '').toLowerCase();
+                const show    = !q || title.includes(q) || preview.includes(q);
+                item.style.display = show ? '' : 'none';
+                if (show) visible++;
+            });
+            // Show empty state if nothing matches
+            let noResults = document.getElementById('threads-no-results');
+            if (!noResults) {
+                noResults = document.createElement('div');
+                noResults.id = 'threads-no-results';
+                noResults.className = 'threads-empty-state';
+                noResults.innerHTML = '<i class="fas fa-search"></i><span>No threads match</span>';
+                document.getElementById('threads-list')?.appendChild(noResults);
+            }
+            noResults.style.display = (q && visible === 0) ? 'flex' : 'none';
+        }, 280);
     });
+
+    // Clear search when clicking outside or switching tabs
+    window._clearThreadSearch = () => {
+        input.value = '';
+        input.dispatchEvent(new Event('input'));
+    };
 }
 
 // Render thread list
@@ -543,16 +567,20 @@ function renderThreadList() {
         if (thread.id === currentThreadId) threadItem.classList.add('active');
 
         // Populate Data
-        clone.querySelector('.thread-title').textContent = thread.title;
+        const titleEl = clone.querySelector('.thread-title');
+        titleEl.textContent = thread.title;
+        titleEl.title = thread.title;   // tooltip for truncated text
 
         // Preview — last user message from in-memory store
         const msgs = threadMessages[thread.id] || [];
         const lastMsg = [...msgs].reverse().find(m => m.role === 'user' || m.role === 'assistant');
         const previewEl = clone.querySelector('.thread-preview');
         if (previewEl) {
-            previewEl.textContent = lastMsg
-                ? lastMsg.content.replace(/<[^>]+>/g, '').slice(0, 60)
+            const previewText = lastMsg
+                ? lastMsg.content.replace(/<[^>]+>/g, '').slice(0, 80)
                 : 'No messages yet';
+            previewEl.textContent = previewText;
+            previewEl.title = previewText;   // tooltip for truncated preview
         }
 
         // Relative date
@@ -634,27 +662,59 @@ async function editThreadTitle(threadId, newTitle) {
 }
 
 
-// Delete a thread
-async function deleteThread(threadId) {
-    // Optimistic UI update
+// Delete a thread — 5-second undo grace period before committing to server
+function deleteThread(threadId) {
+    const thread = threads[threadId];
+    if (!thread) return;
+
+    // Save data for potential undo
+    const savedThread    = { ...thread };
+    const savedMessages  = (threadMessages[threadId] || []).slice();
+
+    // Optimistically hide DOM element
     const threadEl = document.querySelector(`.thread-item[data-thread-id="${threadId}"]`);
-    if (threadEl) threadEl.remove();
+    if (threadEl) threadEl.style.display = 'none';
 
-    // If deleted current thread, switch to default
-    if (currentThreadId === threadId) {
-        switchThread('default');
-    }
-
+    // Remove from in-memory state right away
     delete threads[threadId];
     delete threadMessages[threadId];
 
-    try {
-        await fetch(`/api/tasks/thread/${threadId}`, { method: 'DELETE' });
-    } catch (error) {
-        console.error('Failed to delete thread:', error);
-        showToast('Failed to delete thread on server', 'error');
-        loadThreads(); // Revert on failure
+    // If we deleted the active thread, switch to the next available one
+    if (currentThreadId === threadId) {
+        const sorted = Object.values(threads).sort((a, b) =>
+            new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+        );
+        switchThread(sorted.length > 0 ? sorted[0].id : 'default');
     }
+
+    // Show undo toast — user has 5 s to cancel
+    showToast(`"${savedThread.title}" deleted`, 'warn', 5000, {
+        undoLabel: 'Undo',
+        onUndo: () => {
+            clearTimeout(deleteTimer);
+            threads[threadId]        = savedThread;
+            threadMessages[threadId] = savedMessages;
+            if (threadEl) { threadEl.style.display = ''; }
+            else           { renderThreadList(); }
+            if (currentThreadId !== threadId) switchThread(threadId);
+            showToast(`"${savedThread.title}" restored`, 'success');
+        }
+    });
+
+    // Commit to server after grace period
+    const deleteTimer = setTimeout(async () => {
+        try {
+            await fetch(`/api/tasks/thread/${threadId}`, { method: 'DELETE' });
+            if (threadEl && threadEl.parentNode) threadEl.remove();
+        } catch (error) {
+            console.error('Failed to delete thread:', error);
+            showToast('Failed to delete thread on server', 'error');
+            // Revert state so nothing is lost
+            threads[threadId]        = savedThread;
+            threadMessages[threadId] = savedMessages;
+            renderThreadList();
+        }
+    }, 5000);
 }
 
 function saveGlobalChatSettings() {
@@ -724,6 +784,41 @@ async function refreshThreadStatus() {
     }
 }
 
+// Draft persistence — save typed text so it survives accidental navigation / failed sends
+const DRAFT_KEY = 'ae_chat_draft';
+function saveDraft(text) { try { localStorage.setItem(DRAFT_KEY, text); } catch(e){} }
+function loadDraft()     { try { return localStorage.getItem(DRAFT_KEY) || ''; } catch(e){ return ''; } }
+function clearDraft()    { try { localStorage.removeItem(DRAFT_KEY); } catch(e){} }
+
+// Restore draft on init
+(function restoreDraftOnLoad() {
+    document.addEventListener('DOMContentLoaded', () => {
+        const input = document.getElementById('chat-input');
+        if (input) {
+            const d = loadDraft();
+            if (d) input.value = d;
+            input.addEventListener('input', () => saveDraft(input.value));
+        }
+    });
+})();
+
+// Send button loading state helpers
+function setSendLoading(loading) {
+    const btn = document.getElementById('send-button');
+    const input = document.getElementById('chat-input');
+    if (!btn) return;
+    if (loading) {
+        btn.disabled = true;
+        btn.dataset.origHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+        if (input) input.disabled = true;
+    } else {
+        btn.disabled = false;
+        if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+        if (input) input.disabled = false;
+    }
+}
+
 // Modified sendMessage to use task queue
 async function sendMessage() {
     const input = document.getElementById('chat-input');
@@ -736,6 +831,9 @@ async function sendMessage() {
     let attachedFileName = window._mainChatAttachedFile ? window._mainChatAttachedFile.name : null;
 
     if (!message && !window._mainChatAttachedFile) return;
+
+    // Lock UI immediately to prevent double-send
+    setSendLoading(true);
 
     // Upload file if attached
     if (window._mainChatAttachedFile) {
@@ -760,8 +858,9 @@ async function sendMessage() {
         }
     }
 
-    // Clear input
+    // Clear input ONLY after we've confirmed submission will proceed — draft cleared below
     input.value = '';
+    input.style.height = '';
 
     const displayText = message || `[Attached: ${attachedFileName}]`;
 
@@ -833,6 +932,12 @@ async function sendMessage() {
         // Track which thread this task belongs to
         activeTasksByThread[data.task_id] = messageThreadId;
 
+        // Draft successfully submitted — clear it
+        clearDraft();
+
+        // Unlock UI
+        setSendLoading(false);
+
         // Show typing indicator instead of system message
         showTypingIndicator();
 
@@ -841,47 +946,122 @@ async function sendMessage() {
 
     } catch (error) {
         console.error('Failed to submit task:', error);
-        addMessageToThread(messageThreadId, 'error', `Failed to submit task: ${error.message}`);
+        // Restore draft so user doesn't lose their message
+        input.value = message;
+        saveDraft(message);
+        setSendLoading(false);
+        addMessageToThread(messageThreadId, 'error', `Failed to submit: ${error.message} — your message was restored.`);
+        showToast('Send failed. Your message has been restored in the input.', 'error');
     }
 }
 
-// Poll task status until completion
-async function pollTaskStatus(taskId, threadId, maxAttempts = 60) {
+// Active task cancel registry
+const _cancelledTasks = new Set();
+function cancelTask(taskId) {
+    _cancelledTasks.add(taskId);
+    delete activeTasksByThread[taskId];
+    hideTypingIndicator();
+    showToast('Task cancelled.', 'info');
+}
+window.cancelTask = cancelTask;
+
+// Poll task status until completion — with exponential backoff, elapsed timer, and cancel support
+async function pollTaskStatus(taskId, threadId) {
+    const startTime = Date.now();
     let attempts = 0;
+    let consecutiveErrors = 0;
+    let warned30s = false;
+    const MAX_WAIT_MS = 300_000; // 5 minutes hard cap
+
+    // Update the typing indicator's elapsed time display
+    const updateElapsed = () => {
+        const indicator = document.getElementById('chat-typing-indicator');
+        if (!indicator) return;
+        const elapsed = Math.round((Date.now() - startTime) / 1000);
+        let elapsedEl = indicator.querySelector('.typing-elapsed');
+        if (!elapsedEl) {
+            elapsedEl = document.createElement('span');
+            elapsedEl.className = 'typing-elapsed';
+            const content = indicator.querySelector('.message-content');
+            if (content) content.appendChild(elapsedEl);
+        }
+        elapsedEl.textContent = ` · ${elapsed}s`;
+
+        // At 30s show cancel button once
+        if (elapsed >= 30 && !warned30s) {
+            warned30s = true;
+            let cancelEl = indicator.querySelector('.typing-cancel-btn');
+            if (!cancelEl) {
+                cancelEl = document.createElement('button');
+                cancelEl.className = 'typing-cancel-btn';
+                cancelEl.textContent = 'Cancel';
+                cancelEl.onclick = () => cancelTask(taskId);
+                const content = indicator.querySelector('.message-content');
+                if (content) content.appendChild(cancelEl);
+            }
+            showToast('Task is taking a while — you can cancel it.', 'warn', 5000);
+        }
+    };
+
+    const elapsedInterval = setInterval(updateElapsed, 1000);
+
+    const finish = () => {
+        clearInterval(elapsedInterval);
+        setSendLoading(false);
+    };
+
+    // Interval based on attempt count — gentle exponential backoff
+    const intervalFor = (n) => Math.min(1000 * Math.pow(1.3, Math.min(n, 8)), 8000);
 
     const poll = async () => {
+        if (_cancelledTasks.has(taskId)) { finish(); return; }
+        if (Date.now() - startTime > MAX_WAIT_MS) {
+            addMessageToThread(threadId, 'error', `Task timed out after 5 minutes.`);
+            hideTypingIndicator();
+            delete activeTasksByThread[taskId];
+            finish();
+            return;
+        }
+
         try {
             const response = await fetch(`/api/tasks/status/${taskId}`);
-            const data = await response.json(); // Renamed 'task' to 'data' for consistency with original diff
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            consecutiveErrors = 0;
 
             if (data.status === 'completed') {
-                // Task completed successfully
                 addMessageToThread(threadId, 'assistant', data.result.response, taskId, data);
                 hideTypingIndicator();
                 delete activeTasksByThread[taskId];
+                finish();
                 return;
             } else if (data.status === 'failed') {
-                // Task failed
                 addMessageToThread(threadId, 'error', `Task failed: ${data.error}`, taskId);
                 hideTypingIndicator();
                 delete activeTasksByThread[taskId];
+                finish();
                 return;
             }
 
             attempts++;
-            if (attempts < maxAttempts) {
-                setTimeout(poll, 1000); // Poll every second
-            } else {
-                addMessageToThread(threadId, 'error', `Task ${taskId} timed out`);
-                hideTypingIndicator();
-                delete activeTasksByThread[taskId];
-            }
+            setTimeout(poll, intervalFor(attempts));
 
         } catch (error) {
-            console.error('Polling error:', error);
-            hideTypingIndicator();
-            delete activeTasksByThread[taskId]; // Ensure task is removed from active list even on polling error
-            return;
+            consecutiveErrors++;
+            console.error(`Polling error (attempt ${attempts}, ${consecutiveErrors} consecutive):`, error);
+
+            if (consecutiveErrors >= 5) {
+                // 5 back-to-back failures — give up and tell the user
+                addMessageToThread(threadId, 'error',
+                    `Lost connection while waiting for response (${error.message}). The task may still be running — refresh to check.`);
+                hideTypingIndicator();
+                delete activeTasksByThread[taskId];
+                showToast('Connection lost during polling. Task may still be processing.', 'error', 6000);
+                finish();
+                return;
+            }
+            // Otherwise retry with longer backoff
+            setTimeout(poll, intervalFor(attempts + consecutiveErrors * 2));
         }
     };
 

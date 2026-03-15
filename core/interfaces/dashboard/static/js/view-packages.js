@@ -3,6 +3,8 @@
 
 let allPackages = [];
 let packageSort = { column: 'updated', direction: 'desc' };
+let packagePage = 0;
+const PACKAGE_PAGE_SIZE = 25;
 
 async function loadPackages() {
     await loadAllPackages();
@@ -18,6 +20,7 @@ async function loadAllPackages() {
         const data = await response.json();
 
         allPackages = data.packages || [];
+        if (typeof markPanelUpdated !== 'undefined') markPanelUpdated('packages');
         renderPackagesTable();
 
         if (!window.packageListenersSetup) {
@@ -29,21 +32,26 @@ async function loadAllPackages() {
         console.error('Error loading packages:', error);
         const tbody = document.getElementById('packages-table-body');
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="6" class="placeholder-text error">Error loading packages</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="7" class="placeholder-text error">
+                Error loading packages
+                <button class="action-btn small primary" style="margin-left:1rem;" onclick="loadAllPackages()">
+                    <i class="fas fa-rotate-right"></i> Retry
+                </button>
+            </td></tr>`;
         }
     }
 }
 
 function setupPackageListeners() {
     const searchInput = document.getElementById('package-search');
-    if (searchInput) searchInput.addEventListener('input', renderPackagesTable);
+    if (searchInput) searchInput.addEventListener('input', () => { packagePage = 0; renderPackagesTable(); });
 
     const filterSelect = document.getElementById('package-status-filter');
-    if (filterSelect) filterSelect.addEventListener('change', renderPackagesTable);
+    if (filterSelect) filterSelect.addEventListener('change', () => { packagePage = 0; renderPackagesTable(); });
 
     const systemToggle = document.getElementById('hide-system-packages');
     if (systemToggle) {
-        systemToggle.addEventListener('change', renderPackagesTable);
+        systemToggle.addEventListener('change', () => { packagePage = 0; renderPackagesTable(); });
     }
 
     const refreshBtn = document.getElementById('refresh-packages-btn');
@@ -69,6 +77,68 @@ function setupPackageListeners() {
             renderPackagesTable();
         });
     });
+
+    // Select-all checkbox
+    const selectAll = document.getElementById('pkg-select-all');
+    if (selectAll) {
+        selectAll.addEventListener('change', () => {
+            document.querySelectorAll('.pkg-row-checkbox').forEach(cb => { cb.checked = selectAll.checked; });
+            updateBulkBar();
+        });
+    }
+
+    // Bulk approve / deny
+    document.getElementById('pkg-bulk-approve')?.addEventListener('click', () => {
+        const names = getSelectedPackageNames();
+        if (!names.length) return;
+        showConfirm(
+            'Bulk Approve',
+            `Approve ${names.length} package(s) for installation?`,
+            () => { names.forEach(n => approvePackage(n)); },
+            { confirmLabel: 'Approve All', icon: 'fa-download' }
+        );
+    });
+    document.getElementById('pkg-bulk-deny')?.addEventListener('click', () => {
+        const names = getSelectedPackageNames();
+        if (!names.length) return;
+        showConfirm(
+            'Bulk Deny',
+            `Deny ${names.length} package(s)?`,
+            () => { names.forEach(n => denyPackage(n)); },
+            { confirmLabel: 'Deny All', icon: 'fa-times' }
+        );
+    });
+
+    // Live update bulk bar when individual rows are checked (delegated)
+    document.getElementById('packages-table-body')?.addEventListener('change', (e) => {
+        if (e.target.classList.contains('pkg-row-checkbox')) updateBulkBar();
+    });
+}
+
+/** Returns package names for all currently checked rows */
+function getSelectedPackageNames() {
+    return Array.from(document.querySelectorAll('.pkg-row-checkbox:checked')).map(cb => cb.dataset.pkg);
+}
+
+/** Show / hide and update the bulk actions bar */
+function updateBulkBar() {
+    const selected = getSelectedPackageNames();
+    const bar   = document.getElementById('pkg-bulk-bar');
+    const count = document.getElementById('pkg-bulk-count');
+    if (!bar) return;
+    if (selected.length > 0) {
+        bar.classList.add('visible');
+        if (count) count.textContent = `${selected.length} selected`;
+    } else {
+        bar.classList.remove('visible');
+    }
+    // Sync select-all indeterminate state
+    const all = document.querySelectorAll('.pkg-row-checkbox');
+    const selectAll = document.getElementById('pkg-select-all');
+    if (selectAll) {
+        selectAll.indeterminate = selected.length > 0 && selected.length < all.length;
+        selectAll.checked = selected.length === all.length && all.length > 0;
+    }
 }
 
 function renderPackagesTable() {
@@ -136,13 +206,47 @@ function renderPackagesTable() {
         .filter(row => row.style.display !== 'none')
         .map(row => row.id);
 
-    // 3. Render
-    if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="placeholder-text">No packages match your criteria</td></tr>';
+    // 3. Paginate
+    const totalFiltered = filtered.length;
+    const totalPages    = Math.max(1, Math.ceil(totalFiltered / PACKAGE_PAGE_SIZE));
+    packagePage = Math.min(packagePage, totalPages - 1);
+    const pageStart = packagePage * PACKAGE_PAGE_SIZE;
+    const paginated = filtered.slice(pageStart, pageStart + PACKAGE_PAGE_SIZE);
+
+    // Render pagination controls
+    let pagEl = document.getElementById('packages-pagination');
+    if (!pagEl) {
+        pagEl = document.createElement('div');
+        pagEl.id = 'packages-pagination';
+        pagEl.className = 'table-pagination';
+        const container = document.querySelector('.packages-table-container');
+        if (container && container.parentNode) container.parentNode.insertBefore(pagEl, container.nextSibling);
+    }
+    if (totalFiltered > PACKAGE_PAGE_SIZE) {
+        pagEl.innerHTML = `
+            <button class="action-btn small secondary" id="pkg-prev-btn" ${packagePage === 0 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i> Prev
+            </button>
+            <span class="pagination-info">
+                ${pageStart + 1}–${Math.min(pageStart + PACKAGE_PAGE_SIZE, totalFiltered)} of ${totalFiltered}
+            </span>
+            <button class="action-btn small secondary" id="pkg-next-btn" ${packagePage >= totalPages - 1 ? 'disabled' : ''}>
+                Next <i class="fas fa-chevron-right"></i>
+            </button>`;
+        pagEl.style.display = 'flex';
+        document.getElementById('pkg-prev-btn')?.addEventListener('click', () => { packagePage--; renderPackagesTable(); });
+        document.getElementById('pkg-next-btn')?.addEventListener('click', () => { packagePage++; renderPackagesTable(); });
+    } else {
+        pagEl.style.display = 'none';
+    }
+
+    // 4. Render
+    if (totalFiltered === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="placeholder-text">No packages match your criteria</td></tr>';
         return;
     }
 
-    tbody.innerHTML = filtered.map(pkg => {
+    tbody.innerHTML = paginated.map(pkg => {
         const meta = pkg.metadata || {};
         const safeLevel = meta.safety_level || 'UNKNOWN';
         let safeColor = 'var(--text-secondary)';
@@ -181,6 +285,10 @@ function renderPackagesTable() {
 
         const mainRow = `
             <tr class="package-row ${pkg.status}" onclick="togglePackageDetails('${detailsId}')">
+                <td class="pkg-select-col" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="pkg-row-checkbox" data-pkg="${pkg.package_name}" data-status="${pkg.status}"
+                        aria-label="Select ${pkg.package_name}">
+                </td>
                 <td>
                     <div class="pkg-name">
                         <span class="expand-icon">▶</span> ${pkg.package_name}
@@ -203,7 +311,7 @@ function renderPackagesTable() {
 
         const detailsRow = `
             <tr id="${detailsId}" class="package-details-row" style="display: none;">
-                <td colspan="6">
+                <td colspan="7">
                     <div class="details-content">
                         <div class="detail-grid">
                             <div class="detail-item">
@@ -278,6 +386,11 @@ function renderPackagesTable() {
             retryPackage(btn.dataset.pkg);
         });
     });
+
+    // Reset bulk bar state after re-render (checkboxes are new DOM nodes)
+    updateBulkBar();
+    const selectAll = document.getElementById('pkg-select-all');
+    if (selectAll) { selectAll.checked = false; selectAll.indeterminate = false; }
 }
 
 function togglePackageDetails(rowId) {
@@ -519,7 +632,7 @@ loadAllPackages = async function () {
     } catch (error) {
         console.error('Error loading packages:', error);
         document.getElementById('packages-table-body').innerHTML =
-            '<tr><td colspan="6" class="placeholder-text error">Error loading packages</td></tr>';
+            '<tr><td colspan="7" class="placeholder-text error">Error loading packages</td></tr>';
     }
 };
 

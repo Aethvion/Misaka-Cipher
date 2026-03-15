@@ -34,6 +34,7 @@ const LocalModels = {
             const res = await fetch('/api/registry/local/models/status');
             const data = await res.json();
             const models = data.models || {};
+            if (typeof markPanelUpdated !== 'undefined') markPanelUpdated('models');
 
             if (Object.keys(models).length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" class="placeholder-text">No models found in /LocalModels</td></tr>';
@@ -79,7 +80,12 @@ const LocalModels = {
 
         } catch (e) {
             console.error("Failed to load local models:", e);
-            tbody.innerHTML = '<tr><td colspan="4" class="placeholder-text" style="color:#ff7675;">Error loading models</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="4" class="placeholder-text" style="color:#ff7675;">
+                Error loading models
+                <button class="action-btn small primary" style="margin-left:1rem;" onclick="localModelsView.loadLocalModels()">
+                    <i class="fas fa-rotate-right"></i> Retry
+                </button>
+            </td></tr>`;
         }
     },
 

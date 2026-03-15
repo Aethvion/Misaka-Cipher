@@ -914,6 +914,93 @@ kbd {
     text-align: center;
 }
 
+/* ── Panel timestamp badge ────────────────────────────────────────── */
+.panel-ts-badge {
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: var(--text-tertiary);
+    margin-left: 0.6rem;
+    vertical-align: middle;
+    letter-spacing: 0;
+}
+
+/* ── Typing indicator extras ─────────────────────────────────────── */
+.typing-elapsed {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-left: 4px;
+}
+.typing-cancel-btn {
+    margin-left: 10px;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 5px;
+    color: #f87171;
+    cursor: pointer;
+    transition: all 0.18s;
+}
+.typing-cancel-btn:hover { background: rgba(239, 68, 68, 0.25); }
+
+/* ── Thread empty search state ───────────────────────────────────── */
+.threads-empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    color: var(--text-tertiary);
+    font-size: 0.82rem;
+}
+.threads-empty-state i { font-size: 0.9rem; }
+
+/* ── Undo-delete toast ───────────────────────────────────────────── */
+.ae-toast-undo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 1;
+}
+.ae-toast-undo-btn {
+    margin-left: auto;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+    background: rgba(99, 102, 241, 0.2);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+    border-radius: 5px;
+    color: var(--primary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.ae-toast-undo-btn:hover { background: rgba(99, 102, 241, 0.4); }
+
+/* ── Retry error state ───────────────────────────────────────────── */
+.error-retry-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+    padding: 2.5rem 1rem;
+    color: var(--text-secondary);
+}
+.error-retry-state i { font-size: 1.8rem; color: rgba(239,68,68,0.5); }
+.error-retry-state p { font-size: 0.85rem; text-align: center; margin: 0; }
+.error-retry-state .btn-retry {
+    padding: 0.45rem 1.1rem;
+    font-size: 0.82rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 7px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.18s;
+}
+.error-retry-state .btn-retry:hover { background: rgba(255,255,255,0.1); }
+
 /* ── Thread Search ────────────────────────────────────────────────── */
 .threads-search-box {
     display: flex;
@@ -989,4 +1076,92 @@ kbd {
     height: 40px;
     transform: translateY(-50%);
     border-radius: 4px;
+}
+
+/* ── Table pagination controls ────────────────────────────────────── */
+.table-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-top: 1px solid rgba(255,255,255,0.05);
+}
+.table-pagination .pagination-info {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    min-width: 120px;
+    text-align: center;
+}
+
+/* ── Bulk-select checkboxes (packages table) ──────────────────────── */
+.pkg-select-col {
+    width: 32px;
+    text-align: center;
+    padding: 0 4px !important;
+}
+.pkg-row-checkbox {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+.bulk-actions-bar {
+    display: none;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.6rem;
+    background: rgba(99,102,241,0.08);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 6px;
+}
+.bulk-actions-bar.visible { display: flex; }
+.bulk-actions-bar .bulk-count {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* ── Responsive breakpoints ───────────────────────────────────────── */
+@media (max-width: 1200px) {
+    .three-column-layout:not(.threads-collapsed) {
+        --col-threads: 220px;
+    }
+    .three-column-layout:not(.agents-collapsed) {
+        --col-agents: 260px;
+    }
+    .main-panel { padding: 0.75rem; }
+}
+
+@media (max-width: 960px) {
+    /* Auto-collapse threads on narrow viewports */
+    .three-column-layout:not(.threads-collapsed) {
+        --col-threads: 0px;
+    }
+    #toggle-threads-btn { position: relative; }
+    #toggle-threads-btn::after {
+        content: '';
+        position: absolute;
+        top: 2px; right: 2px;
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: var(--primary);
+        display: block;
+    }
+}
+
+@media (max-width: 760px) {
+    /* Full-width single-column layout on mobile */
+    .three-column-layout {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .threads-column, .agents-column, .col-resize-handle {
+        display: none !important;
+    }
+    .chat-column { width: 100% !important; }
+    .main-panel { padding: 0.5rem; }
+    .sidebar-nav { width: 100%; flex-direction: row !important; height: auto !important; }
+    .sidebar-nav .main-tab { flex: 1; justify-content: center; }
+    .sidebar-nav .nav-label { display: none; }
 }

@@ -46,6 +46,7 @@ async function loadAllTools() {
         const data = await response.json();
 
         allTools = data.tools || [];
+        if (typeof markPanelUpdated !== 'undefined') markPanelUpdated('tools');
         populateToolDomains();
         renderToolsTable();
 
@@ -58,7 +59,12 @@ async function loadAllTools() {
         console.error('Error loading tools:', error);
         const tbody = document.getElementById('tools-table-body');
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="6" class="placeholder-text error">Error loading tools</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="6" class="placeholder-text error">
+                Error loading tools
+                <button class="action-btn small primary" style="margin-left:1rem;" onclick="loadAllTools()">
+                    <i class="fas fa-rotate-right"></i> Retry
+                </button>
+            </td></tr>`;
         }
     }
 }
