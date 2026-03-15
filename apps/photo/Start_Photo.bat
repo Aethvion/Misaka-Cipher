@@ -10,5 +10,5 @@ cd /d "%~dp0"
 if "%PHOTO_PORT%"=="" set PHOTO_PORT=8083
 
 :: Run the server
-python image_server.py
+python photo_server.py
 pause

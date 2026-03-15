@@ -536,7 +536,7 @@ function switchMainTab(tabName, save = true) {
     document.querySelectorAll('.main-tab').forEach(tab => {
         if (tab.closest('.main-tab-dropdown')) {
             if (tab.classList.contains('split-main-action')) {
-                const categories = ['chat', 'image', 'audio', 'arena', 'aiconv', 'advaiconv'];
+                const categories = ['chat', 'photo', 'audio', 'arena', 'aiconv', 'advaiconv'];
                 const isActive = categories.includes(actualTabName);
                 tab.classList.toggle('active', isActive);
 
@@ -544,7 +544,7 @@ function switchMainTab(tabName, save = true) {
                     tab.dataset.maintab = actualTabName;
                     let icon = '💬';
                     let label = 'Chat';
-                    if (actualTabName === 'image') { icon = '🎨'; label = 'Image'; }
+                    if (actualTabName === 'photo') { icon = '🎨'; label = 'Photo'; }
                     if (actualTabName === 'audio') { icon = '🎙️'; label = 'Audio'; }
                     if (actualTabName === 'arena') { icon = '⚔️'; label = 'Arena'; }
                     if (actualTabName === 'aiconv') { icon = '🎭'; label = 'AI Conv'; }
@@ -552,7 +552,7 @@ function switchMainTab(tabName, save = true) {
                     tab.innerHTML = `<span class="tab-icon">${icon}</span>${label}`;
                 }
             } else if (tab.classList.contains('split-arrow-action')) {
-                const categories = ['chat', 'image', 'audio', 'arena', 'aiconv', 'advaiconv'];
+                const categories = ['chat', 'photo', 'audio', 'arena', 'aiconv', 'advaiconv'];
                 const isActive = categories.includes(actualTabName);
                 tab.classList.toggle('active', isActive);
             }

@@ -222,7 +222,7 @@ async def initialize_system_background():
         from .usage_routes import router as usage_router
         from .arena_routes import router as arena_router
         from .settings_routes import router as settings_router
-        from .image_routes import router as image_router
+        from .photo_routes import router as photo_router
         from .advanced_aiconv_routes import router as adv_aiconv_router
         from .assistant_routes import router as assistant_router
         from .misaka_cipher_routes import router as misaka_cipher_router
@@ -239,7 +239,7 @@ async def initialize_system_background():
         app.include_router(usage_router)
         app.include_router(arena_router)
         app.include_router(settings_router)
-        app.include_router(image_router)
+        app.include_router(photo_router)
         app.include_router(adv_aiconv_router)
         app.include_router(assistant_router)
         app.include_router(misaka_cipher_router)
@@ -304,9 +304,9 @@ async def initialize_system_background():
         logger.info("Aethvion Suite Web Server ready!")
         
         # Final console visibility block
-        print("\n" + "🚀" + " " + "=" * 66)
+        print("\n" + "=" * 66)
         print(f"  SYSTEM ONLINE: http://localhost:{os.environ.get('PORT', 8080)}")
-        print("  =" * 34 + "\n")
+        print("=" * 66 + "\n")
         
     except Exception as e:
         logger.error(f"Startup failed: {str(e)}", exc_info=True)
@@ -518,7 +518,7 @@ async def run_module_script(request: dict):
     module_map = {
         "vtuber": "apps/vtuber/Start_VTuber.bat",
         "tracking": "apps/tracking/Start_Tracking.bat",
-        "image": "apps/image/Start_Image.bat",
+        "photo": "apps/photo/Start_Photo.bat",
         "audio": "apps/audio/Start_Audio.bat",
     }
     

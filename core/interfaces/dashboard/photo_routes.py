@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Image Generation Routes
 API endpoints for image generation via LLM providers
 """
@@ -16,7 +16,7 @@ from core.utils import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/api/image", tags=["image"])
+router = APIRouter(prefix="/api/photo", tags=["photo"])
 
 # Global provider manager instance for this router
 # Note: This creates a second instance if server.py also has one,
@@ -201,7 +201,7 @@ async def generate_image(req: ImageGenerationRequest):
             saved_images.append({
                 "path": str(path),
                 "filename": filename,
-                "url": f"/api/image/serve/{filename}" # Helper endpoint we might need
+                "url": f"/api/photo/serve/{filename}" # Helper endpoint we might need
             })
 
         return ImageGenerationResponse(

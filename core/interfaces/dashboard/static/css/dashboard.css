@@ -1,3 +1,27 @@
+/* Navigation & Back Buttons */
+.back-to-home-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-right: 1.5rem;
+}
+
+.back-to-home-btn:hover {
+    background: var(--primary);
+    color: #000;
+    border-color: var(--primary);
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.4);
+    transform: translateX(-3px);
+}
+
 /* ===== Usage Dashboard (Premium Redesign) ===== */
 .usage-dashboard {
     padding: 1.5rem;
@@ -7,6 +31,44 @@
     overflow-y: auto;
     max-height: calc(100vh - 120px);
     background: radial-gradient(circle at 50% -20%, rgba(99, 102, 241, 0.05), transparent 60%);
+}
+
+/* Glitch Effect for Brand */
+.glitch-text {
+    position: relative;
+    display: inline-block;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.8;
+}
+
+.glitch-text::before {
+    color: #0ff;
+    z-index: -1;
+    animation: glitch_anim 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+}
+
+.glitch-text::after {
+    color: #f0f;
+    z-index: -2;
+    animation: glitch_anim 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) reverse both infinite;
+}
+
+@keyframes glitch_anim {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); }
+    100% { transform: translate(0); }
 }
 
 .usage-stat-row {
@@ -292,145 +354,192 @@
     }
 }
 
-/* ===== Suite Hub Hub Styles ===== */
-.suite-hub {
-    padding: 3rem 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
-    width: 100%;
-    animation: fadeIn 0.5s ease-out;
-}
-
-.hub-hero {
-    text-align: center;
-    margin-bottom: 4rem;
-}
-
-.hub-hero h1 {
-    font-size: 3.5rem;
-    font-weight: 800;
-    margin-bottom: 1rem;
-    background: linear-gradient(135deg, #fff, var(--primary));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    letter-spacing: 2px;
-}
-
-.hub-hero p {
-    font-size: 1.2rem;
-    color: var(--text-secondary);
-    font-family: 'Inter', sans-serif;
-}
-
-.hub-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+/* ===== Suite Mode Navigation Redesign ===== */
+.mode-selection-container {
+    display: flex;
     gap: 2rem;
+    margin-bottom: 5rem;
+    justify-content: center;
+    perspective: 1000px;
 }
 
-.hub-card {
-    background: rgba(24, 24, 27, 0.4);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 2.5rem;
+.mode-choice-card {
+    flex: 1;
+    max-width: 450px;
+    background: rgba(15, 15, 19, 0.4);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 24px;
+    padding: 3rem 2rem;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     position: relative;
     overflow: hidden;
+}
+
+.mode-choice-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transition: 0.4s;
+}
+
+.mode-choice-card.enterprise:hover {
+    border-color: var(--primary);
+    box-shadow: 0 20px 40px -10px rgba(0, 217, 255, 0.2);
+    transform: translateY(-10px) rotateX(5deg);
+}
+
+.mode-choice-card.rd:hover {
+    border-color: var(--accent);
+    box-shadow: 0 20px 40px -10px rgba(255, 0, 234, 0.2);
+    transform: translateY(-10px) rotateX(5deg);
+}
+
+.mode-choice-card h2 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 1.2rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.mode-choice-card.enterprise h2 { color: var(--primary); text-shadow: 0 0 15px rgba(0, 217, 255, 0.3); }
+.mode-choice-card.rd h2 { color: var(--accent); text-shadow: 0 0 15px rgba(255, 0, 234, 0.3); }
+
+.mode-choice-card p {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    line-height: 1.7;
+    margin-bottom: 2rem;
+}
+
+.choice-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.8rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-primary);
+    transition: gap 0.2s;
+}
+
+.mode-choice-card:hover .choice-btn {
+    gap: 1.2rem;
+}
+
+/* App Suite Section */
+.app-suite-section {
+    width: 100%;
+    margin-top: 2rem;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+
+.section-title h3 {
+    font-size: 1.2rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    white-space: nowrap;
+}
+
+.title-line {
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+    flex: 1;
+}
+
+.app-suite-list {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    max-width: 800px;
+    margin: 0 auto;
 }
 
-.hub-card:hover:not(.disabled) {
-    transform: translateY(-8px);
-    border-color: var(--primary);
-    background: rgba(24, 24, 27, 0.6);
-    box-shadow: 0 10px 30px -10px rgba(0, 217, 255, 0.2);
+.app-entry {
+    background: rgba(15, 15, 19, 0.3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    cursor: pointer;
+    transition: 0.3s;
 }
 
-.hub-card.disabled {
-    opacity: 0.6;
-    cursor: default;
-    filter: grayscale(0.5);
+.app-entry:hover {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: scale(1.02);
 }
 
-.hub-card .card-icon {
-    font-size: 2.5rem;
-    color: var(--primary);
-    text-shadow: var(--glow);
-}
-
-.hub-card .card-content h3 {
+.entry-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    transition: 0.3s;
+}
+
+.app-entry:hover .entry-icon {
+    background: var(--primary);
+    color: #000;
+    box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
+}
+
+.entry-info h4 {
+    font-size: 1.1rem;
+    margin-bottom: 0.3rem;
     color: var(--text-primary);
 }
 
-.hub-card .card-content p {
-    font-size: 0.95rem;
+.entry-info p {
+    font-size: 0.85rem;
     color: var(--text-secondary);
-    line-height: 1.6;
 }
 
-.hub-card .card-footer {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: auto;
-}
-
-.hub-card .badge {
-    font-size: 0.7rem;
-    font-weight: 600;
+.entry-tag {
+    margin-left: auto;
+    font-size: 0.65rem;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 0.2rem 0.6rem;
-    border-radius: var(--radius-full);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
     background: rgba(255, 255, 255, 0.05);
+    letter-spacing: 1px;
     color: var(--text-tertiary);
-    border: 1px solid var(--border);
 }
 
-.hub-card .badge.highlight {
-    background: rgba(255, 0, 234, 0.1);
-    color: #ff00ea;
-    border-color: rgba(255, 0, 234, 0.2);
-}
+.entry-tag.creative { color: #f97316; }
+.entry-tag.audio { color: #8b5cf6; }
+.entry-tag.data { color: #10b981; }
+.entry-tag.visuals { color: #ec4899; }
 
-.premium-card {
-    border-color: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-}
-
-@media (max-width: 768px) {
-    .hub-hero h1 {
-        font-size: 2.5rem;
+@media (max-width: 1000px) {
+    .mode-selection-container {
+        flex-direction: column;
+        align-items: center;
     }
-    
-    .hub-grid {
+    .mode-choice-card {
+        width: 100%;
+    }
+    .app-suite-list {
         grid-template-columns: 1fr;
     }
-}
-
-.hub-system-info {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-    margin-top: 1.5rem;
-}
-
-.sys-badge {
-    background: rgba(0, 217, 255, 0.1);
-    color: var(--primary);
-    border: 1px solid rgba(0, 217, 255, 0.2);
-    padding: 0.4rem 1rem;
-    border-radius: var(--radius-full);
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
 }
 

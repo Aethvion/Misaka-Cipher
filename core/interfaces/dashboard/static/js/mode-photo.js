@@ -104,7 +104,7 @@ function initializeImageStudio() {
                 const seed = document.getElementById(`seed-${safeKey}`)?.value;
                 const quality = document.getElementById(`qual-${safeKey}`)?.value;
 
-                return fetch('/api/image/generate', {
+                return fetch('/api/photo/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -340,5 +340,5 @@ function updateImageStudioControls() {
 }
 
 if (typeof registerTabInit === 'function') {
-    registerTabInit('image', initializeImageStudio);
+    registerTabInit('photo', initializeImageStudio);
 }

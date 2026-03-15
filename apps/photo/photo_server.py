@@ -35,7 +35,7 @@ app.add_middleware(
 
 # Directories
 APP_DIR = Path(__file__).parent
-DATA_DIR = WORKSPACE_ROOT / "data" / "image"
+DATA_DIR = WORKSPACE_ROOT / "data" / "photo"
 PROJECTS_DIR = DATA_DIR / "projects"
 UPLOADS_DIR = DATA_DIR / "uploads"
 
