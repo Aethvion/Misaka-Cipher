@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aethvion Drive Info</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💾</text></svg>">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<!-- ── Scan-progress overlay ─────────────────────────────────── -->
+<div id="di-overlay" class="di-overlay hidden">
+    <div class="di-overlay-box">
+        <div class="di-spinner"></div>
+        <div class="di-overlay-title" id="ov-title">Scanning…</div>
+        <div class="di-overlay-path" id="ov-path"></div>
+        <div class="di-overlay-bar"><div id="ov-fill"></div></div>
+        <div class="di-overlay-stats" id="ov-stats"></div>
+        <button id="btn-cancel" class="di-btn di-btn-danger">
+            <i class="fas fa-stop"></i> Cancel
+        </button>
+    </div>
+</div>
+
+<!-- ── Header ─────────────────────────────────────────────────── -->
+<header class="di-header">
+
+    <div class="di-logo">
+        <i class="fas fa-hard-drive"></i>
+        <span>AETHVION DRIVE INFO</span>
+    </div>
+
+    <div class="di-scan-controls">
+        <select id="drive-select" class="di-select" title="Quick-select a drive"></select>
+        <input  id="scan-path"    type="text"   class="di-input" placeholder="Path to scan…" />
+        <button id="btn-scan" class="di-btn di-btn-primary">
+            <i class="fas fa-search"></i> Scan
+        </button>
+    </div>
+
+    <div class="di-load-controls">
+        <select id="saved-select" class="di-select">
+            <option value="">Load saved scan…</option>
+        </select>
+        <button id="btn-del-scan" class="di-btn di-btn-danger di-hidden" title="Delete this scan">
+            <i class="fas fa-trash"></i>
+        </button>
+    </div>
+
+</header>
+
+<!-- ── Breadcrumb ─────────────────────────────────────────────── -->
+<div id="di-breadcrumb" class="di-breadcrumb">
+    <span class="di-crumb" data-idx="0">
+        <i class="fas fa-home"></i>
+    </span>
+</div>
+
+<!-- ── Main split ─────────────────────────────────────────────── -->
+<div class="di-main" id="di-main">
+
+    <!-- Left: tree + file list -->
+    <div class="di-left-panel" id="di-left">
+
+        <div class="di-panel-hdr">
+            <span id="panel-label">Directory Tree</span>
+            <div class="di-sort-row">
+                <button class="di-sort-btn active" data-sort="size">Size</button>
+                <button class="di-sort-btn"        data-sort="name">Name</button>
+                <button class="di-sort-btn"        data-sort="count">Files</button>
+            </div>
+        </div>
+
+        <div id="tree-body" class="di-tree-body">
+            <div class="di-empty">
+                <i class="fas fa-hard-drive"></i>
+                <p>Enter a path above and click <strong>Scan</strong>,<br>
+                   or load a previously saved .eathscan file.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Resize handle -->
+    <div id="di-resizer" class="di-resizer"></div>
+
+    <!-- Right: treemap canvas -->
+    <div class="di-right-panel" id="di-right">
+        <canvas id="di-canvas"></canvas>
+        <div id="di-tooltip" class="di-tooltip di-hidden"></div>
+    </div>
+
+</div>
+
+<!-- ── Footer: extension legend + status ─────────────────────── -->
+<footer class="di-footer">
+    <div id="di-legend" class="di-legend"></div>
+    <div id="di-status" class="di-status">No scan loaded.</div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

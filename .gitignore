@@ -54,5 +54,5 @@ modules/aethvion/synapse/openseeface/*
 # Local Models
 LocalModels/*
 
-# Claude Worktrees
-.claude/worktrees/*
+# Claude
+.claude/*
