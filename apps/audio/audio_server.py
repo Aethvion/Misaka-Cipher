@@ -3,16 +3,12 @@ import sys
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, Any
-
-# ---------------------------------------------------------------------------
-# Paths
-# ---------------------------------------------------------------------------
+from typing import Optional, List
 
 MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(MODULE_DIR, "..", ".."))
@@ -20,13 +16,13 @@ for p in (MODULE_DIR, PROJECT_ROOT):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from apps.audio.audio_core import audio_session
+from apps.audio.audio_core import session
 
 # ---------------------------------------------------------------------------
-# App Setup
+# App
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="Aethvion Audio Editor", version="1.0.0")
+app = FastAPI(title="Aethvion Audio Editor", version="2.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -40,159 +36,203 @@ VIEWER_DIR = BASE_DIR / "viewer"
 app.mount("/viewer", StaticFiles(directory=str(VIEWER_DIR)), name="viewer")
 
 # ---------------------------------------------------------------------------
-# Status
+# Status & Session
 # ---------------------------------------------------------------------------
 
 @app.get("/api/status")
 async def get_status():
-    has_file = audio_session.current is not None
-    return JSONResponse({
-        "status": "running",
-        "has_file": has_file,
-        "filename": audio_session.filename if has_file else None,
-    })
+    return JSONResponse({"status": "running", "track_count": len(session._tracks)})
+
+
+@app.get("/api/session")
+async def get_session():
+    return JSONResponse(session.to_dict())
+
+
+class WorkspaceUpdate(BaseModel):
+    workspace_ms: float
+
+
+@app.post("/api/session/workspace")
+async def set_workspace(body: WorkspaceUpdate):
+    session.set_workspace(body.workspace_ms)
+    return JSONResponse({"workspace_ms": session.workspace_ms})
 
 # ---------------------------------------------------------------------------
-# Upload
+# Track CRUD
 # ---------------------------------------------------------------------------
 
-@app.post("/api/audio/upload")
-async def upload_audio(file: UploadFile = File(...)):
-    """Upload an audio file and load it into the session."""
+@app.post("/api/tracks/upload")
+async def upload_track(
+    file: UploadFile = File(...),
+    start_ms: Optional[float] = Form(None),
+    name: Optional[str] = Form(None),
+):
     data = await file.read()
     try:
-        info = audio_session.load(data, file.filename)
-        waveform = audio_session.get_waveform()
-        return JSONResponse({"success": True, "info": info, "waveform": waveform})
+        track = session.add_track(data, file.filename, start_ms=start_ms)
+        if name:
+            track.name = name
+        return JSONResponse({
+            "success": True,
+            "track": track.to_dict(),
+            "session": session.to_dict(),
+        })
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=400)
 
+
+@app.delete("/api/tracks/{track_id}")
+async def remove_track(track_id: str):
+    if not session.remove_track(track_id):
+        raise HTTPException(404, "Track not found")
+    return JSONResponse({"success": True, "session": session.to_dict()})
+
+
+class TrackPatch(BaseModel):
+    name: Optional[str] = None
+    muted: Optional[bool] = None
+    start_ms: Optional[float] = None
+
+
+@app.patch("/api/tracks/{track_id}")
+async def patch_track(track_id: str, body: TrackPatch):
+    track = session.get_track(track_id)
+    if not track:
+        raise HTTPException(404, "Track not found")
+    if body.name is not None:
+        track.name = body.name
+    if body.muted is not None:
+        track.muted = body.muted
+    if body.start_ms is not None:
+        track.start_ms = max(0.0, body.start_ms)
+        session._auto_expand()
+    return JSONResponse({"success": True, "track": track.to_dict(), "session": session.to_dict()})
+
+
+class ReorderTracks(BaseModel):
+    order: List[str]
+
+
+@app.post("/api/tracks/reorder")
+async def reorder_tracks(body: ReorderTracks):
+    session.reorder_tracks(body.order)
+    return JSONResponse({"success": True, "session": session.to_dict()})
+
 # ---------------------------------------------------------------------------
-# Info & Waveform
+# Per-track preview
 # ---------------------------------------------------------------------------
 
-@app.get("/api/audio/info")
-async def get_info():
-    if audio_session.current is None:
-        return JSONResponse({"error": "No file loaded"}, status_code=404)
-    return JSONResponse(audio_session._get_info())
-
-@app.get("/api/audio/waveform")
-async def get_waveform(points: int = 2000):
-    if audio_session.current is None:
-        return JSONResponse({"error": "No file loaded"}, status_code=404)
-    return JSONResponse({"waveform": audio_session.get_waveform(points)})
-
-# ---------------------------------------------------------------------------
-# Preview (stream current audio as WAV)
-# ---------------------------------------------------------------------------
-
-@app.get("/api/audio/preview")
-async def preview_audio():
-    if audio_session.current is None:
-        raise HTTPException(status_code=404, detail="No file loaded")
-    data = audio_session.get_audio_bytes("wav")
+@app.get("/api/tracks/{track_id}/preview")
+async def track_preview(track_id: str):
+    track = session.get_track(track_id)
+    if not track:
+        raise HTTPException(404, "Track not found")
+    import io as _io
+    buf = _io.BytesIO()
+    track.get_rendered().export(buf, format="wav")
     return Response(
-        content=data,
+        content=buf.getvalue(),
         media_type="audio/wav",
-        headers={"Content-Disposition": 'inline; filename="preview.wav"'},
+        headers={"Content-Disposition": f'inline; filename="{track.name}.wav"'},
     )
 
 # ---------------------------------------------------------------------------
-# Export
+# Effects (non-destructive, per-track)
 # ---------------------------------------------------------------------------
 
-@app.get("/api/audio/export")
-async def export_audio(format: str = "wav"):
-    if audio_session.current is None:
-        raise HTTPException(status_code=404, detail="No file loaded")
-    fmt = format.lower()
-    if fmt not in ("wav", "mp3", "ogg"):
-        raise HTTPException(status_code=400, detail="Unsupported format")
-    try:
-        data = audio_session.get_audio_bytes(fmt)
-        stem = Path(audio_session.filename).stem or "export"
-        mime = {"wav": "audio/wav", "mp3": "audio/mpeg", "ogg": "audio/ogg"}.get(fmt, "audio/wav")
-        return Response(
-            content=data,
-            media_type=mime,
-            headers={"Content-Disposition": f'attachment; filename="{stem}_edited.{fmt}"'},
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ---------------------------------------------------------------------------
-# Operations
-# ---------------------------------------------------------------------------
-
-class OperationRequest(BaseModel):
+class EffectAdd(BaseModel):
     op: str
     params: Optional[dict] = {}
 
-@app.post("/api/audio/operation")
-async def apply_operation(req: OperationRequest):
-    """Apply an audio editing operation."""
-    if audio_session.current is None:
-        return JSONResponse({"success": False, "error": "No file loaded"}, status_code=400)
 
-    op = req.op
-    p = req.params or {}
+@app.post("/api/tracks/{track_id}/effects")
+async def add_effect(track_id: str, body: EffectAdd):
+    track = session.get_track(track_id)
+    if not track:
+        raise HTTPException(404, "Track not found")
+    fx = track.add_effect(body.op, body.params or {})
+    return JSONResponse({"success": True, "effect": fx, "track": track.to_dict()})
 
+
+class EffectPatch(BaseModel):
+    enabled: Optional[bool] = None
+    params: Optional[dict] = None
+
+
+@app.patch("/api/tracks/{track_id}/effects/{effect_id}")
+async def patch_effect(track_id: str, effect_id: str, body: EffectPatch):
+    track = session.get_track(track_id)
+    if not track:
+        raise HTTPException(404, "Track not found")
+    fx = track.get_effect(effect_id)
+    if not fx:
+        raise HTTPException(404, "Effect not found")
+    if body.enabled is not None:
+        fx["enabled"] = body.enabled
+    if body.params is not None:
+        fx["params"].update(body.params)
+    return JSONResponse({"success": True, "effect": fx, "track": track.to_dict()})
+
+
+@app.delete("/api/tracks/{track_id}/effects/{effect_id}")
+async def remove_effect(track_id: str, effect_id: str):
+    track = session.get_track(track_id)
+    if not track:
+        raise HTTPException(404, "Track not found")
+    if not track.remove_effect(effect_id):
+        raise HTTPException(404, "Effect not found")
+    return JSONResponse({"success": True, "track": track.to_dict()})
+
+
+class ReorderEffects(BaseModel):
+    order: List[str]
+
+
+@app.post("/api/tracks/{track_id}/effects/reorder")
+async def reorder_effects(track_id: str, body: ReorderEffects):
+    track = session.get_track(track_id)
+    if not track:
+        raise HTTPException(404, "Track not found")
+    track.reorder_effects(body.order)
+    return JSONResponse({"success": True, "track": track.to_dict()})
+
+# ---------------------------------------------------------------------------
+# Mix preview & export
+# ---------------------------------------------------------------------------
+
+@app.get("/api/preview")
+async def mix_preview():
+    if not session._tracks:
+        raise HTTPException(400, "No tracks loaded")
     try:
-        if op == "trim":
-            info = audio_session.trim(p.get("start_ms", 0), p.get("end_ms", len(audio_session.current)))
-        elif op == "fade_in":
-            info = audio_session.fade_in(p.get("duration_ms", 1000))
-        elif op == "fade_out":
-            info = audio_session.fade_out(p.get("duration_ms", 1000))
-        elif op == "normalize":
-            info = audio_session.do_normalize()
-        elif op == "reverse":
-            info = audio_session.reverse()
-        elif op == "volume":
-            info = audio_session.change_volume(p.get("db", 0))
-        elif op == "speed":
-            info = audio_session.change_speed(p.get("rate", 1.0))
-        elif op == "silence":
-            info = audio_session.silence_region(p.get("start_ms", 0), p.get("end_ms", 0))
-        elif op == "crop_silence":
-            info = audio_session.crop_silence(p.get("threshold_db", -50.0))
-        elif op == "stereo_to_mono":
-            info = audio_session.stereo_to_mono()
-        elif op == "mono_to_stereo":
-            info = audio_session.mono_to_stereo()
-        elif op == "resample":
-            info = audio_session.resample(p.get("sample_rate", 44100))
-        else:
-            return JSONResponse({"success": False, "error": f"Unknown operation: {op}"}, status_code=400)
-
-        waveform = audio_session.get_waveform()
-        return JSONResponse({"success": True, "info": info, "waveform": waveform})
-
+        data = session.get_mix_bytes("wav")
+        return Response(
+            content=data,
+            media_type="audio/wav",
+            headers={"Content-Disposition": 'inline; filename="mix.wav"'},
+        )
     except Exception as e:
-        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+        raise HTTPException(500, str(e))
 
-# ---------------------------------------------------------------------------
-# Undo / Reset
-# ---------------------------------------------------------------------------
 
-@app.post("/api/audio/undo")
-async def undo():
-    if audio_session.current is None:
-        return JSONResponse({"success": False, "error": "No file loaded"}, status_code=400)
-    info = audio_session.undo()
-    if info is None:
-        return JSONResponse({"success": False, "error": "Nothing to undo"})
-    waveform = audio_session.get_waveform()
-    return JSONResponse({"success": True, "info": info, "waveform": waveform})
-
-@app.post("/api/audio/reset")
-async def reset():
-    if audio_session.original is None:
-        return JSONResponse({"success": False, "error": "No file loaded"}, status_code=400)
-    info = audio_session.reset()
-    waveform = audio_session.get_waveform()
-    return JSONResponse({"success": True, "info": info, "waveform": waveform})
+@app.get("/api/export")
+async def mix_export(format: str = "wav"):
+    if not session._tracks:
+        raise HTTPException(400, "No tracks loaded")
+    fmt = format.lower()
+    if fmt not in ("wav", "mp3", "ogg"):
+        raise HTTPException(400, "Unsupported format")
+    try:
+        data = session.get_mix_bytes(fmt)
+        mime = {"wav": "audio/wav", "mp3": "audio/mpeg", "ogg": "audio/ogg"}[fmt]
+        return Response(
+            content=data,
+            media_type=mime,
+            headers={"Content-Disposition": f'attachment; filename="mix.{fmt}"'},
+        )
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 # ---------------------------------------------------------------------------
 # Front-end
@@ -200,8 +240,7 @@ async def reset():
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    idx = VIEWER_DIR / "index.html"
-    return idx.read_text(encoding="utf-8")
+    return (VIEWER_DIR / "index.html").read_text(encoding="utf-8")
 
 # ---------------------------------------------------------------------------
 # Launch
@@ -213,6 +252,7 @@ def launch():
     port = PortManager.bind_port("Aethvion Audio", base_port)
     print(f"🔊 Aethvion Audio Editor → http://localhost:{port}")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+
 
 if __name__ == "__main__":
     launch()

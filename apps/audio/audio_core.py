@@ -1,11 +1,13 @@
 """
-Aethvion Audio Editor - Core Processing Module
-Uses pydub for audio manipulation, numpy for waveform data.
+Aethvion Audio Editor - Multi-Track Core
+Provides Track and MultiTrackSession replacing the old single-file AudioSession.
+Effects are stored as non-destructive modifier chains applied at render time.
 """
 
 import io
+import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, List
 
 try:
     import numpy as np
@@ -20,240 +22,311 @@ try:
 except ImportError:
     PYDUB_AVAILABLE = False
 
-# Register bundled ffmpeg/ffprobe binaries so MP3 and other formats work
-# without requiring a manual system-wide ffmpeg install.
+# Register bundled ffmpeg/ffprobe binaries (installed via static-ffmpeg).
 try:
     import static_ffmpeg
     static_ffmpeg.add_paths()
 except ImportError:
     pass
 
+# ---------------------------------------------------------------------------
+# Colours assigned to tracks in order
+# ---------------------------------------------------------------------------
 
-class AudioSession:
-    """Holds the current audio editing session state with undo history."""
+TRACK_COLORS = [
+    "#00d9ff", "#ff6b6b", "#ffd93d", "#6bcb77",
+    "#4d96ff", "#ff922b", "#cc5de8", "#20c997",
+]
 
-    MAX_HISTORY = 30
+# ---------------------------------------------------------------------------
+# Pure effect helpers
+# ---------------------------------------------------------------------------
+
+def _uid() -> str:
+    return str(uuid.uuid4())[:8]
+
+
+def _apply_one(audio: "AudioSegment", op: str, params: dict) -> "AudioSegment":
+    """Apply a single named operation to an AudioSegment. Pure — never mutates."""
+    try:
+        if op == "fade_in":
+            dur = max(1, min(int(params.get("duration_ms", 1000)), len(audio)))
+            return audio.fade_in(dur)
+        if op == "fade_out":
+            dur = max(1, min(int(params.get("duration_ms", 1000)), len(audio)))
+            return audio.fade_out(dur)
+        if op == "normalize":
+            return normalize(audio)
+        if op == "volume":
+            return audio + float(params.get("db", 0))
+        if op == "speed":
+            rate = max(0.25, min(4.0, float(params.get("rate", 1.0))))
+            new_rate = int(audio.frame_rate * rate)
+            return audio._spawn(
+                audio.raw_data, overrides={"frame_rate": new_rate}
+            ).set_frame_rate(audio.frame_rate)
+        if op == "reverse":
+            return audio.reverse()
+        if op == "crop_silence":
+            from pydub.silence import detect_nonsilent
+            thresh = float(params.get("threshold_db", -50))
+            ranges = detect_nonsilent(audio, min_silence_len=100, silence_thresh=thresh)
+            if ranges:
+                return audio[ranges[0][0]: ranges[-1][1]]
+        if op == "trim":
+            s = int(params.get("start_ms", 0))
+            e = int(params.get("end_ms", len(audio)))
+            return audio[s:e]
+    except Exception:
+        pass
+    return audio
+
+
+def _apply_chain(audio: "AudioSegment", effects: list) -> "AudioSegment":
+    """Walk the effect list, skipping disabled entries."""
+    result = audio
+    for fx in effects:
+        if fx.get("enabled", True):
+            result = _apply_one(result, fx["op"], fx.get("params", {}))
+    return result
+
+
+def _get_waveform(audio: "AudioSegment", num_points: int = 600) -> list:
+    """Downsample original audio to a peak-amplitude array for waveform display."""
+    if not NUMPY_AVAILABLE or not audio:
+        return []
+    samples = np.array(audio.get_array_of_samples(), dtype=np.float32)
+    if audio.channels == 2:
+        samples = samples.reshape(-1, 2).mean(axis=1)
+    max_val = float(2 ** (audio.sample_width * 8 - 1)) or 1.0
+    samples = samples / max_val
+    total = len(samples)
+    chunk = max(1, total // num_points)
+    waveform = []
+    for i in range(0, total, chunk):
+        seg = samples[i: i + chunk]
+        if len(seg):
+            waveform.append(float(np.max(np.abs(seg))))
+        if len(waveform) >= num_points:
+            break
+    return waveform
+
+
+def _load_audio(data: bytes, filename: str) -> "AudioSegment":
+    """Decode raw bytes into an AudioSegment using format-specific loaders."""
+    ext = Path(filename).suffix.lower().lstrip(".")
+    buf = io.BytesIO(data)
+    try:
+        if ext == "wav":
+            return AudioSegment.from_wav(buf)
+        if ext == "ogg":
+            return AudioSegment.from_ogg(buf)
+        if ext == "mp3":
+            return AudioSegment.from_mp3(buf)
+        if ext == "flac":
+            return AudioSegment.from_file(buf, format="flac")
+        fmt = {"aac": "aac", "m4a": "mp4", "wma": "asf", "opus": "ogg"}.get(ext, ext)
+        return AudioSegment.from_file(buf, format=fmt)
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"FFmpeg is required to open .{ext} files. "
+            "Run: pip install static-ffmpeg, or use a WAV file."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Track
+# ---------------------------------------------------------------------------
+
+class Track:
+    """One audio clip in the multi-track workspace."""
+
+    def __init__(self, audio: "AudioSegment", filename: str, color: str):
+        self.track_id: str = _uid()
+        self.name: str = Path(filename).stem
+        self.filename: str = filename
+        self.original: "AudioSegment" = audio
+        self.start_ms: float = 0.0       # Position in the workspace timeline
+        self.muted: bool = False
+        self.color: str = color
+        self.effects: List[dict] = []    # [{effect_id, op, params, enabled}, ...]
+        self._waveform: Optional[list] = None
+
+    # --- Effects ---
+
+    def add_effect(self, op: str, params: dict) -> dict:
+        fx = {"effect_id": _uid(), "op": op, "params": dict(params or {}), "enabled": True}
+        self.effects.append(fx)
+        return fx
+
+    def remove_effect(self, effect_id: str) -> bool:
+        before = len(self.effects)
+        self.effects = [f for f in self.effects if f["effect_id"] != effect_id]
+        return len(self.effects) < before
+
+    def get_effect(self, effect_id: str) -> Optional[dict]:
+        return next((f for f in self.effects if f["effect_id"] == effect_id), None)
+
+    def reorder_effects(self, ordered_ids: list):
+        by_id = {f["effect_id"]: f for f in self.effects}
+        ordered = [by_id[i] for i in ordered_ids if i in by_id]
+        remainder = [f for f in self.effects if f["effect_id"] not in set(ordered_ids)]
+        self.effects = ordered + remainder
+
+    # --- Audio ---
+
+    def get_rendered(self) -> "AudioSegment":
+        """Return audio with all enabled effects applied (non-destructive)."""
+        return _apply_chain(self.original, self.effects)
+
+    def get_waveform(self, num_points: int = 600) -> list:
+        if self._waveform is None:
+            self._waveform = _get_waveform(self.original, num_points)
+        return self._waveform
+
+    # --- Serialise ---
+
+    def to_dict(self, include_waveform: bool = True) -> dict:
+        d = {
+            "track_id": self.track_id,
+            "name": self.name,
+            "filename": self.filename,
+            "duration_ms": len(self.original),
+            "start_ms": self.start_ms,
+            "end_ms": self.start_ms + len(self.original),
+            "muted": self.muted,
+            "color": self.color,
+            "sample_rate": self.original.frame_rate,
+            "channels": self.original.channels,
+            "bit_depth": self.original.sample_width * 8,
+            "effects": self.effects,
+        }
+        if include_waveform:
+            d["waveform"] = self.get_waveform()
+        return d
+
+
+# ---------------------------------------------------------------------------
+# MultiTrackSession
+# ---------------------------------------------------------------------------
+
+class MultiTrackSession:
+    """Holds all tracks, manages workspace length, and renders the mix."""
 
     def __init__(self):
-        self.original: Optional["AudioSegment"] = None
-        self.current: Optional["AudioSegment"] = None
-        self.filename: str = ""
-        self.history: list = []
+        self._tracks: Dict[str, Track] = {}
+        self._order: List[str] = []     # Display order (top → bottom)
+        self.workspace_ms: float = 0.0  # Explicit workspace length
 
-    # ------------------------------------------------------------------
-    # Load / Export
-    # ------------------------------------------------------------------
+    # --- Track management ---
 
-    def load(self, data: bytes, filename: str) -> dict:
-        """Load audio bytes into the session."""
+    def add_track(
+        self, data: bytes, filename: str, start_ms: Optional[float] = None
+    ) -> Track:
         if not PYDUB_AVAILABLE:
             raise RuntimeError("pydub is not installed. Run: pip install pydub")
+        audio = _load_audio(data, filename)
+        color = TRACK_COLORS[len(self._tracks) % len(TRACK_COLORS)]
+        track = Track(audio, filename, color)
 
-        ext = Path(filename).suffix.lower().lstrip(".")
-        audio_io = io.BytesIO(data)
-
-        # WAV and raw PCM can be decoded by pydub natively without ffmpeg.
-        # All other formats require ffmpeg — wrap with a clear error message.
-        try:
-            if ext == "wav":
-                self.original = AudioSegment.from_wav(audio_io)
-            elif ext == "ogg":
-                self.original = AudioSegment.from_ogg(audio_io)
-            elif ext == "flac":
-                self.original = AudioSegment.from_file(audio_io, format="flac")
-            elif ext == "mp3":
-                self.original = AudioSegment.from_mp3(audio_io)
-            else:
-                fmt_map = {"aac": "aac", "m4a": "mp4", "wma": "asf", "opus": "ogg"}
-                fmt = fmt_map.get(ext, ext)
-                self.original = AudioSegment.from_file(audio_io, format=fmt)
-        except FileNotFoundError:
-            raise RuntimeError(
-                f"FFmpeg is required to open .{ext} files. "
-                "Download it from https://ffmpeg.org and add it to your PATH, "
-                "or use a WAV file instead."
+        if start_ms is not None:
+            track.start_ms = max(0.0, start_ms)
+        elif self._tracks:
+            # Default: place right after the last track ends, no overlap
+            track.start_ms = max(
+                t.start_ms + len(t.original) for t in self._tracks.values()
             )
 
-        self.current = self.original
-        self.filename = filename
-        self.history = []
-        return self._get_info()
+        self._tracks[track.track_id] = track
+        self._order.append(track.track_id)
+        self._auto_expand()
+        return track
 
-    def get_audio_bytes(self, fmt: str = "wav") -> bytes:
-        """Export current audio to bytes."""
-        if not self.current:
-            return b""
+    def remove_track(self, track_id: str) -> bool:
+        if track_id not in self._tracks:
+            return False
+        del self._tracks[track_id]
+        self._order = [i for i in self._order if i != track_id]
+        self._auto_expand()
+        return True
+
+    def get_track(self, track_id: str) -> Optional[Track]:
+        return self._tracks.get(track_id)
+
+    def get_tracks_ordered(self) -> List[Track]:
+        return [self._tracks[i] for i in self._order if i in self._tracks]
+
+    def reorder_tracks(self, new_order: list):
+        valid = [i for i in new_order if i in self._tracks]
+        rest = [i for i in self._order if i not in set(valid)]
+        self._order = valid + rest
+
+    # --- Workspace ---
+
+    def _auto_expand(self):
+        """Expand workspace to cover all track content + 5 s padding. Never shrinks."""
+        if not self._tracks:
+            return
+        max_end = max(
+            t.start_ms + len(t.original) for t in self._tracks.values()
+        )
+        self.workspace_ms = max(self.workspace_ms, max_end + 5000)
+
+    def set_workspace(self, ms: float):
+        self.workspace_ms = max(1000.0, ms)
+        self._auto_expand()  # Prevent shrinking below content
+
+    # --- Mix ---
+
+    def mix(self) -> "AudioSegment":
+        """Combine all non-muted tracks at their timeline positions."""
+        if not self._tracks:
+            return AudioSegment.silent(duration=1000)
+
+        total_ms = max(1000, int(self.workspace_ms))
+        tracks = self.get_tracks_ordered()
+        rate = max(t.original.frame_rate for t in tracks)
+        channels = max(t.original.channels for t in tracks)
+
+        base = AudioSegment.silent(duration=total_ms, frame_rate=rate).set_channels(channels)
+
+        for track in tracks:
+            if track.muted:
+                continue
+            rendered = track.get_rendered()
+            if rendered.frame_rate != rate:
+                rendered = rendered.set_frame_rate(rate)
+            if rendered.channels != channels:
+                rendered = rendered.set_channels(channels)
+            base = base.overlay(rendered, position=max(0, int(track.start_ms)))
+
+        return base
+
+    def get_mix_bytes(self, fmt: str = "wav") -> bytes:
+        mixed = self.mix()
         buf = io.BytesIO()
         try:
             if fmt == "mp3":
-                self.current.export(buf, format="mp3", bitrate="192k")
+                mixed.export(buf, format="mp3", bitrate="192k")
             elif fmt == "ogg":
-                self.current.export(buf, format="ogg")
+                mixed.export(buf, format="ogg")
             else:
-                self.current.export(buf, format="wav")
+                mixed.export(buf, format="wav")
         except FileNotFoundError:
             if fmt in ("mp3", "ogg"):
-                raise RuntimeError(
-                    f"FFmpeg is required to export as {fmt.upper()}. "
-                    "Download it from https://ffmpeg.org or export as WAV instead."
-                )
+                raise RuntimeError(f"FFmpeg required for {fmt.upper()} export.")
             raise
         return buf.getvalue()
 
-    # ------------------------------------------------------------------
-    # Info & Waveform
-    # ------------------------------------------------------------------
+    # --- Serialise ---
 
-    def _get_info(self) -> dict:
-        if not self.current:
-            return {}
-        duration_ms = len(self.current)
-        minutes = int(duration_ms / 60000)
-        seconds = (duration_ms % 60000) / 1000.0
+    def to_dict(self) -> dict:
         return {
-            "filename": self.filename,
-            "duration_ms": duration_ms,
-            "duration_display": f"{minutes}:{seconds:05.2f}",
-            "sample_rate": self.current.frame_rate,
-            "channels": self.current.channels,
-            "bit_depth": self.current.sample_width * 8,
-            "can_undo": len(self.history) > 0,
+            "workspace_ms": self.workspace_ms,
+            "track_count": len(self._tracks),
+            "tracks": [t.to_dict() for t in self.get_tracks_ordered()],
         }
 
-    def get_waveform(self, num_points: int = 2000) -> list:
-        """Compute downsampled peak amplitude array for waveform display."""
-        if not self.current or not NUMPY_AVAILABLE:
-            return []
 
-        samples = np.array(self.current.get_array_of_samples(), dtype=np.float32)
-
-        if self.current.channels == 2:
-            samples = samples.reshape(-1, 2).mean(axis=1)
-
-        max_val = float(2 ** (self.current.sample_width * 8 - 1))
-        samples = samples / max_val
-
-        total = len(samples)
-        chunk_size = max(1, total // num_points)
-        waveform = []
-        for i in range(0, total, chunk_size):
-            chunk = samples[i : i + chunk_size]
-            if len(chunk) > 0:
-                waveform.append(float(np.max(np.abs(chunk))))
-            if len(waveform) >= num_points:
-                break
-
-        return waveform
-
-    # ------------------------------------------------------------------
-    # Undo / Reset
-    # ------------------------------------------------------------------
-
-    def _push_history(self):
-        self.history.append(self.current)
-        if len(self.history) > self.MAX_HISTORY:
-            self.history.pop(0)
-
-    def undo(self) -> Optional[dict]:
-        if not self.history:
-            return None
-        self.current = self.history.pop()
-        return self._get_info()
-
-    def reset(self) -> dict:
-        self.current = self.original
-        self.history = []
-        return self._get_info()
-
-    # ------------------------------------------------------------------
-    # Effects
-    # ------------------------------------------------------------------
-
-    def trim(self, start_ms: float, end_ms: float) -> dict:
-        """Trim audio to the given range."""
-        self._push_history()
-        self.current = self.current[int(start_ms) : int(end_ms)]
-        return self._get_info()
-
-    def fade_in(self, duration_ms: float) -> dict:
-        self._push_history()
-        dur = max(1, min(int(duration_ms), len(self.current)))
-        self.current = self.current.fade_in(dur)
-        return self._get_info()
-
-    def fade_out(self, duration_ms: float) -> dict:
-        self._push_history()
-        dur = max(1, min(int(duration_ms), len(self.current)))
-        self.current = self.current.fade_out(dur)
-        return self._get_info()
-
-    def do_normalize(self) -> dict:
-        self._push_history()
-        self.current = normalize(self.current)
-        return self._get_info()
-
-    def reverse(self) -> dict:
-        self._push_history()
-        self.current = self.current.reverse()
-        return self._get_info()
-
-    def change_volume(self, db: float) -> dict:
-        """Boost or cut volume by db decibels."""
-        self._push_history()
-        self.current = self.current + db
-        return self._get_info()
-
-    def change_speed(self, rate: float) -> dict:
-        """
-        Change playback speed without pitch shift.
-        rate > 1 = faster, rate < 1 = slower.
-        """
-        self._push_history()
-        rate = max(0.25, min(4.0, rate))
-        new_rate = int(self.current.frame_rate * rate)
-        manipulated = self.current._spawn(
-            self.current.raw_data,
-            overrides={"frame_rate": new_rate},
-        )
-        self.current = manipulated.set_frame_rate(self.current.frame_rate)
-        return self._get_info()
-
-    def silence_region(self, start_ms: float, end_ms: float) -> dict:
-        """Replace a region with silence."""
-        self._push_history()
-        silence = AudioSegment.silent(
-            duration=int(end_ms - start_ms),
-            frame_rate=self.current.frame_rate,
-        )
-        before = self.current[: int(start_ms)]
-        after = self.current[int(end_ms) :]
-        self.current = before + silence + after
-        return self._get_info()
-
-    def crop_silence(self, threshold_db: float = -50.0) -> dict:
-        """Strip leading and trailing silence."""
-        self._push_history()
-        from pydub.silence import detect_nonsilent
-        ranges = detect_nonsilent(self.current, min_silence_len=100, silence_thresh=threshold_db)
-        if ranges:
-            self.current = self.current[ranges[0][0] : ranges[-1][1]]
-        return self._get_info()
-
-    def stereo_to_mono(self) -> dict:
-        self._push_history()
-        self.current = self.current.set_channels(1)
-        return self._get_info()
-
-    def mono_to_stereo(self) -> dict:
-        self._push_history()
-        self.current = self.current.set_channels(2)
-        return self._get_info()
-
-    def resample(self, sample_rate: int) -> dict:
-        self._push_history()
-        self.current = self.current.set_frame_rate(sample_rate)
-        return self._get_info()
-
-
-# Global session
-audio_session = AudioSession()
+# Global session instance
+session = MultiTrackSession()
