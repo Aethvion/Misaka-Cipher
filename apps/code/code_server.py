@@ -100,12 +100,25 @@ TREE_SKIP_DIRS  = {".git", "__pycache__", "node_modules", ".venv", "venv",
 TREE_SKIP_FILES = set()
 
 # ── File tree builder ─────────────────────────────────────────────────────────
+def _safe_is_file(entry: Path) -> bool:
+    try:
+        return entry.is_file()
+    except OSError:
+        return False
+
+def _safe_is_dir(entry: Path) -> bool:
+    try:
+        return entry.is_dir()
+    except OSError:
+        return False
+
 def build_tree(root: Path, depth: int = 0, max_depth: int = 6) -> dict | None:
     if depth > max_depth:
         return None
     try:
-        entries = sorted(root.iterdir(), key=lambda e: (e.is_file(), e.name.lower()))
-    except PermissionError:
+        entries = sorted(root.iterdir(),
+                         key=lambda e: (_safe_is_file(e), e.name.lower()))
+    except (PermissionError, OSError):
         return None
 
     children = []
@@ -114,17 +127,26 @@ def build_tree(root: Path, depth: int = 0, max_depth: int = 6) -> dict | None:
             continue
         if entry.name in TREE_SKIP_DIRS:
             continue
-        if entry.is_dir():
+        try:
+            is_dir  = entry.is_dir()
+            is_file = entry.is_file()
+        except OSError:
+            continue
+        if is_dir:
             sub = build_tree(entry, depth + 1, max_depth)
             if sub is not None:
                 children.append(sub)
-        elif entry.is_file():
+        elif is_file:
+            try:
+                size = entry.stat().st_size
+            except OSError:
+                size = 0
             children.append({
                 "type":     "file",
                 "name":     entry.name,
                 "path":     str(entry).replace("\\", "/"),
                 "language": get_language(entry.name),
-                "size":     entry.stat().st_size,
+                "size":     size,
             })
 
     return {
@@ -135,17 +157,43 @@ def build_tree(root: Path, depth: int = 0, max_depth: int = 6) -> dict | None:
     }
 
 # ── SSE streaming helper ──────────────────────────────────────────────────────
+def _messages_to_prompt(messages: list, system: str = "") -> str:
+    """
+    Convert a list of {role, content} dicts to a flat text prompt.
+    All core providers take prompt: str, not a message list.
+    """
+    parts: list[str] = []
+    if system:
+        parts.append(system)
+    for m in messages:
+        role    = m.get("role", "user")
+        content = m.get("content", "")
+        if isinstance(content, list):
+            content = " ".join(
+                p.get("text", "") if isinstance(p, dict) else str(p)
+                for p in content
+            )
+        if role == "system":
+            pass  # system already prepended above
+        elif role == "user":
+            parts.append(f"User: {content}")
+        elif role == "assistant":
+            parts.append(f"Assistant: {content}")
+    return "\n\n".join(parts)
+
+
 async def _sse(provider, messages: list, model_id: str, system: str) -> AsyncGenerator[str, None]:
     """
     Run provider.stream() in a background thread and yield SSE chunks.
     Needed because provider.stream() is a synchronous generator.
     """
+    prompt = _messages_to_prompt(messages, system)
     loop = asyncio.get_event_loop()
     q: asyncio.Queue = asyncio.Queue()
 
     def _worker():
         try:
-            for chunk in provider.stream(messages, model_id, system=system):
+            for chunk in provider.stream(prompt, "ide", model=model_id):
                 loop.call_soon_threadsafe(q.put_nowait, {"text": chunk})
         except Exception as exc:
             loop.call_soon_threadsafe(q.put_nowait, {"error": str(exc)})
@@ -466,10 +514,11 @@ async def ai_complete(req: CompleteReq):
         f"Code before cursor:\n```{req.language}\n{req.code_before}\n```"
         f"{after_section}"
     )
-    msgs   = [{"role": "user", "content": prompt}]
     system = "You are a code completion engine. Output ONLY the raw code to insert. No markdown. No explanations."
+    full_prompt = _messages_to_prompt([{"role": "user", "content": prompt}], system)
     try:
-        result = prov.generate(msgs, mid, system=system)
+        resp   = prov.generate(full_prompt, "ide", model=mid)
+        result = resp.content if hasattr(resp, "content") else str(resp)
         # Strip markdown fences if model included them despite instructions
         result = result.strip()
         for fence in (f"```{req.language}", "```"):
