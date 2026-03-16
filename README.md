@@ -1,7 +1,8 @@
-# Aethvion Suite
-**The Integrated Neural Foundation for Autonomous Agents**
-
 <div align="center">
+
+# Aethvion Suite
+
+**The Integrated Neural Foundation for Autonomous Agents**
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -10,27 +11,42 @@
 
 [📚 Documentation](/core/documentation/) | [🚀 Getting Started](/core/documentation/human/getting-started.md) | [💬 Discussions](https://github.com/Aethvion/Aethvion-Suite/discussions)
 
----
+<img width="124px" src="https://raw.githubusercontent.com/Aethvion/Aethvion-Suite/refs/heads/main/core/interfaces/dashboard/static/misakacipher/chibi1/misakacipher_chibi_tablet.png">
 
-<img align="center" width="124px" src="https://raw.githubusercontent.com/Aethvion/Aethvion-Suite/refs/heads/main/core/interfaces/dashboard/static/misakacipher/chibi1/misakacipher_chibi_tablet.png">
+*A self-hosted AI platform with a 25+ tab dashboard, multi-provider chat, agent spawning, tool generation, and a growing suite of integrated apps — all running locally.*
 
-### ⚠️ STATUS: EXPERIMENTAL — EARLY DEVELOPMENT ⚠️
+⚠️ **EXPERIMENTAL — EARLY DEVELOPMENT** · Actively being built. Expect rough edges and partially-implemented features.
 
-*This project is actively being built. Many features described are partially implemented or planned. Expect rough edges.*
-*The documentation is generated so expect some errors.*
-
----
 </div>
 
-## 📸 Screenshots
+---
+
+## 🖼️ Showcase
 
 <div align="center">
 
-**Chat Interface (Misaka Cipher)**
-<img src="assets/showcase/MisakaCipher_Chat.png" alt="Misaka Cipher Chat Interface" width="100%">
+<img src="assets/showcase/AethvionSuite_HomeScreen.png" alt="Aethvion Suite Home Screen" width="100%">
 
-**Usage & Cost Tracking**
+</div>
+
+<br>
+
+<div align="center">
+
+| | |
+|:---:|:---:|
+| <img src="assets/showcase/MisakaCipher_Chat.png" alt="Misaka Cipher Chat Interface" width="100%"> | <img src="assets/showcase/AethvionSuite_Photo.png" alt="Aethvion Suite Photo App" width="100%"> |
+| **Misaka Cipher** · Multi-provider AI chat with threads, auto-routing, and context modes | **Photo App** · AI-powered image generation and editing |
+| <img src="assets/showcase/AethvionSuite_Audio.png" alt="Aethvion Suite Audio Tab" width="100%"> | <img src="assets/showcase/AethvionSuite_Code.png" alt="Aethvion Suite Code App" width="100%"> |
+| **Audio** · Text-to-speech and speech-to-text | **Code** · AI-assisted code generation and display |
+| <img src="assets/showcase/AethvionSuite_LocalModels.png" alt="Aethvion Suite Local Models" width="100%"> | <img src="assets/showcase/AethvionSuite_DriveInfo.png" alt="Aethvion Suite Drive Info" width="100%"> |
+| **Local Models** · Model configuration and provider settings | **Drive Info** · System storage and drive information |
+
+<br>
+
 <img src="assets/showcase/MisakaCipher_UsagePage.png" alt="Aethvion Suite Usage Page" width="100%">
+
+**Usage & Cost Tracking** · Token usage, cost estimates, and granular query breakdowns
 
 </div>
 
@@ -40,21 +56,54 @@
 
 Aethvion Suite is a **self-hosted AI assistant platform** and application hub. It connects to cloud AI providers (Google Gemini, OpenAI, xAI Grok, Anthropic Claude) and provides a structured environment for running chat threads, generating tools, and spawning agents — all from a local server you control.
 
-The core system features **Misaka Cipher**, a specialized chat interface and assistant kernel.
+The core system features **Misaka Cipher**, a specialized chat interface and assistant kernel backed by four core components:
+
+| Component | Role | Status |
+|-----------|------|--------|
+| **Nexus Core** | Single entry point — routes all requests, manages trace IDs | ✅ Stable |
+| **The Factory** | Spawns transient worker agents for complex tasks | 🧪 Works for basic tasks |
+| **The Forge** | Generates Python tools autonomously | 🧪 Works for simple tools |
+| **Memory Tier** | ChromaDB episodic memory + knowledge graph | ✅ Storage stable, retrieval in progress |
+
+**Providers:** Google AI (Gemini) · OpenAI (GPT-4o) · xAI (Grok) · Anthropic (Claude)
+
+**Intelligence Firewall:** PII/credential scanning before any external API call — blocks sensitive data from leaving.
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# Clone and install
+git clone https://github.com/Aethvion/Aethvion-Suite.git
+cd Aethvion-Suite
+pip install -e ".[memory]"
+
+# Configure API keys
+copy .env.example .env
+# edit .env — add GOOGLE_AI_API_KEY / OPENAI_API_KEY / GROK_API_KEY / ANTHROPIC_API_KEY
+```
+
+**One-click (Windows):** Double-click `Start_Aethvion_Suite.bat` — creates the virtual environment, installs dependencies, and opens the dashboard automatically.
+
+**Manual:**
+```bash
+python -m core.main          # web dashboard (default)
+python -m core.main --cli    # interactive CLI
+python -m core.main --test   # run verification tests
+```
+
+Open [http://localhost:8080](http://localhost:8080) after launch.
 
 ---
 
 ## ✅ What Works Right Now
 
-These features are functional in the current build:
-
 ### 💬 Chat & Threads
 - Multi-provider chat (Google, OpenAI, Grok, Anthropic) with automatic failover
 - Persistent conversation threads with configurable context modes (none / smart / full)
-- Instant thread creation with automatic intelligent titling based on context
-- Collapsible, flush-edge chat UI with persistent layout state memory
 - Per-message model selection or **auto-routing** (LLM picks the best model from your enabled pool)
-- Thread memory: task JSONs stored on disk, model used + routing reasoning recorded
+- Collapsible, flush-edge chat UI with persistent layout state memory
 
 ### 🤖 Agent Mode
 - Basic agent spawning for analysis and execution tasks
@@ -64,30 +113,29 @@ These features are functional in the current build:
 ### ⚒️ Tool Forge
 - AI can generate Python tools and register them for reuse
 - Generated tools are saved locally and available in subsequent sessions
-- Works for simple, well-scoped tool requests — complex multi-file generation is hit or miss
 
 ### 🧠 Memory
 - Episodic memory stored in ChromaDB (vector search)
 - Every conversation stored as a task JSON with model, routing, and usage metadata
-- Memory can be queried in subsequent sessions
 
 ### 🎙️ Audio
 - Text-to-speech and speech-to-text support
 - Configurable voice and audio output settings
 
 ### 🎮 Games
-- Built-in games playable from the dashboard: Logic Quest, Blackjack, Sudoku, Word Search, Checkers (vs AI)
+- Built-in games: Logic Quest, Blackjack, Sudoku, Word Search, Checkers (vs AI)
 - Leaderboard to track scores across sessions
 
-### 🎭 Aethvion VTuber & 📊 Aethvion Tracking
-- **Aethvion VTuber:** Visualization and animation engine for digital character presence — rigging, real-time deformation.
-- **Aethvion Tracking:** Advanced motion tracking module — streams real-time tracking parameters to VTuber via WebSocket.
+### 🎭 VTuber & 📊 Tracking
+- **Aethvion VTuber:** Visualization and animation engine — rigging, real-time deformation
+- **Aethvion Tracking:** Motion tracking via WebSocket, streams parameters to VTuber
 
 ### 🔌 Nexus Module
-- Peripheral and sensor plugin hub — connects the AI to physical/digital inputs (screen capture, webcam, Spotify, weather, system info)
+- Peripheral plugin hub — screen capture, webcam, Spotify, weather, system info
 - Registry-driven architecture for adding new integrations
 
-### 📊 Dashboard Tabs
+### 📊 Dashboard Tabs (25+)
+
 | Tab | Status | Notes |
 |-----|--------|-------|
 | Chat | ✅ Working | Threads, context, model selection, auto routing |
@@ -120,62 +168,11 @@ These features are functional in the current build:
 
 ## ⚠️ What Doesn't Work Yet (or Is Rough)
 
-Be aware of these limitations before you dive in:
-
-- **Autonomous long-running tasks:** The system cannot reliably work toward a complex goal over hours or days without supervision. Agent execution works for single well-defined tasks, not multi-step plans.
-- **Self-improvement:** The system does not meaningfully "learn" or improve itself between sessions. Memory is stored but not yet deeply integrated into decision-making.
+- **Autonomous long-running tasks:** Agent execution works for single well-defined tasks, not multi-step plans over hours or days.
+- **Self-improvement:** Memory is stored but not yet deeply integrated into decision-making.
 - **Local model support:** Ollama/vLLM integration is not implemented. All inference goes to cloud providers (costs real money).
-- **Tool forge reliability:** Simple tools generate fine. Anything requiring external libraries, complex logic, or multi-file output is unreliable.
-- **90% cost reduction claim from older docs:** Not realistic in current form. All calls go to cloud APIs. Cost depends entirely on your usage and model choices.
-- **Production-readiness:** This is a personal/research project. It is not hardened for production use.
-
----
-
-## 🏗️ Architecture Overview
-
-The system is structured around four components:
-
-| Component | Role | Status |
-|-----------|------|--------|
-| **Nexus Core** | Single entry point — routes all requests, manages trace IDs | ✅ Stable |
-| **The Factory** | Spawns transient worker agents for complex tasks | 🧪 Works for basic tasks |
-| **The Forge** | Generates Python tools autonomously | 🧪 Works for simple tools |
-| **Memory Tier** | ChromaDB episodic memory + knowledge graph | ✅ Stores data, retrieval basic |
-
-**Providers supported:** Google AI (Gemini), OpenAI (GPT-4o family), xAI (Grok), Anthropic (Claude)
-
-**Intelligence Firewall:** PII/credential scanning before any external API call — blocks sensitive data from leaving.
-
----
-
-## 🚀 Quick Start
-
-```bash
-# Clone
-git clone https://github.com/Aethvion/Aethvion-Suite.git
-cd Aethvion-Suite
-
-# Install dependencies (uses pyproject.toml)
-pip install -e ".[memory]"
-
-# Copy and fill in your API keys
-copy .env.example .env
-# edit .env — add GOOGLE_AI_API_KEY / OPENAI_API_KEY / GROK_API_KEY / ANTHROPIC_API_KEY
-# Optional: add DISCORD_TOKEN to enable the Discord bot integration
-```
-
-### Launch
-
-**One-click (Windows):**  
-Double-click `Start_Aethvion_Suite.bat` — it creates the virtual environment, installs dependencies, and starts the dashboard automatically. It also includes a **Smart Tab** check to prevent opening duplicate browser tabs.
-
-**Manual:**
-```bash
-python -m core.main          # web dashboard (default)
-python -m core.main --cli    # interactive CLI
-python -m core.main --test   # run verification tests
-```
-Open [http://localhost:8080](http://localhost:8080) (or your configured `PORT`) after launch.
+- **Tool forge reliability:** Simple tools generate fine. Anything requiring external libraries or complex multi-file output is unreliable.
+- **Production-readiness:** This is a personal/research project, not hardened for production use.
 
 ---
 
@@ -188,10 +185,7 @@ Aethvion-Suite/
 │
 ├── core/                       # All Python source code
 │   ├── main.py                 # Entry point (web / CLI / test modes)
-│   ├── cli.py                  # Interactive CLI interface
 │   ├── nexus_core.py           # Central orchestration hub
-│   ├── system_retrieval.py
-│   │
 │   ├── config/                 # Configuration files (YAML/JSON)
 │   ├── factory/                # Agent spawning engine
 │   ├── forge/                  # Tool generation pipeline
@@ -200,7 +194,7 @@ Aethvion-Suite/
 │   ├── orchestrator/           # Master orchestrator + task queue
 │   ├── providers/              # Google / OpenAI / Grok / Anthropic adapters
 │   ├── security/               # Intelligence Firewall
-│   ├── utils/                  # Shared utilities (logger, trace, validators, port manager)
+│   ├── utils/                  # Shared utilities
 │   ├── workers/                # Background workers
 │   ├── workspace/              # Usage tracker, package manager
 │   └── interfaces/
@@ -208,26 +202,18 @@ Aethvion-Suite/
 │       └── cli_modules/        # CLI module implementations
 │
 ├── apps/                       # User applications
-│   ├── vtuber/                 # Character animation & visualization engine
-│   └── tracking/               # Motion tracking module
+│   ├── audio/                  # Audio processing
+│   ├── code/                   # Code generation/execution
+│   ├── driveinfo/              # Drive information
+│   ├── finance/                # Finance tracking
+│   ├── photo/                  # Photo editing/processing
+│   ├── tracking/               # Motion tracking module
+│   └── vtuber/                 # Character animation & visualization engine
 │
 ├── data/                       # Runtime data — never committed
-│   ├── logs/                   # Application logs
-│   ├── memory/storage/         # ChromaDB vector store + graph files
-│   ├── outputfiles/            # AI-generated output files
-│   └── workspace/              # packages.json, user_preferences.json
-│
-├── tools/                      # Tool registry
-│   ├── standard/               # Built-in tools
-│   └── generated/              # AI-forged tools (gitignored)
-│
+├── tools/                      # Tool registry (standard + AI-generated)
 ├── tests/                      # Test suite
-├── assets/                     # Static assets
-│   ├── misakacipher/           # Character sprites and expressions
-│   └── showcase/               # UI screenshots for documentation
-└── documentation/              # Docs
-    ├── human/                  # User-facing guides
-    └── ai/                     # Machine-readable specs
+└── assets/                     # Static assets (character sprites, showcase images)
 ```
 
 ---
@@ -235,28 +221,20 @@ Aethvion-Suite/
 ## 🗺️ Roadmap
 
 ### ✅ Done
-- Multi-provider chat with failover and auto-routing (Google, OpenAI, Grok, Anthropic)
+- Multi-provider chat with failover and auto-routing
 - Persistent threads and task memory
-- Tool forge (basic)
-- Agent spawning (basic)
+- Tool forge and agent spawning
 - Intelligence Firewall
 - Web dashboard with 25+ tabs
 - API usage tracking with cost estimates
 - LLM Arena, Image Studio, Advanced AI Conversation
 - Routing profiles with configurable model pools
 - Discord integration (bot worker, message mirroring, dashboard controls)
-- Unified chat history across Dashboard and Discord
-- PersonaManager (context + system prompt assembly)
-- IdentityManager and SocialRegistry (cross-platform identity)
-- File vector store (semantic workspace file search)
-- Audio tab (text-to-speech and speech-to-text)
-- Games suite (Logic Quest, Blackjack, Sudoku, Word Search, Checkers vs AI) with leaderboards
-- Aethvion VTuber (character animation and visualization engine)
-- Aethvion Tracking (motion tracking via WebSocket)
-- Nexus peripheral module (screen capture, webcam, Spotify, weather, system info)
-- Documentation viewer tab
-- Port Manager tab
-- In-dashboard assistant (Settings → Assistant)
+- Audio tab (TTS and STT)
+- Games suite with leaderboards
+- Aethvion VTuber and Tracking
+- Nexus peripheral module
+- Documentation viewer, Port Manager, and in-dashboard assistant
 
 ### 🔄 In Progress / Near-Term
 - Improved agent reliability for multi-step goals
