@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aethvion Hardware Info</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="/viewer/css/hw.css" />
+</head>
+<body>
+
+<!-- ── Top bar ──────────────────────────────────────────────────── -->
+<header id="topbar">
+  <div class="tb-left">
+    <div class="tb-logo">
+      <i class="fa-solid fa-microchip tb-logo-icon" aria-hidden="true"></i>
+      <span class="tb-logo-text">Aethvion Hardware Info</span>
+    </div>
+    <div class="tb-sysname" id="tbHostname">Loading…</div>
+    <div class="tb-osinfo" id="tbOsInfo"></div>
+  </div>
+  <div class="tb-right">
+    <div class="tb-uptime-wrap">
+      <i class="fa-regular fa-clock" aria-hidden="true"></i>
+      <span id="tbUptime">–</span>
+    </div>
+    <div class="ws-status" id="wsStatus" title="Live connection">
+      <span class="ws-dot disconnected"></span>
+      <span class="ws-label" id="wsLabel">Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<!-- ── Main grid ────────────────────────────────────────────────── -->
+<main id="dashboard">
+
+  <!-- CPU ──────────────────────────────────────────────────────── -->
+  <section class="card card-cpu" id="cardCpu">
+    <div class="card-header">
+      <i class="fa-solid fa-microchip card-icon" aria-hidden="true"></i>
+      <span class="card-title">CPU</span>
+      <span class="card-subtitle" id="cpuName">–</span>
+    </div>
+    <div class="cpu-top">
+      <div class="gauge-wrap">
+        <svg class="gauge" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="gauge-track" cx="60" cy="60" r="52" />
+          <circle class="gauge-fill" id="cpuGaugeFill" cx="60" cy="60" r="52"
+            stroke-dasharray="326.7" stroke-dashoffset="326.7" />
+        </svg>
+        <div class="gauge-center">
+          <span class="gauge-pct" id="cpuPct">0%</span>
+          <span class="gauge-sub">CPU</span>
+        </div>
+      </div>
+      <div class="cpu-stats">
+        <div class="stat-row">
+          <i class="fa-solid fa-bolt stat-icon" aria-hidden="true"></i>
+          <span class="stat-label">Frequency</span>
+          <span class="stat-val mono" id="cpuFreq">– MHz</span>
+        </div>
+        <div class="stat-row">
+          <i class="fa-solid fa-temperature-half stat-icon" aria-hidden="true"></i>
+          <span class="stat-label">Temperature</span>
+          <span class="stat-val mono" id="cpuTemp">–</span>
+        </div>
+        <div class="stat-row">
+          <i class="fa-solid fa-layer-group stat-icon" aria-hidden="true"></i>
+          <span class="stat-label">Cores / Threads</span>
+          <span class="stat-val mono" id="cpuCores">– / –</span>
+        </div>
+        <div class="stat-row">
+          <i class="fa-solid fa-maximize stat-icon" aria-hidden="true"></i>
+          <span class="stat-label">Base / Max</span>
+          <span class="stat-val mono" id="cpuMaxFreq">–</span>
+        </div>
+      </div>
+    </div>
+    <div class="chart-label">CPU Usage — last 60 s</div>
+    <div class="chart-wrap"><canvas id="chartCpu"></canvas></div>
+    <div class="card-divider"></div>
+    <div class="card-sub-header">Per-core utilization</div>
+    <div class="cores-grid" id="coresGrid"></div>
+  </section>
+
+  <!-- MEMORY ───────────────────────────────────────────────────── -->
+  <section class="card card-mem" id="cardMem">
+    <div class="card-header">
+      <i class="fa-solid fa-memory card-icon" aria-hidden="true"></i>
+      <span class="card-title">Memory</span>
+    </div>
+    <div class="donut-wrap">
+      <canvas id="chartMem"></canvas>
+      <div class="donut-center">
+        <span class="donut-pct" id="memPct">0%</span>
+        <span class="donut-sub">Used</span>
+      </div>
+    </div>
+    <div class="mem-stats">
+      <div class="stat-row">
+        <i class="fa-solid fa-database stat-icon" aria-hidden="true"></i>
+        <span class="stat-label">Used</span>
+        <span class="stat-val mono" id="memUsed">– GB</span>
+      </div>
+      <div class="stat-row">
+        <i class="fa-solid fa-circle-dot stat-icon" aria-hidden="true"></i>
+        <span class="stat-label">Available</span>
+        <span class="stat-val mono" id="memAvail">– GB</span>
+      </div>
+      <div class="stat-row">
+        <i class="fa-solid fa-server stat-icon" aria-hidden="true"></i>
+        <span class="stat-label">Total</span>
+        <span class="stat-val mono" id="memTotal">– GB</span>
+      </div>
+      <div class="stat-row">
+        <i class="fa-solid fa-arrows-up-down stat-icon" aria-hidden="true"></i>
+        <span class="stat-label">Swap</span>
+        <span class="stat-val mono" id="swapUsed">– GB</span>
+      </div>
+    </div>
+    <div class="chart-label">RAM Usage — last 60 s</div>
+    <div class="chart-wrap"><canvas id="chartMemLine"></canvas></div>
+  </section>
+
+  <!-- GPU ──────────────────────────────────────────────────────── -->
+  <section class="card card-gpu" id="cardGpu">
+    <div class="card-header">
+      <i class="fa-solid fa-display card-icon" aria-hidden="true"></i>
+      <span class="card-title">GPU</span>
+      <span class="card-subtitle" id="gpuName">Detecting…</span>
+    </div>
+    <div class="gpu-top" id="gpuTop">
+      <div class="gauge-wrap">
+        <svg class="gauge" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="gauge-track" cx="60" cy="60" r="52" />
+          <circle class="gauge-fill gpu-fill" id="gpuGaugeFill" cx="60" cy="60" r="52"
+            stroke-dasharray="326.7" stroke-dashoffset="326.7" />
+        </svg>
+        <div class="gauge-center">
+          <span class="gauge-pct" id="gpuLoad">0%</span>
+          <span class="gauge-sub">Load</span>
+        </div>
+      </div>
+      <div class="cpu-stats">
+        <div class="stat-row">
+          <i class="fa-solid fa-temperature-half stat-icon" aria-hidden="true"></i>
+          <span class="stat-label">Temperature</span>
+          <span class="stat-val mono" id="gpuTemp">–</span>
+        </div>
+        <div class="stat-row">
+          <i class="fa-solid fa-film stat-icon" aria-hidden="true"></i>
+          <span class="stat-label">VRAM Used</span>
+          <span class="stat-val mono" id="gpuVramUsed">– MB</span>
+        </div>
+        <div class="stat-row">
+          <i class="fa-solid fa-hard-drive stat-icon" aria-hidden="true"></i>
+          <span class="stat-label">VRAM Total</span>
+          <span class="stat-val mono" id="gpuVramTotal">– MB</span>
+        </div>
+        <div class="stat-row">
+          <i class="fa-solid fa-chart-bar stat-icon" aria-hidden="true"></i>
+          <span class="stat-label">VRAM Usage</span>
+          <div class="mini-bar-wrap">
+            <div class="mini-bar" id="gpuVramBar" style="width:0%"></div>
+          </div>
+          <span class="stat-val mono" id="gpuVramPct">0%</span>
+        </div>
+      </div>
+    </div>
+    <div id="gpuNoData" style="display:none" class="no-data-msg">
+      <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+      GPU data unavailable. NVIDIA card with GPUtil required for live metrics.
+    </div>
+  </section>
+
+  <!-- NETWORK ──────────────────────────────────────────────────── -->
+  <section class="card card-net" id="cardNet">
+    <div class="card-header">
+      <i class="fa-solid fa-network-wired card-icon" aria-hidden="true"></i>
+      <span class="card-title">Network</span>
+    </div>
+    <div class="net-speeds">
+      <div class="speed-block upload">
+        <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+        <span class="speed-val mono" id="netUp">0</span>
+        <span class="speed-unit" id="netUpUnit">MB/s</span>
+        <span class="speed-label">Upload</span>
+      </div>
+      <div class="speed-block download">
+        <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>
+        <span class="speed-val mono" id="netDown">0</span>
+        <span class="speed-unit" id="netDownUnit">MB/s</span>
+        <span class="speed-label">Download</span>
+      </div>
+    </div>
+    <div class="chart-label">Throughput — last 60 s</div>
+    <div class="chart-wrap chart-wrap-net"><canvas id="chartNet"></canvas></div>
+    <div class="card-divider"></div>
+    <div class="card-sub-header">Interfaces</div>
+    <div id="netIfaces" class="net-ifaces"></div>
+  </section>
+
+  <!-- STORAGE ──────────────────────────────────────────────────── -->
+  <section class="card card-storage" id="cardStorage">
+    <div class="card-header">
+      <i class="fa-solid fa-hard-drive card-icon" aria-hidden="true"></i>
+      <span class="card-title">Storage</span>
+    </div>
+    <div id="diskList" class="disk-list"></div>
+    <div class="card-divider"></div>
+    <div class="io-row">
+      <div class="io-block">
+        <i class="fa-solid fa-arrow-down io-icon read-icon" aria-hidden="true"></i>
+        <div>
+          <div class="io-label">Read</div>
+          <div class="io-val mono" id="diskRead">0 MB/s</div>
+        </div>
+      </div>
+      <div class="io-sep"></div>
+      <div class="io-block">
+        <i class="fa-solid fa-arrow-up io-icon write-icon" aria-hidden="true"></i>
+        <div>
+          <div class="io-label">Write</div>
+          <div class="io-val mono" id="diskWrite">0 MB/s</div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-label">Disk I/O — last 60 s</div>
+    <div class="chart-wrap"><canvas id="chartDisk"></canvas></div>
+  </section>
+
+  <!-- BATTERY ──────────────────────────────────────────────────── -->
+  <section class="card card-battery" id="cardBattery" style="display:none">
+    <div class="card-header">
+      <i class="fa-solid fa-battery-full card-icon" id="batIcon" aria-hidden="true"></i>
+      <span class="card-title">Battery</span>
+    </div>
+    <div class="bat-gauge-wrap">
+      <div class="bat-bar-outer">
+        <div class="bat-bar-fill" id="batBarFill" style="width:0%"></div>
+      </div>
+      <span class="bat-pct mono" id="batPct">0%</span>
+    </div>
+    <div class="bat-stats">
+      <div class="stat-row">
+        <i class="fa-solid fa-plug stat-icon" aria-hidden="true"></i>
+        <span class="stat-label">Status</span>
+        <span class="stat-val" id="batStatus">–</span>
+      </div>
+      <div class="stat-row">
+        <i class="fa-regular fa-clock stat-icon" aria-hidden="true"></i>
+        <span class="stat-label">Time Left</span>
+        <span class="stat-val mono" id="batTime">–</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROCESSES ────────────────────────────────────────────────── -->
+  <section class="card card-procs" id="cardProcs">
+    <div class="card-header">
+      <i class="fa-solid fa-list-ul card-icon" aria-hidden="true"></i>
+      <span class="card-title">Processes</span>
+      <span class="card-subtitle">Top 15 by CPU</span>
+    </div>
+    <div class="procs-table-wrap">
+      <table class="procs-table" aria-label="Top processes">
+        <thead>
+          <tr>
+            <th>Process</th>
+            <th>PID</th>
+            <th>CPU %</th>
+            <th>MEM %</th>
+          </tr>
+        </thead>
+        <tbody id="procsTbody">
+          <tr><td colspan="4" class="no-data-msg">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="/viewer/js/app.js" type="module"></script>
+</body>
+</html>
