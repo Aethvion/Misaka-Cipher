@@ -48,6 +48,30 @@ try:
 except ImportError:
     HAS_GPUTIL = False
 
+# ── Subprocess helper: suppress CMD flashes on Windows ────────────────────────
+# GPUtil calls nvidia-smi via subprocess.Popen every poll cycle.  Without this
+# fix each call briefly flashes a black CMD window on Windows.
+import contextlib as _contextlib
+
+@_contextlib.contextmanager
+def _no_window():
+    """Temporarily patch subprocess.Popen to add CREATE_NO_WINDOW on Windows."""
+    if os.name != "nt":
+        yield
+        return
+    import subprocess as _sp
+    _orig = _sp.Popen
+    _CREATE_NO_WINDOW = 0x08000000
+    class _Patched(_orig):
+        def __init__(self, *a, **kw):
+            kw["creationflags"] = kw.get("creationflags", 0) | _CREATE_NO_WINDOW
+            super().__init__(*a, **kw)
+    _sp.Popen = _Patched
+    try:
+        yield
+    finally:
+        _sp.Popen = _orig
+
 try:
     import wmi as _wmi_mod
     _wmi = _wmi_mod.WMI()
@@ -135,13 +159,14 @@ def _get_static_info() -> dict:
     gpus = []
     if HAS_GPUTIL:
         try:
-            for g in _gputil.getGPUs():
-                gpus.append({
-                    "id":           g.id,
-                    "name":         g.name,
-                    "driver":       g.driver,
-                    "mem_total_mb": int(g.memoryTotal),
-                })
+            with _no_window():
+                for g in _gputil.getGPUs():
+                    gpus.append({
+                        "id":           g.id,
+                        "name":         g.name,
+                        "driver":       g.driver,
+                        "mem_total_mb": int(g.memoryTotal),
+                    })
         except Exception:
             pass
     if not gpus and HAS_WMI:
@@ -293,15 +318,16 @@ class LiveCollector:
         gpus = []
         if HAS_GPUTIL:
             try:
-                for g in _gputil.getGPUs():
-                    gpus.append({
-                        "id":           g.id,
-                        "load_pct":     round(g.load * 100, 1),
-                        "mem_used_mb":  int(g.memoryUsed),
-                        "mem_total_mb": int(g.memoryTotal),
-                        "mem_pct":      round(g.memoryUsed / g.memoryTotal * 100, 1) if g.memoryTotal else 0,
-                        "temp_c":       g.temperature,
-                    })
+                with _no_window():
+                    for g in _gputil.getGPUs():
+                        gpus.append({
+                            "id":           g.id,
+                            "load_pct":     round(g.load * 100, 1),
+                            "mem_used_mb":  int(g.memoryUsed),
+                            "mem_total_mb": int(g.memoryTotal),
+                            "mem_pct":      round(g.memoryUsed / g.memoryTotal * 100, 1) if g.memoryTotal else 0,
+                            "temp_c":       g.temperature,
+                        })
             except Exception:
                 pass
 

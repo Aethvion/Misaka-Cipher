@@ -8,11 +8,14 @@
  *
  * Key design rules
  * ────────────────
- * • Each app gets ONE iframe created on first open and NEVER destroyed until
+ * • Each app gets ONE iframe, created on first open and never destroyed until
  *   the tab is explicitly closed.  Tab switching only toggles CSS display.
- * • The iframe src is NOT set immediately — a health-check polls the target
- *   URL until the server responds, then sets src.  This gives a proper
- *   "Starting…" spinner instead of a browser connection-refused error page.
+ *
+ * • Ports are FULLY DYNAMIC — no hardcoded ports anywhere.  The iframe src is
+ *   only set once the app's portKey appears in the PortManager registry
+ *   (/api/system/ports).  This prevents loading the wrong app if an expected
+ *   port is occupied by something else.
+ *
  * • The Nexus tab is permanent and cannot be closed.
  *
  * Public API (window.ATB)
@@ -20,43 +23,48 @@
  *   ATB.openApp(appId)      – open (or focus) an app by id
  *   ATB.switchTo(panelId)   – switch the visible panel by DOM id
  *   ATB.retryApp(appId)     – tear down and rebuild a failed app tab
- *   ATB.refreshPorts()      – re-fetch ports from /api/system/ports
+ *   ATB.refreshPorts()      – re-fetch ports; returns { name → port } map
  */
 const ATB = (() => {
 
     // ── App registry ──────────────────────────────────────────────────────────
-    // portKey must match the name used in PortManager.bind_port() on the server.
+    // portKey MUST match the name passed to PortManager.bind_port() on the
+    // server side.  No hardcoded port numbers — the actual port is discovered
+    // at runtime via the PortManager registry.
     const APPS = [
-        { id: 'code',         label: 'Code IDE',      emoji: '💻', port: 8083, portKey: 'Aethvion Code IDE'     },
-        { id: 'hardwareinfo', label: 'Hardware Info',  emoji: '🖥️', port: 8084, portKey: 'Aethvion Hardware Info' },
-        { id: 'vtuber',       label: 'VTuber',         emoji: '🎭', port: 8081, portKey: 'VTuber Engine'         },
-        { id: 'audio',        label: 'Audio Studio',   emoji: '🎙️', port: 8085, portKey: 'Aethvion Audio'        },
-        { id: 'photo',        label: 'Photo Studio',   emoji: '🎨', port: 8086, portKey: 'Aethvion Photo'        },
-        { id: 'finance',      label: 'Finance',        emoji: '💰', port: 8087, portKey: 'Aethvion Finance'      },
-        { id: 'tracking',     label: 'Tracking',       emoji: '📡', port: 8082, portKey: 'Aethvion Tracking'     },
-        { id: 'driveinfo',    label: 'Drive Info',     emoji: '💿', port: 8088, portKey: 'Aethvion Drive Info'   },
+        { id: 'code',         label: 'Code IDE',      emoji: '💻', port: null, portKey: 'Aethvion Code IDE'     },
+        { id: 'hardwareinfo', label: 'Hardware Info',  emoji: '🖥️', port: null, portKey: 'Aethvion Hardware Info' },
+        { id: 'vtuber',       label: 'VTuber',         emoji: '🎭', port: null, portKey: 'VTuber Engine'         },
+        { id: 'audio',        label: 'Audio Studio',   emoji: '🎙️', port: null, portKey: 'Aethvion Audio'        },
+        { id: 'photo',        label: 'Photo Studio',   emoji: '🎨', port: null, portKey: 'Aethvion Photo'        },
+        { id: 'finance',      label: 'Finance',        emoji: '💰', port: null, portKey: 'Aethvion Finance'      },
+        { id: 'tracking',     label: 'Tracking',       emoji: '📡', port: null, portKey: 'Aethvion Tracking'     },
+        { id: 'driveinfo',    label: 'Drive Info',     emoji: '💿', port: null, portKey: 'Aethvion Drive Info'   },
     ];
 
     const NEXUS_PANEL = 'panel-nexus';
     let _active = NEXUS_PANEL;
 
     // ── Dynamic port discovery ────────────────────────────────────────────────
+    // Returns { "Aethvion Code IDE": 8083, ... } and updates APPS[].port.
     async function refreshPorts() {
         try {
             const res = await fetch('/api/system/ports');
-            if (!res.ok) return;
-            const raw = await res.json();
-            // raw = { "8083": "Aethvion Code IDE", ... }
+            if (!res.ok) return {};
+            const raw = await res.json();       // { "8083": "Aethvion Code IDE", ... }
             const nameToPort = {};
             Object.entries(raw).forEach(([port, name]) => {
                 nameToPort[name] = parseInt(port, 10);
             });
             APPS.forEach(app => {
-                if (app.portKey && nameToPort[app.portKey]) {
+                if (app.portKey in nameToPort) {
                     app.port = nameToPort[app.portKey];
                 }
             });
-        } catch (_) { /* ignore — defaults remain */ }
+            return nameToPort;
+        } catch (_) {
+            return {};
+        }
     }
 
     // ── Tab switching ─────────────────────────────────────────────────────────
@@ -67,21 +75,20 @@ const ATB = (() => {
         const prev = document.getElementById(_active);
         if (prev) prev.style.display = 'none';
 
-        // Show the target panel
+        // Show the target panel; fall back to Nexus if it doesn't exist
         const next = document.getElementById(panelId);
         if (!next) {
-            // Target panel doesn't exist — fall back to nexus
             const nexus = document.getElementById(NEXUS_PANEL);
             if (nexus) nexus.style.display = 'flex';
             _active = NEXUS_PANEL;
             document.querySelectorAll('.atb-tab').forEach(t =>
                 t.classList.toggle('atb-tab--active', t.dataset.panel === NEXUS_PANEL)
             );
+            _refreshMenuOpenStates();
             return;
         }
 
-        // Nexus uses flex-column layout; all iframe panels use block
-        next.style.display = panelId === NEXUS_PANEL ? 'flex' : 'block';
+        next.style.display = (panelId === NEXUS_PANEL) ? 'flex' : 'block';
 
         document.querySelectorAll('.atb-tab').forEach(t =>
             t.classList.toggle('atb-tab--active', t.dataset.panel === panelId)
@@ -93,8 +100,6 @@ const ATB = (() => {
 
     // ── Open an app ───────────────────────────────────────────────────────────
     async function openApp(appOrId) {
-        await refreshPorts();
-
         const app = typeof appOrId === 'string'
             ? APPS.find(a => a.id === appOrId)
             : appOrId;
@@ -102,13 +107,12 @@ const ATB = (() => {
 
         const panelId = `panel-app-${app.id}`;
 
-        // Already open → just switch to it
+        // Already open → just focus it
         if (document.getElementById(panelId)) {
             switchTo(panelId);
             return;
         }
 
-        // Build panel + tab, then switch
         const panel = _buildPanel(app, panelId);
         document.body.appendChild(panel);
 
@@ -118,58 +122,43 @@ const ATB = (() => {
         switchTo(panelId);
     }
 
-    // ── Health-check helper ───────────────────────────────────────────────────
-    // Tries a no-cors HEAD request; returns true if the server responds with
-    // anything (even a 404), false if the connection is refused / times out.
-    function _fetchHead(url, timeoutMs) {
-        return new Promise(resolve => {
-            const ctrl  = new AbortController();
-            const timer = setTimeout(() => { ctrl.abort(); resolve(false); }, timeoutMs);
-            fetch(url, { method: 'HEAD', mode: 'no-cors', signal: ctrl.signal })
-                .then(() => { clearTimeout(timer); resolve(true);  })
-                .catch(() => { clearTimeout(timer); resolve(false); });
-        });
-    }
-
-    // ── Wait for server, then load iframe ─────────────────────────────────────
-    async function _waitAndLoad(iframe, baseUrl, loadingEl, app, panelId) {
-        const MAX_WAIT  = 90_000;  // 90 s total
-        const INTERVAL  = 1_500;   // poll every 1.5 s
-        const start     = Date.now();
-        let   attempt   = 0;
+    // ── Wait for the server to register its port, then load iframe ────────────
+    // Polls /api/system/ports until the app's portKey appears.
+    // This is identity-based (not port-based) so a different server running on
+    // the expected port will never be loaded by mistake.
+    async function _waitAndLoad(iframe, loadingEl, app, panelId) {
+        const MAX_WAIT     = 90_000;   // 90 s total before showing error
+        const POLL_INTERVAL = 1_500;   // check registry every 1.5 s
+        const start        = Date.now();
 
         while (Date.now() - start < MAX_WAIT) {
+            const elapsed = Math.round((Date.now() - start) / 1000);
             const hint = loadingEl.querySelector('.app-iframe-hint');
-
             if (hint) {
-                const elapsed = Math.round((Date.now() - start) / 1000);
-                hint.textContent = attempt === 0
-                    ? 'Waiting for server to come online…'
-                    : `Waiting for server… (${elapsed}s elapsed)`;
+                hint.textContent = elapsed === 0
+                    ? 'Waiting for server to register…'
+                    : `Waiting for server… (${elapsed}s)`;
             }
 
-            const up = await _fetchHead(baseUrl, 1200);
+            const nameToPort = await refreshPorts();
 
-            if (up) {
-                // Server is up — re-fetch ports so we use the correct bound port
-                await refreshPorts();
-                const appNow  = APPS.find(a => `panel-app-${a.id}` === panelId);
-                const finalUrl = appNow ? `http://localhost:${appNow.port}` : baseUrl;
-                iframe.src = finalUrl;
-                return;  // iframe load event takes over from here
+            if (app.portKey in nameToPort) {
+                // ✓ Server has registered its port — now we know exactly where to go
+                const port = nameToPort[app.portKey];
+                iframe.src = `http://localhost:${port}`;
+                // iframe load event hides the spinner and shows the iframe
+                return;
             }
 
-            attempt++;
-            await new Promise(r => setTimeout(r, INTERVAL));
+            await new Promise(r => setTimeout(r, POLL_INTERVAL));
         }
 
-        // Give up — show error with retry button
+        // Timed out — give up and show error
         _showError(loadingEl, app);
     }
 
     // ── Build iframe panel ────────────────────────────────────────────────────
     function _buildPanel(app, panelId) {
-        const url    = `http://localhost:${app.port}`;
         const loadId = `${panelId}-loading`;
         const frmId  = `${panelId}-iframe`;
 
@@ -178,17 +167,16 @@ const ATB = (() => {
         panel.className = 'app-panel app-iframe-panel';
         panel.style.display = 'none';
 
-        // ── Loading overlay ───────────────────────────────────────────────────
+        // Loading overlay
         const loadingEl = document.createElement('div');
         loadingEl.id        = loadId;
         loadingEl.className = 'app-iframe-loading';
         loadingEl.innerHTML = `
             <div class="app-iframe-spinner"></div>
             <p>Starting <strong>${app.label}</strong>…</p>
-            <p class="app-iframe-port">${url}</p>
-            <p class="app-iframe-hint">Waiting for server to come online…</p>`;
+            <p class="app-iframe-hint">Waiting for server to register…</p>`;
 
-        // ── iframe — src intentionally NOT set yet ────────────────────────────
+        // iframe — src is intentionally NOT set yet
         const iframe = document.createElement('iframe');
         iframe.id    = frmId;
         iframe.title = app.label;
@@ -202,7 +190,7 @@ const ATB = (() => {
             inset:    '0',
         });
 
-        // Wire load event BEFORE setting src (avoids missing early-fire)
+        // Wire the load event BEFORE we ever set src
         iframe.addEventListener('load', () => {
             loadingEl.style.display = 'none';
             iframe.style.display    = 'block';
@@ -211,8 +199,8 @@ const ATB = (() => {
         panel.appendChild(loadingEl);
         panel.appendChild(iframe);
 
-        // Start health-check loop; sets iframe.src once the server is ready
-        _waitAndLoad(iframe, url, loadingEl, app, panelId);
+        // Start polling the registry; sets iframe.src once the server is ready
+        _waitAndLoad(iframe, loadingEl, app, panelId);
 
         return panel;
     }
@@ -223,8 +211,8 @@ const ATB = (() => {
             <div class="app-iframe-error-icon">⚠️</div>
             <p class="app-iframe-error">Could not connect to <strong>${app.label}</strong></p>
             <p class="app-iframe-error-msg">
-                Server did not respond on port ${app.port}.<br>
-                Make sure the app server is running, then click Retry.
+                The server did not register within the timeout.<br>
+                Make sure it started correctly, then click Retry.
             </p>
             <button class="app-iframe-retry-btn"
                     onclick="ATB.retryApp('${app.id}')">
@@ -239,8 +227,7 @@ const ATB = (() => {
         const tabEl   = document.querySelector(`[data-panel="${panelId}"]`);
         const panelEl = document.getElementById(panelId);
 
-        // Switch away before removing
-        if (_active === panelId) switchTo(NEXUS_PANEL);
+        if (_active === panelId) switchTo(NEXUS_PANEL);   // switch away first
 
         tabEl?.remove();
         panelEl?.remove();
@@ -275,9 +262,10 @@ const ATB = (() => {
 
     // ── Close tab ─────────────────────────────────────────────────────────────
     function _closeTab(panelId, tabEl) {
-        // Switch FIRST (while _active === panelId so switchTo guard passes),
-        // THEN remove the panel.  Previously _active was pre-set which caused
-        // switchTo to short-circuit and left a black screen.
+        // Call switchTo FIRST while _active === panelId so the guard passes,
+        // then remove the elements.  (Removing before switching caused a black
+        // screen because switchTo would find the target gone and fall back to
+        // nexus, but the old panel was still displayed.)
         if (_active === panelId) {
             switchTo(NEXUS_PANEL);
         }
@@ -293,14 +281,15 @@ const ATB = (() => {
         menu.innerHTML = `<div class="atb-apps-menu-title">Aethvion Apps</div>`;
 
         APPS.forEach(app => {
-            const isOpen = !!document.getElementById(`panel-app-${app.id}`);
-            const btn    = document.createElement('button');
+            const isOpen  = !!document.getElementById(`panel-app-${app.id}`);
+            const portStr = app.port ? `:${app.port}` : '—';
+            const btn     = document.createElement('button');
             btn.className = `atb-app-item${isOpen ? ' atb-app-item--open' : ''}`;
             btn.dataset.appId = app.id;
             btn.innerHTML = `
                 <span class="atb-app-emoji">${app.emoji}</span>
                 <span class="atb-app-name">${app.label}</span>
-                <span class="atb-app-port">:${app.port}</span>
+                <span class="atb-app-port">${portStr}</span>
                 <span class="atb-app-checkmark">✓</span>`;
             btn.addEventListener('click', () => {
                 openApp(app);
@@ -328,61 +317,42 @@ const ATB = (() => {
         document.getElementById('atb-apps-btn')?.classList.remove('open');
     }
     function _toggleMenu() {
-        const open = document.getElementById('atb-apps-menu')?.classList.contains('open');
-        open ? _closeMenu() : _openMenu();
+        const isOpen = document.getElementById('atb-apps-menu')?.classList.contains('open');
+        isOpen ? _closeMenu() : _openMenu();
     }
 
     // ── Suite page status dots ────────────────────────────────────────────────
-    // Polls /api/system/ports every 5 s and updates the coloured dots on the
-    // Suite Home app cards as well as the running-count label.
     async function _updateSuiteStatus() {
         try {
-            const res = await fetch('/api/system/ports');
-            if (!res.ok) return;
-            const raw = await res.json();  // { "8083": "Aethvion Code IDE", ... }
-
-            const portByName = {};
-            Object.entries(raw).forEach(([port, name]) => { portByName[name] = port; });
-
+            const nameToPort = await refreshPorts();
             let runCount = 0;
 
             APPS.forEach(app => {
-                const running    = app.portKey in portByName;
-                const actualPort = portByName[app.portKey];
-                if (running) {
-                    runCount++;
-                    app.port = parseInt(actualPort, 10);   // keep ATB in sync
-                }
+                const running = app.portKey in nameToPort;
+                if (running) runCount++;
 
-                // Card status dot
                 const dot = document.getElementById(`sac-status-${app.id}`);
                 if (dot) {
                     dot.className = `sac-status sac-status--${running ? 'running' : 'offline'}`;
                     dot.title     = running
-                        ? `Running on :${actualPort}`
+                        ? `Running on :${nameToPort[app.portKey]}`
                         : 'Not running';
                 }
-
-                // ATB menu port labels
-                const menuPort = document.querySelector(
-                    `[data-app-id="${app.id}"] .atb-app-port`
-                );
-                if (menuPort) menuPort.textContent = `:${app.port}`;
             });
 
-            // Running-count label in suite section header
+            // Section header count
             const countEl = document.getElementById('suite-running-count');
             if (countEl) {
                 countEl.textContent = runCount > 0
                     ? `${runCount} / ${APPS.length} servers running`
-                    : 'no servers running — click a card to queue';
-                countEl.className   = `suite-port-note${runCount > 0 ? ' suite-port-note--live' : ''}`;
+                    : 'no servers running';
+                countEl.className = `suite-port-note${runCount > 0 ? ' suite-port-note--live' : ''}`;
             }
 
-            // Hero server pill
-            const heroEl = document.getElementById('hub-servers-label');
-            if (heroEl) {
-                heroEl.textContent = runCount > 0
+            // Hero pill
+            const heroLabel = document.getElementById('hub-servers-label');
+            if (heroLabel) {
+                heroLabel.textContent = runCount > 0
                     ? `${runCount} / ${APPS.length} apps online`
                     : 'no apps running';
             }
@@ -390,40 +360,28 @@ const ATB = (() => {
             if (heroDot) {
                 heroDot.className = `hub-status-dot${runCount > 0 ? ' hub-status-dot--live' : ''}`;
             }
-        } catch (_) { /* ignore network errors */ }
+        } catch (_) { /* ignore */ }
     }
 
     // ── Init ──────────────────────────────────────────────────────────────────
     function init() {
-        // Nexus tab click
         document.querySelector('[data-panel="panel-nexus"]')
             ?.addEventListener('click', () => switchTo(NEXUS_PANEL));
 
-        // Apps button
         document.getElementById('atb-apps-btn')
             ?.addEventListener('click', e => { e.stopPropagation(); _toggleMenu(); });
 
-        // Prevent click-inside from closing the menu
         document.getElementById('atb-apps-menu')
             ?.addEventListener('click', e => e.stopPropagation());
 
-        // Click outside closes the menu
         document.addEventListener('click', _closeMenu);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') _closeMenu(); });
 
-        // Escape closes the menu
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') _closeMenu();
-        });
-
-        // Initial port refresh
-        refreshPorts();
-
-        // Suite status dots — initial + polling
+        // Suite status — initial + every 5 s
         _updateSuiteStatus();
         setInterval(_updateSuiteStatus, 5_000);
     }
 
-    // ── Public surface ────────────────────────────────────────────────────────
     return { init, openApp, switchTo, retryApp, refreshPorts };
 
 })();
