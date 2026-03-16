@@ -428,6 +428,14 @@ def launch():
     base_port = int(os.getenv("HWINFO_PORT", "8084"))
     port = PortManager.bind_port("Aethvion Hardware Info", base_port)
     print(f"[Hardware Info] Aethvion Hardware Info v1.0.0 -> http://localhost:{port}")
+
+    # Open in browser app-mode unless the master launcher already handles it
+    try:
+        from core.utils.browser import open_app_window
+        open_app_window(f"http://localhost:{port}", delay=1.5)
+    except Exception:
+        pass
+
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 
 if __name__ == "__main__":

@@ -10,7 +10,6 @@ import os
 import sys
 from pathlib import Path
 import time
-import webbrowser
 import threading
 import subprocess
 from dotenv import load_dotenv
@@ -32,33 +31,22 @@ def run_cli():
     cli.main()
 
 
-def is_dashboard_open():
-    """Check if the dashboard is already open in a browser window using PowerShell."""
-    try:
-        # Search for windows with the specific dashboard title
-        # We use -match to handle browser suffixes (e.g., " - Google Chrome")
-        # but the string "Aethvion Suite - Nexus Portal" is specific enough to avoid CMD/Terminals
-        ps_cmd = 'Get-Process | Where-Object { $_.MainWindowTitle -match "Aethvion Suite - Nexus Portal" }'
-        result = subprocess.run(['powershell', '-Command', ps_cmd], capture_output=True, text=True)
-        return len(result.stdout.strip()) > 0
-    except Exception:
-        return False
+def open_browser(port: int = 8080) -> None:
+    """Wait for server to start then open the dashboard in browser app-mode."""
+    time.sleep(1.5)
 
-def open_browser(port=8080):
-    """Wait for server to start and then open browser if not already open."""
-    time.sleep(1.5) # Wait for server to be fully ready
-    
-    # Always display the info to ensure visibility in the console
     print("\n" + "-" * 70)
     print(f"WEB DASHBOARD READY: http://localhost:{port}")
     print("-" * 70 + "\n")
 
-    if is_dashboard_open():
-        logger.info("Dashboard window detected. Skipping browser auto-launch.")
-        return
-        
-    logger.info(f"Automatically opening dashboard at http://localhost:{port}")
-    webbrowser.open(f"http://localhost:{port}")
+    logger.info(f"Opening dashboard at http://localhost:{port}")
+    try:
+        from core.utils.browser import open_app_window
+        open_app_window(f"http://localhost:{port}", delay=0, background=False)
+    except Exception as exc:
+        logger.warning(f"browser.open_app_window failed ({exc}), falling back to webbrowser")
+        import webbrowser
+        webbrowser.open(f"http://localhost:{port}")
 
 
 def run_web_server():

@@ -55,6 +55,7 @@
     <link rel="stylesheet" href="/static/games/sudoku/sudoku.css">
     <link rel="stylesheet" href="/static/games/word_search/word_search.css">
     <link rel="stylesheet" href="/static/games/checkers/checkers.css">
+    <link rel="stylesheet" href="/static/css/app-tabs.css">
     <style>
         /* Audio Studio Specific Feedback */
         #audio-panel .radio-toggle input:checked+span {
@@ -139,6 +140,39 @@
 </head>
 
 <body>
+
+<!-- ── App Tab Bar ─────────────────────────────────────────────────────────── -->
+<div id="app-tab-bar">
+    <div class="atb-brand" onclick="ATB.switchTo('panel-nexus')" title="Go to Nexus">
+        <span class="atb-brand-logo">✦</span>
+        <span class="atb-brand-name">Aethvion</span>
+    </div>
+    <div class="atb-tabs" id="atb-tabs">
+        <button class="atb-tab atb-tab--active" data-panel="panel-nexus" title="Nexus Dashboard">
+            <span class="atb-tab-emoji">🏠</span>
+            <span class="atb-tab-label">Nexus</span>
+        </button>
+        <!-- App tabs are added here dynamically by app-tabs.js -->
+    </div>
+    <div class="atb-controls">
+        <div class="atb-apps-wrapper">
+            <button class="atb-apps-btn" id="atb-apps-btn" title="Open an Aethvion app">
+                <i class="fas fa-th-large"></i>
+                <span>Apps</span>
+                <i class="fas fa-chevron-down atb-chevron"></i>
+            </button>
+            <div class="atb-apps-menu" id="atb-apps-menu">
+                <!-- Populated by app-tabs.js -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Nexus Panel ─────────────────────────────────────────────────────────── -->
+<!-- Wraps the existing dashboard (header + content-wrapper). The app-panel CSS
+     makes it position:fixed below the tab bar, matching the old body layout. -->
+<div id="panel-nexus" class="app-panel app-panel--nexus">
+
     <!-- Startup Splash Screen -->
     <div id="startup-splash" class="startup-splash">
         <div class="splash-content">
@@ -3314,6 +3348,13 @@
             <script src="/static/games/sudoku/sudoku.js?v=5"></script>
             <script src="/static/games/checkers/checkers.js?v=5"></script>
 
+</div><!-- /panel-nexus -->
+
+<!-- ── App Iframe Panels ─────────────────────────────────────────────────── -->
+<!-- Iframe panels for each opened app are injected here by app-tabs.js.
+     Each panel is position:fixed with display:none until its tab is active. -->
+<div id="app-panels"></div>
+
 <!-- ── Toast Container ───────────────────────────────────────────── -->
 <div id="toast-container"></div>
 
@@ -3363,6 +3404,10 @@
         </div>
     </div>
 </div>
+
+<!-- ── App Tab System ────────────────────────────────────────────────────── -->
+<script src="/static/js/app-tabs.js"></script>
+
 </body>
 
 </html>
