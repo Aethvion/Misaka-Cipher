@@ -82,7 +82,7 @@ if not exist ".env" (
 :: --- 5. Launch -------------------------------------------------
 echo.
 echo [START] Launching Aethvion Code IDE...
-echo         IDE     -> http://localhost:8083
+echo         IDE     -^> http://localhost:8083
 echo         Press CTRL+C to stop.
 echo.
 

@@ -63,7 +63,7 @@ class LocalProvider(BaseProvider):
             # Load new model
             self.llm = Llama(
                 model_path=str(model_path),
-                n_ctx=kwargs.get('n_ctx', 2048),
+                n_ctx=kwargs.get('n_ctx', 4096),
                 n_threads=kwargs.get('n_threads', os.cpu_count()),
                 verbose=False
             )

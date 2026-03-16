@@ -630,6 +630,52 @@ function renderMarkdown(text) {
     .replace(/\n/g, '<br>');
 }
 
+// ── Auto file writer ──────────────────────────────────────────────────────────
+/**
+ * Scan AI response text for ### FILE: markers and write those files.
+ * Format expected:
+ *   ### FILE: /path/to/file.ext
+ *   ```lang
+ *   ...contents...
+ *   ```
+ */
+async function autoWriteFiles(text) {
+  const filePattern = /###\s*FILE:\s*([^\n`]+)\n```[^\n]*\n([\s\S]*?)```/g;
+  const files = [];
+  let match;
+  while ((match = filePattern.exec(text)) !== null) {
+    let filePath = match[1].trim();
+    const content = match[2];
+    // Resolve path relative to workspace
+    if (filePath.startsWith('/')) {
+      filePath = state.workspace + filePath;
+    } else if (!filePath.includes(':') && !filePath.startsWith(state.workspace)) {
+      filePath = state.workspace + '/' + filePath;
+    }
+    filePath = filePath.replace(/\\/g, '/');
+    files.push({ path: filePath, content });
+  }
+  if (files.length === 0) return;
+
+  let written = 0;
+  for (const { path, content } of files) {
+    try {
+      await api('/api/fs/write', { method: 'POST', body: JSON.stringify({ path, content }) });
+      written++;
+    } catch (e) {
+      toast(`Failed to write ${path.split('/').pop()}: ${e.message}`, 'error');
+    }
+  }
+
+  if (written > 0) {
+    await refreshTree();
+    const names = files.slice(0, 3).map(f => f.path.split('/').pop()).join(', ');
+    const extra = files.length > 3 ? ` +${files.length - 3} more` : '';
+    toast(`Created ${written} file${written !== 1 ? 's' : ''}: ${names}${extra}`, 'success', 5000);
+    if (files[0]) openFile(files[0].path);
+  }
+}
+
 async function sendChat(text) {
   if (!text.trim()) return;
   dom.chatInput.value = '';
@@ -650,6 +696,8 @@ async function sendChat(text) {
     bubble.classList.remove('streaming-cursor');
     bubble.innerHTML = renderMarkdown(full);
     state.chatHistory.push({ role: 'assistant', content: full });
+    // Auto-write any files the AI included in its response
+    await autoWriteFiles(full);
   } catch (e) {
     bubble.classList.remove('streaming-cursor');
     bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;

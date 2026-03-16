@@ -182,7 +182,8 @@ def _messages_to_prompt(messages: list, system: str = "") -> str:
     return "\n\n".join(parts)
 
 
-async def _sse(provider, messages: list, model_id: str, system: str) -> AsyncGenerator[str, None]:
+async def _sse(provider, messages: list, model_id: str, system: str,
+               max_tokens: int = 2048) -> AsyncGenerator[str, None]:
     """
     Run provider.stream() in a background thread and yield SSE chunks.
     Needed because provider.stream() is a synchronous generator.
@@ -193,7 +194,8 @@ async def _sse(provider, messages: list, model_id: str, system: str) -> AsyncGen
 
     def _worker():
         try:
-            for chunk in provider.stream(prompt, "ide", model=model_id):
+            for chunk in provider.stream(prompt, "ide", model=model_id,
+                                         max_tokens=max_tokens):
                 loop.call_soon_threadsafe(q.put_nowait, {"text": chunk})
         except Exception as exc:
             loop.call_soon_threadsafe(q.put_nowait, {"error": str(exc)})
@@ -454,7 +456,18 @@ async def ai_chat(req: ChatReq):
     msgs   = [{"role": m.role, "content": m.content} for m in req.messages]
     system = req.system or (
         "You are an expert programming assistant embedded in the Aethvion IDE. "
-        "Be concise, accurate, and practical. Use markdown for code blocks."
+        "Be concise, accurate, and practical. Use markdown for code blocks.\n\n"
+        "IMPORTANT — When asked to create files, output EVERY file using this EXACT format "
+        "(no exceptions, no skipping files):\n\n"
+        "### FILE: path/to/file.ext\n"
+        "```language\n"
+        "complete file contents here\n"
+        "```\n\n"
+        "Rules for file creation:\n"
+        "- Use the path the user specifies (e.g. /test/index.html).\n"
+        "- Always output COMPLETE file contents — never truncate or use placeholders.\n"
+        "- Create ALL requested files in one response.\n"
+        "- After the files, you may add a brief explanation."
     )
     return StreamingResponse(_sse(prov, msgs, mid, system),
                              media_type="text/event-stream", headers=SSE_HEADERS)
