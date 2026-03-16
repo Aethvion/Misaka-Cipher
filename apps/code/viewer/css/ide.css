@@ -649,6 +649,7 @@ input:focus, textarea:focus { border-color: var(--accent); }
   box-shadow: 0 20px 40px rgba(0,0,0,0.5);
   overflow: hidden;
 }
+.modal-wide { width: 560px; }
 .modal-header {
   display: flex;
   align-items: center;
@@ -670,12 +671,20 @@ input:focus, textarea:focus { border-color: var(--accent); }
 .modal-label { font-size: 11px; font-weight: 500; color: var(--text-secondary); }
 .modal-input { width: 100%; }
 
-.ws-roots { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.ws-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.ws-roots { display: flex; flex-direction: column; gap: 5px; margin-bottom: 4px; }
 .ws-root-btn {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   text-align: left;
@@ -683,9 +692,39 @@ input:focus, textarea:focus { border-color: var(--accent); }
   transition: background 0.15s, border-color 0.15s;
 }
 .ws-root-btn:hover { background: var(--accent-dim); border-color: var(--accent); }
-.ws-root-btn .ws-root-icon { color: var(--warning); font-size: 14px; }
+.ws-root-btn .ws-root-icon { color: var(--warning); font-size: 14px; flex-shrink: 0; }
 .ws-root-btn .ws-root-label { font-weight: 500; font-size: 13px; }
 .ws-root-btn .ws-root-path  { font-size: 11px; color: var(--text-secondary); font-family: var(--font-code); }
+
+/* Recent workspaces list */
+.ws-recent-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px; max-height: 200px; overflow-y: auto; }
+.ws-recent-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.ws-recent-item:hover { background: var(--bg-hover); border-color: var(--border); }
+.ws-recent-item i { color: var(--text-dim); font-size: 12px; flex-shrink: 0; }
+.ws-recent-name { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ws-recent-path { font-size: 10px; color: var(--text-dim); font-family: var(--font-code); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.ws-recent-remove {
+  width: 20px; height: 20px;
+  border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-dim);
+  font-size: 10px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s;
+}
+.ws-recent-item:hover .ws-recent-remove { opacity: 1; }
+.ws-recent-remove:hover { background: var(--bg-hover); color: var(--error); }
+
 .ws-custom { display: flex; gap: 8px; }
 
 .btn-primary {

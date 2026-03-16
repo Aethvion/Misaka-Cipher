@@ -175,17 +175,31 @@
 
 <!-- ── Workspace root picker ────────────────────────────────────── -->
 <div id="wsModal" class="modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="wsModalTitle">
-  <div class="modal">
+  <div class="modal modal-wide">
     <div class="modal-header">
-      <span id="wsModalTitle" class="modal-title">Open Folder</span>
+      <span id="wsModalTitle" class="modal-title"><i class="fa-solid fa-folder-open" style="margin-right:8px"></i>Open Workspace</span>
       <button class="modal-close" id="wsModalClose" aria-label="Close"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
     </div>
     <div class="modal-body">
+
+      <!-- Quick roots -->
+      <div class="ws-section-label">Quick open</div>
       <div class="ws-roots" id="wsRoots"></div>
+
+      <!-- Recent workspaces -->
+      <div class="ws-section-label" id="wsRecentLabel" style="display:none">Recent</div>
+      <div id="wsRecent" class="ws-recent-list"></div>
+
+      <!-- Custom path + browse -->
+      <div class="ws-section-label">Enter path</div>
       <div class="ws-custom">
-        <input id="wsCustomPath" class="modal-input" placeholder="Or type a custom path…" aria-label="Custom path" />
+        <input id="wsCustomPath" class="modal-input" placeholder="e.g. C:/Projects/my-app" aria-label="Custom workspace path" />
+        <button id="wsBrowse" class="btn-secondary" title="Browse for folder">
+          <i class="fa-solid fa-folder-tree" aria-hidden="true"></i> Browse
+        </button>
         <button id="wsCustomOpen" class="btn-primary">Open</button>
       </div>
+
     </div>
   </div>
 </div>

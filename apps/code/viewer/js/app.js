@@ -146,18 +146,68 @@ async function loadProviders() {
   } catch { dom.modelSel.innerHTML = '<option value="">No providers</option>'; }
 }
 
+// ── Project persistence ───────────────────────────────────────────────────────
+async function saveProjectState() {
+  if (!state.workspace) return;
+  try {
+    await api('/api/project', {
+      method: 'POST',
+      body: JSON.stringify({
+        workspace:  state.workspace,
+        open_tabs:  state.tabs.map(t => t.path),
+        active_tab: state.activeTab || null,
+      }),
+    });
+  } catch { /* silent — persistence is best-effort */ }
+}
+
+async function restoreProjectState(workspace) {
+  try {
+    const proj = await api(`/api/project?workspace=${encodeURIComponent(workspace)}`);
+    // Restore open tabs (skip any that fail to load)
+    if (proj.open_tabs?.length) {
+      for (const path of proj.open_tabs) {
+        try { await openFile(path, true); } catch { /* file may have moved */ }
+      }
+      if (proj.active_tab) {
+        const exists = state.tabs.find(t => t.path === proj.active_tab);
+        if (exists) activateTab(proj.active_tab);
+      }
+    }
+  } catch { /* no saved state yet */ }
+}
+
 // ── Workspace ─────────────────────────────────────────────────────────────────
 async function loadWorkspace(path = '') {
   try {
+    // Save state of the previous workspace first
+    if (state.workspace) await saveProjectState();
+
     if (!path) {
       const roots = await api('/api/fs/roots');
-      path = roots.workspace;
+      path = roots.last_workspace || roots.workspace;
     }
+    // Close all current tabs silently
+    for (const tab of [...state.tabs]) {
+      state.monacoModels.get(tab.path)?.dispose();
+      state.monacoModels.delete(tab.path);
+      state.viewStates.delete(tab.path);
+    }
+    state.tabs = [];
+    state.activeTab = null;
+    state.chatHistory = [];
+    if (state.editor) state.editor.setModel(null);
+    dom.welcomeScreen.style.display   = '';
+    dom.monacoContainer.style.display = 'none';
+    renderTabs();
+
     state.workspace = path;
     const short = path.split(/[\\/]/).slice(-2).join('/');
     dom.workspaceLabel.textContent = short;
     dom.workspaceLabel.title = path;
     await refreshTree(path);
+    // Restore previously open files for this workspace
+    await restoreProjectState(path);
   } catch (e) { toast(`Workspace error: ${e.message}`, 'error'); }
 }
 
@@ -247,13 +297,18 @@ function toggleDir(node, row) {
 }
 
 // ── Tab management ────────────────────────────────────────────────────────────
-function openFile(path) {
+/**
+ * Open a file.
+ * @param {string} path - File path
+ * @param {boolean} silent - If true, open without activating (used during restore)
+ */
+function openFile(path, silent = false) {
   const existing = state.tabs.find(t => t.path === path);
   if (existing) {
-    activateTab(path);
-    return;
+    if (!silent) activateTab(path);
+    return Promise.resolve();
   }
-  fetch(`/api/fs/read?path=${encodeURIComponent(path)}`)
+  return fetch(`/api/fs/read?path=${encodeURIComponent(path)}`)
     .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
     .then(data => {
       const tab = { path: data.path, name: data.name, language: data.language, dirty: false };
@@ -269,10 +324,9 @@ function openFile(path) {
         }
       }
       renderTabs();
-      activateTab(data.path);
-      highlightTreeItem(data.path);
+      if (!silent) { activateTab(data.path); highlightTreeItem(data.path); }
     })
-    .catch(e => toast(`Cannot open file: ${e.message}`, 'error'));
+    .catch(e => { if (!silent) toast(`Cannot open file: ${e.message}`, 'error'); });
 }
 
 function activateTab(path) {
@@ -326,6 +380,7 @@ function closeTab(path) {
     }
   }
   renderTabs();
+  saveProjectState();   // persist updated tab list
 }
 
 function markDirty(path) {
@@ -568,10 +623,16 @@ function startInlineRename(row, path, isDir) {
 async function openWorkspaceModal() {
   const modal = $('wsModal');
   modal.style.display = 'flex';
-  const rootsEl = $('wsRoots');
-  rootsEl.innerHTML = '';
+  const rootsEl   = $('wsRoots');
+  const recentEl  = $('wsRecent');
+  const recentLbl = $('wsRecentLabel');
+  rootsEl.innerHTML  = '';
+  recentEl.innerHTML = '';
+
   try {
     const data = await api('/api/fs/roots');
+
+    // Quick-open roots (Project Root + Home)
     for (const r of data.roots) {
       const btn = document.createElement('button');
       btn.className = 'ws-root-btn';
@@ -587,8 +648,59 @@ async function openWorkspaceModal() {
       });
       rootsEl.appendChild(btn);
     }
-    $('wsCustomPath').value = data.workspace;
-  } catch {}
+
+    // Recent workspaces
+    const recent = data.recent_workspaces || [];
+    if (recent.length) {
+      recentLbl.style.display = '';
+      for (const r of recent) {
+        const item = document.createElement('div');
+        item.className = 'ws-recent-item';
+        const ago = r.last_opened
+          ? _timeAgo(r.last_opened)
+          : '';
+        item.innerHTML = `
+          <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+          <div style="flex:1;min-width:0">
+            <div class="ws-recent-name">${escHtml(r.name || r.path.split('/').pop())}</div>
+            <div class="ws-recent-path" title="${escHtml(r.path)}">${escHtml(r.path)}${ago ? ` · ${ago}` : ''}</div>
+          </div>
+          <button class="ws-recent-remove" title="Remove from recents" aria-label="Remove">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>`;
+        item.addEventListener('click', e => {
+          if (e.target.closest('.ws-recent-remove')) return;
+          modal.style.display = 'none';
+          loadWorkspace(r.path);
+        });
+        item.querySelector('.ws-recent-remove').addEventListener('click', async e => {
+          e.stopPropagation();
+          const s = await api('/api/settings');
+          s.recent_workspaces = (s.recent_workspaces || []).filter(w => w.path !== r.path);
+          await api('/api/settings', { method: 'POST', body: JSON.stringify(s) });
+          item.remove();
+          if (!recentEl.children.length) recentLbl.style.display = 'none';
+        });
+        recentEl.appendChild(item);
+      }
+    } else {
+      recentLbl.style.display = 'none';
+    }
+
+    $('wsCustomPath').value = '';
+  } catch (e) { toast(`Modal error: ${e.message}`, 'error'); }
+}
+
+function _timeAgo(isoString) {
+  try {
+    const diff = Date.now() - new Date(isoString).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 1)  return 'just now';
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  } catch { return ''; }
 }
 
 $('wsModalClose').addEventListener('click',   () => { $('wsModal').style.display = 'none'; });
@@ -597,6 +709,20 @@ $('btnOpenFolder').addEventListener('click',  openWorkspaceModal);
 $('wsCustomOpen').addEventListener('click',   () => {
   const p = $('wsCustomPath').value.trim();
   if (p) { $('wsModal').style.display = 'none'; loadWorkspace(p); }
+});
+$('wsCustomPath').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const p = $('wsCustomPath').value.trim();
+    if (p) { $('wsModal').style.display = 'none'; loadWorkspace(p); }
+  }
+});
+$('wsBrowse').addEventListener('click', async () => {
+  try {
+    const res = await api('/api/fs/browse', { method: 'POST' });
+    if (res.path) {
+      $('wsCustomPath').value = res.path;
+    }
+  } catch (e) { toast(`Browse failed: ${e.message}`, 'warn'); }
 });
 $('wsModal').addEventListener('click', e => { if (e.target === $('wsModal')) $('wsModal').style.display = 'none'; });
 
@@ -685,8 +811,9 @@ async function sendChat(text) {
   let full = '';
   try {
     full = await streamSSE('/api/ai/chat', {
-      messages: state.chatHistory.map(m => ({ role: m.role, content: m.content })),
-      model: state.selectedModel || undefined,
+      messages:  state.chatHistory.map(m => ({ role: m.role, content: m.content })),
+      model:     state.selectedModel || undefined,
+      workspace: state.workspace || undefined,
     }, chunk => {
       full += chunk;
       bubble.innerHTML = renderMarkdown(full);
@@ -1071,6 +1198,11 @@ function initMonaco() {
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async () => {
   await initMonaco();
+  // Load providers and last workspace in parallel; loadWorkspace() reads /api/fs/roots
+  // which now returns the persisted last_workspace
   await Promise.all([loadProviders(), loadWorkspace()]);
   toast('Aethvion Code ready', 'success', 2000);
 })();
+
+// Save on page unload (tab close / navigation)
+window.addEventListener('beforeunload', () => { saveProjectState(); });

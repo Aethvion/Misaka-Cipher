@@ -10,12 +10,14 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import AsyncGenerator, List, Optional
 
@@ -55,9 +57,110 @@ app.add_middleware(
 
 BASE_DIR   = Path(__file__).parent
 VIEWER_DIR = BASE_DIR / "viewer"
+ROOT       = Path(PROJECT_ROOT)
 
 # Workspace exposed in the file tree
-WORKSPACE = Path(PROJECT_ROOT)
+WORKSPACE = ROOT
+
+# ── Persistence helpers ────────────────────────────────────────────────────────
+DATA_DIR      = ROOT / "data" / "code"
+PROJECTS_DIR  = DATA_DIR / "projects"
+SETTINGS_FILE = DATA_DIR / "settings.json"
+
+def _ensure_data_dirs():
+    PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
+    if not SETTINGS_FILE.exists():
+        SETTINGS_FILE.write_text(json.dumps(
+            {"last_workspace": str(ROOT).replace("\\", "/"),
+             "recent_workspaces": []}, indent=2))
+
+_ensure_data_dirs()
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+def _project_key(path: str) -> str:
+    """Derive a safe filesystem name from a workspace path."""
+    clean = re.sub(r'[^a-zA-Z0-9]', '_', path)
+    return clean[:80]
+
+def _project_file(workspace: str) -> Path:
+    return PROJECTS_DIR / (_project_key(workspace) + ".json")
+
+def _read_settings() -> dict:
+    try:
+        return json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {"last_workspace": str(ROOT).replace("\\", "/"),
+                "recent_workspaces": []}
+
+def _write_settings(data: dict):
+    SETTINGS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+def _read_project(workspace: str) -> dict:
+    f = _project_file(workspace)
+    if f.exists():
+        try:
+            return json.loads(f.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {
+        "workspace":   workspace,
+        "name":        Path(workspace).name,
+        "last_opened": _now_iso(),
+        "open_tabs":   [],
+        "active_tab":  None,
+        "structure":   [],
+        "ai_context":  "",
+    }
+
+def _write_project(data: dict):
+    workspace = data.get("workspace", "")
+    if not workspace:
+        return
+    data.setdefault("name", Path(workspace).name)
+    data["last_opened"] = _now_iso()
+    _project_file(workspace).write_text(json.dumps(data, indent=2), encoding="utf-8")
+    # Keep recent_workspaces in settings up to date
+    settings = _read_settings()
+    settings["last_workspace"] = workspace
+    recent = [r for r in settings.get("recent_workspaces", [])
+              if r["path"] != workspace]
+    recent.insert(0, {
+        "path":        workspace,
+        "name":        data.get("name", Path(workspace).name),
+        "last_opened": data["last_opened"],
+    })
+    settings["recent_workspaces"] = recent[:12]
+    _write_settings(settings)
+
+def _scan_structure(workspace: str, max_files: int = 300) -> list[str]:
+    """Return a flat list of relative paths for AI context (dirs end with /)."""
+    SKIP = {".git", "__pycache__", "node_modules", ".venv", "venv",
+            "dist", "build", ".tox", ".mypy_cache", ".pytest_cache",
+            "LocalModels", ".claude"}
+    root = Path(workspace)
+    result: list[str] = []
+
+    def _walk(p: Path, prefix: str = ""):
+        if len(result) >= max_files:
+            return
+        try:
+            entries = sorted(p.iterdir(), key=lambda e: (_safe_is_file(e), e.name.lower()))
+        except (PermissionError, OSError):
+            return
+        for entry in entries:
+            if entry.name.startswith(".") or entry.name in SKIP:
+                continue
+            rel = prefix + entry.name
+            if _safe_is_dir(entry):
+                result.append(rel + "/")
+                _walk(entry, rel + "/")
+            elif _safe_is_file(entry):
+                result.append(rel)
+
+    _walk(root)
+    return result
 
 # ── Language detection ────────────────────────────────────────────────────────
 LANG_MAP: dict[str, str] = {
@@ -240,16 +343,93 @@ async def get_providers():
             })
     return JSONResponse({"models": models, "available": bool(models)})
 
+# ── /api/settings ─────────────────────────────────────────────────────────────
+@app.get("/api/settings")
+async def get_settings():
+    return JSONResponse(_read_settings())
+
+class SettingsSaveReq(BaseModel):
+    last_workspace:    Optional[str]  = None
+    recent_workspaces: Optional[list] = None
+
+@app.post("/api/settings")
+async def save_settings(req: SettingsSaveReq):
+    s = _read_settings()
+    if req.last_workspace is not None:
+        s["last_workspace"] = req.last_workspace
+    if req.recent_workspaces is not None:
+        s["recent_workspaces"] = req.recent_workspaces
+    _write_settings(s)
+    return JSONResponse({"status": "ok"})
+
+# ── /api/project ───────────────────────────────────────────────────────────────
+@app.get("/api/project")
+async def get_project(workspace: str = ""):
+    if not workspace:
+        workspace = _read_settings().get("last_workspace", str(ROOT).replace("\\", "/"))
+    data = _read_project(workspace)
+    # Lazily populate structure if missing
+    if not data.get("structure"):
+        data["structure"] = _scan_structure(workspace)
+    return JSONResponse(data)
+
+class ProjectSaveReq(BaseModel):
+    workspace:  str
+    open_tabs:  Optional[List[str]] = None
+    active_tab: Optional[str]       = None
+    ai_context: Optional[str]       = None
+    name:       Optional[str]       = None
+
+@app.post("/api/project")
+async def save_project(req: ProjectSaveReq):
+    data = _read_project(req.workspace)
+    if req.open_tabs  is not None: data["open_tabs"]  = req.open_tabs
+    if req.active_tab is not None: data["active_tab"] = req.active_tab
+    if req.ai_context is not None: data["ai_context"] = req.ai_context
+    if req.name       is not None: data["name"]        = req.name
+    # Always refresh structure on save
+    data["structure"] = _scan_structure(req.workspace)
+    _write_project(data)
+    return JSONResponse({"status": "ok"})
+
+@app.post("/api/project/scan")
+async def scan_project(req: ProjectSaveReq):
+    """Re-scan workspace structure and persist."""
+    data = _read_project(req.workspace)
+    data["structure"] = _scan_structure(req.workspace)
+    _write_project(data)
+    return JSONResponse({"status": "ok", "files": len(data["structure"])})
+
 # ── /api/fs/* ─────────────────────────────────────────────────────────────────
 @app.get("/api/fs/roots")
 async def fs_roots():
+    settings = _read_settings()
+    last     = settings.get("last_workspace", str(ROOT).replace("\\", "/"))
+    recent   = settings.get("recent_workspaces", [])
     return JSONResponse({
-        "workspace": str(WORKSPACE).replace("\\", "/"),
+        "workspace": last,
+        "last_workspace": last,
+        "recent_workspaces": recent,
         "roots": [
-            {"label": "Project Root", "path": str(WORKSPACE).replace("\\", "/")},
+            {"label": "Project Root", "path": str(ROOT).replace("\\", "/")},
             {"label": "Home",         "path": str(Path.home()).replace("\\", "/")},
         ],
     })
+
+@app.post("/api/fs/browse")
+async def fs_browse():
+    """Open a native OS folder-picker dialog (requires tkinter on the server)."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        _root = tk.Tk()
+        _root.withdraw()
+        _root.attributes("-topmost", True)
+        folder = filedialog.askdirectory(parent=_root, title="Select Workspace Folder")
+        _root.destroy()
+        return JSONResponse({"path": folder.replace("\\", "/") if folder else ""})
+    except Exception as exc:
+        raise HTTPException(500, f"Folder picker unavailable: {exc}")
 
 
 @app.get("/api/fs/tree")
@@ -446,15 +626,14 @@ class ChatMsg(BaseModel):
     content: str
 
 class ChatReq(BaseModel):
-    messages: List[ChatMsg]
-    model:    Optional[str] = None
-    system:   Optional[str] = None
+    messages:  List[ChatMsg]
+    model:     Optional[str] = None
+    system:    Optional[str] = None
+    workspace: Optional[str] = None   # current IDE workspace for context
 
-@app.post("/api/ai/chat")
-async def ai_chat(req: ChatReq):
-    prov, mid = _get_provider(req.model)
-    msgs   = [{"role": m.role, "content": m.content} for m in req.messages]
-    system = req.system or (
+def _build_chat_system(workspace: Optional[str] = None) -> str:
+    """Build a rich system prompt, optionally injecting project context."""
+    base = (
         "You are an expert programming assistant embedded in the Aethvion IDE. "
         "Be concise, accurate, and practical. Use markdown for code blocks.\n\n"
         "IMPORTANT — When asked to create files, output EVERY file using this EXACT format "
@@ -469,6 +648,28 @@ async def ai_chat(req: ChatReq):
         "- Create ALL requested files in one response.\n"
         "- After the files, you may add a brief explanation."
     )
+    if not workspace:
+        return base
+
+    proj = _read_project(workspace)
+    # Use cached structure, or scan now
+    structure = proj.get("structure") or _scan_structure(workspace)
+    parts = [base, f"\n\nCurrent workspace: {workspace}"]
+    if structure:
+        # Limit to 150 lines to keep prompt manageable
+        shown   = structure[:150]
+        skipped = len(structure) - len(shown)
+        parts.append("Project file structure:\n" + "\n".join(shown) +
+                     (f"\n… and {skipped} more files" if skipped else ""))
+    if proj.get("ai_context"):
+        parts.append(f"Project notes:\n{proj['ai_context']}")
+    return "\n".join(parts)
+
+@app.post("/api/ai/chat")
+async def ai_chat(req: ChatReq):
+    prov, mid = _get_provider(req.model)
+    msgs   = [{"role": m.role, "content": m.content} for m in req.messages]
+    system = req.system or _build_chat_system(req.workspace)
     return StreamingResponse(_sse(prov, msgs, mid, system),
                              media_type="text/event-stream", headers=SSE_HEADERS)
 
