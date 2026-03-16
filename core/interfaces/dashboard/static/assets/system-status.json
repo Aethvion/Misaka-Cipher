@@ -2,10 +2,58 @@
     "system": {
         "name": "Aethvion Suite",
         "company": "Aethvion",
-        "version": "6",
-        "last_sync": "2026-03-15",
+        "version": "7",
+        "last_sync": "2026-03-16",
         "contact": "contact@aethvion.com",
         "changelog": [
+            {
+                "version": "7",
+                "date": "2026-03-16",
+                "added": [
+                    "Aethvion Code IDE: Full standalone IDE built on the Monaco editor engine (VS Code), running on port 8083",
+                    "Aethvion Code IDE: AI copilot with chat, explain, fix, complete, and refactor — all streamed via SSE",
+                    "Aethvion Code IDE: File creation from chat — AI uses ### FILE: markers and files are written to disk and opened automatically",
+                    "Aethvion Code IDE: Code execution for Python, Node.js, and Bash/Shell with live-streamed output panel",
+                    "Aethvion Code IDE: Syntax highlighting and language detection for 30+ file types via Monaco language maps",
+                    "Aethvion Code IDE: Resizable 3-panel layout — file tree sidebar, Monaco editor, AI chat panel",
+                    "Aethvion Code IDE: File tree with context menu (open, rename, delete, new file/folder, copy path) and inline rename on double-click",
+                    "Aethvion Code IDE: Tab bar with dirty state indicators (●) and per-file Monaco models with saved view states",
+                    "Aethvion Code IDE: Project persistence — open tabs and active file saved to data/code/projects/ per workspace",
+                    "Aethvion Code IDE: Workspace persistence — last opened workspace and recent workspaces list saved to data/code/settings.json",
+                    "Aethvion Code IDE: Recent workspaces modal with time-ago labels and per-entry remove buttons",
+                    "Aethvion Code IDE: Native OS folder picker (tkinter) accessible via Browse button in workspace modal",
+                    "Aethvion Code IDE: Project-aware AI — workspace file structure injected into every chat system prompt automatically",
+                    "Aethvion Code IDE: /api/settings, /api/project, /api/project/scan, and /api/fs/browse endpoints",
+                    "Aethvion Code IDE: Start_Code.bat one-click Windows launcher mirroring the suite launcher pattern",
+                    "Aethvion VTuber: Live tracking mode — VTuber viewer browser connects directly to Tracking WebSocket with auto-reconnect",
+                    "Aethvion VTuber: /api/tracking/info and /api/tracking/status discovery endpoints for browser-side connection",
+                    "Aethvion VTuber: Live inspector panel — status dot (connecting/connected/error), connect/disconnect button, live parameter readout",
+                    "Aethvion VTuber: tracking/bridge.py upgraded from stub to full async WebSocket client with exponential backoff reconnect (up to 30s)",
+                    "Core: Local model context window (n_ctx) increased from 2048 to 4096 tokens for better code generation output",
+                    "Suite Hub: Integrated Settings and Version management sections directly into the Suite dashboard",
+                    "Files: Refactored navigation into a dropdown with dedicated sub-tabs for Output, Screenshots, Camera, and Uploads",
+                    "Settings: Dual-tab configuration UI for Aethvion Suite and Assistant with hardware toggle support"
+                ],
+                "improved": [
+                    "Aethvion Code IDE: max_tokens raised to 2048 for AI streaming — prevents response truncation when generating full files",
+                    "Aethvion Code IDE: Chat system prompt instructs the AI to produce complete files using markers, never truncate, and create all files in one response",
+                    "Aethvion Code IDE: Workspace modal redesigned — quick roots section, scrollable recent list, free-form path input, and OS Browse button",
+                    "Aethvion Code IDE: openFile() accepts a silent flag used during workspace restore to avoid activating mid-load",
+                    "Aethvion VTuber: formats/__init__.py fixed — resolved ModuleNotFoundError: No module named 'formats.specter_format' startup crash",
+                    "Aethvion VTuber: VTuber and Tracking ports separated (8081 / 8082) to prevent conflict when both apps are running",
+                    "Aethvion VTuber: Start_Code.bat echo fixed — escaped > in URL echo to prevent 'filename syntax incorrect' Windows error",
+                    "README: Updated to reflect Code IDE, three interaction modes, local model support, correct directory structure, and launcher table",
+                    "Blackjack: Standardized gameplay with a hidden dealer card and aesthetic in-field result displays",
+                    "Branding: Refined version control display name and repository links to Aethvion Suite",
+                    "Infrastructure: Unified all sub-apps (VTuber, Tracking, Photo, Audio, Finance) to use port 8081 as their primary negotiate port",
+                    "Tracking: Restored MediaPipe backend support by resolving project dependency omissions",
+                    "System: Stabilized core by ensuring python-multipart and drive-info linting issues are resolved"
+                ],
+                "changed": [
+                    "Aethvion Tracking: Default port changed from 8081 to 8082 (env: SYNAPSE_PORT) to avoid conflict with VTuber",
+                    "Infrastructure: Code IDE runtime data stored under data/code/ — settings.json for global state, projects/{key}.json per workspace"
+                ]
+            },
             {
                 "version": "6",
                 "date": "2026-03-15",
@@ -208,6 +256,10 @@
                 {
                     "name": "Aethvion Audio",
                     "desc": "Standalone audio editor with waveform visualization, effects pipeline, and multi-format export."
+                },
+                {
+                    "name": "Aethvion Code IDE",
+                    "desc": "Standalone Monaco-based IDE with AI copilot, file creation, code execution, and persistent workspace state."
                 }
             ],
             "providers": [
@@ -222,6 +274,14 @@
                 {
                     "name": "xAI (Grok)",
                     "desc": "Native support for Grok models."
+                },
+                {
+                    "name": "Anthropic (Claude)",
+                    "desc": "Native support for Anthropic Claude models."
+                },
+                {
+                    "name": "Local Models (llama-cpp-python)",
+                    "desc": "Run GGUF models locally — no cloud required. Mistral, LLaMA, Phi, and more."
                 }
             ],
             "tooling": [
@@ -292,12 +352,6 @@
                     "desc": "Goal-oriented agents capable of multi-step planning and file manipulation."
                 }
             ],
-            "providers": [
-                {
-                    "name": "Anthropic",
-                    "desc": "Native support for Anthropic models."
-                }
-            ],
             "research": [
                 {
                     "name": "Advanced AI Conversations",
@@ -318,8 +372,8 @@
             ],
             "infrastructure": [
                 {
-                    "name": "Local Model Support (Ollama)",
-                    "desc": "Run uncensored, open-source models completely offline."
+                    "name": "Ollama Integration",
+                    "desc": "Managed local model downloads, switching, and lifecycle — no manual GGUF handling required."
                 },
                 {
                     "name": "vLLM Integration",
@@ -404,14 +458,18 @@
                     "desc": "Real-time physics simulation for hair and accessories."
                 },
                 {
+                    "name": "Live Tracking Mode",
+                    "desc": "Browser connects directly to the Tracking WebSocket — parameters applied in real time with auto-reconnect."
+                },
+                {
                     "name": "Technical Documentation",
                     "desc": "Built-in technical reference and beginner tutorials viewable alongside the editor."
                 }
             ],
             "wip": [
                 {
-                    "name": "Face Tracking Integration",
-                    "desc": "Live tracking via bridge interface — supports multiple tracking backends."
+                    "name": "Advanced Tracking Backends",
+                    "desc": "Expanded support for professional desktop-based tracking systems beyond MediaPipe."
                 }
             ],
             "planned": [
@@ -441,6 +499,10 @@
                 {
                     "name": "Resource Management",
                     "desc": "Centralized hardware management preventing camera and screen capture conflicts."
+                },
+                {
+                    "name": "WebSocket Parameter Stream",
+                    "desc": "Streams live tracking parameters over WebSocket (port 8082) directly to the VTuber viewer."
                 }
             ],
             "wip": [
@@ -457,6 +519,65 @@
                 {
                     "name": "Gesture Recognition",
                     "desc": "Hand gesture control for applications."
+                }
+            ]
+        },
+        {
+            "id": "code",
+            "name": "Aethvion Code IDE",
+            "desc": "A full AI-powered IDE built on the Monaco editor engine — write, run, and collaborate with AI directly in the browser.",
+            "features": [
+                {
+                    "name": "Monaco Editor",
+                    "desc": "VS Code-grade editor with syntax highlighting for 30+ languages, bracket colorization, IntelliSense suggestions, and smooth scrolling."
+                },
+                {
+                    "name": "AI Copilot",
+                    "desc": "Streaming chat, explain, fix, complete, and refactor — all powered by whichever provider or local model is configured."
+                },
+                {
+                    "name": "File Creation from Chat",
+                    "desc": "AI uses ### FILE: markers in its response — files are written to disk and opened in tabs automatically."
+                },
+                {
+                    "name": "Code Execution",
+                    "desc": "Run Python, Node.js, and Bash/Shell scripts directly from the IDE with live-streamed stdout/stderr output."
+                },
+                {
+                    "name": "Project Context Injection",
+                    "desc": "Workspace file structure is automatically included in every AI system prompt so the model always knows what's in the project."
+                },
+                {
+                    "name": "Persistent Workspace State",
+                    "desc": "Open tabs, active file, and recent workspaces are saved to data/code/ and restored on next launch."
+                },
+                {
+                    "name": "File Tree & Context Menu",
+                    "desc": "Recursive file tree with open, rename (inline), delete, new file/folder, and copy path — all from right-click."
+                },
+                {
+                    "name": "Resizable 3-Panel Layout",
+                    "desc": "File tree, Monaco editor, and AI chat panel — all independently resizable with drag handles."
+                }
+            ],
+            "wip": [
+                {
+                    "name": "Diff View",
+                    "desc": "Side-by-side diff for reviewing AI-suggested changes before applying them."
+                },
+                {
+                    "name": "Multi-File Refactor",
+                    "desc": "Coordinate AI changes across multiple open files in a single instruction."
+                }
+            ],
+            "planned": [
+                {
+                    "name": "Git Integration",
+                    "desc": "Stage, commit, and view diffs without leaving the IDE."
+                },
+                {
+                    "name": "Extension System",
+                    "desc": "Plugin architecture for adding language servers, linters, and custom tools."
                 }
             ]
         },
