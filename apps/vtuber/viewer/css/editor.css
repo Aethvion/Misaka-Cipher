@@ -539,3 +539,253 @@ body, html {
 .weight-high { color: #00e676; }
 .weight-mid  { color: #ffab40; }
 .weight-low  { color: #ff5252; }
+
+/* ── Dirty / unsaved indicator ───────────────────────────────────── */
+.dirty-dot {
+  display: none;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 0 6px rgba(255,171,64,0.7);
+  flex-shrink: 0;
+}
+.dirty-dot.visible { display: inline-block; }
+
+/* ── Cursor coordinates ─────────────────────────────────────────── */
+.cursor-coords {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 120px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Toast overhaul ─────────────────────────────────────────────── */
+#toastContainer {
+  position: fixed; bottom: 50px; right: 16px; z-index: 9999;
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 9px 14px;
+  font-size: 12px; color: var(--text);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  display: flex; align-items: center; gap: 9px;
+  min-width: 220px; max-width: 340px;
+  cursor: pointer; pointer-events: all;
+  animation: toastIn 0.22s ease;
+}
+.toast.removing { animation: toastOut 0.22s ease forwards; }
+.toast i { font-size: 13px; flex-shrink: 0; }
+.toast.success { border-left: 3px solid var(--green);  }
+.toast.success i { color: var(--green); }
+.toast.error   { border-left: 3px solid var(--red);    }
+.toast.error   i { color: var(--red); }
+.toast.warn    { border-left: 3px solid var(--orange); }
+.toast.warn    i { color: var(--orange); }
+.toast.info    { border-left: 3px solid var(--accent2); }
+.toast.info    i { color: var(--accent2); }
+@keyframes toastIn  { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes toastOut { from { opacity: 1; transform: translateX(0); }   to { opacity: 0; transform: translateX(16px); } }
+
+/* ── Panel empty states ─────────────────────────────────────────── */
+.panel-empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 6px;
+  padding: 20px 14px; flex: 1;
+  color: var(--text-muted); text-align: center;
+}
+.panel-empty-state i { font-size: 22px; opacity: 0.4; }
+.panel-empty-state p { font-size: 11px; line-height: 1.5; }
+.panel-empty-state small { font-size: 10px; color: var(--text-muted); opacity: 0.7; }
+
+/* ── Layer drag-over drop line ──────────────────────────────────── */
+.layer-item.drag-over-top    { border-top: 2px solid var(--accent) !important; }
+.layer-item.drag-over-bottom { border-bottom: 2px solid var(--accent) !important; }
+.layer-item.dragging         { opacity: 0.4; }
+
+/* ── Inline rename (contenteditable) ───────────────────────────── */
+.layer-name[contenteditable="true"] {
+  outline: none;
+  background: rgba(124,111,247,0.15);
+  border-radius: 3px; padding: 1px 4px;
+  border: 1px solid var(--accent);
+  cursor: text; min-width: 20px;
+}
+
+/* ── Empty canvas state ─────────────────────────────────────────── */
+.empty-canvas-state {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; pointer-events: none;
+  background: transparent;
+}
+.empty-canvas-state i {
+  font-size: 48px;
+  background: linear-gradient(135deg, var(--accent), var(--pink));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  opacity: 0.6;
+}
+.empty-canvas-state h3 {
+  font-size: 16px; font-weight: 600; color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+.empty-canvas-state p {
+  font-size: 12px; color: var(--text-muted); max-width: 280px; text-align: center;
+}
+.empty-canvas-hints {
+  font-size: 11px; color: var(--text-muted);
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  justify-content: center;
+}
+.empty-canvas-state kbd,
+.empty-canvas-hints kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface3); border: 1px solid var(--border-bright);
+  border-bottom: 2px solid var(--border-bright);
+  border-radius: 4px; padding: 1px 6px;
+  font-size: 10px; font-family: inherit; color: var(--text-dim);
+}
+
+/* ── VTuber Modals (name input + confirm) ───────────────────────── */
+.vt-modal-overlay {
+  position: fixed; inset: 0; z-index: 8000;
+  background: rgba(8,10,18,0.82); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.18s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.vt-modal {
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  border-radius: 12px; padding: 28px 32px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px; min-width: 320px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  animation: modalSlideIn 0.18s ease;
+}
+@keyframes modalSlideIn { from { transform: translateY(-12px); opacity: 0; } to { transform: none; opacity: 1; } }
+.vt-modal-icon {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(124,111,247,0.15);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--accent);
+}
+.vt-modal-icon.danger {
+  background: rgba(255,82,82,0.12);
+  color: var(--red);
+}
+.vt-modal h3 {
+  font-size: 15px; font-weight: 600; color: var(--text);
+}
+.vt-modal-body {
+  font-size: 12px; color: var(--text-dim); text-align: center;
+  max-width: 260px; line-height: 1.6;
+}
+.vt-modal-input {
+  width: 100%; background: var(--surface3); border: 1px solid var(--border);
+  color: var(--text); border-radius: var(--radius);
+  padding: 8px 12px; font-size: 13px; font-family: inherit;
+  transition: border-color var(--transition);
+}
+.vt-modal-input:focus { outline: none; border-color: var(--accent); }
+.vt-modal-actions {
+  display: flex; gap: 8px; width: 100%;
+}
+.vt-modal-actions button { flex: 1; }
+
+/* ── Keyboard Shortcuts Overlay ─────────────────────────────────── */
+.kbd-overlay {
+  position: fixed; inset: 0; z-index: 8500;
+  background: rgba(8,10,18,0.82); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fadeIn 0.18s ease;
+}
+.kbd-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  border-radius: 12px; padding: 20px 24px;
+  min-width: 480px; max-width: 600px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  animation: modalSlideIn 0.18s ease;
+}
+.kbd-header {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; font-weight: 600; color: var(--text);
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.kbd-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 20px 28px;
+}
+.kbd-section-title {
+  font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.kbd-row {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; color: var(--text-dim); padding: 3px 0;
+}
+.kbd-row kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface3); border: 1px solid var(--border-bright);
+  border-bottom: 2px solid var(--border-bright);
+  border-radius: 4px; padding: 2px 7px;
+  font-size: 10px; font-family: inherit; color: var(--text);
+  white-space: nowrap; flex-shrink: 0;
+  min-width: 26px; text-align: center;
+}
+
+/* ── Live Tracking Inspector ─────────────────────────────────────── */
+.live-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--border-bright);
+  flex-shrink: 0;
+  transition: background 0.3s, box-shadow 0.3s;
+}
+
+.live-dot.connecting {
+  background: var(--orange);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.live-dot.connected {
+  background: var(--green);
+  box-shadow: 0 0 6px rgba(0,230,118,0.55);
+}
+
+.live-dot.error {
+  background: var(--red);
+}
+
+.live-status-online  { font-size: 12px; color: var(--green); }
+.live-status-offline { font-size: 12px; color: var(--text-dim); }
+.live-status-error   { font-size: 12px; color: var(--red); }
+
+#liveParamDisplay {
+  margin: 0;
+  font-size: 10px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  color: var(--text-dim);
+  white-space: pre;
+  overflow-x: auto;
+  min-height: 48px;
+  line-height: 1.6;
+}

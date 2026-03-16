@@ -677,6 +677,36 @@ async def auto_rig_all(req: AutoRigAllRequest):
 
 
 # ---------------------------------------------------------------------------
+# Tracking integration
+# ---------------------------------------------------------------------------
+
+@app.get("/api/tracking/info")
+async def tracking_info():
+    """Return the URL of the Aethvion Tracking Engine for the client to connect to."""
+    port = int(os.getenv("SYNAPSE_PORT", "8082"))
+    return JSONResponse({
+        "ws_url":   f"ws://localhost:{port}/ws/tracking",
+        "http_url": f"http://localhost:{port}",
+        "port":     port,
+    })
+
+
+@app.get("/api/tracking/status")
+async def tracking_status():
+    """Probe the Tracking Engine and return its live status."""
+    import urllib.request
+    port = int(os.getenv("SYNAPSE_PORT", "8082"))
+    url  = f"http://localhost:{port}/api/trackers"
+    try:
+        with urllib.request.urlopen(url, timeout=1) as resp:
+            import json as _json
+            data = _json.loads(resp.read())
+            return JSONResponse({"available": True, "port": port, **data})
+    except Exception:
+        return JSONResponse({"available": False, "port": port, "is_running": False})
+
+
+# ---------------------------------------------------------------------------
 # Legacy v1 support
 # ---------------------------------------------------------------------------
 

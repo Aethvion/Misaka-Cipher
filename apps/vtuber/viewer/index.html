@@ -31,12 +31,16 @@
   </nav>
 
   <div class="tb-actions">
-    <button class="tb-btn" id="btnNewModel"  title="New Model"><i class="fa-solid fa-file-circle-plus"></i></button>
-    <button class="tb-btn" id="btnOpenModel" title="Open .vtuber"><i class="fa-solid fa-folder-open"></i></button>
-    <button class="tb-btn" id="btnSaveModel" title="Save"><i class="fa-solid fa-floppy-disk"></i></button>
-    <button class="tb-btn accent" id="btnExport" title="Export .vtuber"><i class="fa-solid fa-download"></i> Export</button>
-    <a class="tb-btn" href="/tutorial" target="_blank" title="Getting Started Tutorial — opens in new tab" style="text-decoration:none;"><i class="fa-solid fa-graduation-cap"></i></a>
-    <a class="tb-btn" href="/docs" target="_blank" title="Documentation — opens in new tab" style="text-decoration:none;"><i class="fa-solid fa-book-open"></i></a>
+    <button class="tb-btn" id="btnNewModel"  title="New Model" aria-label="New model"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i></button>
+    <button class="tb-btn" id="btnOpenModel" title="Open .vtuber" aria-label="Open model file"><i class="fa-solid fa-folder-open" aria-hidden="true"></i></button>
+    <button class="tb-btn" id="btnSaveModel" title="Save (Ctrl+S)" aria-label="Save model">
+      <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+      <span class="dirty-dot" id="dirtyDot" title="Unsaved changes" aria-label="Unsaved changes"></span>
+    </button>
+    <button class="tb-btn accent" id="btnExport" title="Export .vtuber" aria-label="Export model"><i class="fa-solid fa-download" aria-hidden="true"></i> Export</button>
+    <a class="tb-btn" href="/tutorial" target="_blank" title="Getting Started Tutorial" aria-label="Open tutorial" style="text-decoration:none;"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i></a>
+    <a class="tb-btn" href="/docs" target="_blank" title="Documentation" aria-label="Open documentation" style="text-decoration:none;"><i class="fa-solid fa-book-open" aria-hidden="true"></i></a>
+    <button class="tb-btn" id="btnKbdHelp" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts"><i class="fa-solid fa-keyboard" aria-hidden="true"></i></button>
     <input type="file" id="fileInput" accept=".vtuber,.png,.jpg,.jpeg" style="display:none" />
   </div>
 </header>
@@ -50,8 +54,8 @@
       <div class="panel-header">
         <span>Layers</span>
         <div class="panel-header-actions">
-          <button class="icon-btn" id="btnAddLayer" title="Import Image"><i class="fa-solid fa-plus"></i></button>
-          <button class="icon-btn" id="btnDeleteLayer" title="Delete Layer"><i class="fa-solid fa-trash"></i></button>
+          <button class="icon-btn" id="btnAddLayer" title="Import Image" aria-label="Import image as layer"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+          <button class="icon-btn" id="btnDeleteLayer" title="Delete Layer" aria-label="Delete selected layer"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
         </div>
       </div>
       <div id="layerList" class="layer-list"></div>
@@ -63,8 +67,8 @@
       <div class="panel-header">
         <span>Bones</span>
         <div class="panel-header-actions">
-          <button class="icon-btn" id="btnAddBone" title="Add Root Bone"><i class="fa-solid fa-plus"></i></button>
-          <button class="icon-btn" id="btnDeleteBone" title="Delete Bone"><i class="fa-solid fa-trash"></i></button>
+          <button class="icon-btn" id="btnAddBone" title="Add Root Bone" aria-label="Add root bone"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+          <button class="icon-btn" id="btnDeleteBone" title="Delete Bone" aria-label="Delete selected bone"><i class="fa-solid fa-trash" aria-hidden="true"></i></button>
         </div>
       </div>
       <div id="boneTree" class="bone-tree"></div>
@@ -92,17 +96,30 @@
       <svg id="overlaysvg" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
 
+    <!-- Empty canvas state -->
+    <div id="emptyCanvasState" class="empty-canvas-state">
+      <i class="fa-solid fa-ghost"></i>
+      <h3>No model loaded</h3>
+      <p>Create a new model or generate a character to get started.</p>
+      <div class="empty-canvas-hints">
+        <kbd>G</kbd> Generate &nbsp;·&nbsp;
+        <kbd>Ctrl+N</kbd> New &nbsp;·&nbsp;
+        <kbd>Ctrl+O</kbd> Open
+      </div>
+    </div>
+
     <!-- Bottom controls -->
     <div id="bottomBar">
       <div class="zoom-controls">
-        <button class="icon-btn" id="btnZoomOut"><i class="fa-solid fa-minus"></i></button>
+        <button class="icon-btn" id="btnZoomOut" title="Zoom out" aria-label="Zoom out"><i class="fa-solid fa-minus" aria-hidden="true"></i></button>
         <span id="zoomLabel">100%</span>
-        <button class="icon-btn" id="btnZoomIn"><i class="fa-solid fa-plus"></i></button>
-        <button class="icon-btn" id="btnZoomFit" title="Fit to screen"><i class="fa-solid fa-expand"></i></button>
+        <button class="icon-btn" id="btnZoomIn" title="Zoom in" aria-label="Zoom in"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+        <button class="icon-btn" id="btnZoomFit" title="Fit to screen (F)" aria-label="Fit to screen"><i class="fa-solid fa-expand" aria-hidden="true"></i></button>
       </div>
       <div id="statusMsg" class="status-msg">Ready</div>
+      <span id="cursorCoords" class="cursor-coords"></span>
       <div class="playback-controls" id="playbackControls" style="display:none">
-        <button class="icon-btn" id="btnPlayPause"><i class="fa-solid fa-play"></i></button>
+        <button class="icon-btn" id="btnPlayPause" aria-label="Play/pause animation"><i class="fa-solid fa-play" aria-hidden="true"></i></button>
         <span class="anim-name" id="animName">idle</span>
       </div>
     </div>
@@ -224,6 +241,71 @@
 
 <!-- Toast container -->
 <div id="toastContainer"></div>
+
+<!-- ── Name Input Modal ─────────────────────────────────────────── -->
+<div id="vtNameModal" class="vt-modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="vtNameModalTitle">
+  <div class="vt-modal">
+    <div class="vt-modal-icon"><i class="fa-solid fa-file-circle-plus"></i></div>
+    <h3 id="vtNameModalTitle">Model Name</h3>
+    <input class="vt-modal-input" id="vtNameInput" type="text" placeholder="e.g. My VTuber" autocomplete="off" />
+    <div class="vt-modal-actions">
+      <button class="btn-secondary" id="vtNameCancel">Cancel</button>
+      <button class="btn-primary"   id="vtNameOk">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm Modal ────────────────────────────────────────────── -->
+<div id="vtConfirmModal" class="vt-modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="vtConfirmTitle">
+  <div class="vt-modal">
+    <div class="vt-modal-icon danger"><i class="fa-solid fa-triangle-exclamation" id="vtConfirmIcon"></i></div>
+    <h3 id="vtConfirmTitle">Are you sure?</h3>
+    <p id="vtConfirmBody" class="vt-modal-body"></p>
+    <div class="vt-modal-actions">
+      <button class="btn-secondary" id="vtConfirmCancel">Cancel</button>
+      <button class="btn-danger"    id="vtConfirmOk">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Keyboard Shortcuts Overlay ───────────────────────────────── -->
+<div id="kbdOverlay" class="kbd-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+  <div class="kbd-panel">
+    <div class="kbd-header">
+      <span>Keyboard Shortcuts</span>
+      <button class="icon-btn" id="kbdClose" aria-label="Close shortcuts"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="kbd-grid">
+      <div class="kbd-section">
+        <div class="kbd-section-title">Modes</div>
+        <div class="kbd-row"><kbd>G</kbd><span>Generate</span></div>
+        <div class="kbd-row"><kbd>E</kbd><span>Edit Layers</span></div>
+        <div class="kbd-row"><kbd>M</kbd><span>Mesh Editor</span></div>
+        <div class="kbd-row"><kbd>B</kbd><span>Bone Rig</span></div>
+        <div class="kbd-row"><kbd>W</kbd><span>Weight Paint</span></div>
+        <div class="kbd-row"><kbd>P</kbd><span>Preview</span></div>
+      </div>
+      <div class="kbd-section">
+        <div class="kbd-section-title">Viewport</div>
+        <div class="kbd-row"><kbd>F</kbd><span>Fit to screen</span></div>
+        <div class="kbd-row"><kbd>Scroll</kbd><span>Zoom to cursor</span></div>
+        <div class="kbd-row"><kbd>Middle drag</kbd><span>Pan</span></div>
+        <div class="kbd-row"><kbd>Alt + drag</kbd><span>Pan</span></div>
+      </div>
+      <div class="kbd-section">
+        <div class="kbd-section-title">File</div>
+        <div class="kbd-row"><kbd>Ctrl S</kbd><span>Save</span></div>
+        <div class="kbd-row"><kbd>Ctrl Z</kbd><span>Undo (soon)</span></div>
+      </div>
+      <div class="kbd-section">
+        <div class="kbd-section-title">Editing</div>
+        <div class="kbd-row"><kbd>Del</kbd><span>Delete selected</span></div>
+        <div class="kbd-row"><kbd>Dbl-click</kbd><span>Rename layer</span></div>
+        <div class="kbd-row"><kbd>?</kbd><span>This panel</span></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ── Scripts ──────────────────────────────────────────────────── -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>

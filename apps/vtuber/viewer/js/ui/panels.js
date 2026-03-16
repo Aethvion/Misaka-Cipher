@@ -13,6 +13,16 @@ export function renderLayerPanel() {
   container.innerHTML = '';
 
   const layers = state.model?.layers ?? [];
+
+  if (layers.length === 0) {
+    container.innerHTML = `
+      <div class="panel-empty-state">
+        <i class="fa-solid fa-layer-group"></i>
+        <span>${state.model ? 'No layers yet — import an image to start.' : 'Load a model to see layers.'}</span>
+      </div>`;
+    return;
+  }
+
   const sorted = [...layers].sort((a, b) => (b.order || 0) - (a.order || 0));
 
   for (const layer of sorted) {
@@ -27,12 +37,12 @@ export function renderLayerPanel() {
     item.innerHTML = `
       <img class="layer-thumb" src="${thumbSrc}" onerror="this.style.opacity='0.2'" />
       <div class="layer-info">
-        <div class="layer-name">${layer.name}</div>
+        <div class="layer-name" title="Double-click to rename">${layer.name}</div>
         <div class="layer-type">${layer.type} · ${layer.mesh?.vertices?.length ?? 0} verts</div>
       </div>
       <div class="layer-actions">
-        <button class="layer-vis-btn" title="${layer.visible ? 'Hide' : 'Show'}">
-          <i class="fa-solid fa-${layer.visible ? 'eye' : 'eye-slash'}"></i>
+        <button class="layer-vis-btn" title="${layer.visible ? 'Hide layer' : 'Show layer'}" aria-label="${layer.visible ? 'Hide layer' : 'Show layer'}">
+          <i class="fa-solid fa-${layer.visible ? 'eye' : 'eye-slash'}" aria-hidden="true"></i>
         </button>
       </div>
     `;
@@ -50,13 +60,57 @@ export function renderLayerPanel() {
       renderInspector();
     });
 
-    // Drag-to-reorder
-    item.addEventListener('dragstart', e => { e.dataTransfer.setData('layerId', layer.id); });
-    item.addEventListener('dragover', e => { e.preventDefault(); item.style.opacity = '0.5'; });
-    item.addEventListener('dragleave', () => { item.style.opacity = ''; });
+    // Inline rename on double-click
+    const nameEl = item.querySelector('.layer-name');
+    nameEl.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      nameEl.contentEditable = 'true';
+      nameEl.focus();
+      // Select all text
+      const range = document.createRange();
+      range.selectNodeContents(nameEl);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      const commit = () => {
+        nameEl.contentEditable = 'false';
+        const newName = nameEl.textContent.trim();
+        if (newName && newName !== layer.name) {
+          layer.name = newName;
+          markDirty();
+        } else {
+          nameEl.textContent = layer.name; // revert if blank or unchanged
+        }
+      };
+      nameEl.addEventListener('blur', commit, { once: true });
+      nameEl.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter') { ev.preventDefault(); nameEl.blur(); }
+        if (ev.key === 'Escape') { nameEl.textContent = layer.name; nameEl.blur(); }
+      });
+    });
+
+    // Drag-to-reorder with border indicator
+    item.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('layerId', layer.id);
+      item.classList.add('dragging');
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      const rect = item.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      item.classList.remove('drag-over-top', 'drag-over-bottom');
+      item.classList.add(e.clientY < midY ? 'drag-over-top' : 'drag-over-bottom');
+    });
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
     item.addEventListener('drop', e => {
       e.preventDefault();
-      item.style.opacity = '';
+      item.classList.remove('drag-over-top', 'drag-over-bottom');
       const fromId = e.dataTransfer.getData('layerId');
       if (fromId !== layer.id) reorderLayers(fromId, layer.id);
     });
@@ -85,6 +139,16 @@ export function renderBonePanel() {
   container.innerHTML = '';
 
   const bones = state.model?.bones ?? [];
+
+  if (bones.length === 0) {
+    container.innerHTML = `
+      <div class="panel-empty-state">
+        <i class="fa-solid fa-bone"></i>
+        <span>${state.model ? 'No bones yet — use Generate Bones in the inspector.' : 'Load a model to see bones.'}</span>
+      </div>`;
+    return;
+  }
+
   const roots = bones.filter(b => !b.parentId);
   for (const b of roots) {
     renderBoneNode(b, bones, container);
@@ -172,8 +236,10 @@ export function renderInspector() {
     renderWeightInspector(el);
   } else if (mode === 'physics') {
     renderPhysicsInspector(el);
-  } else if (mode === 'preview' || mode === 'live') {
+  } else if (mode === 'preview') {
     renderPreviewInspector(el);
+  } else if (mode === 'live') {
+    renderLiveInspector(el);
   }
 }
 
@@ -585,6 +651,59 @@ function renderPreviewInspector(el) {
   });
 }
 
+function renderLiveInspector(el) {
+  el.innerHTML = `
+    <div class="inspector-section">
+      <div class="inspector-title">Live Tracking</div>
+      <div class="live-status-row">
+        <span class="live-dot" id="liveStatusDot"></span>
+        <span id="liveStatusText" class="live-status-offline">Disconnected</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:2px;line-height:1.5;">
+        Connects to the Tracking Engine WebSocket and drives model parameters in real time.
+      </div>
+      <div class="inspector-row full" style="margin-top:8px;">
+        <label>Tracking URL</label>
+        <input class="inspector-input" id="liveTrackingUrl"
+          placeholder="ws://localhost:8082/ws/tracking"
+          style="font-size:10px;font-family:monospace;" />
+      </div>
+      <button class="btn-primary" id="btnLiveConnect" style="width:100%;margin-top:6px;">
+        <i class="fa-solid fa-satellite-dish" aria-hidden="true"></i> Connect
+      </button>
+      <a class="btn-secondary" id="btnOpenTracker"
+         href="http://localhost:8082" target="_blank" rel="noopener"
+         style="display:block;margin-top:4px;text-align:center;text-decoration:none;font-size:12px;">
+        <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> Open Tracking Engine
+      </a>
+    </div>
+    <div class="inspector-section">
+      <div class="inspector-title">Incoming Parameters</div>
+      <pre id="liveParamDisplay">No data yet…</pre>
+    </div>
+  `;
+
+  // Auto-fill URL from server discovery
+  fetch('/api/tracking/info')
+    .then(r => r.json())
+    .then(info => {
+      const urlEl  = document.getElementById('liveTrackingUrl');
+      const linkEl = document.getElementById('btnOpenTracker');
+      if (urlEl  && !urlEl.value) urlEl.value  = info.ws_url   || '';
+      if (linkEl && info.http_url) linkEl.href  = info.http_url;
+    })
+    .catch(() => {
+      const urlEl = document.getElementById('liveTrackingUrl');
+      if (urlEl && !urlEl.value) urlEl.value = 'ws://localhost:8082/ws/tracking';
+    });
+
+  // Connect button dispatches event — app.js owns the WS state
+  el.querySelector('#btnLiveConnect').addEventListener('click', () => {
+    const url = document.getElementById('liveTrackingUrl')?.value.trim() || null;
+    document.dispatchEvent(new CustomEvent('liveConnectRequest', { detail: { url } }));
+  });
+}
+
 // ── Utils ──────────────────────────────────────────────────────────
 export function showLoading(msg = 'Working...') {
   document.getElementById('loadingMsg').textContent = msg;
@@ -595,12 +714,24 @@ export function hideLoading() {
   document.getElementById('loadingOverlay').style.display = 'none';
 }
 
-export function toast(msg, type = 'info') {
+export function toast(msg, type = 'info', duration = 3500) {
+  const icons = {
+    success: 'fa-circle-check',
+    error:   'fa-circle-xmark',
+    warn:    'fa-triangle-exclamation',
+    info:    'fa-circle-info',
+  };
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-  el.textContent = msg;
+  el.innerHTML = `<i class="fa-solid ${icons[type] ?? icons.info}" aria-hidden="true"></i><span>${msg}</span>`;
   document.getElementById('toastContainer').appendChild(el);
-  setTimeout(() => el.remove(), 3500);
+
+  const remove = () => {
+    el.classList.add('removing');
+    el.addEventListener('animationend', () => el.remove(), { once: true });
+  };
+  const timer = setTimeout(remove, duration);
+  el.addEventListener('click', () => { clearTimeout(timer); remove(); });
 }
 
 export function setStatus(msg) {

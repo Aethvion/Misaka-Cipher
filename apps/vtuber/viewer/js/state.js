@@ -64,12 +64,14 @@ export function selectBone(id) {
 
 export function markDirty() {
   state.isDirty = true;
-  document.title = `Specter — ${state.model?.name || 'Untitled'} *`;
+  document.title = `Aethvion VTuber — ${state.model?.name || 'Untitled'} •`;
+  document.getElementById('dirtyDot')?.classList.add('visible');
 }
 
 export function markClean() {
   state.isDirty = false;
-  document.title = `Specter — ${state.model?.name || 'Untitled'}`;
+  document.title = `Aethvion VTuber — ${state.model?.name || 'Untitled'}`;
+  document.getElementById('dirtyDot')?.classList.remove('visible');
 }
 
 export function getLayer(id) {

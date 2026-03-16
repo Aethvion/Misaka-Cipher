@@ -77,6 +77,7 @@ function switchMode(mode) {
   if (prev === 'mesh')    meshToolDeactivate();
   if (prev === 'bones')   boneToolDeactivate();
   if (prev === 'weights') weightToolDeactivate();
+  if (prev === 'live')    stopLiveTracking();
 
   // Clear overlay
   while (overlaysvg.firstChild) overlaysvg.removeChild(overlaysvg.firstChild);
@@ -99,6 +100,7 @@ function switchMode(mode) {
   if (mode === 'mesh')    { meshToolActivate(overlaysvg); }
   if (mode === 'bones')   { boneToolActivate(overlaysvg); }
   if (mode === 'weights') { weightToolActivate(overlaysvg); }
+  if (mode === 'live')    { initLiveTracking(); }
 
   // Rebuild toolbar
   buildToolBar(mode);
@@ -107,6 +109,19 @@ function switchMode(mode) {
   renderInspector();
 
   state.isPlaying = (mode === 'preview' || mode === 'live');
+
+  // Fix 9: Contextual mode hints in status bar
+  const modeHints = {
+    generate: 'Choose a pipeline and generate a character — or upload your own image.',
+    edit:     'Select a layer to inspect and transform it. Drag layers to reorder.',
+    mesh:     'Select · Add · Delete vertices. Click canvas in Add mode to place new vertices.',
+    bones:    'Select · Add · Delete bones. Click canvas in Add mode to place a bone.',
+    weights:  'Select a bone in the Bones panel, then paint influence on the mesh.',
+    physics:  'Add physics groups and tune gravity, momentum, and damping per group.',
+    preview:  'Play animations in real time. Use the inspector to switch clips.',
+    live:     'Connect live face/motion tracking to drive your model parameters.',
+  };
+  if (state.model || mode === 'generate') setStatus(modeHints[mode] ?? 'Ready');
 }
 
 function buildToolBar(mode) {
@@ -162,10 +177,25 @@ let panStart = { x: 0, y: 0 };
 
 const host = document.getElementById('canvasHost');
 
+// Fix 1: Zoom-to-cursor — zoom towards the pointer position, not the origin
 host.addEventListener('wheel', e => {
   e.preventDefault();
-  const factor = e.deltaY < 0 ? 1.1 : 0.9;
-  setZoom(state.viewScale * factor);
+  const rect = host.getBoundingClientRect();
+  const cursorX = e.clientX - rect.left;
+  const cursorY = e.clientY - rect.top;
+
+  // Canvas point under cursor before zoom
+  const canvasX = (cursorX - state.viewX) / state.viewScale;
+  const canvasY = (cursorY - state.viewY) / state.viewScale;
+
+  const factor   = e.deltaY < 0 ? 1.1 : 0.9;
+  const newScale = Math.max(0.05, Math.min(10, state.viewScale * factor));
+
+  // Adjust viewX/Y so the canvas point stays under the cursor
+  state.viewX = cursorX - canvasX * newScale;
+  state.viewY = cursorY - canvasY * newScale;
+
+  setZoom(newScale);
   if (state.mode === 'mesh') drawMesh();
   if (state.mode === 'bones') drawBones();
 }, { passive: false });
@@ -176,6 +206,18 @@ host.addEventListener('mousedown', e => {
     panStart = { x: e.clientX, y: e.clientY };
     e.preventDefault();
   }
+});
+
+// Fix 3: Canvas cursor coordinates shown in bottom status bar
+host.addEventListener('mousemove', e => {
+  const rect = host.getBoundingClientRect();
+  const c = screenToCanvas(e.clientX - rect.left, e.clientY - rect.top);
+  const coordEl = document.getElementById('cursorCoords');
+  if (coordEl) coordEl.textContent = `X: ${Math.round(c.x)}  Y: ${Math.round(c.y)}`;
+});
+host.addEventListener('mouseleave', () => {
+  const coordEl = document.getElementById('cursorCoords');
+  if (coordEl) coordEl.textContent = '';
 });
 
 window.addEventListener('mousemove', e => {
@@ -195,9 +237,109 @@ document.getElementById('btnZoomIn').addEventListener('click', () => setZoom(sta
 document.getElementById('btnZoomOut').addEventListener('click', () => setZoom(state.viewScale * 0.8));
 document.getElementById('btnZoomFit').addEventListener('click', fitToScreen);
 
+// ── Modals ─────────────────────────────────────────────────────────
+
+/** Show a non-blocking name-input dialog. Resolves with the entered name or null on cancel. */
+function showNameModal(title = 'Model Name', placeholder = 'e.g. My VTuber', defaultVal = '') {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('vtNameModal');
+    const input   = document.getElementById('vtNameInput');
+    const okBtn   = document.getElementById('vtNameOk');
+    const canBtn  = document.getElementById('vtNameCancel');
+    const titleEl = document.getElementById('vtNameModalTitle');
+
+    titleEl.textContent = title;
+    input.placeholder   = placeholder;
+    input.value         = defaultVal;
+    overlay.style.display = 'flex';
+
+    const prevFocus = document.activeElement;
+    requestAnimationFrame(() => { input.focus(); input.select(); });
+
+    const cleanup = () => {
+      overlay.style.display = 'none';
+      okBtn.removeEventListener('click', handleOk);
+      canBtn.removeEventListener('click', handleCan);
+      document.removeEventListener('keydown', handleKey);
+      if (prevFocus?.focus) prevFocus.focus();
+    };
+    const handleOk  = () => { const v = input.value.trim(); cleanup(); resolve(v || null); };
+    const handleCan = () => { cleanup(); resolve(null); };
+    const handleKey = e => {
+      if (e.key === 'Enter')  { e.preventDefault(); handleOk(); }
+      if (e.key === 'Escape') { handleCan(); }
+      if (e.key === 'Tab')    { e.preventDefault(); /* only one input */ }
+    };
+    okBtn.addEventListener('click', handleOk);
+    canBtn.addEventListener('click', handleCan);
+    document.addEventListener('keydown', handleKey);
+    overlay.addEventListener('click', e => { if (e.target === overlay) handleCan(); }, { once: true });
+  });
+}
+
+/** Show a non-blocking confirmation dialog. Calls onConfirm if user confirms. */
+function showVtConfirm(title, body, onConfirm, { confirmLabel = 'Delete', icon = 'fa-triangle-exclamation' } = {}) {
+  const overlay  = document.getElementById('vtConfirmModal');
+  const titleEl  = document.getElementById('vtConfirmTitle');
+  const bodyEl   = document.getElementById('vtConfirmBody');
+  const iconEl   = document.getElementById('vtConfirmIcon');
+  const okBtn    = document.getElementById('vtConfirmOk');
+  const canBtn   = document.getElementById('vtConfirmCancel');
+
+  titleEl.textContent  = title;
+  bodyEl.textContent   = body;
+  okBtn.textContent    = confirmLabel;
+  iconEl.className     = `fa-solid ${icon}`;
+  overlay.style.display = 'flex';
+
+  const prevFocus = document.activeElement;
+  requestAnimationFrame(() => canBtn.focus());
+
+  const close = () => {
+    overlay.style.display = 'none';
+    okBtn.removeEventListener('click', handleOk);
+    canBtn.removeEventListener('click', handleCan);
+    document.removeEventListener('keydown', handleKey);
+    if (prevFocus?.focus) prevFocus.focus();
+  };
+  const handleOk  = () => { close(); onConfirm(); };
+  const handleCan = () => { close(); };
+  const handleKey = e => {
+    if (e.key === 'Escape') { handleCan(); return; }
+    if (e.key === 'Enter')  { handleOk();  return; }
+    if (e.key === 'Tab')    { e.preventDefault(); document.activeElement === okBtn ? canBtn.focus() : okBtn.focus(); }
+  };
+  okBtn.addEventListener('click', handleOk);
+  canBtn.addEventListener('click', handleCan);
+  document.addEventListener('keydown', handleKey);
+  overlay.addEventListener('click', e => { if (e.target === overlay) handleCan(); }, { once: true });
+}
+
+// ── Keyboard Shortcuts Overlay ─────────────────────────────────────
+function openKbdOverlay() {
+  const ov = document.getElementById('kbdOverlay');
+  if (ov) ov.style.display = 'flex';
+}
+function closeKbdOverlay() {
+  const ov = document.getElementById('kbdOverlay');
+  if (ov) ov.style.display = 'none';
+}
+document.getElementById('btnKbdHelp').addEventListener('click', openKbdOverlay);
+document.getElementById('kbdClose').addEventListener('click', closeKbdOverlay);
+document.getElementById('kbdOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('kbdOverlay')) closeKbdOverlay();
+});
+
+// ── Empty canvas state helper ──────────────────────────────────────
+function syncEmptyState() {
+  const el = document.getElementById('emptyCanvasState');
+  if (el) el.style.display = state.model ? 'none' : 'flex';
+}
+
 // ── File operations ────────────────────────────────────────────────
 document.getElementById('btnNewModel').addEventListener('click', async () => {
-  const name = prompt('Model name:', 'Untitled') || 'Untitled';
+  const name = await showNameModal('New Model', 'e.g. My VTuber', 'Untitled');
+  if (!name) return;
   showLoading('Creating model...');
   try {
     const res = await api.createModel(name);
@@ -278,12 +420,21 @@ document.getElementById('btnAddLayer').addEventListener('click', () => {
 
 document.getElementById('btnDeleteLayer').addEventListener('click', () => {
   if (!state.selectedLayerId || !state.model) return;
-  state.model.layers = state.model.layers.filter(l => l.id !== state.selectedLayerId);
-  selectLayer(null);
-  loadModel(state.model, state.modelId);
-  renderLayerPanel();
-  markDirty();
-  toast('Layer deleted', 'info');
+  const layer = state.model.layers.find(l => l.id === state.selectedLayerId);
+  const name  = layer?.name || 'this layer';
+  showVtConfirm(
+    'Delete Layer',
+    `Delete "${name}"? This cannot be undone.`,
+    () => {
+      state.model.layers = state.model.layers.filter(l => l.id !== state.selectedLayerId);
+      selectLayer(null);
+      loadModel(state.model, state.modelId);
+      renderLayerPanel();
+      markDirty();
+      toast('Layer deleted', 'info');
+    },
+    { confirmLabel: 'Delete', icon: 'fa-trash' }
+  );
 });
 
 // ── Add bone button ────────────────────────────────────────────────
@@ -296,12 +447,21 @@ document.getElementById('btnAddBone').addEventListener('click', () => {
 
 document.getElementById('btnDeleteBone').addEventListener('click', () => {
   if (!state.selectedBoneId || !state.model) return;
-  state.model.bones = state.model.bones.filter(b => b.id !== state.selectedBoneId);
-  selectBone(null);
-  renderBonePanel();
-  drawBones();
-  markDirty();
-  toast('Bone deleted', 'info');
+  const bone = state.model.bones.find(b => b.id === state.selectedBoneId);
+  const name = bone?.name || 'this bone';
+  showVtConfirm(
+    'Delete Bone',
+    `Delete "${name}"? Child bones will be unparented.`,
+    () => {
+      state.model.bones = state.model.bones.filter(b => b.id !== state.selectedBoneId);
+      selectBone(null);
+      renderBonePanel();
+      drawBones();
+      markDirty();
+      toast('Bone deleted', 'info');
+    },
+    { confirmLabel: 'Delete', icon: 'fa-bone' }
+  );
 });
 
 // ── Events from tools ──────────────────────────────────────────────
@@ -447,7 +607,8 @@ async function openModel(modelId, model) {
   renderInspector();
 
   document.title = `Aethvion VTuber — ${model.name || 'Untitled'}`;
-  setStatus(`Model "${model.name}" loaded (${model.layers?.length ?? 0} layers, ${model.bones?.length ?? 0} bones)`);
+  setStatus(`Model "${model.name}" loaded — ${model.layers?.length ?? 0} layers, ${model.bones?.length ?? 0} bones`);
+  syncEmptyState();
 
   // Switch to edit mode
   switchMode('edit');
@@ -455,7 +616,18 @@ async function openModel(modelId, model) {
 
 // ── Keyboard shortcuts ────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const tag = e.target.tagName;
+  const editable = tag === 'INPUT' || tag === 'TEXTAREA' || e.target.isContentEditable;
+  if (editable) return;
+
+  // ? — show shortcuts overlay
+  if (e.key === '?') { e.preventDefault(); openKbdOverlay(); return; }
+  // Esc — close overlays if open
+  if (e.key === 'Escape') {
+    if (document.getElementById('kbdOverlay').style.display !== 'none') { closeKbdOverlay(); return; }
+    if (document.getElementById('vtConfirmModal').style.display !== 'none') return; // handled inside modal
+    if (document.getElementById('vtNameModal').style.display   !== 'none') return; // handled inside modal
+  }
 
   if (e.ctrlKey || e.metaKey) {
     if (e.key === 's') { e.preventDefault(); saveCurrentModel(); return; }
@@ -464,19 +636,149 @@ document.addEventListener('keydown', e => {
 
   switch (e.key) {
     case 'g': switchMode('generate'); break;
-    case 'e': switchMode('edit'); break;
-    case 'm': switchMode('mesh'); break;
-    case 'b': switchMode('bones'); break;
-    case 'w': switchMode('weights'); break;
-    case 'p': switchMode('preview'); break;
-    case 'f': fitToScreen(); break;
+    case 'e': switchMode('edit');     break;
+    case 'm': switchMode('mesh');     break;
+    case 'b': switchMode('bones');    break;
+    case 'w': switchMode('weights');  break;
+    case 'p': switchMode('preview');  break;
+    case 'f': fitToScreen();          break;
     case 'Delete':
     case 'Backspace':
       if (state.mode === 'bones' && state.selectedBoneId) {
-        state.model.bones = state.model.bones.filter(b => b.id !== state.selectedBoneId);
-        selectBone(null); renderBonePanel(); drawBones(); markDirty();
+        const bone = state.model.bones.find(b => b.id === state.selectedBoneId);
+        showVtConfirm('Delete Bone', `Delete "${bone?.name || 'bone'}"?`, () => {
+          state.model.bones = state.model.bones.filter(b => b.id !== state.selectedBoneId);
+          selectBone(null); renderBonePanel(); drawBones(); markDirty();
+        }, { confirmLabel: 'Delete', icon: 'fa-bone' });
       }
       break;
+  }
+});
+
+// ── Live Tracking ─────────────────────────────────────────────────
+let _trackingWs            = null;
+let _trackingReconnectTimer = null;
+let _trackingWsUrl         = 'ws://localhost:8082/ws/tracking';
+
+/**
+ * Discover the tracking server URL then open the WebSocket.
+ * @param {string|null} overrideUrl  – if provided, skip discovery
+ */
+async function initLiveTracking(overrideUrl = null) {
+  if (overrideUrl) {
+    _trackingWsUrl = overrideUrl;
+  } else {
+    try {
+      const info = await fetch('/api/tracking/info').then(r => r.json());
+      _trackingWsUrl = info.ws_url || _trackingWsUrl;
+    } catch { /* keep default */ }
+  }
+
+  // Pre-fill the URL input if the inspector is visible
+  const urlEl = document.getElementById('liveTrackingUrl');
+  if (urlEl && !urlEl.value) urlEl.value = _trackingWsUrl;
+
+  _openTrackingWs();
+}
+
+function _openTrackingWs() {
+  if (_trackingWs) { _trackingWs.close(); _trackingWs = null; }
+  clearTimeout(_trackingReconnectTimer);
+
+  _setLiveStatus('connecting', 'Connecting…');
+  setStatus(`Connecting to tracking server at ${_trackingWsUrl}…`);
+
+  const ws = new WebSocket(_trackingWsUrl);
+  _trackingWs = ws;
+
+  ws.onopen = () => {
+    if (ws !== _trackingWs) return;
+    _setLiveStatus('connected', 'Connected');
+    setStatus('Live tracking active — face/motion data driving model parameters.');
+  };
+
+  ws.onmessage = event => {
+    if (ws !== _trackingWs) return;
+    try {
+      const msg = JSON.parse(event.data);
+      if (msg.type === 'params') _applyTrackingParams(msg.params);
+    } catch { /* ignore malformed packets */ }
+  };
+
+  ws.onerror = () => {
+    if (ws !== _trackingWs) return;
+    _setLiveStatus('error', 'Connection failed');
+    setStatus('Cannot reach Tracking Engine — make sure it is running (port 8082).');
+  };
+
+  ws.onclose = () => {
+    if (ws !== _trackingWs) return;
+    _trackingWs = null;
+    if (state.mode === 'live') {
+      _setLiveStatus('error', 'Disconnected — retrying…');
+      setStatus('Tracking disconnected — retrying in 3 s…');
+      _trackingReconnectTimer = setTimeout(_openTrackingWs, 3000);
+    }
+  };
+}
+
+/** Stop the tracking WebSocket and cancel any reconnect. */
+function stopLiveTracking() {
+  clearTimeout(_trackingReconnectTimer);
+  if (_trackingWs) { _trackingWs.close(); _trackingWs = null; }
+  _setLiveStatus('', 'Disconnected');
+}
+
+/** Apply a tracking parameter dict to the model's paramValues. */
+function _applyTrackingParams(params) {
+  if (!state.model) return;
+  const modelParams = state.model.parameters ?? {};
+  for (const [key, raw] of Object.entries(params)) {
+    const val = Number(raw);
+    const def = modelParams[key];
+    state.paramValues[key] = def
+      ? Math.max(def.min, Math.min(def.max, val))
+      : val;
+  }
+
+  // Update the live parameter display in the inspector
+  const display = document.getElementById('liveParamDisplay');
+  if (display) {
+    display.textContent = Object.entries(params)
+      .map(([k, v]) => `${k.padEnd(20)}${Number(v).toFixed(3)}`)
+      .join('\n');
+  }
+}
+
+/** Update the live status dot + text + connect button in the inspector. */
+function _setLiveStatus(dotClass, text) {
+  const dot = document.getElementById('liveStatusDot');
+  const txt = document.getElementById('liveStatusText');
+  const btn = document.getElementById('btnLiveConnect');
+
+  if (dot) dot.className = `live-dot${dotClass ? ' ' + dotClass : ''}`;
+
+  if (txt) {
+    txt.textContent = text;
+    txt.className   = dotClass === 'connected' ? 'live-status-online'
+                    : dotClass === 'error'     ? 'live-status-error'
+                    :                            'live-status-offline';
+  }
+
+  if (btn) {
+    const isActive = dotClass === 'connected' || dotClass === 'connecting';
+    btn.innerHTML = isActive
+      ? '<i class="fa-solid fa-stop" aria-hidden="true"></i> Disconnect'
+      : '<i class="fa-solid fa-satellite-dish" aria-hidden="true"></i> Connect';
+  }
+}
+
+// Inspector Connect button dispatches this event; app.js owns the WS
+document.addEventListener('liveConnectRequest', e => {
+  if (_trackingWs) {
+    stopLiveTracking();
+  } else {
+    initLiveTracking(e.detail?.url || null);
   }
 });
 
