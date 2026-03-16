@@ -36,11 +36,11 @@
 | | |
 |:---:|:---:|
 | <img src="assets/showcase/MisakaCipher_Chat.png" alt="Misaka Cipher Chat Interface" width="100%"> | <img src="assets/showcase/AethvionSuite_Photo.png" alt="Aethvion Suite Photo App" width="100%"> |
-| **Misaka Cipher** · Multi-provider AI chat with threads, auto-routing, and context modes | **Photo App** · AI-powered image generation and editing |
-| <img src="assets/showcase/AethvionSuite_Audio.png" alt="Aethvion Suite Audio Tab" width="100%"> | <img src="assets/showcase/AethvionSuite_Code.png" alt="Aethvion Suite Code IDE" width="100%"> |
-| **Audio** · Text-to-speech and speech-to-text | **Code IDE** · Full Monaco-based IDE with AI copilot, file creation, and code execution |
+| **Misaka Cipher** · Multi-provider AI chat with threads, auto-routing, and context modes | **Aethvion Photo** · AI image generation and precision layer-based editing system |
+| <img src="assets/showcase/AethvionSuite_Audio.png" alt="Aethvion Suite Audio App" width="100%"> | <img src="assets/showcase/AethvionSuite_Code.png" alt="Aethvion Suite Code IDE" width="100%"> |
+| **Aethvion Audio** · Professional multi-track timeline editor with live waveforms and effects | **Aethvion Code IDE** · Monaco-based IDE with AI copilot and code execution |
 | <img src="assets/showcase/AethvionSuite_LocalModels.png" alt="Aethvion Suite Local Models" width="100%"> | <img src="assets/showcase/AethvionSuite_DriveInfo.png" alt="Aethvion Suite Drive Info" width="100%"> |
-| **Local Models** · Run GGUF models directly — no cloud required | **Drive Info** · System storage and drive information |
+| **Direct Local Inference** · Run GGUF models (Mistral, LLaMA) directly on your hardware | **Aethvion Drive Info** · Recursive system storage analysis and visualization |
 
 <br>
 
@@ -56,13 +56,30 @@
 
 Aethvion Suite is a **self-hosted AI assistant platform** that connects to cloud providers (Google Gemini, OpenAI, xAI Grok, Anthropic Claude) and local GGUF models via llama-cpp-python. It gives you a structured environment for running chat threads, generating tools, spawning agents, and interacting with a growing set of integrated apps — all from a server you own and control.
 
-There are **three ways to interact with the core system:**
+There are **two main components** to the ecosystem:
+
+### 1. Aethvion Suite Core
+The central intelligence hub and management platform. It provides the dashboard, API orchestration, and foundational AI services.
 
 | Interface | Description |
 |-----------|-------------|
-| **Web Dashboard** | 25+ tab browser UI — chat, agents, tools, memory, games, apps |
-| **Code IDE** | Standalone Monaco-based IDE at port 8083 — AI copilot writes, edits, and executes code |
-| **CLI** | Terminal mode for headless use, scripting, and quick queries |
+| **Web Dashboard** | 25+ tab control center — chat, agents, tools, memory, games |
+| **Core Terminal** | CLI mode for headless use, scripting, and developer queries |
+
+### 2. Standalone Integrated Applications
+Professional-grade tools built on the Aethvion core. Each app runs as a standalone server but integrates seamlessly into the main dashboard.
+
+| App | Role | Default Port |
+|-----|------|--------------|
+| **Aethvion Code IDE** | VS Code-powered IDE with AI chat and execution | 8083 |
+| **Aethvion VTuber** | 2D character rigging and animation engine | 8081 |
+| **Aethvion Audio** | Multi-track timeline editor and effects processor | 8081* |
+| **Aethvion Photo** | Layer-based image generation and editor | 8081* |
+| **Aethvion Tracking** | AI-powered facial motion capture bridge | 8081* |
+| **Aethvion Drive Info** | Interactive disk space and storage analyzer | 8084 |
+| **Aethvion Finance** | Personal financial tracking and portfolio hub | 8081* |
+
+*\* Note: Apps sharing port 8081 will automatically negotiate the next available port (8082, etc.) if multiple are running simultaneously.*
 
 The AI core features **Misaka Cipher**, backed by four subsystems:
 
@@ -95,11 +112,18 @@ copy .env.example .env
 
 **One-click (Windows):** Double-click a launcher bat — it creates the virtual environment, installs dependencies, and opens the app automatically.
 
-| Launcher | Opens |
-|----------|-------|
-| `Start_Aethvion_Suite.bat` | Main dashboard → http://localhost:8080 |
-| `apps/code/Start_Code.bat` | Code IDE → http://localhost:8083 |
-| `apps/vtuber/Start_VTuber.bat` | VTuber engine → http://localhost:8081 |
+**One-click (Windows):** Each application includes a dedicated launcher script. Double-click the `.bat` file to automatically check dependencies and start the server.
+
+| Application | Launcher | Default URL |
+|-------------|----------|-------------|
+| **Suite Dashboard** | `Start_Aethvion_Suite.bat` | http://localhost:8080 |
+| **Code IDE** | `apps/code/Start_Code.bat` | http://localhost:8083 |
+| **VTuber Engine** | `apps/vtuber/Start_VTuber.bat` | http://localhost:8081 |
+| **Audio Editor** | `apps/audio/Start_Audio.bat` | http://localhost:8081* |
+| **Photo Editor** | `apps/photo/Start_Photo.bat` | http://localhost:8081* |
+| **Finance Hub** | `apps/finance/Start_Finance.bat` | http://localhost:8081* |
+| **Drive Info** | `apps/driveinfo/Start_DriveInfo.bat` | http://localhost:8084 |
+| **Tracking Bridge**| `apps/tracking/Start_Tracking.bat` | http://localhost:8081* |
 
 **Manual:**
 ```bash
@@ -143,9 +167,14 @@ python apps/code/code_server.py    # Code IDE standalone
 - Native OS folder picker for workspace selection
 - Resizable 3-panel layout: file tree · Monaco editor · AI chat
 
-### 🎙️ Audio
-- Text-to-speech and speech-to-text support
-- Configurable voice and audio output settings
+### 🎙️ Audio Interaction (Core)
+- Built-in Text-to-speech (TTS) and speech-to-text (STT) support within the dashboard and chat.
+- Configurable voice profiles and audio processing settings.
+
+### 🎵 Aethvion Audio (Standalone)
+- Full multi-track timeline editor with per-track volume, solo, and pan.
+- Professional waveform visualization with gradient rendering and real-time effects.
+- Format conversion and effects pipeline (Normalization, Gain, Pitch, Speed).
 
 ### 🎮 Games
 - Built-in games: Logic Quest, Blackjack, Sudoku, Word Search, Checkers (vs AI)
