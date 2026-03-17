@@ -179,6 +179,46 @@ html, body {
 }
 .di-panel-hdr > span { font-weight: 600; font-size: 11px; color: var(--text-dim); letter-spacing: .06em; text-transform: uppercase; }
 
+.di-search-row {
+    position: relative;
+    display: flex; align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin: 4px 0;
+    flex: 1;
+}
+.di-search-row i { font-size: 10px; color: var(--text-muted); margin-right: 6px; }
+.di-search-row input {
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-size: 11px; width: 100%;
+}
+#btn-clear-search {
+    background: transparent; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 10px; padding: 2px;
+}
+#btn-clear-search:hover { color: var(--text); }
+
+.di-search-results {
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-top: none;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 50;
+    box-shadow: 0 10px 25px rgba(0,0,0,.5);
+}
+.di-search-item {
+    padding: 6px 10px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background .1s;
+    display: flex; flex-direction: column; gap: 2px;
+}
+.di-search-item:hover { background: var(--bg-hover); }
+.di-search-item .name { font-weight: 600; color: var(--primary); font-size: 11px; }
+.di-search-item .path { font-size: 9px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }
+
 .di-sort-row { display: flex; gap: 2px; }
 .di-sort-btn {
     padding: 2px 7px; border-radius: 4px; border: 1px solid var(--border);
@@ -213,7 +253,8 @@ html, body {
     user-select: none;
 }
 .di-tree-row:hover   { background: var(--bg-hover); }
-.di-tree-row.active  { background: rgba(0,217,255,.10); }
+.di-tree-row.active  { background: rgba(0,217,255,.15); border-left: 2px solid var(--primary); }
+.di-tree-row.hovered { background: rgba(255,255,255,.05); outline: 1px solid rgba(0,217,255,.3); }
 
 .di-tree-indent { display: inline-block; width: 14px; flex-shrink: 0; }
 .di-tree-arrow  {

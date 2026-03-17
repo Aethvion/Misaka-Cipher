@@ -34,6 +34,8 @@ let navStack     = [];     // breadcrumb node history
 let hitCells     = [];     // [{node, x,y,w,h}] for mouse hit-testing
 let sortBy       = "size"; // "size" | "name" | "count"
 let pollTimer    = null;
+let hoveredNode  = null;   // node currently under mouse (tree or canvas)
+let searchTimer  = null;
 
 /* ── Extension colour map ─────────────────────────────────────── */
 const EXT_COLORS_NAMED = {
@@ -166,6 +168,19 @@ function renderTreemap() {
     const W = canvas.width / DPR;
     const H = canvas.height / DPR;
     _renderNode(node, 2, 2, W - 4, H - 4, 0);
+
+    // Draw highlight for hoveredNode if it's within the current view
+    if (hoveredNode) {
+        const cell = hitCells.find(c => c.node.path === hoveredNode.path);
+        if (cell) {
+            ctx.save();
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2 * DPR;
+            ctx.setLineDash([5 * DPR, 5 * DPR]);
+            ctx.strokeRect(cell.x * DPR, cell.y * DPR, cell.w * DPR, cell.h * DPR);
+            ctx.restore();
+        }
+    }
 }
 
 function _renderNode(node, x, y, w, h, depth) {
@@ -214,7 +229,16 @@ function _drawDir(node, x, y, w, h, depth) {
     const cx = x * DPR, cy = y * DPR, cw = w * DPR, ch = h * DPR;
 
     // Directory background
-    ctx.fillStyle = depth === 0 ? "#0f0f16" : "#14141e";
+    let dirColor = "#14141e";
+    if (depth > 0) {
+        // Variation based on name hash for sectioning
+        let h = 0;
+        const n = node.name || "";
+        for(let i=0; i<n.length; i++) h = ((h << 5) - h) + n.charCodeAt(i);
+        const hue = Math.abs(h % 360);
+        dirColor = `hsla(${hue}, 20%, 15%, 0.8)`;
+    }
+    ctx.fillStyle = depth === 0 ? "#0f0f16" : dirColor;
     ctx.fillRect(cx, cy, cw, ch);
 
     // Title bar
@@ -421,6 +445,18 @@ function appendTreeNode(node, container, depth, topSize, expanded) {
         row.addEventListener("click", () => navigateTo(node.type === "dir" ? node : getParent(node)));
     }
 
+    // Hover sync
+    row.addEventListener("mouseenter", () => {
+        hoveredNode = node;
+        renderTreemap();
+    });
+    row.addEventListener("mouseleave", () => {
+        if (hoveredNode === node) {
+            hoveredNode = null;
+            renderTreemap();
+        }
+    });
+
     return row;
 }
 
@@ -460,11 +496,21 @@ function findParentNode(root, targetPath) {
 }
 
 function highlightTreeRow(path) {
+    treeBody.querySelectorAll(".di-tree-row.hovered").forEach(r => r.classList.remove("hovered"));
     treeBody.querySelectorAll(".di-tree-row.active").forEach(r => r.classList.remove("active"));
     const row = treeBody.querySelector(`[data-path="${CSS.escape(path)}"]`);
     if (row) {
         row.classList.add("active");
-        row.scrollIntoView({ block: "nearest" });
+        row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+}
+
+function syncHoverToTree(path) {
+    treeBody.querySelectorAll(".di-tree-row.hovered").forEach(r => r.classList.remove("hovered"));
+    if (!path) return;
+    const row = treeBody.querySelector(`[data-path="${CSS.escape(path)}"]`);
+    if (row) {
+        row.classList.add("hovered");
     }
 }
 
@@ -629,14 +675,27 @@ canvas.addEventListener("mousemove", e => {
     if (node) {
         showTooltip(node, mx, my);
         canvas.style.cursor = "pointer";
+        if (hoveredNode !== node) {
+            hoveredNode = node;
+            syncHoverToTree(node.path);
+            renderTreemap(); // Draw highlight
+        }
     } else {
         tooltip.classList.add("di-hidden");
         canvas.style.cursor = "default";
+        if (hoveredNode) {
+            hoveredNode = null;
+            syncHoverToTree(null);
+            renderTreemap();
+        }
     }
 });
 
 canvas.addEventListener("mouseleave", () => {
     tooltip.classList.add("di-hidden");
+    hoveredNode = null;
+    syncHoverToTree(null);
+    renderTreemap();
 });
 
 canvas.addEventListener("click", e => {
@@ -743,9 +802,88 @@ document.addEventListener("mouseup", () => {
 /* ── Window resize ────────────────────────────────────────────── */
 window.addEventListener("resize", () => renderTreemap());
 
+/* ── Search Logic ────────────────────────────────────────────── */
+const treeSearchInput = $("tree-search");
+const btnClearSearch  = $("btn-clear-search");
+const searchResults   = $("search-results");
+
+treeSearchInput.addEventListener("input", () => {
+    const q = treeSearchInput.value.trim().toLowerCase();
+    btnClearSearch.classList.toggle("di-hidden", !q);
+    
+    clearTimeout(searchTimer);
+    if (!q) {
+        searchResults.classList.add("di-hidden");
+        return;
+    }
+
+    searchTimer = setTimeout(() => {
+        const matches = [];
+        _searchRecursive(currentScan.tree, q, matches, 50);
+        renderSearchResults(matches);
+    }, 300);
+});
+
+btnClearSearch.addEventListener("click", () => {
+    treeSearchInput.value = "";
+    btnClearSearch.classList.add("di-hidden");
+    searchResults.classList.add("di-hidden");
+});
+
+function _searchRecursive(node, q, matches, limit) {
+    if (matches.length >= limit) return;
+    if (node.name.toLowerCase().includes(q)) {
+        matches.push(node);
+    }
+    for (const child of node.children || []) {
+        _searchRecursive(child, q, matches, limit);
+    }
+}
+
+function renderSearchResults(matches) {
+    if (!matches.length) {
+        searchResults.innerHTML = '<div class="di-search-item" style="cursor:default;opacity:0.5;">No results found</div>';
+    } else {
+        searchResults.innerHTML = matches.map(m => `
+            <div class="di-search-item" data-path="${escHtml(m.path)}">
+                <span class="name">${escHtml(m.name)}</span>
+                <span class="path">${escHtml(m.path)}</span>
+            </div>
+        `).join("");
+    }
+    searchResults.classList.remove("di-hidden");
+    
+    searchResults.querySelectorAll(".di-search-item[data-path]").forEach(item => {
+        item.addEventListener("click", () => {
+            const path = item.dataset.path;
+            const node = findNodeByPath(currentScan.tree, path);
+            if (node) {
+                navigateTo(node);
+                searchResults.classList.add("di-hidden");
+            }
+        });
+    });
+}
+
+function findNodeByPath(root, path) {
+    if (root.path === path) return root;
+    for (const child of root.children || []) {
+        const f = findNodeByPath(child, path);
+        if (f) return f;
+    }
+    return null;
+}
+
 /* ── Init ─────────────────────────────────────────────────────── */
 loadDrives();
 loadSavedScans();
 renderTreemap();   // draws empty state
 
-})(); // end IIFE — isolates from browser-extension (SES/MetaMask) lockdown
+// Hide search results on outside click
+document.addEventListener("click", e => {
+    if (!treeSearchInput.contains(e.target) && !searchResults.contains(e.target)) {
+        searchResults.classList.add("di-hidden");
+    }
+});
+
+})(); // end IIFE

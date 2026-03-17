@@ -66,6 +66,12 @@
 
         <div class="di-panel-hdr">
             <span id="panel-label">Directory Tree</span>
+            <div class="di-search-row">
+                <i class="fas fa-search"></i>
+                <input type="text" id="tree-search" placeholder="Search files…" autocomplete="off" />
+                <button id="btn-clear-search" class="di-hidden"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="search-results" class="di-search-results di-hidden"></div>
             <div class="di-sort-row">
                 <button class="di-sort-btn active" data-sort="size">Size</button>
                 <button class="di-sort-btn"        data-sort="name">Name</button>
