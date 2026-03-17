@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Intelligence Firewall
 Pre-flight scanning and routing for sensitive content
 """
@@ -40,8 +40,16 @@ class IntelligenceFirewall:
         if config_path is None:
             workspace = Path(__file__).parent.parent
             config_path = workspace / "config" / "security.yaml"
-        
-        self._load_config(config_path)
+        else:
+            config_path = Path(config_path)
+            
+        if not config_path.exists():
+            logger.warning(f"Security config not found at {config_path}. Firewall will operate in default (enabled) mode with no patterns.")
+            self.enabled = True
+            self.restricted_patterns = []
+            self.audit_config = {"log_all_scans": True}
+        else:
+            self._load_config(config_path)
         
         # Initialize components
         self._initialize_scanner()

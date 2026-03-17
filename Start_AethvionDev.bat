@@ -82,6 +82,12 @@ if not exist ".env" (
 ) else (
     echo [OK]   .env found.
 )
+if not exist "core\config\security.yaml" (
+    if exist "core\config\security.yaml.example" (
+        copy "core\config\security.yaml.example" "core\config\security.yaml" >nul
+        echo [SETUP] Created security.yaml from template.
+    )
+)
 
 :: ── 5. Required directories ──────────────────────────────────
 call core\setup_directories.bat
