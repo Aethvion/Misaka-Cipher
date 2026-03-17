@@ -52,6 +52,20 @@ import time
 from pathlib import Path
 import psutil
 
+# Diagnostic logging for silent failures (pythonw)
+ROOT      = Path(__file__).parent.parent
+_diag_log = ROOT / "data" / "launcher.log"
+_diag_log.parent.mkdir(parents=True, exist_ok=True)
+
+def _log(msg):
+    try:
+        with open(_diag_log, "a", encoding="utf-8") as f:
+            f.write(f"[{time.ctime()}] {msg}\n")
+    except:
+        pass
+
+_log("--- Launcher script loaded ---")
+
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
 ROOT      = Path(__file__).parent.parent
@@ -209,14 +223,20 @@ def _install_job_object() -> None:
 # ── Process Management Extras ─────────────────────────────────────────────────
 
 def _is_running_aethvion(proc: psutil.Process) -> bool:
-    """Check if a process looks like an Aethvion Suite component."""
+    """Check if a process looks like an Aethvion Suite component (excluding this launcher)."""
     try:
-        cmdline = " ".join(proc.cmdline())
+        cmdline = proc.cmdline()
+        cmdline_str = " ".join(cmdline)
+        
+        # If this is the launcher itself, skip
+        if "launcher.py" in cmdline_str:
+            return False
+            
         # Check for core modules or specific app servers
         targets = ["core.main", "vtuber_server.py", "tracking_server.py", "code_server.py", 
                    "hardware_server.py", "audio_server.py", "photo_server.py", 
                    "finance_server.py", "driveinfo_server.py"]
-        return any(t in cmdline for t in targets)
+        return any(t in cmdline_str for t in targets)
     except (psutil.NoSuchProcess, psutil.AccessDenied):
         return False
 
@@ -238,6 +258,57 @@ def _cleanup_stale_processes() -> None:
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
 
+def _try_reopen_dashboard() -> None:
+    """Attempt to find the port of the running instance and open the browser."""
+    try:
+        registry_path = ROOT / "data" / "core" / "system" / "ports.json"
+        _log(f"Attempting re-open. Registry: {registry_path}")
+        
+        target_port = None
+
+        if registry_path.exists():
+            import json
+            try:
+                with open(registry_path, "r", encoding="utf-8") as f:
+                    registry = json.load(f)
+                
+                target_names = ["Aethvion Suite Nexus Dashboard", "Aethvion Suite Nexus", "Nexus Dashboard"]
+                for p, module in registry.items():
+                    if module in target_names:
+                        target_port = int(p)
+                        break
+            except Exception as e:
+                _log(f"Registry read failed: {e}")
+
+        # Fallback: Find the process and its listening port
+        if not target_port:
+            _log("Dashboard not in registry, searching via process connections...")
+            # We don't want to re-import psutil as it's at the top level
+            for proc in psutil.process_iter(['pid', 'name']):
+                try:
+                    name = proc.info.get('name') or ""
+                    if "python" in name.lower() and _is_running_aethvion(proc):
+                        # Find a listening port
+                        conns = proc.connections(kind='inet')
+                        for conn in conns:
+                            if conn.status == 'LISTEN' and conn.laddr.port >= 8080:
+                                target_port = conn.laddr.port
+                                _log(f"Found listening port {target_port} on PID {proc.info['pid']}")
+                                break
+                        if target_port: break
+                except (psutil.AccessDenied, psutil.NoSuchProcess):
+                    continue
+
+        if target_port:
+            from core.utils.browser import open_app_window
+            _log(f"Re-opening browser on port {target_port}")
+            open_app_window(f"http://localhost:{target_port}", delay=0, background=True)
+            time.sleep(0.5)
+        else:
+            _log("Could not find dashboard port via registry or process scan.")
+    except Exception as e:
+        _log(f"Re-open failed: {e}")
+
 def _ensure_singleton() -> None:
     """Ensure only one instance of the launcher is running."""
     lock_file = ROOT / "data" / "aethvion.lock"
@@ -251,9 +322,9 @@ def _ensure_singleton() -> None:
                 if psutil.pid_exists(old_pid):
                     proc = psutil.Process(old_pid)
                     if "python" in proc.name().lower():
-                        print(f"[CRITICAL] Aethvion Suite (PID {old_pid}) is already running.")
-                        print("[Launcher] Please close the existing instance first.")
-                        sys.exit(1)
+                        print(f"\n[Launcher] Aethvion Suite is already running (PID {old_pid}).")
+                        _try_reopen_dashboard()
+                        sys.exit(0)
             except Exception:
                 pass # Corrupt or missing PID, ignore and overwrite
         
@@ -423,6 +494,8 @@ def _monitor_dashboard(proc: subprocess.Popen, consumer: bool) -> None:
 # ── Main ───────────────────────────────────────────────────────────────────────
 
 def main() -> None:
+    _log("Main function entered")
+    
     parser = argparse.ArgumentParser(
         description="Aethvion Suite Master Launcher",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -467,10 +540,12 @@ def main() -> None:
     browser_mode: str = args.browser
 
     # ── Ensure singleton and clean up ──────────────────────────────────────────
+    _log("Checking singleton and cleaning stale processes...")
     _ensure_singleton()
     _cleanup_stale_processes()
 
     # ── Install Windows Job Object for reliable cleanup ────────────────────────
+    _log("Installing Job Object...")
     _install_job_object()
 
     # ── Banner ────────────────────────────────────────────────────────────────
@@ -508,14 +583,19 @@ def main() -> None:
                 print(f"[Launcher] Unknown app '{name}'. Known: {', '.join(optional_keys)}")
 
     # ── Launch dashboard first ─────────────────────────────────────────────────
+    _log("Launching dashboard...")
     print()
     dashboard_proc = _launch_process("dashboard", APP_REGISTRY["dashboard"], consumer)
+    if not dashboard_proc:
+        _log("ERROR: Dashboard process failed to launch.")
+    else:
+        _log(f"Dashboard launched with PID {dashboard_proc.pid}")
 
     # ── Stagger optional app launches (avoid port-registry race) ──────────────
     # A brief stagger lets each server write its port before the next one reads.
     for i, app_name in enumerate(extra_names):
         if i > 0:
-            time.sleep(0.15)          # 150 ms gap between launches
+            time.sleep(0.5)          # 500 ms gap between launches
         _launch_process(app_name, APP_REGISTRY[app_name], consumer)
 
     print()

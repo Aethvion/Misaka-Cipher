@@ -75,36 +75,55 @@ class PortManager:
         Registers the allocated port in ports.json and returns it.
         """
         cls._ensure_registry_exists()
-        registry = cls.get_registered_ports()
         
-        # We need to scrub the registry for stale instances of this module
-        # in case it's restarting on a new port.
-        stale_ports = [p for p, m in registry.items() if m == module_name]
-        for sp in stale_ports:
-            del registry[sp]
+        lock_file = REGISTRY_FILE.with_suffix(".lock")
+        import time as pytime
+        
+        # Simple retry-based file locking
+        locked = False
+        for _ in range(50): # Try for 5 seconds
+            try:
+                if not lock_file.exists():
+                    lock_file.write_text(str(os.getpid()))
+                    locked = True
+                    break
+            except:
+                pass
+            pytime.sleep(0.1)
+            
+        try:
+            registry = cls.get_registered_ports()
+            
+            # We need to scrub the registry for stale instances of this module
+            stale_ports = [p for p, m in registry.items() if m == module_name]
+            for sp in stale_ports:
+                del registry[sp]
 
-        target_port = preferred_port
-        min_port, max_port = port_range
+            target_port = preferred_port
+            min_port, max_port = port_range
 
-        while target_port <= max_port:
-            if not cls._is_port_in_use(target_port):
-                # Bind it in registry
-                registry[str(target_port)] = module_name
+            while target_port <= max_port:
+                if not cls._is_port_in_use(target_port):
+                    # Bind it in registry
+                    registry[str(target_port)] = module_name
+                    try:
+                        with open(REGISTRY_FILE, "w", encoding="utf-8") as f:
+                            json.dump(registry, f, indent=4)
+                        print(f"[{module_name}] Assigned dynamic port: {target_port}")
+                        return target_port
+                    except Exception as e:
+                        print(f"ERROR writing to port registry: {e}")
+                        return target_port
+                
+                target_port += 1
+                
+            return preferred_port
+        finally:
+            if locked and lock_file.exists():
                 try:
-                    with open(REGISTRY_FILE, "w", encoding="utf-8") as f:
-                        json.dump(registry, f, indent=4)
-                    print(f"[{module_name}] Assigned dynamic port: {target_port}")
-                    return target_port
-                except Exception as e:
-                    print(f"ERROR writing to port registry: {e}")
-                    return target_port
-            
-            target_port += 1
-            
-        # If we exit the loop, we ran out of ports in the range
-        print(f"[{module_name}] FATAL: No available ports in range {min_port}-{max_port}")
-        # Return preferred port as fallback, it will crash natively.
-        return preferred_port
+                    lock_file.unlink()
+                except:
+                    pass
 
     @classmethod
     def release_port(cls, port: int):
