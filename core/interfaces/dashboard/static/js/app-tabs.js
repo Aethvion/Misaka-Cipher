@@ -400,6 +400,46 @@ const ATB = (() => {
         } catch (_) { /* ignore */ }
     }
 
+    // ── System Shutdown ────────────────────────────────────────────────────────
+    async function quitSystem() {
+        if (!confirm("Are you sure you want to shut down Aethvion Suite and all background services?")) {
+            return;
+        }
+
+        const btn = document.getElementById('atb-quit-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span>Quitting...</span>`;
+        }
+
+        try {
+            const resp = await fetch('/api/system/shutdown', { method: 'POST' });
+            if (resp.ok) {
+                // Show a nice overlay or just wait for the connection to die
+                document.body.innerHTML = `
+                    <div style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#0a0a0b; color:#fff; font-family:sans-serif;">
+                        <h2 style="color:#f87171;">Shutting Down...</h2>
+                        <p style="opacity:0.7;">Aethvion Suite is closing. You can close this window now.</p>
+                    </div>
+                `;
+            } else {
+                alert("Shutdown failed. Check logs.");
+                location.reload();
+            }
+        } catch (err) {
+            console.error("Shutdown error:", err);
+            // If connection dies, it probably worked
+            setTimeout(() => {
+                document.body.innerHTML = `
+                    <div style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#0a0a0b; color:#fff; font-family:sans-serif;">
+                        <h2 style="color:#f87171;">System Stopped</h2>
+                        <p style="opacity:0.7;">The backend has disconnected. You may close your browser.</p>
+                    </div>
+                `;
+            }, 1000);
+        }
+    }
+
     // ── Init ──────────────────────────────────────────────────────────────────
     function init() {
         document.querySelector('[data-panel="panel-nexus"]')
@@ -419,7 +459,7 @@ const ATB = (() => {
         setInterval(_updateSuiteStatus, 5_000);
     }
 
-    return { init, openApp, switchTo, retryApp, refreshPorts };
+    return { init, openApp, switchTo, retryApp, refreshPorts, quitSystem };
 
 })();
 

@@ -45,6 +45,7 @@ import argparse
 import atexit
 import os
 import signal
+import socket
 import subprocess
 import sys
 import threading
@@ -485,6 +486,12 @@ def _monitor_dashboard(proc: subprocess.Popen, consumer: bool) -> None:
                 _restart_suite()
                 return
             
+            if code == 0:
+                _log("Dashboard exited gracefully (code 0). Shutting down suite...")
+                print("\n[Launcher] Dashboard shut down gracefully. Cleaning up…")
+                _cleanup()
+                os._exit(0)
+            
             print("[Launcher] Dashboard crashed — restarting…")
             new = _launch_process("dashboard", APP_REGISTRY["dashboard"], consumer)
             if new:
@@ -605,16 +612,36 @@ def main() -> None:
         dashboard_port = int(os.environ.get("PORT", APP_REGISTRY["dashboard"]["port"]))
 
         def _open_browser() -> None:
-            time.sleep(2.5)
+            # 1. Wait for dashboard to be ready (port bind)
+            _log(f"Waiting for dashboard port {dashboard_port} to be active...")
+            start_wait = time.time()
+            port_ready = False
+            while time.time() - start_wait < 30: # 30s timeout
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.settimeout(0.5)
+                        if s.connect_ex(('127.0.0.1', dashboard_port)) == 0:
+                            port_ready = True
+                            break
+                except:
+                    pass
+                time.sleep(0.5)
+
+            if not port_ready:
+                _log("Dashboard port not ready after 30s. Attempting browser open anyway.")
+            else:
+                _log(f"Dashboard port {dashboard_port} is active.")
+
             saved = os.environ.pop("AETHVION_NO_BROWSER", None)
             try:
                 from core.utils.browser import open_app_window
                 open_app_window(
                     f"http://localhost:{dashboard_port}",
-                    delay=0,
-                    background=False,
+                    delay=0.1,
+                    background=True,   # Reverting to background=True (manual shutdown mode)
                     app_mode=(browser_mode == "app"),
                 )
+                _log("Browser open command sent. Launcher continuing in background.")
             finally:
                 if saved is not None:
                     os.environ["AETHVION_NO_BROWSER"] = saved

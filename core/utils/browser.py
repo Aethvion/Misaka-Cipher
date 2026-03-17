@@ -90,7 +90,7 @@ def open_app_window(
     if os.environ.get("AETHVION_NO_BROWSER") == "1":
         return
 
-    def _launch() -> None:
+    def _launch() -> subprocess.Popen | None:
         if delay > 0:
             time.sleep(delay)
 
@@ -103,21 +103,24 @@ def open_app_window(
                     kwargs["creationflags"] = 0x08000000  # CREATE_NO_WINDOW
 
                 cmd = [exe, f"--app={url}"] if app_mode else [exe, url]
-                subprocess.Popen(
+                return subprocess.Popen(
                     cmd,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     **kwargs,
                 )
-                return
             except Exception:
                 pass  # fall through to webbrowser
 
         # Fallback — opens in whatever the OS default browser is
         webbrowser.open(url)
+        return None
 
     if background:
+        # We can't easily return the proc from a daemon thread's start
+        # but we can provide a container or just not use background if we want the proc
         t = threading.Thread(target=_launch, daemon=True)
         t.start()
+        return None
     else:
-        _launch()
+        return _launch()

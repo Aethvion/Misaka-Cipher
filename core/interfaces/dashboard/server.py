@@ -60,6 +60,26 @@ async def root():
         return HTMLResponse(content=content, headers=headers)
     return HTMLResponse("<h1>Misaka Cipher Dashboard</h1><p>index.html not found</p>")
 
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Clean up dynamically started apps on server shutdown."""
+    if not RUNNING_APPS:
+        return
+        
+    logger.info(f"Shutting down {len(RUNNING_APPS)} dynamic apps...")
+    for name, pid in list(RUNNING_APPS.items()):
+        try:
+            if psutil.pid_exists(pid):
+                parent = psutil.Process(pid)
+                # Kill children first
+                for child in parent.children(recursive=True):
+                    child.kill()
+                parent.kill()
+                logger.info(f"Terminated {name} (PID {pid})")
+        except Exception as e:
+            logger.error(f"Failed to terminate {name} (PID {pid}): {e}")
+    RUNNING_APPS.clear()
+
 # Mount static files immediately
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -504,6 +524,19 @@ async def get_system_ports():
     from core.utils.port_manager import PortManager
     return PortManager.get_registered_ports()
 
+
+@app.post("/api/system/shutdown")
+async def shutdown_system():
+    """Gracefully shut down the entire Aethvion Suite."""
+    logger.info("Manual shutdown requested via API.")
+    # Short delay to allow the response to reach the client
+    asyncio.create_task(delayed_exit())
+    return {"status": "success", "message": "System shutting down..."}
+
+async def delayed_exit():
+    await asyncio.sleep(1.0)
+    logger.info("Exiting dashboard process (graceful).")
+    os._exit(0)
 
 @app.post("/api/system/modules/run")
 async def run_module_script(request: dict):
