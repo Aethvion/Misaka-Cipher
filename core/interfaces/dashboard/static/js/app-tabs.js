@@ -182,18 +182,16 @@ const ATB = (() => {
         panel.className = 'app-panel app-iframe-panel';
         panel.style.display = 'none';
 
-        // Loading overlay
         const loadingEl = document.createElement('div');
         loadingEl.id        = loadId;
         loadingEl.className = 'app-iframe-loading';
-        loadingEl.style.border = '2px solid #00d9ff'; // Cyan border for visibility
         loadingEl.style.boxSizing = 'border-box';
         loadingEl.innerHTML = `
             <div class="app-iframe-spinner"></div>
-            <p style="color: white; font-size: 1.1rem; font-weight: bold;">Starting <strong>${app.label}</strong>…</p>
-            <p class="app-iframe-hint" style="color: #00d9ff;">Waiting for server to register…</p>
-            <button class="app-iframe-manual-launch-btn" style="margin-top: 15px; padding: 10px 20px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.9rem; font-weight: 600; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); transition: transform 0.1s, background 0.2s;">
-                <i class="fas fa-rocket" style="margin-right: 8px;"></i> Launch Service
+            <p class="app-iframe-loading-text">Starting up <strong>${app.label}</strong>…</p>
+            <p class="app-iframe-hint">Waiting for server to register…</p>
+            <button class="app-iframe-manual-launch-btn">
+                <i class="fas fa-rocket"></i> Launch Service
             </button>`;
 
         // Add listener for manual launch
@@ -224,6 +222,11 @@ const ATB = (() => {
 
         // Wire the load event BEFORE we ever set src
         iframe.addEventListener('load', () => {
+            console.log(`[ATB] iframe LOAD event for ${app.id}. src:`, iframe.src);
+            // Ignore initial about:blank loads that occur when appending to DOM
+            if (!iframe.src || iframe.src === 'about:blank' || iframe.src === window.location.href) {
+                return;
+            }
             loadingEl.style.display = 'none';
             iframe.style.display    = 'block';
         });
