@@ -50,6 +50,7 @@ import sys
 import threading
 import time
 from pathlib import Path
+import psutil
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
@@ -203,6 +204,68 @@ def _install_job_object() -> None:
     except Exception as exc:
         # Non-critical; fall through to atexit/signal cleanup
         print(f"[Launcher] Job Object setup skipped ({exc}); using atexit cleanup instead.")
+
+
+# ── Process Management Extras ─────────────────────────────────────────────────
+
+def _is_running_aethvion(proc: psutil.Process) -> bool:
+    """Check if a process looks like an Aethvion Suite component."""
+    try:
+        cmdline = " ".join(proc.cmdline())
+        # Check for core modules or specific app servers
+        targets = ["core.main", "vtuber_server.py", "tracking_server.py", "code_server.py", 
+                   "hardware_server.py", "audio_server.py", "photo_server.py", 
+                   "finance_server.py", "driveinfo_server.py"]
+        return any(t in cmdline for t in targets)
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        return False
+
+def _cleanup_stale_processes() -> None:
+    """Kill any existing Python processes that look like Aethvion Suite."""
+    print("[Launcher] Cleaning up stale Aethvion processes…")
+    mypid = os.getpid()
+    for proc in psutil.process_iter(['pid', 'name']):
+        try:
+            if proc.info['pid'] == mypid:
+                continue
+            if "python" in proc.info['name'].lower() and _is_running_aethvion(proc):
+                print(f"[Launcher] Terminating stale process: {proc.info['pid']}")
+                proc.terminate()
+                try:
+                    proc.wait(timeout=3)
+                except psutil.TimeoutExpired:
+                    proc.kill()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+
+def _ensure_singleton() -> None:
+    """Ensure only one instance of the launcher is running."""
+    lock_file = ROOT / "data" / "aethvion.lock"
+    lock_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        # We use a simple approach: if the file exists, check if the PID is alive
+        if lock_file.exists():
+            try:
+                old_pid = int(lock_file.read_text().strip())
+                if psutil.pid_exists(old_pid):
+                    proc = psutil.Process(old_pid)
+                    if "python" in proc.name().lower():
+                        print(f"[CRITICAL] Aethvion Suite (PID {old_pid}) is already running.")
+                        print("[Launcher] Please close the existing instance first.")
+                        sys.exit(1)
+            except Exception:
+                pass # Corrupt or missing PID, ignore and overwrite
+        
+        lock_file.write_text(str(os.getpid()))
+        # Clean up lock file on exit
+        def _remove_lock():
+            if lock_file.exists():
+                lock_file.unlink()
+        atexit.register(_remove_lock)
+        
+    except Exception as e:
+        print(f"[Launcher] Singleton check failed: {e}")
 
 
 # ── Child-process tracking ─────────────────────────────────────────────────────
@@ -402,6 +465,10 @@ def main() -> None:
     consumer    = args.consumer and not args.dev
     mode_label  = "CONSUMER" if consumer else "DEV"
     browser_mode: str = args.browser
+
+    # ── Ensure singleton and clean up ──────────────────────────────────────────
+    _ensure_singleton()
+    _cleanup_stale_processes()
 
     # ── Install Windows Job Object for reliable cleanup ────────────────────────
     _install_job_object()
