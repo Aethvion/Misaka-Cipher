@@ -618,6 +618,134 @@ async def run_code(req: RunReq):
         if tmp_path:
             tmp_path.unlink(missing_ok=True)
 
+# ── /api/code/run/stream ──────────────────────────────────────────────────────
+async def _run_sse(cmd: list, cwd: str, timeout: int,
+                   stdin_data: Optional[str]) -> AsyncGenerator[str, None]:
+    """Run a subprocess and stream stdout/stderr line-by-line as SSE events."""
+    loop = asyncio.get_event_loop()
+    q: asyncio.Queue = asyncio.Queue()
+    flags = 0x08000000 if os.name == "nt" else 0
+
+    def _worker():
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                stdin=subprocess.PIPE if stdin_data else subprocess.DEVNULL,
+                cwd=cwd, text=True, bufsize=1,
+                encoding="utf-8", errors="replace",
+                creationflags=flags,
+            )
+            if stdin_data:
+                try: proc.stdin.write(stdin_data); proc.stdin.close()
+                except Exception: pass
+
+            def _read(stream, ch):
+                for line in stream:
+                    loop.call_soon_threadsafe(q.put_nowait, {"ch": ch, "text": line})
+                stream.close()
+
+            t1 = threading.Thread(target=_read, args=(proc.stdout, "stdout"), daemon=True)
+            t2 = threading.Thread(target=_read, args=(proc.stderr, "stderr"), daemon=True)
+            t1.start(); t2.start()
+
+            try:
+                proc.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                proc.kill(); proc.wait()
+                loop.call_soon_threadsafe(
+                    q.put_nowait, {"ch": "stderr", "text": f"\n[Timed out after {timeout}s]\n"})
+
+            t1.join(timeout=5); t2.join(timeout=5)
+            loop.call_soon_threadsafe(
+                q.put_nowait, {"done": True, "returncode": proc.returncode or -1})
+        except Exception as exc:
+            loop.call_soon_threadsafe(q.put_nowait, {"ch": "stderr", "text": str(exc)})
+            loop.call_soon_threadsafe(q.put_nowait, {"done": True, "returncode": -1})
+
+    threading.Thread(target=_worker, daemon=True).start()
+    while True:
+        item = await q.get()
+        yield f"data: {json.dumps(item)}\n\n"
+        if "done" in item:
+            break
+
+
+@app.post("/api/code/run/stream")
+async def run_code_stream(req: RunReq):
+    """Like /api/code/run but streams output line-by-line as SSE."""
+    lang = req.language.lower()
+    tmp_path: Optional[Path] = None
+
+    async def _unsupported(msg: str):
+        yield f"data: {json.dumps({'ch': 'stderr', 'text': msg})}\n\n"
+        yield f"data: {json.dumps({'done': True, 'returncode': 1})}\n\n"
+
+    if lang == "python":
+        if req.path:
+            cmd = [sys.executable, req.path]
+        else:
+            tmp = tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False, encoding="utf-8")
+            tmp.write(req.code or ""); tmp.close()
+            tmp_path = Path(tmp.name); cmd = [sys.executable, str(tmp_path)]
+
+    elif lang in ("javascript", "js", "node"):
+        node = shutil.which("node") or shutil.which("node.exe")
+        if not node:
+            return StreamingResponse(_unsupported("Node.js not found. Install Node.js to run JavaScript."),
+                                     media_type="text/event-stream", headers=SSE_HEADERS)
+        if req.path:
+            cmd = [node, req.path]
+        else:
+            tmp = tempfile.NamedTemporaryFile(suffix=".js", mode="w", delete=False, encoding="utf-8")
+            tmp.write(req.code or ""); tmp.close()
+            tmp_path = Path(tmp.name); cmd = [node, str(tmp_path)]
+
+    elif lang in ("bash", "sh", "shell"):
+        bash = shutil.which("bash") or shutil.which("bash.exe")
+        if bash:
+            if req.path: cmd = [bash, req.path]
+            else:
+                tmp = tempfile.NamedTemporaryFile(suffix=".sh", mode="w", delete=False, encoding="utf-8")
+                tmp.write(req.code or ""); tmp.close()
+                tmp_path = Path(tmp.name); cmd = [bash, str(tmp_path)]
+        else:
+            if req.path: cmd = ["cmd", "/c", req.path]
+            else:
+                tmp = tempfile.NamedTemporaryFile(suffix=".bat", mode="w", delete=False, encoding="utf-8")
+                tmp.write(req.code or ""); tmp.close()
+                tmp_path = Path(tmp.name); cmd = ["cmd", "/c", str(tmp_path)]
+    else:
+        return StreamingResponse(
+            _unsupported(f"Execution not supported for language '{req.language}'."),
+            media_type="text/event-stream", headers=SSE_HEADERS)
+
+    async def _wrapped():
+        async for chunk in _run_sse(cmd, str(WORKSPACE), req.timeout, req.stdin or None):
+            yield chunk
+        if tmp_path:
+            tmp_path.unlink(missing_ok=True)
+
+    return StreamingResponse(_wrapped(), media_type="text/event-stream", headers=SSE_HEADERS)
+
+
+# ── /api/git/branch ───────────────────────────────────────────────────────────
+@app.get("/api/git/branch")
+async def git_branch(workspace: str = ""):
+    base = workspace or str(WORKSPACE)
+    try:
+        flags = 0x08000000 if os.name == "nt" else 0
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True, text=True, cwd=base, timeout=3,
+            creationflags=flags,
+        )
+        branch = result.stdout.strip() if result.returncode == 0 else ""
+        return JSONResponse({"branch": branch})
+    except Exception:
+        return JSONResponse({"branch": ""})
+
+
 # ── /api/ai/* ─────────────────────────────────────────────────────────────────
 SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 

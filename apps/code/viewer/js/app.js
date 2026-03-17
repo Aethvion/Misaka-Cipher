@@ -208,6 +208,10 @@ async function loadWorkspace(path = '') {
     await refreshTree(path);
     // Restore previously open files for this workspace
     await restoreProjectState(path);
+    // Update auxiliary panels
+    updateGitBranch();
+    loadContextNotes();
+    updateStatusBar();
   } catch (e) { toast(`Workspace error: ${e.message}`, 'error'); }
 }
 
@@ -356,6 +360,8 @@ function activateTab(path) {
   const tab = state.tabs.find(t => t.path === path);
   const runnable = ['python','javascript','shell','bat'].includes(tab?.language ?? '');
   dom.btnRun.disabled = !runnable;
+
+  updateStatusBar();
 }
 
 function closeTab(path) {
@@ -385,12 +391,12 @@ function closeTab(path) {
 
 function markDirty(path) {
   const tab = state.tabs.find(t => t.path === path);
-  if (tab && !tab.dirty) { tab.dirty = true; renderTabs(); }
+  if (tab && !tab.dirty) { tab.dirty = true; renderTabs(); updateStatusBar(); }
 }
 
 function markClean(path) {
   const tab = state.tabs.find(t => t.path === path);
-  if (tab) { tab.dirty = false; renderTabs(); }
+  if (tab) { tab.dirty = false; renderTabs(); updateStatusBar(); }
 }
 
 function renderTabs() {
@@ -430,7 +436,7 @@ async function saveActiveFile() {
   } catch (e) { toast(`Save failed: ${e.message}`, 'error'); }
 }
 
-// ── Run code ──────────────────────────────────────────────────────────────────
+// ── Run code (streaming) ──────────────────────────────────────────────────────
 async function runActiveFile() {
   if (!state.activeTab || state.isRunning) return;
   await saveActiveFile();
@@ -445,21 +451,54 @@ async function runActiveFile() {
   switchBtab('output');
   appendOutput(`\n<span class="out-meta">▶ Running ${tab.name}…</span>\n`, true);
 
+  const t0 = Date.now();
+  let collectedStderr = '';
+
   try {
-    const result = await api('/api/code/run', {
+    const res = await fetch('/api/code/run/stream', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: tab.path, language: tab.language }),
+      signal: state.abortCtrl.signal,
     });
 
-    if (result.stdout) appendOutput(`<span class="out-stdout">${escHtml(result.stdout)}</span>`);
-    if (result.stderr) {
-      appendOutput(`<span class="out-stderr">${escHtml(result.stderr)}</span>`);
-      state.lastError = result.stderr;
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || res.statusText);
     }
-    const ok = result.returncode === 0;
-    appendOutput(`<span class="${ok ? 'out-ok' : 'out-err'}">${ok ? '✓' : '✗'} Exit ${result.returncode} · ${result.elapsed}s</span>\n`);
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const evt = JSON.parse(line.slice(6));
+          if (evt.ch === 'stdout') {
+            appendOutput(`<span class="out-stdout">${escHtml(evt.text)}</span>`);
+          } else if (evt.ch === 'stderr') {
+            appendOutput(`<span class="out-stderr">${escHtml(evt.text)}</span>`);
+            collectedStderr += evt.text;
+          } else if (evt.done) {
+            if (collectedStderr) state.lastError = collectedStderr;
+            const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
+            const ok = evt.returncode === 0;
+            appendOutput(`<span class="${ok ? 'out-ok' : 'out-err'}">${ok ? '✓' : '✗'} Exit ${evt.returncode} · ${elapsed}s</span>\n`);
+          }
+        } catch { /* partial JSON */ }
+      }
+    }
   } catch (e) {
-    appendOutput(`<span class="out-err">Error: ${escHtml(e.message)}</span>\n`);
+    if (e.name !== 'AbortError') {
+      appendOutput(`<span class="out-err">Error: ${escHtml(e.message)}</span>\n`);
+    }
   } finally {
     state.isRunning  = false;
     state.abortCtrl  = null;
@@ -743,12 +782,44 @@ function addChatMessage(role, content = '', streaming = false) {
   return bubble;
 }
 
-/** Minimal markdown renderer (code blocks, inline code, bold, italic, headings) */
+/** Apply a code string to the active editor (replaces selection or full content). */
+function applyCodeToEditor(code) {
+  if (!state.editor) return toast('No file open', 'warn');
+  const sel = state.editor.getSelection();
+  if (sel && !sel.isEmpty()) {
+    state.editor.executeEdits('ai-apply', [{ range: sel, text: code }]);
+  } else {
+    state.editor.setValue(code);
+  }
+  if (state.activeTab) markDirty(state.activeTab);
+  toast('Applied to editor', 'success', 1800);
+}
+
+/** Copy code block content to clipboard. Called via inline onclick. */
+function copyCodeBlock(btn) {
+  const code = btn.closest('.code-block-wrap').querySelector('code').textContent;
+  navigator.clipboard.writeText(code).then(() => toast('Copied', 'success', 1400));
+}
+
+/** Apply code block to active editor. Called via inline onclick. */
+function applyCodeBlock(btn) {
+  const code = btn.closest('.code-block-wrap').querySelector('code').textContent;
+  applyCodeToEditor(code);
+}
+
+/** Markdown renderer with copy/apply buttons on code blocks. */
 function renderMarkdown(text) {
   return text
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/```(\w*)\n([\s\S]*?)```/g, (_,lang,code) =>
-      `<pre><code>${code.trimEnd()}</code></pre>`)
+    .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
+      `<div class="code-block-wrap">` +
+      `<div class="code-block-header">` +
+      `<span class="code-lang">${lang || 'text'}</span>` +
+      `<div class="code-block-actions">` +
+      `<button class="cb-btn" onclick="copyCodeBlock(this)" title="Copy to clipboard"><i class="fa-solid fa-copy" aria-hidden="true"></i> Copy</button>` +
+      `<button class="cb-btn cb-apply" onclick="applyCodeBlock(this)" title="Apply to active file"><i class="fa-solid fa-file-import" aria-hidden="true"></i> Apply</button>` +
+      `</div></div>` +
+      `<pre><code>${code.trimEnd()}</code></pre></div>`)
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -969,6 +1040,164 @@ function promptUser(msg) {
   return new Promise(resolve => resolve(window.prompt(msg) || null));
 }
 
+// ── File palette (Ctrl+P) ─────────────────────────────────────────────────────
+let _paletteFiles = [];
+let _paletteActive = 0;
+
+function _buildPaletteIndex() {
+  const files = [];
+  function walk(node) {
+    if (!node) return;
+    if (node.type === 'file') {
+      const rel = node.path.replace(state.workspace, '').replace(/^[/\\]/, '').replace(/\\/g, '/');
+      files.push({ path: node.path, name: node.name, rel });
+    } else if (node.children) {
+      node.children.forEach(walk);
+    }
+  }
+  walk(state.treeData);
+  _paletteFiles = files;
+}
+
+function _fuzzyMatch(str, query) {
+  if (!query) return { match: true, score: 100 };
+  const s = str.toLowerCase();
+  const q = query.toLowerCase();
+  // exact substring gets highest score
+  if (s.includes(q)) return { match: true, score: 200 + (s.length - q.length) * -1 };
+  let si = 0, qi = 0, score = 0;
+  while (si < s.length && qi < q.length) {
+    if (s[si] === q[qi]) { score++; qi++; }
+    si++;
+  }
+  return { match: qi === q.length, score };
+}
+
+function openFilePalette() {
+  _buildPaletteIndex();
+  const el = $('filePalette');
+  el.style.display = 'flex';
+  const input = $('paletteInput');
+  input.value = '';
+  _paletteActive = 0;
+  _renderPaletteResults('');
+  input.focus();
+}
+
+function closeFilePalette() {
+  $('filePalette').style.display = 'none';
+}
+
+function _renderPaletteResults(query) {
+  const container = $('paletteResults');
+  const results = _paletteFiles
+    .map(f => ({ ...f, ..._fuzzyMatch(f.rel || f.name, query) }))
+    .filter(f => f.match)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 30);
+
+  if (!results.length) {
+    container.innerHTML = `<div class="palette-empty">${query ? 'No files match' : 'No files in workspace'}</div>`;
+    return;
+  }
+  container.innerHTML = '';
+  results.forEach((f, i) => {
+    const item = document.createElement('div');
+    item.className = `palette-item${i === 0 ? ' active' : ''}`;
+    item.dataset.path = f.path;
+    item.setAttribute('role', 'option');
+    item.innerHTML =
+      `<i class="fa-solid ${fileIcon(f.name)} ti-icon palette-item-icon" aria-hidden="true"></i>` +
+      `<span class="palette-item-name">${escHtml(f.name)}</span>` +
+      `<span class="palette-item-path">${escHtml(f.rel || '')}</span>`;
+    item.addEventListener('click', () => { closeFilePalette(); openFile(f.path); });
+    item.addEventListener('mouseenter', () => {
+      container.querySelectorAll('.palette-item').forEach((el, j) => el.classList.toggle('active', j === i));
+      _paletteActive = i;
+    });
+    container.appendChild(item);
+  });
+  _paletteActive = 0;
+}
+
+$('paletteInput').addEventListener('input', e => _renderPaletteResults(e.target.value));
+$('paletteInput').addEventListener('keydown', e => {
+  const items = $('paletteResults').querySelectorAll('.palette-item');
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    _paletteActive = Math.min(_paletteActive + 1, items.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    _paletteActive = Math.max(_paletteActive - 1, 0);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const active = items[_paletteActive];
+    if (active) { closeFilePalette(); openFile(active.dataset.path); }
+    return;
+  } else if (e.key === 'Escape') {
+    e.preventDefault(); closeFilePalette(); return;
+  } else return;
+  items.forEach((el, i) => el.classList.toggle('active', i === _paletteActive));
+  items[_paletteActive]?.scrollIntoView({ block: 'nearest' });
+});
+$('filePalette').addEventListener('click', e => { if (e.target === $('filePalette')) closeFilePalette(); });
+
+// ── Status bar ────────────────────────────────────────────────────────────────
+function updateStatusBar() {
+  if (!state.editor) return;
+  const pos = state.editor.getPosition();
+  if (pos) $('sbPos').textContent = `Ln ${pos.lineNumber}, Col ${pos.column}`;
+  const tab = state.tabs.find(t => t.path === state.activeTab);
+  const lang = tab?.language || '';
+  $('sbLang').textContent = lang ? (lang.charAt(0).toUpperCase() + lang.slice(1)) : '—';
+  $('sbDirty').style.display = tab?.dirty ? '' : 'none';
+}
+
+async function updateGitBranch() {
+  try {
+    const data = await api(`/api/git/branch?workspace=${encodeURIComponent(state.workspace || '')}`);
+    const branch = data.branch;
+    $('sbBranchText').textContent = branch || 'detached';
+    $('sbBranch').style.display = branch ? '' : 'none';
+  } catch {
+    $('sbBranch').style.display = 'none';
+  }
+}
+
+// ── Project context notes ─────────────────────────────────────────────────────
+async function loadContextNotes() {
+  if (!state.workspace) return;
+  try {
+    const proj = await api(`/api/project?workspace=${encodeURIComponent(state.workspace)}`);
+    $('contextNotes').value = proj.ai_context || '';
+  } catch { /* best-effort */ }
+}
+
+async function saveContextNotes() {
+  if (!state.workspace) return;
+  try {
+    await api('/api/project', {
+      method: 'POST',
+      body: JSON.stringify({ workspace: state.workspace, ai_context: $('contextNotes').value.trim() }),
+    });
+    toast('Notes saved', 'success', 1500);
+  } catch (e) { toast(`Save failed: ${e.message}`, 'error'); }
+}
+
+$('btnToggleContext').addEventListener('click', () => {
+  const body = $('contextBody');
+  const chevron = $('contextChevron');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : '';
+  chevron.classList.toggle('open', !open);
+  $('btnToggleContext').setAttribute('aria-expanded', String(!open));
+});
+$('btnSaveContext').addEventListener('click', saveContextNotes);
+$('contextNotes').addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveContextNotes(); }
+});
+
 // ── Sidebar toggles ───────────────────────────────────────────────────────────
 function toggleFileTree() {
   dom.fileTree.classList.toggle('collapsed');
@@ -1054,6 +1283,7 @@ document.addEventListener('keydown', e => {
       case '/':  e.preventDefault(); toggleAIPanel();   break;
       case 'b':  e.preventDefault(); toggleFileTree();  break;
       case 'k':  e.preventDefault(); dom.chatInput.focus(); break;
+      case 'p':  e.preventDefault(); openFilePalette(); break;
       case 'w':  e.preventDefault(); if (state.activeTab) closeTab(state.activeTab); break;
       case 'Tab':
         if (state.tabs.length > 1) {
@@ -1186,6 +1416,11 @@ function initMonaco() {
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runActiveFile);
       // Ctrl+Space → AI complete
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, completeAtCursor);
+      // Ctrl+P → file palette (override Monaco's default command palette)
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, openFilePalette);
+
+      // Update status bar on cursor move
+      editor.onDidChangeCursorPosition(() => updateStatusBar());
 
       // Layout on container resize
       new ResizeObserver(() => editor.layout()).observe(dom.monacoContainer);
