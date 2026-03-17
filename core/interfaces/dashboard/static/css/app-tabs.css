@@ -129,8 +129,29 @@ body {
     opacity: 0;
     transition: opacity 0.15s, background 0.15s, color 0.15s;
 }
+.atb-tab-refresh {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    font-size: 0.65rem;
+    margin-left: 2px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+    color: var(--text-muted);
+}
 .atb-tab:hover .atb-tab-close,
-.atb-tab--active .atb-tab-close { opacity: 0.5; }
+.atb-tab--active .atb-tab-close,
+.atb-tab:hover .atb-tab-refresh,
+.atb-tab--active .atb-tab-refresh { opacity: 0.5; }
+
+.atb-tab-refresh:hover {
+    opacity: 1 !important;
+    background: rgba(0, 217, 255, 0.2);
+    color: var(--primary);
+}
 .atb-tab-close:hover {
     opacity: 1 !important;
     background: rgba(239, 68, 68, 0.2);

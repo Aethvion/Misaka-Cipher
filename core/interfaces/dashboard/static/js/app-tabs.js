@@ -158,7 +158,9 @@ const ATB = (() => {
                 // ✓ Server has registered its port — now we know exactly where to go
                 const port = nameToPort[app.portKey];
                 console.log(`[ATB] Found port ${port} for ${app.id}. Loading iframe...`);
-                iframe.src = `http://localhost:${port}`;
+                // Append cache-buster to ensure the latest version is loaded
+                const cb = Date.now();
+                iframe.src = `http://localhost:${port}/?_cb=${cb}`;
                 // iframe load event hides the spinner and shows the iframe
                 return;
             }
@@ -265,6 +267,33 @@ const ATB = (() => {
         if (app) openApp(app);
     }
 
+    // ── Refresh: Hard reload an app ───────────────────────────────────────────
+    function refreshApp(appId) {
+        const panelId = `panel-app-${appId}`;
+        const iframe  = document.getElementById(`${panelId}-iframe`);
+        const loading = document.getElementById(`${panelId}-loading`);
+        if (!iframe) return;
+
+        console.log(`[ATB] Manually refreshing ${appId}...`);
+
+        // Hide iframe and show same spinner while we reload
+        if (loading) {
+            loading.style.display = 'flex';
+            const hint = loading.querySelector('.app-iframe-hint');
+            if (hint) hint.textContent = 'Refreshing cache…';
+        }
+        iframe.style.display = 'none';
+
+        // Set src with new cache-buster
+        const port = iframe.src.match(/:(\d+)/)?.[1];
+        if (port) {
+            iframe.src = `http://localhost:${port}/?_cb=${Date.now()}`;
+        } else {
+            // fallback (if src is wonky)
+            iframe.src = iframe.src.split('?')[0] + `?_cb=${Date.now()}`;
+        }
+    }
+
     // ── Build tab button ──────────────────────────────────────────────────────
     function _buildTab(app, panelId) {
         const tab     = document.createElement('button');
@@ -274,12 +303,18 @@ const ATB = (() => {
         tab.innerHTML = `
             <span class="atb-tab-emoji">${app.emoji}</span>
             <span class="atb-tab-label">${app.label}</span>
+            <span class="atb-tab-refresh" title="Hard Refresh App"><i class="fas fa-sync-alt"></i></span>
             <span class="atb-tab-close" title="Close tab">✕</span>`;
 
         tab.addEventListener('click', e => {
-            if (!e.target.classList.contains('atb-tab-close')) {
+            if (!e.target.closest('.atb-tab-close') && !e.target.closest('.atb-tab-refresh')) {
                 switchTo(panelId);
             }
+        });
+
+        tab.querySelector('.atb-tab-refresh').addEventListener('click', e => {
+            e.stopPropagation();
+            refreshApp(app.id);
         });
 
         tab.querySelector('.atb-tab-close').addEventListener('click', e => {
@@ -459,7 +494,7 @@ const ATB = (() => {
         setInterval(_updateSuiteStatus, 5_000);
     }
 
-    return { init, openApp, switchTo, retryApp, refreshPorts, quitSystem };
+    return { init, openApp, switchTo, retryApp, refreshApp, refreshPorts, quitSystem };
 
 })();
 
