@@ -1,4 +1,5 @@
 'use strict';
+console.log('[ATB] app-tabs.js loaded (v8-final-v2)');
 
 /**
  * Aethvion App Tab System  (app-tabs.js)
@@ -88,7 +89,10 @@ const ATB = (() => {
             return;
         }
 
+        console.log(`[ATB] Switching to ${panelId}`);
         next.style.display = (panelId === NEXUS_PANEL) ? 'flex' : 'block';
+        next.style.visibility = 'visible'; // Ensure visibility
+        next.style.opacity = '1';
 
         document.querySelectorAll('.atb-tab').forEach(t =>
             t.classList.toggle('atb-tab--active', t.dataset.panel === panelId)
@@ -106,6 +110,12 @@ const ATB = (() => {
         if (!app) return;
 
         const panelId = `panel-app-${app.id}`;
+
+        // Already open → just focus it
+        if (document.getElementById(panelId)) {
+            switchTo(panelId);
+            return;
+        }
 
         // 1. Tell backend to start the service (async, don't block UI)
         fetch('/api/system/modules/run', {
@@ -142,10 +152,12 @@ const ATB = (() => {
             }
 
             const nameToPort = await refreshPorts();
+            console.log(`[ATB] refreshing ports for ${app.id}...`, nameToPort);
 
             if (app.portKey in nameToPort) {
                 // ✓ Server has registered its port — now we know exactly where to go
                 const port = nameToPort[app.portKey];
+                console.log(`[ATB] Found port ${port} for ${app.id}. Loading iframe...`);
                 iframe.src = `http://localhost:${port}`;
                 // iframe load event hides the spinner and shows the iframe
                 return;
@@ -172,10 +184,27 @@ const ATB = (() => {
         const loadingEl = document.createElement('div');
         loadingEl.id        = loadId;
         loadingEl.className = 'app-iframe-loading';
+        loadingEl.style.border = '2px solid #00d9ff'; // Cyan border for visibility
+        loadingEl.style.boxSizing = 'border-box';
         loadingEl.innerHTML = `
             <div class="app-iframe-spinner"></div>
-            <p>Starting <strong>${app.label}</strong>…</p>
-            <p class="app-iframe-hint">Waiting for server to register…</p>`;
+            <p style="color: white; font-size: 1.1rem; font-weight: bold;">Starting <strong>${app.label}</strong>…</p>
+            <p class="app-iframe-hint" style="color: #00d9ff;">Waiting for server to register…</p>
+            <button class="app-iframe-manual-launch-btn" style="margin-top: 15px; padding: 10px 20px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.9rem; font-weight: 600; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); transition: transform 0.1s, background 0.2s;">
+                <i class="fas fa-rocket" style="margin-right: 8px;"></i> Launch Service
+            </button>`;
+
+        // Add listener for manual launch
+        loadingEl.querySelector('.app-iframe-manual-launch-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            fetch('/api/system/modules/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ module: app.id, action: 'run' })
+            }).then(() => {
+                if (window.showToast) window.showToast(`Launch command sent for ${app.label}`, 'info');
+            }).catch(err => console.error('Manual launch failed:', err));
+        });
 
         // iframe — src is intentionally NOT set yet
         const iframe = document.createElement('iframe');

@@ -545,20 +545,28 @@ async def run_module_script(request: dict):
                 return {"status": "success", "message": f"{module_name} is already running"}
 
             # For Windows, we use 'cmd /c' to run the batch file.
-            # We DON'T use 'start' here because we want to keep a handle on the process 
-            # to kill it later. 'start' would detach it completely.
-            # However, we use CREATE_NEW_CONSOLE to keep it in a separate window if it needs interaction.
+            # We use /k only for internal debugging if needed, /c is safer for general use.
+            cmd = f'cmd /c "{script_path}"'
+            
+            logger.info(f"[Modules] Launching {module_name} via: {cmd}")
+            
             import subprocess
             CREATE_NEW_CONSOLE = 0x00000010
             
-            proc = subprocess.Popen(
-                [str(script_path)],
-                cwd=str(script_path.parent),
-                creationflags=CREATE_NEW_CONSOLE,
-                shell=True
-            )
-            RUNNING_APPS[module_name] = proc.pid
-            return {"status": "success", "message": f"Started {module_name} service", "pid": proc.pid}
+            try:
+                proc = subprocess.Popen(
+                    cmd,
+                    cwd=str(script_path.parent),
+                    creationflags=CREATE_NEW_CONSOLE,
+                    shell=True,
+                    env=os.environ.copy()
+                )
+                RUNNING_APPS[module_name] = proc.pid
+                logger.info(f"[Modules] Started {module_name} with PID {proc.pid}")
+                return {"status": "success", "message": f"Started {module_name} service", "pid": proc.pid}
+            except Exception as launch_err:
+                logger.error(f"[Modules] Failed to Popen {module_name}: {launch_err}")
+                raise launch_err
             
         elif action == "stop":
             pid = RUNNING_APPS.get(module_name)
