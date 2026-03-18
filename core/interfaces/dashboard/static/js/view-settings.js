@@ -1133,7 +1133,7 @@ async function loadChatModels() {
     }
 }
 
-function renderProviderCards(registry, expandedProviderName = null) {
+function renderProviderCards(registry) {
     const container = document.getElementById('provider-cards-container');
     if (!container) return;
 
@@ -1142,7 +1142,6 @@ function renderProviderCards(registry, expandedProviderName = null) {
 
     for (const [name, config] of Object.entries(providers)) {
         const isActive = (config.chat_config?.active || config.agent_config?.active);
-        const shouldBeExpanded = (name === expandedProviderName);
 
         html += `
             <div class="compact-provider-item ${isActive ? 'active' : ''}" data-provider="${name}">
@@ -1150,9 +1149,6 @@ function renderProviderCards(registry, expandedProviderName = null) {
                     <div class="provider-main">
                         <span class="status-dot ${isActive ? 'active' : ''}"></span>
                         <span class="provider-name">${name}</span>
-                    </div>
-                    <div class="provider-actions">
-                        <button class="action-btn xs-btn toggle-models-btn" title="Edit Models"><i class="fas fa-list"></i></button>
                     </div>
                 </div>
                 <div class="provider-config-grid">
@@ -1171,7 +1167,7 @@ function renderProviderCards(registry, expandedProviderName = null) {
                         </label>
                     </div>
                 </div>
-                <div class="provider-models-foldout" style="display:${shouldBeExpanded ? 'block' : 'none'};">
+                <div class="provider-models-foldout" style="display:block;">
                     <table class="compact-models-table">
                         <thead>
                             <tr>
@@ -1237,13 +1233,6 @@ function renderProviderCards(registry, expandedProviderName = null) {
     container.innerHTML = html || '<div class="placeholder-text">No providers found.</div>';
 
     // Event Listeners
-    container.querySelectorAll('.toggle-models-btn').forEach(btn => {
-        btn.onclick = () => {
-            const foldout = btn.closest('.compact-provider-item').querySelector('.provider-models-foldout');
-            foldout.style.display = foldout.style.display === 'none' ? 'block' : 'none';
-        };
-    });
-
     container.querySelectorAll('.toggle-image-settings').forEach(btn => {
         btn.onclick = (e) => {
             const modelKey = btn.dataset.model;
@@ -1842,7 +1831,7 @@ async function openAddModelModal(providerName) {
 
         closeModal();
         markSettingsDirty();
-        renderProviderCards(_registryData, providerName);
+        renderProviderCards(_registryData);
         showNotification(`Model ${modelId} added (unsaved).`, 'info');
     };
 }
