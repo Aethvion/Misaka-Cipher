@@ -488,6 +488,160 @@ async function runAIConvLoop() {
     }
 }
 
+// ─── Share / Export ──────────────────────────────────────────────────────────
+
+async function _compressToBase64url(obj) {
+    const json  = JSON.stringify(obj);
+    const bytes = new TextEncoder().encode(json);
+    const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    const buf   = await new Response(stream).arrayBuffer();
+    const u8    = new Uint8Array(buf);
+    let bin = '';
+    for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+async function shareAIConv() {
+    if (!aiconvState.messageHistory.length) { showToast('Nothing to share yet.', 'warn'); return; }
+
+    // Collect only the visible messages (skip the system prompt at index 0)
+    const messages = [];
+    const topicMatch = (aiconvState.messageHistory[0]?.content || '').match(/topic of this conversation is:\s*"?(.+?)(?:"|\.|\n)/i);
+    const topic = topicMatch ? topicMatch[1].trim() : 'AI Conversation';
+
+    // Rebuild rendered message list from history
+    // We re-derive speaker info from aiconvSelectedModels
+    const modelMap = {};
+    for (const m of aiconvSelectedModels) modelMap[m.id] = m;
+
+    for (let i = 1; i < aiconvState.messageHistory.length; i++) {
+        const msg = aiconvState.messageHistory[i];
+        if (msg.role === 'system') continue; // skip per-turn system injections
+
+        // Find matching participant by name prefix in content (human injections)
+        let sender = null;
+        let content = msg.content;
+
+        if (msg.role === 'user') {
+            // Could be human participant or injected comment
+            const humanParticipant = aiconvSelectedModels.find(m => m.isHuman && content.startsWith(m.name + ':'));
+            if (humanParticipant) {
+                sender = humanParticipant;
+                content = content.slice(humanParticipant.name.length + 1).trim();
+            } else {
+                // Injected narrator comment
+                const narratorMatch = content.match(/^\[Narrator\/Observer\]:\s*(.*)/s);
+                if (narratorMatch) {
+                    sender = { name: 'You', color: 'hsl(200,70%,65%)', isHuman: true };
+                    content = narratorMatch[1];
+                } else {
+                    sender = { name: 'You', color: 'hsl(200,70%,65%)', isHuman: true };
+                }
+            }
+        } else {
+            // AI assistant — find by name field
+            const modelId = msg.name ? msg.name : null;
+            sender = modelId ? modelMap[modelId] : null;
+            if (!sender) {
+                // Fall back: pick the model at the turn index we can infer
+                sender = { name: 'AI', color: 'hsl(260,70%,65%)', id: '' };
+            }
+        }
+
+        messages.push({
+            name:    sender.name,
+            color:   sender.color,
+            content: content,
+            isHuman: sender.isHuman || false,
+            model:   sender.isHuman ? null : (sender.id || null)
+        });
+    }
+
+    if (!messages.length) { showToast('No messages to share yet.', 'warn'); return; }
+
+    const payload = {
+        v: 1,
+        title: topic,
+        topic: topic,
+        created: new Date().toISOString(),
+        participants: aiconvSelectedModels.map(m => ({
+            name:    m.name,
+            color:   m.color,
+            isHuman: m.isHuman || false,
+            model:   m.isHuman ? null : m.id
+        })),
+        stats: {
+            inTokens:  aiconvState.estInTokens,
+            outTokens: aiconvState.estOutTokens,
+            cost:      aiconvState.estCost
+        },
+        messages
+    };
+
+    try {
+        const encoded = await _compressToBase64url(payload);
+        const url     = `https://aethvion.com/c#${encoded}`;
+
+        await navigator.clipboard.writeText(url);
+        showToast('Share link copied to clipboard!', 'success');
+
+        // Also show it in a small modal for convenience
+        _showShareModal(url);
+    } catch (err) {
+        console.error('Share failed:', err);
+        showToast('Failed to generate share link.', 'error');
+    }
+}
+
+function _showShareModal(url) {
+    const existing = document.getElementById('aiconv-share-modal');
+    if (existing) existing.remove();
+
+    document.body.insertAdjacentHTML('beforeend', `
+        <div id="aiconv-share-modal" style="
+            position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:9999;
+            display:flex; align-items:center; justify-content:center; padding:1rem;">
+            <div style="
+                background:var(--bg-secondary); border:1px solid var(--border);
+                border-radius:12px; padding:1.5rem; max-width:560px; width:100%;
+                box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <h3 style="margin:0; color:var(--primary); font-size:1rem;">
+                        <i class="fas fa-share-nodes"></i> Share Conversation
+                    </h3>
+                    <span id="aiconv-share-modal-close" style="cursor:pointer; font-size:1.4rem; color:var(--text-secondary);">&times;</span>
+                </div>
+                <p style="font-size:0.82rem; color:var(--text-secondary); margin:0 0 0.75rem 0;">
+                    This link contains the full conversation — no backend, no login required. Anyone with the link can view it.
+                </p>
+                <div style="display:flex; gap:0.5rem;">
+                    <input id="aiconv-share-url-input" type="text" readonly value="${url}"
+                        style="flex:1; font-size:0.75rem; padding:0.45rem 0.6rem; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); word-break:break-all;"
+                        onclick="this.select()">
+                    <button id="aiconv-share-copy-btn" class="action-btn primary" style="flex-shrink:0; padding:0.4rem 0.75rem; font-size:0.8rem;">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                <div style="margin-top:0.75rem; font-size:0.78rem; color:var(--text-secondary);">
+                    <i class="fas fa-circle-info"></i>
+                    To view: host <code style="background:var(--bg-tertiary); padding:1px 4px; border-radius:3px;">conversation.html</code> at <code style="background:var(--bg-tertiary); padding:1px 4px; border-radius:3px;">aethvion.com/c</code>
+                </div>
+            </div>
+        </div>
+    `);
+
+    document.getElementById('aiconv-share-modal-close').addEventListener('click', () => {
+        document.getElementById('aiconv-share-modal')?.remove();
+    });
+    document.getElementById('aiconv-share-copy-btn').addEventListener('click', async () => {
+        await navigator.clipboard.writeText(url);
+        showToast('Copied!', 'success', 1200);
+    });
+    document.getElementById('aiconv-share-modal').addEventListener('click', e => {
+        if (e.target.id === 'aiconv-share-modal') document.getElementById('aiconv-share-modal').remove();
+    });
+}
+
 // ─── Stats UI ────────────────────────────────────────────────────────────────
 
 function updateAIConvUI() {
@@ -499,6 +653,10 @@ function updateAIConvUI() {
     set('aiconv-live-tokens', formatNumber((aiconvState.estInTokens || 0) + (aiconvState.estOutTokens || 0)));
     set('aiconv-live-cost',   formatCost(aiconvState.estCost || 0));
     set('aiconv-progress',    `${aiconvState.totalTurnsCompleted}/${totalTarget}`);
+
+    // Show share button once there are messages
+    const shareBtn = document.getElementById('aiconv-share-btn');
+    if (shareBtn) shareBtn.style.display = aiconvState.totalTurnsCompleted > 0 ? '' : 'none';
 }
 
 // ─── Global Event Delegation ──────────────────────────────────────────────────
@@ -555,4 +713,7 @@ document.addEventListener('click', (e) => {
     // Continue button is inserted dynamically — match by id
     if (e.target && e.target.id === 'aiconv-continue-btn')
         { if (typeof continueAIConv === 'function') continueAIConv(); }
+
+    if (e.target && e.target.id === 'aiconv-share-btn')
+        { if (typeof shareAIConv === 'function') shareAIConv(); }
 });
