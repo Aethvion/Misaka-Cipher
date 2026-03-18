@@ -11,12 +11,14 @@ const state = {
   monacoModels:     new Map(),// path → ITextModel
   viewStates:       new Map(),// path → editor.saveViewState()
   chatHistory:      [],       // [{role, content}]
+  currentThreadId:  null,     // active thread id
   selectedModel:    '',
   isRunning:        false,
   lastError:        '',       // last stderr output (used by Fix)
   treeExpanded:     new Set(),
   contextTarget:    null,     // {path, isDir, el}
   treeData:         null,
+  treeFiles:        new Set(),// flat set of all file paths (populated by refreshTree)
   abortCtrl:        null,     // for cancelling run
   bottomCollapsed:  false,
   editor:           null,
@@ -196,6 +198,7 @@ async function loadWorkspace(path = '') {
     state.tabs = [];
     state.activeTab = null;
     state.chatHistory = [];
+    state.currentThreadId = null;
     if (state.editor) state.editor.setModel(null);
     dom.welcomeScreen.style.display   = '';
     dom.monacoContainer.style.display = 'none';
@@ -212,6 +215,7 @@ async function loadWorkspace(path = '') {
     updateGitBranch();
     loadContextNotes();
     updateStatusBar();
+    await initThreads();
   } catch (e) { toast(`Workspace error: ${e.message}`, 'error'); }
 }
 
@@ -220,6 +224,14 @@ async function refreshTree(path = state.workspace) {
   try {
     const data = await api(`/api/fs/tree?path=${encodeURIComponent(path)}`);
     state.treeData = data;
+    // Rebuild flat file path index for FWC "Added vs Changed" detection
+    state.treeFiles = new Set();
+    function _collectPaths(node) {
+      if (!node) return;
+      if (node.type === 'file') state.treeFiles.add(node.path.replace(/\\/g, '/'));
+      else if (node.children) node.children.forEach(_collectPaths);
+    }
+    _collectPaths(data);
     dom.treeRoot.innerHTML = '';
     if (data) renderTreeNode(data, dom.treeRoot, 0, true);
   } catch (e) { toast(`Tree error: ${e.message}`, 'error'); }
@@ -807,9 +819,76 @@ function applyCodeBlock(btn) {
   applyCodeToEditor(code);
 }
 
+// ── File Write Card (FWC) helpers ─────────────────────────────────────────────
+
+/** Toggle expand / collapse of a file write card. */
+function toggleFwc(el) {
+  el.closest('.fwc').classList.toggle('fwc-open');
+}
+
+/** Copy FWC code content to clipboard. */
+function copyFwc(btn) {
+  const code = btn.closest('.fwc').querySelector('code').textContent;
+  navigator.clipboard.writeText(code).then(() => toast('Copied', 'success', 1400));
+}
+
+/** Apply FWC code to the active editor. */
+function applyFwc(btn) {
+  const code = btn.closest('.fwc').querySelector('code').textContent;
+  applyCodeToEditor(code);
+}
+
 /** Markdown renderer with copy/apply buttons on code blocks. */
 function renderMarkdown(text) {
-  return text
+  // First, escape HTML in the raw text — but we need to handle FILE: blocks specially
+  // so we do a two-pass approach: replace FILE+codeblock combos first, then escape the rest.
+
+  // Step 1: extract ### FILE: blocks before HTML-encoding so we can render them as
+  // collapsed File Write Cards (FWC) — compact by default, expand on click.
+  const filePlaceholders = [];
+  let processed = text.replace(
+    /(?:#{1,4}\s*)?FILE:\s*`?([^\n`*]+)`?\s*\n```([^\n]*)\n([\s\S]*?)```/gi,
+    (_, fname, lang, code) => {
+      const idx = filePlaceholders.length;
+      const safeName = fname.trim();
+      const safeLang = (lang || 'text').trim();
+      const lineCount = code.trimEnd().split('\n').length;
+      const encodedCode = code.trimEnd()
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const safeNameHtml = safeName.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const safeLangHtml = safeLang.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      // Determine if this file already exists in the workspace tree
+      let resolvedPath = safeName;
+      if (!resolvedPath.includes(':') && !resolvedPath.startsWith('/')) {
+        resolvedPath = (state.workspace + '/' + resolvedPath).replace(/\\/g, '/');
+      }
+      resolvedPath = resolvedPath.replace(/\\/g, '/');
+      const exists = state.treeFiles.has(resolvedPath);
+      const statusClass = exists ? 'fwc-changed' : 'fwc-added';
+      const statusLabel = exists ? 'Changed' : 'Added';
+      const safeResolvedHtml = resolvedPath.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      filePlaceholders.push(
+        `<div class="fwc" data-filename="${safeNameHtml}" data-filepath="${safeResolvedHtml}">` +
+        `<div class="fwc-header" onclick="toggleFwc(this)">` +
+        `<i class="fa-solid fa-chevron-right fwc-chevron" aria-hidden="true"></i>` +
+        `<i class="fa-solid fa-file-code fwc-icon" aria-hidden="true"></i>` +
+        `<span class="fwc-name">${safeNameHtml}</span>` +
+        `<span class="fwc-lang">${safeLangHtml}</span>` +
+        `<span class="fwc-lines">${lineCount} line${lineCount !== 1 ? 's' : ''}</span>` +
+        `<span class="fwc-status ${statusClass}">${statusLabel}</span>` +
+        `<div class="fwc-actions" onclick="event.stopPropagation()">` +
+        `<button class="cb-btn" onclick="copyFwc(this)" title="Copy code"><i class="fa-solid fa-copy" aria-hidden="true"></i> Copy</button>` +
+        `<button class="cb-btn cb-apply" onclick="applyFwc(this)" title="Apply to active file"><i class="fa-solid fa-file-import" aria-hidden="true"></i> Apply</button>` +
+        `</div></div>` +
+        `<div class="fwc-body"><pre><code>${encodedCode}</code></pre></div>` +
+        `</div>`
+      );
+      return `\x00FILE_BLOCK_${idx}\x00`;
+    }
+  );
+
+  // Step 2: HTML-encode the remainder and apply normal markdown transforms
+  processed = processed
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) =>
       `<div class="code-block-wrap">` +
@@ -825,6 +904,13 @@ function renderMarkdown(text) {
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>')
     .replace(/\n/g, '<br>');
+
+  // Step 3: restore file block placeholders
+  filePlaceholders.forEach((html, idx) => {
+    processed = processed.replace(`\x00FILE_BLOCK_${idx}\x00`, html);
+  });
+
+  return processed;
 }
 
 // ── Auto file writer ──────────────────────────────────────────────────────────
@@ -837,28 +923,44 @@ function renderMarkdown(text) {
  *   ```
  */
 async function autoWriteFiles(text) {
-  const filePattern = /###\s*FILE:\s*([^\n`]+)\n```[^\n]*\n([\s\S]*?)```/g;
+  // Match many AI output styles:
+  //   ### FILE: path/to/file.ext   FILE: path/to/file.ext   **FILE: ...**   #### FILE: ...
+  const filePattern = /(?:#{1,4}\s*|\*{1,2})?FILE:\s*\*{0,2}`?([^\n`*]+)`?\*{0,2}\s*\n```[^\n]*\n([\s\S]*?)```/gi;
   const files = [];
   let match;
   while ((match = filePattern.exec(text)) !== null) {
     let filePath = match[1].trim();
     const content = match[2];
-    // Resolve path relative to workspace
     if (filePath.startsWith('/')) {
       filePath = state.workspace + filePath;
     } else if (!filePath.includes(':') && !filePath.startsWith(state.workspace)) {
       filePath = state.workspace + '/' + filePath;
     }
     filePath = filePath.replace(/\\/g, '/');
-    files.push({ path: filePath, content });
+    const isNew = !state.treeFiles.has(filePath); // true = file didn't exist → Added
+    files.push({ path: filePath, content, isNew });
   }
   if (files.length === 0) return;
 
   let written = 0;
-  for (const { path, content } of files) {
+  for (const { path, content, isNew } of files) {
     try {
       await api('/api/fs/write', { method: 'POST', body: JSON.stringify({ path, content }) });
       written++;
+      // Update the matching FWC card in the chat UI
+      const shortName = path.split('/').pop();
+      let card = null;
+      for (const c of document.querySelectorAll('.fwc')) {
+        if (c.dataset.filepath === path) { card = c; break; }
+        if (!card && c.dataset.filename === shortName) card = c;
+      }
+      if (card) {
+        const badge = card.querySelector('.fwc-status');
+        if (badge) {
+          badge.className = 'fwc-status fwc-written';
+          badge.innerHTML = `<i class="fa-solid fa-check" aria-hidden="true"></i> ${isNew ? 'Added' : 'Changed'}`;
+        }
+      }
     } catch (e) {
       toast(`Failed to write ${path.split('/').pop()}: ${e.message}`, 'error');
     }
@@ -868,7 +970,7 @@ async function autoWriteFiles(text) {
     await refreshTree();
     const names = files.slice(0, 3).map(f => f.path.split('/').pop()).join(', ');
     const extra = files.length > 3 ? ` +${files.length - 3} more` : '';
-    toast(`Created ${written} file${written !== 1 ? 's' : ''}: ${names}${extra}`, 'success', 5000);
+    toast(`Wrote ${written} file${written !== 1 ? 's' : ''}: ${names}${extra}`, 'success', 4000);
     if (files[0]) openFile(files[0].path);
   }
 }
@@ -894,6 +996,8 @@ async function sendChat(text) {
     bubble.classList.remove('streaming-cursor');
     bubble.innerHTML = renderMarkdown(full);
     state.chatHistory.push({ role: 'assistant', content: full });
+    // Persist to active thread
+    saveCurrentThread();
     // Auto-write any files the AI included in its response
     await autoWriteFiles(full);
   } catch (e) {
@@ -925,6 +1029,7 @@ async function explainSelection() {
     bubble.classList.remove('streaming-cursor');
     bubble.innerHTML = renderMarkdown(full);
     state.chatHistory.push({ role: 'assistant', content: full });
+    saveCurrentThread();
   } catch (e) {
     bubble.classList.remove('streaming-cursor');
     bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
@@ -951,6 +1056,7 @@ async function fixWithError() {
     bubble.classList.remove('streaming-cursor');
     bubble.innerHTML = renderMarkdown(full);
     state.chatHistory.push({ role: 'assistant', content: full });
+    saveCurrentThread();
   } catch (e) {
     bubble.classList.remove('streaming-cursor');
     bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
@@ -1029,6 +1135,7 @@ async function refactorSelection() {
       bubble.classList.remove('streaming-cursor');
       bubble.innerHTML = renderMarkdown(full);
       state.chatHistory.push({ role: 'assistant', content: full });
+      saveCurrentThread();
     } catch (e) {
       bubble.classList.remove('streaming-cursor');
       bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
@@ -1196,6 +1303,213 @@ $('btnToggleContext').addEventListener('click', () => {
 $('btnSaveContext').addEventListener('click', saveContextNotes);
 $('contextNotes').addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveContextNotes(); }
+});
+
+// ── Chat threads ──────────────────────────────────────────────────────────────
+function _threadWs() { return encodeURIComponent(state.workspace || ''); }
+
+/** Render thread list into #threadList. */
+function _renderThreadList(threads) {
+  const container = $('threadList');
+  if (!threads.length) {
+    container.innerHTML = '<div class="thread-empty">No threads yet</div>';
+    return;
+  }
+  container.innerHTML = '';
+  threads.forEach(t => {
+    const item = document.createElement('div');
+    item.className = `thread-item${t.id === state.currentThreadId ? ' active' : ''}`;
+    item.dataset.id = t.id;
+    item.setAttribute('role', 'option');
+    item.setAttribute('aria-selected', String(t.id === state.currentThreadId));
+
+    const dateStr = t.updated_at ? _timeAgo(t.updated_at) : '';
+    item.innerHTML =
+      `<i class="fa-solid fa-comments" aria-hidden="true"></i>` +
+      `<span class="thread-item-name" title="${escHtml(t.name)}">${escHtml(t.name)}</span>` +
+      `<span class="thread-item-count">${t.message_count || 0}</span>` +
+      (dateStr ? `<span class="thread-date">${dateStr}</span>` : '') +
+      `<button class="thread-delete" data-id="${t.id}" title="Delete thread" aria-label="Delete thread">` +
+        `<i class="fa-solid fa-trash" aria-hidden="true"></i></button>`;
+
+    // Switch to this thread on click
+    item.addEventListener('click', async e => {
+      if (e.target.closest('.thread-delete')) return;
+      await switchThread(t.id);
+      closeThreadList();
+    });
+    // Double-click name → inline rename
+    item.querySelector('.thread-item-name').addEventListener('dblclick', e => {
+      e.stopPropagation();
+      _startThreadRename(t.id, item.querySelector('.thread-item-name'));
+    });
+    // Delete button
+    item.querySelector('.thread-delete').addEventListener('click', async e => {
+      e.stopPropagation();
+      await deleteThread(t.id);
+    });
+    container.appendChild(item);
+  });
+}
+
+/** Load thread list from server (returns array). */
+async function _fetchThreads() {
+  try {
+    const data = await api(`/api/threads?workspace=${_threadWs()}`);
+    return data.threads || [];
+  } catch { return []; }
+}
+
+/** Refresh thread list UI without switching thread. */
+async function refreshThreadList() {
+  const threads = await _fetchThreads();
+  _renderThreadList(threads);
+  return threads;
+}
+
+/** Open thread list dropdown. */
+function openThreadList() {
+  $('threadList').style.display = '';
+  $('threadChevron').classList.add('open');
+  refreshThreadList();
+}
+
+function closeThreadList() {
+  $('threadList').style.display = 'none';
+  $('threadChevron').classList.remove('open');
+}
+
+function toggleThreadList() {
+  $('threadList').style.display === 'none' ? openThreadList() : closeThreadList();
+}
+
+/** Load messages from a thread into the chat panel. */
+async function loadThread(id) {
+  try {
+    const data = await api(`/api/threads/${id}?workspace=${_threadWs()}`);
+    state.currentThreadId = id;
+    $('threadName').textContent = data.name || 'Untitled';
+    dom.chatMessages.innerHTML = '';
+    state.chatHistory = [];
+    for (const msg of (data.messages || [])) {
+      const bubble = addChatMessage(msg.role, '', false);
+      bubble.innerHTML = msg.role === 'assistant'
+        ? renderMarkdown(msg.content)
+        : escHtml(msg.content);
+      state.chatHistory.push({ role: msg.role, content: msg.content });
+    }
+    dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
+    // Update highlight in open list
+    document.querySelectorAll('.thread-item').forEach(el =>
+      el.classList.toggle('active', el.dataset.id === id));
+  } catch (e) { toast(`Failed to load thread: ${e.message}`, 'error'); }
+}
+
+/** Save current chat history to the active thread (silently). */
+async function saveCurrentThread() {
+  if (!state.currentThreadId || !state.workspace) return;
+  try {
+    await api('/api/threads', {
+      method: 'POST',
+      body: JSON.stringify({
+        workspace: state.workspace,
+        id:        state.currentThreadId,
+        messages:  state.chatHistory,
+      }),
+    });
+    // Refresh count in open list
+    if ($('threadList').style.display !== 'none') refreshThreadList();
+  } catch { /* best-effort */ }
+}
+
+/** Create a new thread and switch to it. */
+async function createThread(name = 'New Chat') {
+  try {
+    const data = await api('/api/threads', {
+      method: 'POST',
+      body: JSON.stringify({ workspace: state.workspace, name, messages: [] }),
+    });
+    state.currentThreadId = data.id;
+    $('threadName').textContent = data.name;
+    dom.chatMessages.innerHTML = '';
+    state.chatHistory = [];
+    closeThreadList();
+    toast(`Thread "${data.name}" created`, 'success', 1800);
+  } catch (e) { toast(`Could not create thread: ${e.message}`, 'error'); }
+}
+
+/** Switch to an existing thread (saves current first). */
+async function switchThread(id) {
+  if (id === state.currentThreadId) return;
+  await saveCurrentThread();
+  await loadThread(id);
+}
+
+/** Delete a thread. If it was active, switch to another or create fresh. */
+async function deleteThread(id) {
+  if (!confirm('Delete this thread? This cannot be undone.')) return;
+  await api(`/api/threads/${id}?workspace=${_threadWs()}`, { method: 'DELETE' });
+  if (id === state.currentThreadId) {
+    state.currentThreadId = null;
+    dom.chatMessages.innerHTML = '';
+    state.chatHistory = [];
+    $('threadName').textContent = '—';
+    const threads = await _fetchThreads();
+    if (threads.length) await loadThread(threads[0].id);
+    else await createThread('General');
+  }
+  await refreshThreadList();
+}
+
+/** Inline rename for a thread item. */
+function _startThreadRename(id, nameEl) {
+  const prev = nameEl.textContent;
+  const input = document.createElement('input');
+  input.className = 'thread-rename-input';
+  input.value = prev;
+  nameEl.replaceWith(input);
+  input.focus(); input.select();
+
+  const commit = async () => {
+    const name = input.value.trim() || prev;
+    try {
+      await api('/api/threads', {
+        method: 'POST',
+        body: JSON.stringify({ workspace: state.workspace, id, name }),
+      });
+      if (id === state.currentThreadId) $('threadName').textContent = name;
+    } catch { /* ignore */ }
+    await refreshThreadList();
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.replaceWith(nameEl); }
+  });
+}
+
+/** Called once when workspace loads — ensure there's always at least one thread. */
+async function initThreads() {
+  const threads = await _fetchThreads();
+  _renderThreadList(threads);
+  if (threads.length) {
+    await loadThread(threads[0].id);
+  } else {
+    await createThread('General');
+  }
+}
+
+// Thread bar wiring
+$('btnThreadPicker').addEventListener('click', toggleThreadList);
+$('btnNewThread').addEventListener('click', async () => {
+  const name = window.prompt('Thread name:', 'New Chat');
+  if (name !== null) await createThread(name.trim() || 'New Chat');
+});
+// Close thread list when clicking outside
+document.addEventListener('click', e => {
+  if (!$('threadBar').contains(e.target) && !$('threadList').contains(e.target)) {
+    closeThreadList();
+  }
 });
 
 // ── Sidebar toggles ───────────────────────────────────────────────────────────

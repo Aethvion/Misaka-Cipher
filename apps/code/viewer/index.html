@@ -118,6 +118,21 @@
         </div>
       </div>
 
+      <!-- Thread selector -->
+      <div id="threadBar">
+        <button id="btnThreadPicker" class="thread-picker-btn" title="Switch conversation thread" aria-haspopup="listbox">
+          <i class="fa-solid fa-comments" aria-hidden="true"></i>
+          <span id="threadName">Loading…</span>
+          <i class="fa-solid fa-chevron-down thread-chevron" id="threadChevron" aria-hidden="true"></i>
+        </button>
+        <button id="btnNewThread" title="New thread" aria-label="New conversation thread">
+          <i class="fa-solid fa-plus" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <!-- Thread list (collapsible) -->
+      <div id="threadList" style="display:none" role="listbox" aria-label="Conversation threads"></div>
+
       <!-- Quick action strip -->
       <div id="aiQuickActions">
         <button class="qa-btn" id="btnExplain" title="Explain selected code (Ctrl+Shift+E)">

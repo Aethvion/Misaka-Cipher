@@ -17,6 +17,7 @@ import sys
 import tempfile
 import threading
 import time
+import uuid as _uuid_mod
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import AsyncGenerator, List, Optional
@@ -400,6 +401,71 @@ async def scan_project(req: ProjectSaveReq):
     _write_project(data)
     return JSONResponse({"status": "ok", "files": len(data["structure"])})
 
+# ── /api/threads/* ────────────────────────────────────────────────────────────
+def _threads_dir(workspace: str) -> Path:
+    return DATA_DIR / "projects" / _project_key(workspace or str(WORKSPACE)) / "threads"
+
+class ThreadSaveReq(BaseModel):
+    workspace:  str
+    id:         Optional[str]  = None   # omit to create new
+    name:       Optional[str]  = None
+    messages:   Optional[List] = None
+
+@app.get("/api/threads")
+async def list_threads(workspace: str = ""):
+    d = _threads_dir(workspace or str(WORKSPACE))
+    if not d.exists():
+        return JSONResponse({"threads": []})
+    threads = []
+    for f in sorted(d.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+            threads.append({
+                "id":            data.get("id", f.stem),
+                "name":          data.get("name", "Untitled"),
+                "message_count": len(data.get("messages", [])),
+                "updated_at":    data.get("updated_at", ""),
+            })
+        except Exception:
+            pass
+    return JSONResponse({"threads": threads})
+
+@app.get("/api/threads/{tid}")
+async def get_thread(tid: str, workspace: str = ""):
+    path = _threads_dir(workspace or str(WORKSPACE)) / f"{tid}.json"
+    if not path.exists():
+        raise HTTPException(404, "Thread not found")
+    return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
+
+@app.post("/api/threads")
+async def save_thread(req: ThreadSaveReq):
+    d = _threads_dir(req.workspace or str(WORKSPACE))
+    d.mkdir(parents=True, exist_ok=True)
+    tid   = req.id or _uuid_mod.uuid4().hex[:8]
+    path  = d / f"{tid}.json"
+    existing: dict = {}
+    if path.exists():
+        try: existing = json.loads(path.read_text(encoding="utf-8"))
+        except Exception: pass
+    now = datetime.now(timezone.utc).isoformat()
+    data = {
+        "id":         tid,
+        "name":       req.name if req.name is not None else existing.get("name", "New Chat"),
+        "workspace":  req.workspace or str(WORKSPACE),
+        "created_at": existing.get("created_at", now),
+        "updated_at": now,
+        "messages":   req.messages if req.messages is not None else existing.get("messages", []),
+    }
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    return JSONResponse(data)
+
+@app.delete("/api/threads/{tid}")
+async def delete_thread(tid: str, workspace: str = ""):
+    path = _threads_dir(workspace or str(WORKSPACE)) / f"{tid}.json"
+    if path.exists():
+        path.unlink()
+    return JSONResponse({"ok": True})
+
 # ── /api/fs/* ─────────────────────────────────────────────────────────────────
 @app.get("/api/fs/roots")
 async def fs_roots():
@@ -762,19 +828,37 @@ class ChatReq(BaseModel):
 def _build_chat_system(workspace: Optional[str] = None) -> str:
     """Build a rich system prompt, optionally injecting project context."""
     base = (
-        "You are an expert programming assistant embedded in the Aethvion IDE. "
+        "You are an expert programming assistant embedded in the Aethvion Code IDE. "
         "Be concise, accurate, and practical. Use markdown for code blocks.\n\n"
-        "IMPORTANT — When asked to create files, output EVERY file using this EXACT format "
-        "(no exceptions, no skipping files):\n\n"
-        "### FILE: path/to/file.ext\n"
+
+        "━━━ FILE WRITING PROTOCOL ━━━\n"
+        "When the user asks you to create, update, or modify ANY files, you MUST output "
+        "each file using this EXACT format — copy it precisely, including the ### prefix:\n\n"
+
+        "### FILE: filename.ext\n"
         "```language\n"
-        "complete file contents here\n"
+        "... complete file contents ...\n"
         "```\n\n"
-        "Rules for file creation:\n"
-        "- Use the path the user specifies (e.g. /test/index.html).\n"
-        "- Always output COMPLETE file contents — never truncate or use placeholders.\n"
-        "- Create ALL requested files in one response.\n"
-        "- After the files, you may add a brief explanation."
+
+        "CRITICAL RULES (the IDE auto-writes files based on this exact format):\n"
+        "1. Always start file blocks with exactly '### FILE: ' (three hashes, space, FILE:, space).\n"
+        "2. Follow immediately with the filename on the same line — no extra text.\n"
+        "3. Open the code fence on the very next line with the language tag.\n"
+        "4. Always include COMPLETE file contents — never truncate, never use '...' or '# rest stays the same'.\n"
+        "5. Output ALL files in a single response.\n"
+        "6. You may add explanation text before or after the file blocks, never inside them.\n\n"
+
+        "Example of correct output:\n"
+        "### FILE: index.html\n"
+        "```html\n"
+        "<!DOCTYPE html>\n"
+        "<html><body><h1>Hello</h1></body></html>\n"
+        "```\n\n"
+        "### FILE: styles.css\n"
+        "```css\n"
+        "body { margin: 0; }\n"
+        "```\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
     if not workspace:
         return base
