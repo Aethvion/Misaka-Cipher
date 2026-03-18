@@ -7,6 +7,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
+from core.utils import fastapi_utils
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -23,6 +24,7 @@ from apps.audio.audio_core import session
 # ---------------------------------------------------------------------------
 
 app = FastAPI(title="Aethvion Audio Editor", version="2.0.0")
+fastapi_utils.add_dev_cache_control(app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

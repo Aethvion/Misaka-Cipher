@@ -18,7 +18,7 @@ import os
 import subprocess
 from datetime import datetime
 
-from core.utils import get_logger
+from core.utils import get_logger, fastapi_utils
 from core.config.settings_manager import get_settings_manager
 import psutil
 
@@ -33,6 +33,7 @@ app = FastAPI(
     description="Autonomous AI Orchestration System",
     version="8.0.0"
 )
+fastapi_utils.add_dev_cache_control(app)
 
 # CORS middleware
 app.add_middleware(

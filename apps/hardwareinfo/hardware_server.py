@@ -24,6 +24,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from core.utils import fastapi_utils
 
 # ── Path setup ────────────────────────────────────────────────────────────────
 MODULE_DIR   = os.path.dirname(os.path.abspath(__file__))
@@ -82,6 +83,7 @@ except Exception:
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 app = FastAPI(title="Aethvion Hardware Info", version="1.0.0")
+fastapi_utils.add_dev_cache_control(app)
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],

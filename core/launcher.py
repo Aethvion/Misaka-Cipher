@@ -434,6 +434,7 @@ def _build_env() -> dict[str, str]:
     env["AETHVION_NO_BROWSER"] = "1"   # servers must not open their own browser
     env["PYTHONPATH"]          = str(ROOT)
     env["PYTHONUNBUFFERED"]    = "1"
+    env["AETHVION_DEV"]        = "1"
     return env
 
 

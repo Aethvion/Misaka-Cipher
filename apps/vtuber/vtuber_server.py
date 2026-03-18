@@ -28,6 +28,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, Literal
+from core.utils import fastapi_utils
 
 # Optional Misaka Cipher provider integration
 try:
@@ -53,6 +54,7 @@ from pipelines.utils import remove_background
 # ---------------------------------------------------------------------------
 
 app = FastAPI(title="Aethvion VTuber Engine", version="2.0.0")
+fastapi_utils.add_dev_cache_control(app)
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],

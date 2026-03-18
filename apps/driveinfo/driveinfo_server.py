@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from core.utils import fastapi_utils
 
 from driveinfo_core import (
     DATA_DIR,
@@ -31,6 +32,7 @@ from driveinfo_core import (
 
 # ---------------------------------------------------------------------------
 app = FastAPI(title="Aethvion Drive Info", version="1.0.0")
+fastapi_utils.add_dev_cache_control(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -46,9 +48,12 @@ app.mount("/viewer", StaticFiles(directory=str(VIEWER_DIR), html=True), name="vi
 # Root
 # ---------------------------------------------------------------------------
 
+from fastapi import Request
+
 @app.get("/")
-async def root():
-    return RedirectResponse(url="/viewer/index.html")
+async def root(request: Request):
+    query = f"?{request.query_params}" if request.query_params else ""
+    return RedirectResponse(url=f"/viewer/index.html{query}")
 
 # ---------------------------------------------------------------------------
 # Scan

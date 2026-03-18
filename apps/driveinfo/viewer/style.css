@@ -171,11 +171,16 @@ html, body {
 }
 
 .di-panel-hdr {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 6px 10px;
+    display: flex; flex-direction: column; align-items: stretch;
+    padding: 10px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
     gap: 8px;
+    position: relative;
+}
+.di-panel-top-row {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%;
 }
 .di-panel-hdr > span { font-weight: 600; font-size: 11px; color: var(--text-dim); letter-spacing: .06em; text-transform: uppercase; }
 
@@ -185,9 +190,9 @@ html, body {
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 4px;
-    padding: 2px 8px;
-    margin: 4px 0;
-    flex: 1;
+    padding: 4px 10px;
+    margin: 0;
+    width: 100%;
 }
 .di-search-row i { font-size: 10px; color: var(--text-muted); margin-right: 6px; }
 .di-search-row input {

@@ -17,7 +17,7 @@ WORKSPACE_ROOT = Path(__file__).parent.parent.parent
 sys.path.append(str(WORKSPACE_ROOT))
 from core.utils.port_manager import PortManager
 
-from core.utils import get_logger
+from core.utils import get_logger, fastapi_utils
 
 logger = get_logger("AethvionPhoto")
 
@@ -26,6 +26,7 @@ app = FastAPI(
     description="Professional Image Editing Service",
     version="1.0.0"
 )
+fastapi_utils.add_dev_cache_control(app)
 
 app.add_middleware(
     CORSMiddleware,

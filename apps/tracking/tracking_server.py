@@ -7,6 +7,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from core.utils import fastapi_utils
 
 # Add module dir and project root to sys.path
 MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -24,6 +25,7 @@ from apps.tracking.osf_manager import osf_manager
 # ---------------------------------------------------------------------------
 
 app = FastAPI(title="Aethvion Tracking Engine", version="1.0.0")
+fastapi_utils.add_dev_cache_control(app)
 app.state.preview_active = False
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,

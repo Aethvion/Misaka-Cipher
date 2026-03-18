@@ -28,6 +28,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from core.utils import fastapi_utils
 from pydantic import BaseModel
 
 # ── Path setup ──────────────────────────────────────────────────────────────
@@ -51,6 +52,7 @@ except Exception as _e:
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 app = FastAPI(title="Aethvion Code IDE", version="1.0.0")
+fastapi_utils.add_dev_cache_control(app)
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],

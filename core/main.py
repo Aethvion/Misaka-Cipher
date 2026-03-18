@@ -20,6 +20,8 @@ env_path = ROOT / '.env'
 if env_path.exists():
     load_dotenv(env_path)
 
+os.environ["AETHVION_DEV"] = "1"
+
 from core.utils import get_logger
 
 logger = get_logger(__name__)
