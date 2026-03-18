@@ -17,35 +17,67 @@ let aiconvState = {
     estCost: 0
 };
 
+// ─── Participant Chip Rendering ───────────────────────────────────────────────
+
 function renderAIConvChips() {
     const container = document.getElementById('aiconv-model-chips');
     if (!container) return;
 
-    container.innerHTML = aiconvSelectedModels.map((model, index) => `
-        <div class="aiconv-identity-card" style="border: 1px solid ${model.color}; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 6px; background: var(--bg-tertiary); border-left: 4px solid ${model.color};">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
-                <div style="display:flex; align-items:center; gap: 0.5rem;">
-                    <span class="chip-number" style="background:${model.color}; color:#000; padding:2px 6px; border-radius:12px; font-weight:bold; font-size:0.75rem;">${index + 1}</span>
-                    <strong style="color:${model.color}; font-size: 0.9rem;">${model.name}</strong> 
-                    <span style="font-size: 0.75rem; color: var(--text-secondary);">(${model.id})</span>
-                </div>
-                <span class="chip-remove" style="cursor:pointer; font-size: 1.2rem; color:var(--text-secondary);" onclick="removeAIConvModel(${index})">&times;</span>
-            </div>
-            <textarea 
-                class="term-input aiconv-personality-input" 
-                data-index="${index}"
-                placeholder="Optional: Define ${model.name}'s personality or role here..." 
-                style="width:100%; min-height:40px; resize:vertical; font-size:0.8rem;"
-            >${model.personality}</textarea>
-        </div>
-    `).join('');
+    container.innerHTML = aiconvSelectedModels.map((model, index) => {
+        if (model.isHuman) {
+            return `
+                <div class="aiconv-identity-card" style="border: 1px solid ${model.color}; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 6px; background: var(--bg-tertiary); border-left: 4px solid ${model.color};">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
+                        <div style="display:flex; align-items:center; gap: 0.5rem;">
+                            <span class="chip-number" style="background:${model.color}; color:#000; padding:2px 6px; border-radius:12px; font-weight:bold; font-size:0.75rem;">${index + 1}</span>
+                            <strong style="color:${model.color}; font-size: 0.9rem;">👤 ${model.name}</strong>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary);">(You)</span>
+                        </div>
+                        <span class="chip-remove" style="cursor:pointer; font-size: 1.2rem; color:var(--text-secondary);" onclick="removeAIConvModel(${index})">&times;</span>
+                    </div>
+                    <input
+                        type="text"
+                        class="term-input aiconv-human-name-input"
+                        data-index="${index}"
+                        placeholder="Your display name"
+                        value="${escapeHtml(model.name)}"
+                        style="width:100%; font-size:0.8rem;"
+                    >
+                </div>`;
+        }
 
+        return `
+            <div class="aiconv-identity-card" style="border: 1px solid ${model.color}; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 6px; background: var(--bg-tertiary); border-left: 4px solid ${model.color};">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 0.5rem;">
+                    <div style="display:flex; align-items:center; gap: 0.5rem;">
+                        <span class="chip-number" style="background:${model.color}; color:#000; padding:2px 6px; border-radius:12px; font-weight:bold; font-size:0.75rem;">${index + 1}</span>
+                        <strong style="color:${model.color}; font-size: 0.9rem;">${model.name}</strong>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">(${model.id})</span>
+                    </div>
+                    <span class="chip-remove" style="cursor:pointer; font-size: 1.2rem; color:var(--text-secondary);" onclick="removeAIConvModel(${index})">&times;</span>
+                </div>
+                <textarea
+                    class="term-input aiconv-personality-input"
+                    data-index="${index}"
+                    placeholder="Optional: Define ${model.name}'s personality or role here..."
+                    style="width:100%; min-height:40px; resize:vertical; font-size:0.8rem;"
+                >${model.personality}</textarea>
+            </div>`;
+    }).join('');
+
+    // Wire up personality inputs
     container.querySelectorAll('.aiconv-personality-input').forEach(ta => {
         ta.addEventListener('input', (e) => {
-            const idx = e.target.dataset.index;
-            if (aiconvSelectedModels[idx]) {
-                aiconvSelectedModels[idx].personality = e.target.value;
-            }
+            const idx = parseInt(e.target.dataset.index);
+            if (aiconvSelectedModels[idx]) aiconvSelectedModels[idx].personality = e.target.value;
+        });
+    });
+
+    // Wire up human name inputs
+    container.querySelectorAll('.aiconv-human-name-input').forEach(inp => {
+        inp.addEventListener('input', (e) => {
+            const idx = parseInt(e.target.dataset.index);
+            if (aiconvSelectedModels[idx]) aiconvSelectedModels[idx].name = e.target.value.trim() || 'You';
         });
     });
 }
@@ -56,9 +88,33 @@ function removeAIConvModel(index) {
     renderAIConvChips();
 }
 
+function addHumanParticipant() {
+    if (aiconvSelectedModels.some(m => m.isHuman)) {
+        showToast('You are already in the conversation.', 'warn');
+        return;
+    }
+    aiconvSelectedModels.push({
+        id: 'human',
+        name: 'You',
+        color: 'hsl(200, 70%, 65%)',
+        personality: '',
+        isHuman: true
+    });
+    renderAIConvChips();
+    showToast('Added yourself to the conversation! It\'s your turn when the round reaches you.', 'info');
+}
+
+// ─── Start / Stop / Pause ────────────────────────────────────────────────────
+
 async function startAIConv() {
     if (aiconvSelectedModels.length < 2) {
-        showToast('Please select at least 2 models.', 'warn');
+        showToast('Please select at least 2 participants.', 'warn');
+        return;
+    }
+
+    const aiParticipants = aiconvSelectedModels.filter(m => !m.isHuman);
+    if (aiParticipants.length < 1) {
+        showToast('Please add at least 1 AI model.', 'warn');
         return;
     }
 
@@ -74,13 +130,17 @@ async function startAIConv() {
 
     let baseSystem = `The topic of this conversation is: ${topic}.\n\nParticipants:\n`;
     for (const m of aiconvSelectedModels) {
-        baseSystem += `- ${m.name} [Model: ${m.id}]`;
-        if (m.personality) baseSystem += `\n  Role/Personality: ${m.personality}`;
-        baseSystem += "\n";
+        if (m.isHuman) {
+            baseSystem += `- ${m.name} [Human participant — will chime in occasionally]\n`;
+        } else {
+            baseSystem += `- ${m.name} [Model: ${m.id}]`;
+            if (m.personality) baseSystem += `\n  Role/Personality: ${m.personality}`;
+            baseSystem += "\n";
+        }
     }
     baseSystem += "\nPlease keep your responses concise, engaging, and stay in character.";
 
-    // Reset State
+    // Reset state
     aiconvState.isRunning = true;
     aiconvState.isPaused = false;
     aiconvState.currentTurnIndex = 0;
@@ -98,6 +158,10 @@ async function startAIConv() {
     document.getElementById('aiconv-pause-btn').innerHTML = '<i class="fas fa-pause"></i> Pause';
     document.getElementById('aiconv-topic').disabled = true;
 
+    // Remove any old continue button
+    const oldContinue = document.getElementById('aiconv-continue-btn');
+    if (oldContinue) oldContinue.remove();
+
     const messagesContainer = document.getElementById('aiconv-messages');
     messagesContainer.innerHTML = `
         <div class="message system-message">
@@ -108,8 +172,6 @@ async function startAIConv() {
     `;
 
     updateAIConvUI();
-
-    // Start Loop
     runAIConvLoop();
 }
 
@@ -118,15 +180,18 @@ function togglePauseAIConv() {
     const pauseBtn = document.getElementById('aiconv-pause-btn');
     if (aiconvState.isPaused) {
         pauseBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
+        showPauseInjectBar();
     } else {
         pauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+        hidePauseInjectBar();
         runAIConvLoop();
     }
 }
 
-function stopAIConv() {
+function stopAIConv(completed = false) {
     aiconvState.isRunning = false;
     aiconvState.isPaused = false;
+    hidePauseInjectBar();
 
     document.getElementById('aiconv-start-btn').disabled = false;
     document.getElementById('aiconv-pause-btn').disabled = true;
@@ -134,24 +199,202 @@ function stopAIConv() {
     document.getElementById('aiconv-topic').disabled = false;
 
     const messagesContainer = document.getElementById('aiconv-messages');
+
+    if (completed) {
+        messagesContainer.insertAdjacentHTML('beforeend', `
+            <div class="message system-message">
+                <div class="message-content">
+                    <strong>System:</strong> Conversation completed!
+                    <button id="aiconv-continue-btn" class="action-btn secondary" style="margin-left:1rem; padding:0.25rem 0.75rem; font-size:0.8rem;">
+                        <i class="fas fa-plus"></i> Continue Conversation
+                    </button>
+                </div>
+            </div>
+        `);
+    } else {
+        messagesContainer.insertAdjacentHTML('beforeend', `
+            <div class="message system-message">
+                <div class="message-content">
+                    <strong>System:</strong> Conversation stopped.
+                    <button id="aiconv-continue-btn" class="action-btn secondary" style="margin-left:1rem; padding:0.25rem 0.75rem; font-size:0.8rem;">
+                        <i class="fas fa-play"></i> Continue from here
+                    </button>
+                </div>
+            </div>
+        `);
+    }
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function continueAIConv() {
+    if (aiconvSelectedModels.length < 1) {
+        showToast('No participants to continue with.', 'warn');
+        return;
+    }
+
+    const msgCountInput = document.getElementById('aiconv-msg-count');
+    const extraRounds = msgCountInput ? parseInt(msgCountInput.value) || 5 : 5;
+    aiconvState.maxTurnsPerModel += extraRounds;
+    aiconvState.isRunning = true;
+    aiconvState.isPaused = false;
+
+    document.getElementById('aiconv-start-btn').disabled = true;
+    document.getElementById('aiconv-pause-btn').disabled = false;
+    document.getElementById('aiconv-stop-btn').disabled = false;
+    document.getElementById('aiconv-pause-btn').innerHTML = '<i class="fas fa-pause"></i> Pause';
+
+    const continueBtn = document.getElementById('aiconv-continue-btn');
+    if (continueBtn) continueBtn.closest('.message').remove();
+
+    const messagesContainer = document.getElementById('aiconv-messages');
     messagesContainer.insertAdjacentHTML('beforeend', `
         <div class="message system-message">
             <div class="message-content">
-                <strong>System:</strong> Conversation stopped.
+                <strong>System:</strong> Continuing conversation for ${extraRounds} more rounds per participant…
             </div>
         </div>
     `);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    runAIConvLoop();
 }
 
-async function runAIConvLoop() {
-    const totalTarget = aiconvState.maxTurnsPerModel * aiconvSelectedModels.length;
+// ─── Pause Inject Bar ────────────────────────────────────────────────────────
 
-    while (aiconvState.isRunning && !aiconvState.isPaused && aiconvState.totalTurnsCompleted < totalTarget) {
-        const currentModel = aiconvSelectedModels[aiconvState.currentTurnIndex];
+function showPauseInjectBar() {
+    if (document.getElementById('aiconv-inject-bar')) return;
+    const chatArea = document.querySelector('.aiconv-chat-area');
+    if (!chatArea) return;
 
-        // Show loading marker
+    chatArea.insertAdjacentHTML('beforeend', `
+        <div id="aiconv-inject-bar" style="padding:0.5rem 0.75rem; border-top: 1px solid var(--primary); background: var(--bg-tertiary); display:flex; gap:0.5rem; align-items:center;">
+            <i class="fas fa-comment-dots" style="color:var(--primary); flex-shrink:0;"></i>
+            <input id="aiconv-inject-input" class="term-input" style="flex:1; padding:0.35rem 0.6rem; font-size:0.85rem;" placeholder="Inject a comment into the conversation (Enter to send)…">
+            <button id="aiconv-inject-send" class="action-btn primary" style="padding:0.35rem 0.75rem; font-size:0.8rem; flex-shrink:0;">
+                <i class="fas fa-paper-plane"></i> Send
+            </button>
+        </div>
+    `);
+
+    const input = document.getElementById('aiconv-inject-input');
+    const sendBtn = document.getElementById('aiconv-inject-send');
+
+    const doInject = () => {
+        const msg = input ? input.value.trim() : '';
+        if (!msg) return;
+
+        aiconvState.messageHistory.push({ role: 'user', content: `[Narrator/Observer]: ${msg}` });
+
         const messagesContainer = document.getElementById('aiconv-messages');
+        messagesContainer.insertAdjacentHTML('beforeend', `
+            <div class="message" style="border-left: 4px solid var(--primary); background: rgba(99,102,241,0.06); padding:0.6rem 1rem; margin:0.3rem 0;">
+                <div class="message-header" style="margin-bottom:0.3rem;">
+                    <span style="color: var(--primary); font-weight: bold; font-size:0.9rem;">💬 You (injected)</span>
+                </div>
+                <div class="message-content">${escapeHtml(msg)}</div>
+            </div>
+        `);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        input.value = '';
+        showToast('Message injected — will be seen when conversation resumes.', 'success', 1800);
+    };
+
+    if (sendBtn) sendBtn.addEventListener('click', doInject);
+    if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doInject(); } });
+    if (input) setTimeout(() => input.focus(), 50);
+}
+
+function hidePauseInjectBar() {
+    const bar = document.getElementById('aiconv-inject-bar');
+    if (bar) bar.remove();
+}
+
+// ─── Human Turn Prompt ───────────────────────────────────────────────────────
+
+function waitForHumanInput(participant) {
+    return new Promise((resolve) => {
+        const messagesContainer = document.getElementById('aiconv-messages');
+        const promptId = `human-turn-${Date.now()}`;
+
+        messagesContainer.insertAdjacentHTML('beforeend', `
+            <div id="${promptId}" style="border-left: 4px solid ${participant.color}; background: rgba(0,180,255,0.05); padding:0.75rem 1rem; margin:0.3rem 0; border-radius:0 6px 6px 0;">
+                <div style="color: ${participant.color}; font-weight: bold; font-size:0.95rem; margin-bottom:0.5rem;">
+                    👤 ${escapeHtml(participant.name)} — It's your turn!
+                    <span style="font-size:0.75rem; color:var(--text-secondary); font-weight:normal; margin-left:0.5rem;">Press Ctrl+Enter to send</span>
+                </div>
+                <textarea id="${promptId}-input" class="term-input" style="width:100%; min-height:64px; resize:vertical; font-size:0.85rem; box-sizing:border-box;" placeholder="Type your message… or skip this turn"></textarea>
+                <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                    <button id="${promptId}-send" class="action-btn primary" style="flex:1;">
+                        <i class="fas fa-paper-plane"></i> Send
+                    </button>
+                    <button id="${promptId}-skip" class="action-btn secondary" style="flex:0 0 auto; padding:0.4rem 1rem;">
+                        <i class="fas fa-forward"></i> Skip turn
+                    </button>
+                </div>
+            </div>
+        `);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        const inputEl  = document.getElementById(`${promptId}-input`);
+        const sendBtn  = document.getElementById(`${promptId}-send`);
+        const skipBtn  = document.getElementById(`${promptId}-skip`);
+
+        if (inputEl) setTimeout(() => inputEl.focus(), 50);
+
+        const cleanup = () => { const el = document.getElementById(promptId); if (el) el.remove(); };
+
+        const doSend = () => {
+            const msg = inputEl ? inputEl.value.trim() : '';
+            if (!msg) { if (inputEl) inputEl.focus(); return; }
+            cleanup();
+            resolve({ action: 'send', message: msg });
+        };
+
+        if (sendBtn) sendBtn.addEventListener('click', doSend);
+        if (skipBtn) skipBtn.addEventListener('click', () => { cleanup(); resolve({ action: 'skip' }); });
+        if (inputEl) inputEl.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); doSend(); } });
+    });
+}
+
+// ─── Main Loop ───────────────────────────────────────────────────────────────
+
+async function runAIConvLoop() {
+    const totalTarget = () => aiconvState.maxTurnsPerModel * aiconvSelectedModels.length;
+
+    while (aiconvState.isRunning && !aiconvState.isPaused && aiconvState.totalTurnsCompleted < totalTarget()) {
+        const currentModel = aiconvSelectedModels[aiconvState.currentTurnIndex];
+        const messagesContainer = document.getElementById('aiconv-messages');
+
+        // ── Human turn ──
+        if (currentModel.isHuman) {
+            const result = await waitForHumanInput(currentModel);
+            if (!aiconvState.isRunning) break;
+
+            if (result.action === 'send') {
+                messagesContainer.insertAdjacentHTML('beforeend', `
+                    <div class="message" style="border-left: 4px solid ${currentModel.color}; background: rgba(0,180,255,0.06); padding:0.6rem 1rem; margin:0.3rem 0;">
+                        <div class="message-header" style="margin-bottom:0.3rem;">
+                            <span style="color: ${currentModel.color}; font-weight: bold; font-size:1rem;">👤 ${escapeHtml(currentModel.name)}</span>
+                        </div>
+                        <div class="message-content">${escapeHtml(result.message)}</div>
+                    </div>
+                `);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                aiconvState.messageHistory.push({
+                    role: 'user',
+                    content: `${currentModel.name}: ${result.message}`
+                });
+            }
+            // skip: no message, just advance
+
+            aiconvState.totalTurnsCompleted++;
+            aiconvState.currentTurnIndex = (aiconvState.currentTurnIndex + 1) % aiconvSelectedModels.length;
+            updateAIConvUI();
+            continue;
+        }
+
+        // ── AI turn ──
         const loadingId = `aiconv-loading-${Date.now()}`;
         messagesContainer.insertAdjacentHTML('beforeend', `
             <div class="message ai-message" id="${loadingId}" style="border-left: 4px solid ${currentModel.color};">
@@ -159,9 +402,7 @@ async function runAIConvLoop() {
                     <span class="message-role" style="color: ${currentModel.color};">🎭 ${currentModel.name} <span style="font-size:0.8em; opacity:0.7;">(${currentModel.id})</span></span>
                 </div>
                 <div class="message-content">
-                    <div class="typing-indicator">
-                        <span></span><span></span><span></span>
-                    </div>
+                    <div class="typing-indicator"><span></span><span></span><span></span></div>
                 </div>
             </div>
         `);
@@ -174,31 +415,21 @@ async function runAIConvLoop() {
                 content: `You are now speaking as ${currentModel.name}. Reply exclusively as ${currentModel.name}. Do not break character. Do not include your name at the start of your message.`
             });
 
-            // Hit backend
             const res = await fetch('/api/arena/aiconv/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model_id: currentModel.id,
-                    messages: turnMessages
-                })
+                body: JSON.stringify({ model_id: currentModel.id, messages: turnMessages })
             });
 
             const data = await res.json();
-
-            // Remove loading msg
             const loadingEl = document.getElementById(loadingId);
             if (loadingEl) loadingEl.remove();
 
             if (!res.ok || !aiconvState.isRunning) {
-                if (aiconvState.isRunning) {
-                    console.error("AI Conv Error:", data.detail || 'Unknown error');
-                    stopAIConv();
-                }
+                if (aiconvState.isRunning) { console.error('AI Conv Error:', data.detail || 'Unknown error'); stopAIConv(); }
                 break;
             }
 
-            // Append to history
             const responseText = data.response;
             aiconvState.messageHistory.push({
                 role: 'assistant',
@@ -206,24 +437,20 @@ async function runAIConvLoop() {
                 content: responseText
             });
 
-            // Update Tokens & Cost
+            // Token / cost tracking
             if (data.usage) {
-                const inTokens = data.usage.prompt_tokens || data.usage.prompt_token_count || 0;
+                const inTokens  = data.usage.prompt_tokens || data.usage.prompt_token_count || 0;
                 const outTokens = data.usage.completion_tokens || data.usage.candidates_token_count || 0;
-
-                aiconvState.estInTokens += inTokens;
+                aiconvState.estInTokens  += inTokens;
                 aiconvState.estOutTokens += outTokens;
 
-                let inCost = 0;
-                let outCost = 0;
                 if (typeof arenaAvailableModels !== 'undefined') {
                     const modelInfo = arenaAvailableModels.find(m => m.id === currentModel.id);
                     if (modelInfo) {
-                        inCost = (inTokens / 1000000) * (modelInfo.input_cost_per_1m_tokens || 0);
-                        outCost = (outTokens / 1000000) * (modelInfo.output_cost_per_1m_tokens || 0);
+                        aiconvState.estCost += (inTokens / 1e6) * (modelInfo.input_cost_per_1m_tokens || 0)
+                                             + (outTokens / 1e6) * (modelInfo.output_cost_per_1m_tokens || 0);
                     }
                 }
-                aiconvState.estCost += (inCost + outCost);
             }
 
             const htmlContent = (typeof marked !== 'undefined' && marked.parse) ? marked.parse(responseText) : escapeHtml(responseText);
@@ -240,13 +467,10 @@ async function runAIConvLoop() {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
             aiconvState.totalTurnsCompleted++;
-
             aiconvState.currentTurnIndex = (aiconvState.currentTurnIndex + 1) % aiconvSelectedModels.length;
-
             updateAIConvUI();
 
-            // Small delay between turns for readability
-            if (aiconvState.totalTurnsCompleted < totalTarget) {
+            if (aiconvState.totalTurnsCompleted < totalTarget()) {
                 await new Promise(r => setTimeout(r, 1000));
             }
 
@@ -259,38 +483,26 @@ async function runAIConvLoop() {
         }
     }
 
-    if (aiconvState.totalTurnsCompleted >= totalTarget && aiconvState.isRunning) {
-        stopAIConv();
-        const messagesContainer = document.getElementById('aiconv-messages');
-        messagesContainer.insertAdjacentHTML('beforeend', `
-            <div class="message system-message">
-                <div class="message-content">
-                    <strong>System:</strong> Conversation completed successfully!
-                </div>
-            </div>
-        `);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    if (aiconvState.totalTurnsCompleted >= totalTarget() && aiconvState.isRunning) {
+        stopAIConv(true);
     }
 }
+
+// ─── Stats UI ────────────────────────────────────────────────────────────────
 
 function updateAIConvUI() {
     const totalTarget = aiconvState.maxTurnsPerModel * aiconvSelectedModels.length;
 
-    // Live Tracker Detailed Stats
-    const inTokensEl = document.getElementById('aiconv-in-tokens');
-    const outTokensEl = document.getElementById('aiconv-out-tokens');
-    const liveTokensEl = document.getElementById('aiconv-live-tokens');
-    const liveCostEl = document.getElementById('aiconv-live-cost');
-    const progressEl = document.getElementById('aiconv-progress');
-
-    if (inTokensEl) inTokensEl.textContent = formatNumber(aiconvState.estInTokens || 0);
-    if (outTokensEl) outTokensEl.textContent = formatNumber(aiconvState.estOutTokens || 0);
-    if (liveTokensEl) liveTokensEl.textContent = formatNumber((aiconvState.estInTokens || 0) + (aiconvState.estOutTokens || 0));
-    if (liveCostEl) liveCostEl.textContent = formatCost(aiconvState.estCost || 0);
-    if (progressEl) progressEl.textContent = `${aiconvState.totalTurnsCompleted}/${totalTarget}`;
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    set('aiconv-in-tokens',   formatNumber(aiconvState.estInTokens  || 0));
+    set('aiconv-out-tokens',  formatNumber(aiconvState.estOutTokens || 0));
+    set('aiconv-live-tokens', formatNumber((aiconvState.estInTokens || 0) + (aiconvState.estOutTokens || 0)));
+    set('aiconv-live-cost',   formatCost(aiconvState.estCost || 0));
+    set('aiconv-progress',    `${aiconvState.totalTurnsCompleted}/${totalTarget}`);
 }
 
-// ===== Global Event Delegation for Dynamic Dropdowns =====
+// ─── Global Event Delegation ──────────────────────────────────────────────────
+
 document.addEventListener('change', (e) => {
     // Arena Model Selector
     if (e.target && e.target.id === 'arena-model-add') {
@@ -310,17 +522,14 @@ document.addEventListener('change', (e) => {
                 aiconvAvailableNames = [...aiconvUsedNames];
                 aiconvUsedNames = [];
             }
-            const randIdx = Math.floor(Math.random() * aiconvAvailableNames.length);
+            const randIdx  = Math.floor(Math.random() * aiconvAvailableNames.length);
             const pickedName = aiconvAvailableNames.splice(randIdx, 1)[0];
             aiconvUsedNames.push(pickedName);
-
-            const hue = Math.floor(Math.random() * 360);
-            const color = `hsl(${hue}, 70%, 65%)`;
 
             aiconvSelectedModels.push({
                 id: modelId,
                 name: pickedName,
-                color: color,
+                color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 65%)`,
                 personality: ''
             });
 
@@ -330,15 +539,20 @@ document.addEventListener('change', (e) => {
     }
 });
 
-// Global Click Delegation for Dynamic Buttons
 document.addEventListener('click', (e) => {
-    if (e.target && e.target.id === 'aiconv-start-btn') {
-        if (typeof startAIConv === 'function') startAIConv();
-    }
-    if (e.target && e.target.id === 'aiconv-pause-btn') {
-        if (typeof togglePauseAIConv === 'function') togglePauseAIConv();
-    }
-    if (e.target && e.target.id === 'aiconv-stop-btn') {
-        if (typeof stopAIConv === 'function') stopAIConv();
-    }
+    if (e.target && e.target.id === 'aiconv-start-btn')
+        { if (typeof startAIConv === 'function') startAIConv(); }
+
+    if (e.target && e.target.id === 'aiconv-pause-btn')
+        { if (typeof togglePauseAIConv === 'function') togglePauseAIConv(); }
+
+    if (e.target && e.target.id === 'aiconv-stop-btn')
+        { if (typeof stopAIConv === 'function') stopAIConv(); }
+
+    if (e.target && e.target.id === 'aiconv-add-self-btn')
+        { if (typeof addHumanParticipant === 'function') addHumanParticipant(); }
+
+    // Continue button is inserted dynamically — match by id
+    if (e.target && e.target.id === 'aiconv-continue-btn')
+        { if (typeof continueAIConv === 'function') continueAIConv(); }
 });
