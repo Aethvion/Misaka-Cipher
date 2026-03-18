@@ -23,16 +23,24 @@ const state = {
   bottomCollapsed:  false,
   editor:           null,
   moveTargetDir:    null,     // selected folder in move picker
+  autoExec:         true,     // if false, python-exec blocks need manual approval
 };
 
 // ── Settings persistence (localStorage) ─────────────────────────────────────
 function saveSettings() {
-  try { localStorage.setItem('ide_settings', JSON.stringify({ selectedModel: state.selectedModel })); } catch {}
+  try {
+    localStorage.setItem('ide_settings', JSON.stringify({
+      selectedModel: state.selectedModel,
+      autoExec:      state.autoExec,
+    }));
+  } catch {}
 }
 function loadSettings() {
   try {
     const s = JSON.parse(localStorage.getItem('ide_settings') || '{}');
     if (s.selectedModel) state.selectedModel = s.selectedModel;
+    // Default autoExec = true (auto-run); persisted value overrides
+    state.autoExec = s.autoExec !== false;
   } catch {}
 }
 loadSettings();
@@ -972,8 +980,10 @@ function applyFwc(btn) {
   applyCodeToEditor(code);
 }
 
-/** Markdown renderer with copy/apply buttons on code blocks. */
-function renderMarkdown(text) {
+/** Markdown renderer with copy/apply buttons on code blocks.
+ *  opts.historical = true  → exec cards show "Ran" (already executed, don't re-run)
+ */
+function renderMarkdown(text, opts = {}) {
   // Two-pass approach: extract special blocks first (before HTML-encoding),
   // then encode the remainder and apply markdown transforms.
 
@@ -985,12 +995,15 @@ function renderMarkdown(text) {
       const idx = execPlaceholders.length;
       const encoded = code.trimEnd()
         .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const statusHtml = opts.historical
+        ? `<span class="exec-status exec-historical"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i> Ran</span>`
+        : `<span class="exec-status exec-pending"><i class="fa-solid fa-clock" aria-hidden="true"></i> Queued</span>`;
       execPlaceholders.push(
         `<div class="exec-card" data-exec-idx="${idx}">` +
         `<div class="exec-header">` +
         `<i class="fa-solid fa-terminal exec-icon" aria-hidden="true"></i>` +
         `<span class="exec-lang">python</span>` +
-        `<span class="exec-status exec-pending"><i class="fa-solid fa-clock" aria-hidden="true"></i> Queued</span>` +
+        statusHtml +
         `</div>` +
         `<pre class="exec-code"><code>${encoded}</code></pre>` +
         `<div class="exec-output" style="display:none"></div>` +
@@ -1200,8 +1213,67 @@ async function autoWriteFiles(text) {
   }
 }
 
+/** Run a single exec card's code and update its UI. */
+async function _runExecCard(card, code) {
+  const statusEl = card?.querySelector('.exec-status');
+  const outputEl = card?.querySelector('.exec-output');
+  // Remove any approve/deny buttons
+  card?.querySelector('.exec-approve-btns')?.remove();
+
+  if (statusEl) {
+    statusEl.className = 'exec-status exec-running';
+    statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Running…';
+  }
+  try {
+    const res = await api('/api/fs/exec', {
+      method: 'POST',
+      body: JSON.stringify({ code, workspace: state.workspace }),
+    });
+    const out = (res.stdout || '').trimEnd();
+    const err = (res.stderr || '').trimEnd();
+    if (statusEl) {
+      if (res.returncode === 0) {
+        statusEl.className = 'exec-status exec-done';
+        statusEl.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Done';
+      } else {
+        statusEl.className = 'exec-status exec-error';
+        statusEl.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i> Error';
+      }
+    }
+    if (outputEl && (out || err)) {
+      outputEl.style.display = '';
+      outputEl.className = 'exec-output' + (err && !out ? ' exec-output-err' : '');
+      outputEl.textContent = out || err;
+    }
+    await refreshTree();
+  } catch (e) {
+    if (statusEl) {
+      statusEl.className = 'exec-status exec-error';
+      statusEl.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${e.message}`;
+    }
+  }
+}
+
+/** Called from inline onclick when user approves a manual exec card. */
+async function approveExec(btn) {
+  const card = btn.closest('.exec-card');
+  const code = card?.querySelector('.exec-code code')?.textContent || '';
+  await _runExecCard(card, code);
+}
+
+/** Called from inline onclick when user skips a manual exec card. */
+function denyExec(btn) {
+  const card = btn.closest('.exec-card');
+  card?.querySelector('.exec-approve-btns')?.remove();
+  const statusEl = card?.querySelector('.exec-status');
+  if (statusEl) {
+    statusEl.className = 'exec-status exec-skipped';
+    statusEl.innerHTML = '<i class="fa-solid fa-ban" aria-hidden="true"></i> Skipped';
+  }
+}
+
 /**
- * Execute all python-exec blocks found in `text`.
+ * Execute (or queue for approval) all python-exec blocks found in `text`.
  * Updates the matching exec-card inside `bubble` with live status + output.
  */
 async function autoExecBlocks(text, bubble) {
@@ -1212,41 +1284,25 @@ async function autoExecBlocks(text, bubble) {
     const code = match[1];
     const card     = bubble?.querySelector(`.exec-card[data-exec-idx="${idx}"]`);
     const statusEl = card?.querySelector('.exec-status');
-    const outputEl = card?.querySelector('.exec-output');
 
-    if (statusEl) {
-      statusEl.className = 'exec-status exec-running';
-      statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Running…';
-    }
-
-    try {
-      const res = await api('/api/fs/exec', {
-        method: 'POST',
-        body: JSON.stringify({ code, workspace: state.workspace }),
-      });
-
-      const out = (res.stdout || '').trimEnd();
-      const err = (res.stderr || '').trimEnd();
-
+    if (state.autoExec) {
+      // Auto mode — run immediately
+      await _runExecCard(card, code);
+    } else {
+      // Manual mode — show approve / skip buttons, wait for user
       if (statusEl) {
-        if (res.returncode === 0) {
-          statusEl.className = 'exec-status exec-done';
-          statusEl.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i> Done';
-        } else {
-          statusEl.className = 'exec-status exec-error';
-          statusEl.innerHTML = '<i class="fa-solid fa-xmark" aria-hidden="true"></i> Error';
-        }
+        statusEl.className = 'exec-status exec-awaiting';
+        statusEl.innerHTML = '<i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Awaiting approval';
       }
-      if (outputEl && (out || err)) {
-        outputEl.style.display = '';
-        outputEl.className = 'exec-output' + (err && !out ? ' exec-output-err' : '');
-        outputEl.textContent = out || err;
-      }
-      await refreshTree();
-    } catch (e) {
-      if (statusEl) {
-        statusEl.className = 'exec-status exec-error';
-        statusEl.innerHTML = `<i class="fa-solid fa-xmark" aria-hidden="true"></i> ${e.message}`;
+      if (card) {
+        const btns = document.createElement('div');
+        btns.className = 'exec-approve-btns';
+        btns.innerHTML =
+          `<button class="exec-action-btn approve" onclick="approveExec(this)">` +
+          `<i class="fa-solid fa-play" aria-hidden="true"></i> Run</button>` +
+          `<button class="exec-action-btn skip" onclick="denyExec(this)">` +
+          `<i class="fa-solid fa-ban" aria-hidden="true"></i> Skip</button>`;
+        card.querySelector('.exec-header')?.appendChild(btns);
       }
     }
     idx++;
@@ -1716,7 +1772,7 @@ async function loadThread(id) {
     for (const msg of (data.messages || [])) {
       const bubble = addChatMessage(msg.role, '', false);
       bubble.innerHTML = msg.role === 'assistant'
-        ? renderMarkdown(msg.content)
+        ? renderMarkdown(msg.content, { historical: true })
         : escHtml(msg.content);
       state.chatHistory.push({ role: msg.role, content: msg.content });
     }
@@ -1902,6 +1958,28 @@ document.querySelectorAll('.btab').forEach(b => b.addEventListener('click', () =
 // Model selector — save selection to localStorage
 dom.modelSel.addEventListener('change', () => { state.selectedModel = dom.modelSel.value; saveSettings(); });
 
+// Auto-exec security toggle
+function _applyAutoExecUI() {
+  const btn = $('autoExecToggle');
+  if (!btn) return;
+  if (state.autoExec) {
+    btn.classList.replace('auto-exec-off', 'auto-exec-on');
+    btn.title = 'AI scripts run automatically — click to require approval';
+    btn.setAttribute('aria-pressed', 'true');
+  } else {
+    btn.classList.replace('auto-exec-on', 'auto-exec-off');
+    btn.title = 'AI scripts require approval before running — click to auto-run';
+    btn.setAttribute('aria-pressed', 'false');
+  }
+}
+_applyAutoExecUI(); // init from loaded setting
+$('autoExecToggle').addEventListener('click', () => {
+  state.autoExec = !state.autoExec;
+  saveSettings();
+  _applyAutoExecUI();
+  toast(state.autoExec ? 'Scripts auto-execute' : 'Scripts need approval', 'info', 2000);
+});
+
 // Refactor modal close
 $('refactorModalClose').addEventListener('click', () => { $('refactorModal').style.display = 'none'; });
 $('refactorModal').addEventListener('click', e => { if (e.target === $('refactorModal')) $('refactorModal').style.display = 'none'; });
@@ -2083,4 +2161,5 @@ window.addEventListener('beforeunload', () => { saveProjectState(); });
 Object.assign(window, {
   toggleFwc, copyFwc, applyFwc,
   copyCodeBlock, applyCodeBlock,
+  approveExec, denyExec,
 });

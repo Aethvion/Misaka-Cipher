@@ -1066,10 +1066,31 @@ input:focus, textarea:focus { border-color: var(--accent); }
 .exec-header i.exec-icon { color: #7c86ff; }
 .exec-lang { color: #a5b4fc; font-weight: 600; letter-spacing: .02em; }
 .exec-status { margin-left: auto; font-size: 0.75rem; display: flex; align-items: center; gap: 4px; }
-.exec-pending { color: #64748b; }
-.exec-running { color: #f59e0b; }
-.exec-done    { color: #22c55e; }
-.exec-error   { color: #ef4444; }
+.exec-pending    { color: #64748b; }
+.exec-running    { color: #f59e0b; }
+.exec-done       { color: #22c55e; }
+.exec-error      { color: #ef4444; }
+.exec-historical { color: #475569; }
+.exec-skipped    { color: #475569; }
+.exec-awaiting   { color: #a78bfa; }
+/* Approve / Skip buttons inside exec cards */
+.exec-approve-btns { display: flex; gap: 6px; margin-left: 8px; }
+.exec-action-btn {
+  font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; border: 1px solid;
+  cursor: pointer; font-family: inherit; font-weight: 600;
+  transition: background 0.15s, color 0.15s;
+}
+.exec-action-btn.approve {
+  background: rgba(34,197,94,0.15); border-color: #22c55e; color: #22c55e;
+}
+.exec-action-btn.approve:hover { background: rgba(34,197,94,0.3); }
+.exec-action-btn.skip {
+  background: rgba(100,116,139,0.15); border-color: #64748b; color: #94a3b8;
+}
+.exec-action-btn.skip:hover { background: rgba(100,116,139,0.25); }
+/* Auto-exec shield toggle */
+#autoExecToggle.auto-exec-on  { color: #22c55e; }
+#autoExecToggle.auto-exec-off { color: #f59e0b; }
 .exec-code {
   margin: 0;
   padding: 10px 12px;
