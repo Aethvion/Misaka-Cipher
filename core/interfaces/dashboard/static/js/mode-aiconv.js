@@ -579,10 +579,11 @@ async function shareAIConv() {
         topic: topic,
         created: new Date().toISOString(),
         participants: aiconvSelectedModels.map(m => ({
-            name: m.name,
-            color: m.color,
-            isHuman: m.isHuman || false,
-            model: m.isHuman ? null : m.id
+            name:        m.name,
+            color:       m.color,
+            isHuman:     m.isHuman || false,
+            model:       m.isHuman ? null : m.id,
+            personality: m.personality && m.personality.trim() ? m.personality.trim() : null
         })),
         stats: {
             inTokens: aiconvState.estInTokens,

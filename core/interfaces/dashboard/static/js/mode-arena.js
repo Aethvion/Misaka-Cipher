@@ -82,6 +82,9 @@ async function loadArenaModels() {
         if (!res.ok) return;
         const data = await res.json();
 
+        // Cache full model objects (including cost fields) for cost tracking
+        arenaAvailableModels = data.models || [];
+
         // Use shared utility from core.js
         const chatOptions = generateCategorizedModelOptions(data, 'chat');
 
