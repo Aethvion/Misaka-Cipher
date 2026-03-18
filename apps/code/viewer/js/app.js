@@ -915,6 +915,12 @@ function renderMarkdown(text) {
     processed = processed.replace(`\x00FILE_BLOCK_${idx}\x00`, html);
   });
 
+  // Step 5: render agent continuation dividers (injected between passes)
+  processed = processed.replace(
+    /(?:<br>)*\x00AGENT_CONTINUE\x00(?:<br>)*/g,
+    '<div class="agent-continue-divider"><i class="fa-solid fa-rotate" aria-hidden="true"></i> continued</div>'
+  );
+
   return processed;
 }
 
@@ -980,30 +986,73 @@ async function autoWriteFiles(text) {
   }
 }
 
+/**
+ * Detect if an AI response was cut off before completing its task.
+ * True when: (a) the response has an unclosed code fence, or
+ *            (b) it ends with the explicit ### CONTINUE signal.
+ */
+function _isTruncated(text) {
+  const t = text.trimEnd();
+  if (/###\s*CONTINUE\s*$/i.test(t)) return true;
+  const fences = (t.match(/```/g) || []).length;
+  return fences % 2 !== 0; // odd = unclosed fence
+}
+
+/**
+ * Agent loop: stream a chat response, detect truncation, and automatically
+ * continue into the same bubble until the task is complete (max 8 passes).
+ */
 async function sendChat(text) {
   if (!text.trim()) return;
   dom.chatInput.value = '';
   state.chatHistory.push({ role: 'user', content: text });
   addChatMessage('user', text);
   const bubble = addChatMessage('assistant', '', true);
-  let full = '';
+
+  let full = '';          // cumulative text rendered in bubble (all passes)
+  let pass  = 0;
+  const MAX_PASS = 8;
+
   try {
-    full = await streamSSE('/api/ai/chat', {
-      messages:  state.chatHistory.map(m => ({ role: m.role, content: m.content })),
-      model:     state.selectedModel || undefined,
-      workspace: state.workspace || undefined,
-    }, chunk => {
-      full += chunk;
-      bubble.innerHTML = renderMarkdown(full);
-      bubble.classList.add('streaming-cursor');
-      dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
-    });
-    bubble.classList.remove('streaming-cursor');
+    while (pass <= MAX_PASS) {
+      // Build messages for this pass (history already contains prior turns)
+      const msgs = state.chatHistory.map(m => ({ role: m.role, content: m.content }));
+
+      // Stream this pass; onChunk accumulates into outer `full`
+      const passText = await streamSSE('/api/ai/chat', {
+        messages:  msgs,
+        model:     state.selectedModel || undefined,
+        workspace: state.workspace || undefined,
+      }, chunk => {
+        full += chunk;
+        bubble.innerHTML = renderMarkdown(full);
+        bubble.classList.add('streaming-cursor');
+        dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
+      });
+
+      bubble.classList.remove('streaming-cursor');
+
+      // Push this pass's assistant text to history
+      state.chatHistory.push({ role: 'assistant', content: passText });
+
+      if (_isTruncated(passText) && pass < MAX_PASS) {
+        // Strip the ### CONTINUE marker from display, add a visual divider
+        full = full.replace(/\n?###\s*CONTINUE\s*$/i, '').trimEnd();
+        full += '\n\n\x00AGENT_CONTINUE\x00\n\n';
+        pass++;
+        // Inject 'continue' into history so the next call resumes correctly
+        state.chatHistory.push({ role: 'user', content: 'continue' });
+        toast(`Task continues… (part ${pass + 1})`, 'info', 1800);
+        bubble.classList.add('streaming-cursor'); // keep cursor while we loop
+      } else {
+        // All done — strip any stray ### CONTINUE at end
+        full = full.replace(/\n?###\s*CONTINUE\s*$/i, '').trimEnd();
+        break;
+      }
+    }
+
     bubble.innerHTML = renderMarkdown(full);
-    state.chatHistory.push({ role: 'assistant', content: full });
-    // Persist to active thread
     saveCurrentThread();
-    // Auto-write any files the AI included in its response
     await autoWriteFiles(full);
   } catch (e) {
     bubble.classList.remove('streaming-cursor');

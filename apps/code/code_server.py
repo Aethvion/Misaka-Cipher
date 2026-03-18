@@ -287,7 +287,7 @@ def _messages_to_prompt(messages: list, system: str = "") -> str:
 
 
 async def _sse(provider, messages: list, model_id: str, system: str,
-               max_tokens: int = 2048) -> AsyncGenerator[str, None]:
+               max_tokens: int = 8192) -> AsyncGenerator[str, None]:
     """
     Run provider.stream() in a background thread and yield SSE chunks.
     Needed because provider.stream() is a synchronous generator.
@@ -820,10 +820,11 @@ class ChatMsg(BaseModel):
     content: str
 
 class ChatReq(BaseModel):
-    messages:  List[ChatMsg]
-    model:     Optional[str] = None
-    system:    Optional[str] = None
-    workspace: Optional[str] = None   # current IDE workspace for context
+    messages:   List[ChatMsg]
+    model:      Optional[str] = None
+    system:     Optional[str] = None
+    workspace:  Optional[str] = None   # current IDE workspace for context
+    max_tokens: int = 8192             # raised default; frontend can override
 
 def _build_chat_system(workspace: Optional[str] = None) -> str:
     """Build a rich system prompt, optionally injecting project context."""
@@ -845,8 +846,11 @@ def _build_chat_system(workspace: Optional[str] = None) -> str:
         "2. Follow immediately with the filename on the same line — no extra text.\n"
         "3. Open the code fence on the very next line with the language tag.\n"
         "4. Always include COMPLETE file contents — never truncate, never use '...' or '# rest stays the same'.\n"
-        "5. Output ALL files in a single response.\n"
-        "6. You may add explanation text before or after the file blocks, never inside them.\n\n"
+        "5. Output ALL files needed to complete the task.\n"
+        "6. You may add explanation text before or after the file blocks, never inside them.\n"
+        "7. If you cannot fit all files in one response, end your response with exactly '### CONTINUE' "
+        "on its own line. The IDE agent loop will send a 'continue' message and you MUST resume "
+        "outputting the remaining files immediately — no re-introduction, no summary, just the next FILE block.\n\n"
 
         "Example of correct output:\n"
         "### FILE: index.html\n"
@@ -882,7 +886,7 @@ async def ai_chat(req: ChatReq):
     prov, mid = _get_provider(req.model)
     msgs   = [{"role": m.role, "content": m.content} for m in req.messages]
     system = req.system or _build_chat_system(req.workspace)
-    return StreamingResponse(_sse(prov, msgs, mid, system),
+    return StreamingResponse(_sse(prov, msgs, mid, system, max_tokens=req.max_tokens),
                              media_type="text/event-stream", headers=SSE_HEADERS)
 
 
