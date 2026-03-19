@@ -272,6 +272,8 @@
     background: var(--bg-primary);
     border-left: 1px solid var(--border);
     overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .arena-leaderboard-header {
@@ -280,6 +282,7 @@
     align-items: center;
     padding: 1rem;
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
 }
 
 .arena-leaderboard-header h3 {
@@ -288,24 +291,205 @@
     margin: 0;
 }
 
-#arena-leaderboard-table {
-    width: 100%;
+/* ── Leaderboard Cards ─────────────────────────────── */
+.lb-cards-container {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    overflow-y: auto;
 }
 
-#arena-leaderboard-table td,
-#arena-leaderboard-table th {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.82rem;
+.lb-empty {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    padding: 2rem 1rem;
 }
 
-.win-rate-bar {
-    display: inline-block;
+.lb-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 0.8rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.lb-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--border);
+    border-radius: 8px 8px 0 0;
+    transition: background 0.2s;
+}
+
+.lb-card.lb-rank-gold::before   { background: #f59e0b; }
+.lb-card.lb-rank-silver::before { background: #94a3b8; }
+.lb-card.lb-rank-bronze::before { background: #c97c3a; }
+
+.lb-card.lb-rank-gold   { border-color: rgba(245, 158, 11, 0.3); }
+.lb-card.lb-rank-silver { border-color: rgba(148, 163, 184, 0.3); }
+.lb-card.lb-rank-bronze { border-color: rgba(201, 124, 58, 0.3); }
+
+.lb-card:hover {
+    border-color: rgba(0, 217, 255, 0.3);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.lb-card-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.lb-rank-label {
+    font-size: 1.1rem;
+    line-height: 1;
+    flex-shrink: 0;
+    min-width: 1.4rem;
+    text-align: center;
+}
+
+.lb-rank-gold   .lb-rank-label { color: #f59e0b; font-weight: 700; }
+.lb-rank-silver .lb-rank-label { color: #94a3b8; font-weight: 700; }
+.lb-rank-bronze .lb-rank-label { color: #c97c3a; font-weight: 700; }
+
+.lb-model-name {
+    flex: 1;
+    font-size: 0.78rem;
+    font-family: 'Fira Code', monospace;
+    color: var(--text-primary);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lb-wins {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.lb-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.lb-bar-track {
+    flex: 1;
     height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.lb-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 4px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 4px;
+}
+
+.lb-rank-gold   .lb-bar-fill { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.lb-rank-silver .lb-bar-fill { background: linear-gradient(90deg, #94a3b8, #cbd5e1); }
+.lb-rank-bronze .lb-bar-fill { background: linear-gradient(90deg, #c97c3a, #e8a067); }
+
+.lb-bar-pct {
+    font-size: 0.7rem;
+    font-family: 'Fira Code', monospace;
+    color: var(--text-secondary);
+    width: 2.5rem;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.lb-badges-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.lb-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+.lb-badge-speed {
+    background: rgba(0, 217, 255, 0.12);
+    color: var(--primary);
+    border: 1px solid rgba(0, 217, 255, 0.25);
+}
+
+.lb-badge-time {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.lb-badge-score {
+    background: rgba(0, 255, 136, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+.lb-badge-fail-low {
+    background: rgba(0, 255, 136, 0.08);
+    color: var(--success);
+    border: 1px solid rgba(0, 255, 136, 0.15);
+}
+
+.lb-badge-fail-mid {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.lb-badge-fail-high {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* ── Response Card — Fastest badge ───────────────── */
+.card-badge-speed {
+    position: absolute;
+    top: -8px;
+    left: 10px;
     background: var(--primary);
-    border-radius: 2px;
-    margin-left: 0.4rem;
-    vertical-align: middle;
-    transition: width 0.3s ease;
+    color: #000;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+/* Improved response card top accent */
+.arena-response-card {
+    border-top: 2px solid transparent;
+}
+
+.arena-response-card.winner {
+    border-top-color: var(--success);
 }
 
 /* Source badge */

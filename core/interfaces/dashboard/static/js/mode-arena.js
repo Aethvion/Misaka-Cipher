@@ -220,6 +220,8 @@ async function sendArenaPrompt() {
                             if (battleData.leaderboard) {
                                 renderArenaLeaderboard(battleData.leaderboard);
                             }
+                            // Tag fastest successful response card
+                            _tagFastestResponseCard(battleData.responses);
                         }
                     } catch (e) {
                         console.error("Error parsing stream event:", e, dataStr);
@@ -432,12 +434,12 @@ async function loadArenaLeaderboard() {
 }
 
 function renderArenaLeaderboard(modelsData) {
-    const tbody = document.getElementById('arena-leaderboard-body');
-    if (!tbody) return;
+    const container = document.getElementById('arena-leaderboard-cards');
+    if (!container) return;
 
     const models = Object.entries(modelsData);
     if (!models.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="placeholder-text">No battles yet</td></tr>';
+        container.innerHTML = '<div class="lb-empty">No battles yet</div>';
         return;
     }
 
@@ -449,17 +451,91 @@ function renderArenaLeaderboard(modelsData) {
         return rateB - rateA;
     });
 
-    tbody.innerHTML = models.map(([id, stats], i) => {
+    // Compute speed ranking (lower avg time = better rank)
+    const speedRanked = [...models]
+        .filter(([, s]) => s.battles > 0 && s.total_time_ms > 0)
+        .sort((a, b) => {
+            const avgA = a[1].total_time_ms / a[1].battles;
+            const avgB = b[1].total_time_ms / b[1].battles;
+            return avgA - avgB;
+        })
+        .map(([id]) => id);
+
+    const medals = ['🥇', '🥈', '🥉'];
+    const rankColors = ['lb-rank-gold', 'lb-rank-silver', 'lb-rank-bronze'];
+
+    container.innerHTML = models.map(([id, stats], i) => {
         const winRate = stats.battles > 0 ? ((stats.wins / stats.battles) * 100).toFixed(0) : 0;
-        const barWidth = Math.min(winRate, 100);
-        return `<tr>
-            <td style="font-weight:600; color: var(--primary);">${i + 1}</td>
-            <td style="font-size:0.78rem; font-family:'Fira Code',monospace;">${id}</td>
-            <td style="color: var(--success); font-weight:600;">${stats.wins}</td>
-            <td>${stats.battles}</td>
-            <td>${winRate}%<span class="win-rate-bar" style="width:${barWidth * 0.5}px;"></span></td>
-        </tr>`;
+        const failRate = stats.battles > 0 ? ((stats.failures || 0) / stats.battles * 100).toFixed(0) : 0;
+        const avgTime = stats.battles > 0 && stats.total_time_ms > 0
+            ? (stats.total_time_ms / stats.battles / 1000).toFixed(2)
+            : null;
+        const avgScore = stats.scores_count > 0
+            ? (stats.scores_total / stats.scores_count).toFixed(1)
+            : null;
+        const speedRank = speedRanked.indexOf(id);
+
+        const rankLabel = i < 3 ? medals[i] : `${i + 1}`;
+        const rankClass = i < 3 ? rankColors[i] : '';
+
+        const failClass = failRate >= 30 ? 'lb-badge-fail-high'
+            : failRate >= 10 ? 'lb-badge-fail-mid'
+            : 'lb-badge-fail-low';
+
+        const speedBadge = speedRank === 0
+            ? `<span class="lb-badge lb-badge-speed">⚡ Fastest</span>`
+            : avgTime
+            ? `<span class="lb-badge lb-badge-time">⏱ ${avgTime}s avg</span>`
+            : '';
+
+        const scoreBadge = avgScore
+            ? `<span class="lb-badge lb-badge-score">★ ${avgScore}/10</span>`
+            : '';
+
+        const failBadge = `<span class="lb-badge ${failClass}">${failRate}% fail</span>`;
+
+        // Short display name
+        const shortName = id.length > 28 ? id.slice(0, 25) + '…' : id;
+
+        return `
+        <div class="lb-card ${rankClass}">
+            <div class="lb-card-top">
+                <span class="lb-rank-label">${rankLabel}</span>
+                <span class="lb-model-name" title="${escapeHtml(id)}">${escapeHtml(shortName)}</span>
+                <span class="lb-wins">${stats.wins}W / ${stats.battles}B</span>
+            </div>
+            <div class="lb-bar-row">
+                <div class="lb-bar-track">
+                    <div class="lb-bar-fill" style="width: ${winRate}%"></div>
+                </div>
+                <span class="lb-bar-pct">${winRate}%</span>
+            </div>
+            <div class="lb-badges-row">
+                ${speedBadge}
+                ${failBadge}
+                ${scoreBadge}
+            </div>
+        </div>`;
     }).join('');
+}
+
+function _tagFastestResponseCard(responses) {
+    const successful = responses.filter(r => r.success && r.time_ms);
+    if (!successful.length) return;
+    const fastest = successful.reduce((a, b) => a.time_ms < b.time_ms ? a : b);
+    const cardsGrid = document.getElementById('current-battle-cards');
+    if (!cardsGrid) return;
+    const cards = Array.from(cardsGrid.querySelectorAll('.arena-response-card'));
+    const targetCard = cards.find(c => {
+        const modelEl = c.querySelector('.card-model');
+        return modelEl && modelEl.textContent === fastest.model_id;
+    });
+    if (targetCard && !targetCard.querySelector('.card-badge-speed')) {
+        const badge = document.createElement('span');
+        badge.className = 'card-badge-speed';
+        badge.textContent = '⚡ Fastest';
+        targetCard.insertAdjacentElement('afterbegin', badge);
+    }
 }
 
 async function clearArenaLeaderboard() {
@@ -467,7 +543,8 @@ async function clearArenaLeaderboard() {
 
     try {
         await fetch('/api/arena/leaderboard', { method: 'DELETE' });
-        renderArenaLeaderboard({});
+        const container = document.getElementById('arena-leaderboard-cards');
+        if (container) container.innerHTML = '<div class="lb-empty">No battles yet</div>';
     } catch (err) {
         console.error('Failed to clear leaderboard:', err);
     }

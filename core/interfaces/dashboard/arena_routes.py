@@ -162,11 +162,16 @@ async def arena_battle_stream(request: ArenaBattleRequest, req: Request):
                 responses.append(result)
                 
                 # Update battles count for this model early
-                if result["success"]:
-                    mid = result["model_id"]
-                    if mid not in models_data:
-                        models_data[mid] = {"wins": 0, "battles": 0}
-                    models_data[mid]["battles"] += 1
+                mid = result["model_id"]
+                if mid not in models_data:
+                    models_data[mid] = {"wins": 0, "battles": 0, "failures": 0, "total_time_ms": 0, "scores_total": 0, "scores_count": 0}
+                # Ensure legacy entries have new fields
+                for field in ("failures", "total_time_ms", "scores_total", "scores_count"):
+                    models_data[mid].setdefault(field, 0)
+                models_data[mid]["battles"] += 1
+                models_data[mid]["total_time_ms"] += result.get("time_ms", 0) or 0
+                if not result["success"]:
+                    models_data[mid]["failures"] += 1
                 
                 # Yield this specific result
                 yield f"data: {json.dumps({'type': 'result', 'data': result})}\n\n"
@@ -215,12 +220,24 @@ async def evaluate_battle(request: ArenaEvaluateRequest, req: Request):
         leaderboard = _load_leaderboard()
         models_data = leaderboard.get("models", {})
 
+        # Update scores and wins in leaderboard
+        for r in responses:
+            mid = r["model_id"]
+            if mid not in models_data:
+                models_data[mid] = {"wins": 0, "battles": 0, "failures": 0, "total_time_ms": 0, "scores_total": 0, "scores_count": 0}
+            for field in ("failures", "total_time_ms", "scores_total", "scores_count"):
+                models_data[mid].setdefault(field, 0)
+            if r.get("score") is not None and r.get("success"):
+                models_data[mid]["scores_total"] += r["score"]
+                models_data[mid]["scores_count"] += 1
+
         if winner_id:
             if winner_id not in models_data:
-                models_data[winner_id] = {"wins": 0, "battles": 0}
+                models_data[winner_id] = {"wins": 0, "battles": 0, "failures": 0, "total_time_ms": 0, "scores_total": 0, "scores_count": 0}
             models_data[winner_id]["wins"] += 1
-            leaderboard["models"] = models_data
-            _save_leaderboard(leaderboard)
+
+        leaderboard["models"] = models_data
+        _save_leaderboard(leaderboard)
 
         return {
             "responses": list(responses),
@@ -259,12 +276,14 @@ async def declare_winner(request: DeclareWinnerRequest):
         leaderboard = _load_leaderboard()
         models_data = leaderboard.get("models", {})
 
+        # Only update wins here — battles were already counted in battle_stream
         for mid in request.participant_model_ids:
             if mid not in models_data:
-                models_data[mid] = {"wins": 0, "battles": 0}
-            models_data[mid]["battles"] += 1
-            if mid == request.winner_model_id:
-                models_data[mid]["wins"] += 1
+                models_data[mid] = {"wins": 0, "battles": 0, "failures": 0, "total_time_ms": 0, "scores_total": 0, "scores_count": 0}
+            for field in ("failures", "total_time_ms", "scores_total", "scores_count"):
+                models_data[mid].setdefault(field, 0)
+        if request.winner_model_id in models_data:
+            models_data[request.winner_model_id]["wins"] += 1
 
         leaderboard["models"] = models_data
         _save_leaderboard(leaderboard)
