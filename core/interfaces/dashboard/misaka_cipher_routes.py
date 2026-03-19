@@ -20,7 +20,7 @@ import asyncio
 from core.providers.provider_manager import ProviderManager
 from core.workspace.preferences_manager import get_preferences_manager
 from core.utils.logger import get_logger
-from core.utils.paths import PERSONA_MISAKA, WORKSPACES
+from core.utils.paths import PERSONA_MISAKA, WORKSPACES, HISTORY_CHAT, WS_UPLOADS
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/misakacipher", tags=["misakacipher"])
@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/misakacipher", tags=["misakacipher"])
 # Path configuration
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 MEMORY_DIR = PERSONA_MISAKA
-HISTORY_DIR = PERSONA_MISAKA / "threads"
+HISTORY_DIR = HISTORY_CHAT
 EXPRESSIONS_DIR = PROJECT_ROOT / "core" / "interfaces" / "dashboard" / "static" / "misakacipher" / "expressions"
 WORKSPACES_FILE = WORKSPACES / "workspaces.json"
 
@@ -1385,7 +1385,7 @@ async def upload_context(file: UploadFile = File(...)):
 
         # Save to disk
         month_str = datetime.datetime.now().strftime("%Y-%m")
-        uploads_dir = PROJECT_ROOT / "data" / "workspace" / "uploads" / month_str
+        uploads_dir = WS_UPLOADS / month_str
         uploads_dir.mkdir(parents=True, exist_ok=True)
         
         safe_filename = f"{uuid.uuid4().hex[:8]}_{filename}"
