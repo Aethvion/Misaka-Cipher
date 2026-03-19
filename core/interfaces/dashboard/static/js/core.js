@@ -176,9 +176,8 @@ function initKeyboardShortcuts() {
             if (e.key === '2') { e.preventDefault(); switchMainTab('chat'); return; }
         }
         if (e.altKey && !e.ctrlKey) {
-            if (e.key === '1') { e.preventDefault(); setDashboardMode('suite'); return; }
-            if (e.key === '2') { e.preventDefault(); setDashboardMode('enterprise'); return; }
-            if (e.key === '3') { e.preventDefault(); setDashboardMode('rd'); return; }
+            if (e.key === '1') { e.preventDefault(); setDashboardMode('home'); return; }
+            if (e.key === '2') { e.preventDefault(); setDashboardMode('ai'); return; }
         }
     });
 
@@ -192,7 +191,7 @@ let logsWs = null;
 let agentsWs = null;
 // Global UI State
 let currentMainTab = 'chat';
-let dashboardMode = 'suite'; // or 'enterprise', 'rd'
+let dashboardMode = 'home'; // 'home' or 'ai'
 let devModeActive = false;
 
 function initDevMode() {
@@ -240,7 +239,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateSystemInfo();
 
     // Apply default mode immediately so nothing looks broken on load
-    setDashboardMode('suite', false);
+    setDashboardMode('home', false);
 
     try {
         // Load preferences safely before heavy data initialization
@@ -248,7 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             await prefs.load();
 
             // Restore dashboard mode
-            const mode = prefs.get('dashboard_mode', 'suite');
+            const mode = prefs.get('dashboard_mode', 'home');
             setDashboardMode(mode, false);
 
             // Restore sidebar state
@@ -265,10 +264,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (layout) layout.classList.add('threads-collapsed');
             }
 
+            // Restore category collapse states
+            initCategoryCollapse();
+
             // The active tab is now restored automatically by setDashboardMode
         } else {
             // Fallback (redundant fetch but keeping for safety if view-settings isn't loaded)
-            let fallbackMode = 'suite';
+            let fallbackMode = 'home';
             const modeRes = await fetch('/api/preferences/get?key=dashboard_mode');
             if (modeRes.ok) {
                 const modeData = await modeRes.json();
@@ -657,7 +659,7 @@ async function updateSystemInfo() {
 // Main Navigation Logic
 // ------------------------------------------------------------------
 function setDashboardMode(mode, save = true) {
-    if (mode !== 'enterprise' && mode !== 'rd' && mode !== 'suite') return;
+    if (mode !== 'home' && mode !== 'ai') return;
     dashboardMode = mode;
 
     if (save && typeof savePreference === 'function') {
@@ -670,17 +672,14 @@ function setDashboardMode(mode, save = true) {
     });
 
     // Toggle body classes for theme overrides
-    document.body.classList.remove('theme-enterprise', 'theme-rd', 'theme-suite');
+    document.body.classList.remove('theme-home', 'theme-ai');
     document.body.classList.add(`theme-${dashboardMode}`);
 
     // Hide/Show navigation elements based on mode
-    const modeClasses = ['mode-enterprise', 'mode-rd', 'mode-suite'];
+    const modeClasses = ['mode-home', 'mode-ai'];
     document.querySelectorAll('[class*="mode-"]').forEach(el => {
-        // Find which mode classes this element has
         const classes = Array.from(el.classList).filter(cls => modeClasses.includes(cls));
         if (classes.length === 0) return;
-
-        // Show if it matches current mode, hide otherwise
         if (el.classList.contains(`mode-${dashboardMode}`)) {
             el.classList.remove('mode-hidden');
         } else {
@@ -688,24 +687,55 @@ function setDashboardMode(mode, save = true) {
         }
     });
 
-    // Restore the last active tab for this mode specifically
-    let targetTab = 'chat';
-    if (dashboardMode === 'rd') targetTab = 'advaiconv';
-    if (dashboardMode === 'suite') targetTab = 'suite-home';
-    
+    // Restore the last active tab for this mode
+    let targetTab = dashboardMode === 'home' ? 'suite-home' : 'chat';
     if (typeof prefs !== 'undefined' && typeof prefs.get === 'function') {
         const savedTab = prefs.get(`active_tab_${dashboardMode}`);
         if (savedTab) targetTab = savedTab;
     }
-    
-    // Validate target tab is not hidden
+
+    // Validate target tab exists and isn't hidden
     const targetBtn = document.querySelector(`.main-tab[data-maintab="${targetTab}"]`);
-    if (targetBtn && targetBtn.classList.contains('mode-hidden')) {
-        if (dashboardMode === 'suite') targetTab = 'suite-home';
-        else targetTab = dashboardMode === 'enterprise' ? 'chat' : 'advaiconv';
+    if (!targetBtn || targetBtn.classList.contains('mode-hidden')) {
+        targetTab = dashboardMode === 'home' ? 'suite-home' : 'chat';
     }
 
     switchMainTab(targetTab, false);
+}
+
+// ─── Sidebar Category Collapse ───────────────────────────────────
+function initCategoryCollapse() {
+    document.querySelectorAll('.sidebar-category[data-cat]').forEach(catEl => {
+        const catId = catEl.dataset.cat;
+        const body  = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
+        if (!body) return;
+
+        // Restore saved state
+        const collapsed = typeof prefs !== 'undefined' && prefs.get(`cat_collapsed_${catId}`, false);
+        if (collapsed === true || collapsed === 'true') {
+            body.classList.add('cat-collapsed');
+            catEl.classList.add('cat-is-collapsed');
+        }
+
+        // Attach click listener (only once)
+        if (!catEl.dataset.catInit) {
+            catEl.dataset.catInit = '1';
+            catEl.addEventListener('click', () => toggleCategory(catId));
+        }
+    });
+}
+
+function toggleCategory(catId) {
+    const catEl = document.querySelector(`.sidebar-category[data-cat="${catId}"]`);
+    const body  = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
+    if (!catEl || !body) return;
+
+    const isNowCollapsed = body.classList.toggle('cat-collapsed');
+    catEl.classList.toggle('cat-is-collapsed', isNowCollapsed);
+
+    if (typeof savePreference === 'function') {
+        savePreference(`cat_collapsed_${catId}`, isNowCollapsed);
+    }
 }
 
 // ─── Tab scroll-position memory ──────────────────────────────────

@@ -58,13 +58,13 @@
 
 .sidebar-nav .main-tab {
     padding: 0.4rem 0.75rem;
-    margin-bottom: 0.15rem;
     justify-content: flex-start;
     border-radius: var(--radius-md);
     position: relative;
     /* Ensure text wraps cleanly when collapsing */
     white-space: nowrap;
     overflow: hidden;
+    width: 100%;
 }
 
 .sidebar-nav .tab-icon {
@@ -92,6 +92,9 @@
 
 /* Sidebar Categories & Hierarchy */
 .sidebar-category {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding: 0.3rem 0.75rem 0.15rem;
     font-size: 0.65rem;
     color: var(--text-tertiary);
@@ -99,14 +102,54 @@
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-top: 0.4rem;
-    pointer-events: none;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s, background 0.15s;
     white-space: nowrap;
     overflow: hidden;
+    user-select: none;
+}
+
+.sidebar-category:hover {
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.04);
 }
 
 .sidebar-category:first-of-type {
     margin-top: 0.25rem;
+}
+
+/* Chevron arrow */
+.cat-chevron {
+    font-size: 0.7rem;
+    opacity: 0.5;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s;
+    flex-shrink: 0;
+    margin-left: 0.25rem;
+}
+
+.sidebar-category:hover .cat-chevron {
+    opacity: 0.9;
+}
+
+.sidebar-category.cat-is-collapsed .cat-chevron {
+    transform: rotate(-90deg);
+}
+
+/* Category body — collapsible container */
+.cat-body {
+    overflow: hidden;
+    max-height: 600px;
+    /* large enough for any category */
+    transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.2s ease;
+    opacity: 1;
+}
+
+.cat-body.cat-collapsed {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .sidebar-subitem {
@@ -142,7 +185,7 @@
     display: none;
 }
 
-/* Hide categories effectively when collapsed */
+/* Hide categories effectively when sidebar is collapsed */
 .sidebar-nav.collapsed .sidebar-category {
     font-size: 0;
     padding: 0;
@@ -152,12 +195,25 @@
     background: var(--border);
     border-radius: 1px;
     color: transparent;
+    cursor: default;
+}
+
+.sidebar-nav.collapsed .cat-chevron {
+    display: none;
+}
+
+/* When sidebar is collapsed, always show cat-body items (icon-only mode) */
+.sidebar-nav.collapsed .cat-body {
+    max-height: 600px !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
 }
 
 /* Collapsed sidebar: tooltip on hover */
 .sidebar-nav.collapsed .main-tab {
     position: relative;
 }
+
 .sidebar-nav.collapsed .main-tab::after {
     content: attr(data-tooltip);
     position: absolute;
@@ -165,7 +221,7 @@
     top: 50%;
     transform: translateY(-50%);
     background: rgba(14, 14, 22, 0.97);
-    border: 1px solid rgba(255,255,255,0.12);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 7px;
     padding: 5px 10px;
     font-size: 0.78rem;
@@ -175,8 +231,9 @@
     opacity: 0;
     transition: opacity 0.15s;
     z-index: 1000;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
+
 .sidebar-nav.collapsed .main-tab:hover::after {
     opacity: 1;
 }

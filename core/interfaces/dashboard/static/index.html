@@ -120,22 +120,34 @@
             box-shadow: 0 0 10px rgba(0, 217, 255, 0.4);
         }
 
-        /* Suite Mode Theme Overrides */
-        body.theme-suite {
+        /* Home Mode Theme */
+        body.theme-home {
             --primary: #00d9ff;
-            /* Cyan 400 */
             --primary-hover: #00f2ff;
             --accent: #ff00ea;
-            /* Magenta */
-
             --glow: 0 0 25px rgba(0, 217, 255, 0.3);
             --glow-accent: 0 0 20px rgba(255, 0, 234, 0.2);
         }
 
-        .mode-btn[data-value="suite"].active {
+        /* AI Mode Theme */
+        body.theme-ai {
+            --primary: #a78bfa;
+            --primary-hover: #c4b5fd;
+            --accent: #34d399;
+            --glow: 0 0 25px rgba(167, 139, 250, 0.3);
+            --glow-accent: 0 0 20px rgba(52, 211, 153, 0.2);
+        }
+
+        .mode-btn[data-value="home"].active {
             background: #00d9ff;
             color: #000;
             box-shadow: 0 0 10px rgba(0, 217, 255, 0.4);
+        }
+
+        .mode-btn[data-value="ai"].active {
+            background: #a78bfa;
+            color: #000;
+            box-shadow: 0 0 10px rgba(167, 139, 250, 0.4);
         }
 
         /* --- Self-Update Progress Overlay --- */
@@ -288,11 +300,10 @@
                     <i class="fas fa-bars"></i>
                 </button>
                 <h1 class="logo" style="margin-left: 10px; cursor: pointer;"
-                    onclick="setDashboardMode('suite'); switchMainTab('suite-home');">Aethvion Suite</h1>
+                    onclick="setDashboardMode('home'); switchMainTab('suite-home');">Aethvion Suite</h1>
                 <div class="dash-mode-toggle" id="dashboard-mode-toggle">
-                    <div class="mode-btn active" data-value="suite">SUITE</div>
-                    <div class="mode-btn" data-value="enterprise">ENTERPRISE</div>
-                    <div class="mode-btn" data-value="rd">R&D</div>
+                    <div class="mode-btn active" data-value="home">HOME</div>
+                    <div class="mode-btn" data-value="ai">AI</div>
                 </div>
             </div>
             <div class="header-right">
@@ -316,91 +327,139 @@
     <div class="content-wrapper">
         <aside class="sidebar-nav" id="sidebar-nav">
             <div class="main-tabs">
-                <button class="main-tab mode-suite" data-maintab="suite-home" data-tooltip="Home">
+                <!-- ── HOME mode ─────────────────────────────────── -->
+                <button class="main-tab mode-home" data-maintab="suite-home" data-tooltip="Home">
                     <span class="tab-icon">🏠</span><span class="tab-label">Home</span>
                 </button>
 
-                <button class="main-tab mode-enterprise mode-rd" data-maintab="misaka-cipher" data-tooltip="Misaka Cipher">
+                <!-- ── AI mode ───────────────────────────────────── -->
+                <button class="main-tab mode-ai" data-maintab="misaka-cipher" data-tooltip="Misaka Cipher">
                     <span class="tab-icon">✨</span><span class="tab-label">Misaka Cipher</span>
                 </button>
 
-                <div class="sidebar-category mode-enterprise mode-rd">Workflow</div>
-                <button class="main-tab mode-enterprise mode-rd active" data-maintab="chat" data-tooltip="Chat"><span
-                        class="tab-icon">💬</span><span class="tab-label">Chat</span></button>
-                <button class="main-tab mode-enterprise" data-maintab="photo" data-tooltip="Photo"><span
-                        class="tab-icon">🎨</span><span class="tab-label">Photo</span></button>
-                <button class="main-tab mode-enterprise" data-maintab="audio" data-tooltip="Audio"><span
-                        class="tab-icon">🎙️</span><span class="tab-label">Audio</span></button>
+                <!-- Workflow -->
+                <div class="sidebar-category mode-ai" data-cat="workflow">
+                    <span class="cat-label">Workflow</span><span class="cat-chevron">▾</span>
+                </div>
+                <div class="cat-body mode-ai" data-cat-body="workflow">
+                    <button class="main-tab mode-ai active" data-maintab="chat" data-tooltip="Chat">
+                        <span class="tab-icon">💬</span><span class="tab-label">Chat</span></button>
+                    <button class="main-tab mode-ai" data-maintab="photo" data-tooltip="Photo">
+                        <span class="tab-icon">🎨</span><span class="tab-label">Photo</span></button>
+                    <button class="main-tab mode-ai" data-maintab="audio" data-tooltip="Audio">
+                        <span class="tab-icon">🎙️</span><span class="tab-label">Audio</span></button>
+                </div>
 
-                <div class="sidebar-category mode-enterprise">Research</div>
-                <button class="main-tab mode-enterprise" data-maintab="advaiconv" data-tooltip="Advanced AI Conv."><span class="tab-icon">🧪</span><span
-                        class="tab-label">Advanced AI Conversation</span></button>
+                <!-- Research -->
+                <div class="sidebar-category mode-ai" data-cat="research">
+                    <span class="cat-label">Research</span><span class="cat-chevron">▾</span>
+                </div>
+                <div class="cat-body mode-ai" data-cat-body="research">
+                    <button class="main-tab mode-ai" data-maintab="advaiconv" data-tooltip="Advanced AI Conv.">
+                        <span class="tab-icon">🧪</span><span class="tab-label">Advanced AI Conversation</span></button>
+                </div>
 
-                <div class="sidebar-category mode-rd">Sandbox</div>
-                <button class="main-tab mode-rd" data-maintab="arena" data-tooltip="Arena"><span class="tab-icon">⚔️</span><span
-                        class="tab-label">Arena</span></button>
-                <button class="main-tab mode-rd" data-maintab="aiconv" data-tooltip="AI Conversations"><span class="tab-icon">🎭</span><span
-                        class="tab-label">AI Conversations</span></button>
+                <!-- Sandbox -->
+                <div class="sidebar-category mode-ai" data-cat="sandbox">
+                    <span class="cat-label">Sandbox</span><span class="cat-chevron">▾</span>
+                </div>
+                <div class="cat-body mode-ai" data-cat-body="sandbox">
+                    <button class="main-tab mode-ai" data-maintab="arena" data-tooltip="Arena">
+                        <span class="tab-icon">⚔️</span><span class="tab-label">Arena</span></button>
+                    <button class="main-tab mode-ai" data-maintab="aiconv" data-tooltip="AI Conversations">
+                        <span class="tab-icon">🎭</span><span class="tab-label">AI Conversations</span></button>
+                </div>
 
-                <!-- Games Dropdown -->
-                <div class="sidebar-category mode-rd">Games</div>
-                <button class="main-tab mode-rd sidebar-subitem" data-maintab="game-results" data-tooltip="Leaderboards"><span class="tab-icon">🏆</span><span
-                        class="tab-label">Leaderboards</span></button>
-                <button class="main-tab mode-rd sidebar-subitem" data-maintab="game-logic-quest" data-tooltip="Logic Quest"><span
-                        class="tab-icon">🧩</span><span class="tab-label">Logic Quest</span></button>
-                <button class="main-tab mode-rd sidebar-subitem" data-maintab="game-blackjack" data-tooltip="Blackjack"><span
-                        class="tab-icon">🃏</span><span class="tab-label">Blackjack</span></button>
-                <button class="main-tab mode-rd sidebar-subitem" data-maintab="game-sudoku" data-tooltip="Sudoku"><span
-                        class="tab-icon">🔢</span><span class="tab-label">Sudoku</span></button>
-                <button class="main-tab mode-rd sidebar-subitem" data-maintab="game-word-search" data-tooltip="Word Search"><span
-                        class="tab-icon">🔠</span><span class="tab-label">Word Search</span></button>
-                <button class="main-tab mode-rd sidebar-subitem" data-maintab="game-checkers" data-tooltip="Checkers"><span
-                        class="tab-icon">🔴</span><span class="tab-label">Checkers (vs AI)</span></button>
+                <!-- Games -->
+                <div class="sidebar-category mode-ai" data-cat="games">
+                    <span class="cat-label">Games</span><span class="cat-chevron">▾</span>
+                </div>
+                <div class="cat-body mode-ai" data-cat-body="games">
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-results" data-tooltip="Leaderboards">
+                        <span class="tab-icon">🏆</span><span class="tab-label">Leaderboards</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-logic-quest" data-tooltip="Logic Quest">
+                        <span class="tab-icon">🧩</span><span class="tab-label">Logic Quest</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-blackjack" data-tooltip="Blackjack">
+                        <span class="tab-icon">🃏</span><span class="tab-label">Blackjack</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-sudoku" data-tooltip="Sudoku">
+                        <span class="tab-icon">🔢</span><span class="tab-label">Sudoku</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-word-search" data-tooltip="Word Search">
+                        <span class="tab-icon">🔠</span><span class="tab-label">Word Search</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="game-checkers" data-tooltip="Checkers">
+                        <span class="tab-icon">🔴</span><span class="tab-label">Checkers (vs AI)</span></button>
+                </div>
 
-                <div class="sidebar-category mode-enterprise">Files</div>
-                <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="output" data-tooltip="Output"><span
-                        class="tab-icon">📤</span><span class="tab-label">Output</span></button>
-                <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="screenshots" data-tooltip="Screenshots"><span
-                        class="tab-icon">📸</span><span class="tab-label">Screenshots</span></button>
-                <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="camera" data-tooltip="Camera"><span
-                        class="tab-icon">📷</span><span class="tab-label">Camera</span></button>
-                <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="uploads" data-tooltip="Uploads"><span
-                        class="tab-icon">📁</span><span class="tab-label">Uploads</span></button>
+                <!-- Files -->
+                <div class="sidebar-category mode-ai" data-cat="files">
+                    <span class="cat-label">Files</span><span class="cat-chevron">▾</span>
+                </div>
+                <div class="cat-body mode-ai" data-cat-body="files">
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="output" data-tooltip="Output">
+                        <span class="tab-icon">📤</span><span class="tab-label">Output</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="screenshots" data-tooltip="Screenshots">
+                        <span class="tab-icon">📸</span><span class="tab-label">Screenshots</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="camera" data-tooltip="Camera">
+                        <span class="tab-icon">📷</span><span class="tab-label">Camera</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="uploads" data-tooltip="Uploads">
+                        <span class="tab-icon">📁</span><span class="tab-label">Uploads</span></button>
+                </div>
 
-                <div class="sidebar-category mode-enterprise">Models</div>
-                <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="local-models" data-tooltip="Local Models"><span
-                        class="tab-icon">🤖</span><span class="tab-label">Local Models</span></button>
+                <!-- Models -->
+                <div class="sidebar-category mode-ai" data-cat="models">
+                    <span class="cat-label">Models</span><span class="cat-chevron">▾</span>
+                </div>
+                <div class="cat-body mode-ai" data-cat-body="models">
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="local-models" data-tooltip="Local Models">
+                        <span class="tab-icon">🤖</span><span class="tab-label">Local Models</span></button>
+                </div>
 
-                <div class="sidebar-category mode-enterprise">ToolKit</div>
-                <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="tools" data-tooltip="Tools"><span
-                        class="tab-icon">🔧</span><span class="tab-label">Tools</span></button>
-                <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="packages" data-tooltip="Packages"><span
-                        class="tab-icon">📦</span><span class="tab-label">Packages</span></button>
+                <!-- ToolKit -->
+                <div class="sidebar-category mode-ai" data-cat="toolkit">
+                    <span class="cat-label">ToolKit</span><span class="cat-chevron">▾</span>
+                </div>
+                <div class="cat-body mode-ai" data-cat-body="toolkit">
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="tools" data-tooltip="Tools">
+                        <span class="tab-icon">🔧</span><span class="tab-label">Tools</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="packages" data-tooltip="Packages">
+                        <span class="tab-icon">📦</span><span class="tab-label">Packages</span></button>
+                </div>
 
-                <div class="sidebar-category mode-enterprise">Knowledge</div>
-                <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="memory" data-tooltip="Memory"><span
-                        class="tab-icon">📓</span><span class="tab-label">Memory</span></button>
-                <button class="main-tab mode-enterprise sidebar-subitem" data-maintab="misaka-memory" data-tooltip="Misaka Memory"><span
-                        class="tab-icon">🧬</span><span class="tab-label">Misaka Cipher Memory</span></button>
+                <!-- Knowledge -->
+                <div class="sidebar-category mode-ai" data-cat="knowledge">
+                    <span class="cat-label">Knowledge</span><span class="cat-chevron">▾</span>
+                </div>
+                <div class="cat-body mode-ai" data-cat-body="knowledge">
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="memory" data-tooltip="Memory">
+                        <span class="tab-icon">📓</span><span class="tab-label">Memory</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="misaka-memory" data-tooltip="Misaka Memory">
+                        <span class="tab-icon">🧬</span><span class="tab-label">Misaka Cipher Memory</span></button>
+                </div>
 
+                <!-- Diagnostics -->
+                <div class="sidebar-category mode-ai" data-cat="diagnostics">
+                    <span class="cat-label">Diagnostics</span><span class="cat-chevron">▾</span>
+                </div>
+                <div class="cat-body mode-ai" data-cat-body="diagnostics">
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="logs" data-tooltip="Logs">
+                        <span class="tab-icon">📜</span><span class="tab-label">Logs</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="documentation" data-tooltip="Documentation">
+                        <span class="tab-icon">📖</span><span class="tab-label">Documentation</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="usage" data-tooltip="Usage">
+                        <span class="tab-icon">📊</span><span class="tab-label">Usage</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="status" data-tooltip="Status">
+                        <span class="tab-icon">🚦</span><span class="tab-label">Status</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="ports" data-tooltip="Port Manager">
+                        <span class="tab-icon">🔌</span><span class="tab-label">Port Manager</span></button>
+                </div>
 
-                <div class="sidebar-category mode-enterprise mode-rd">Diagnostics</div>
-                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="logs" data-tooltip="Logs"><span
-                        class="tab-icon">📜</span><span class="tab-label">Logs</span></button>
-                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="documentation" data-tooltip="Documentation"><span
-                        class="tab-icon">📖</span><span class="tab-label">Documentation</span></button>
-                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="usage" data-tooltip="Usage"><span
-                        class="tab-icon">📊</span><span class="tab-label">Usage</span></button>
-                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="status" data-tooltip="Status"><span
-                        class="tab-icon">🚦</span><span class="tab-label">Status</span></button>
-                <button class="main-tab mode-enterprise mode-rd sidebar-subitem" data-maintab="ports" data-tooltip="Port Manager"><span
-                        class="tab-icon">🔌</span><span class="tab-label">Port Manager</span></button>
-                <button class="main-tab mode-enterprise mode-rd mode-suite" data-maintab="settings" data-tooltip="Settings"><span
-                        class="tab-icon">⚙️</span><span class="tab-label">Settings</span></button>
+                <!-- Settings — always visible -->
+                <button class="main-tab mode-home mode-ai" data-maintab="settings" data-tooltip="Settings">
+                    <span class="tab-icon">⚙️</span><span class="tab-label">Settings</span>
+                </button>
             </div>
 
             <div class="sidebar-bottom">
-                <button class="main-tab mode-enterprise mode-rd mode-suite" data-maintab="version" title="Version Control">
+                <button class="main-tab mode-home mode-ai" data-maintab="version" title="Version Control">
                     <span class="tab-icon">🔖</span>
                     <span class="tab-label">Version</span>
                     <div id="sidebar-version-dot"
@@ -423,20 +482,13 @@
                         </div>
                     </div>
 
-                    <!-- Dual Mode Selection -->
+                    <!-- Mode Selection -->
                     <div class="mode-selection-container">
-                        <div class="mode-choice-card enterprise" onclick="setDashboardMode('enterprise'); switchMainTab('chat');">
+                        <div class="mode-choice-card ai" onclick="setDashboardMode('ai'); switchMainTab('chat');">
                             <div class="choice-content">
-                                <h2>Enterprise</h2>
-                                <p>Optimized for productivity, research, and deep knowledge management. Perfect for professional workflows and complex AI orchestration.</p>
-                                <span class="choice-btn">Select Mode <i class="fas fa-chevron-right"></i></span>
-                            </div>
-                        </div>
-                        <div class="mode-choice-card rd" onclick="setDashboardMode('rd'); switchMainTab('chat');">
-                            <div class="choice-content">
-                                <h2>R&D</h2>
-                                <p>Experimental playground for testing new models, playing logic games, and observing autonomous interactions. Designed for rapid prototyping.</p>
-                                <span class="choice-btn">Select Mode <i class="fas fa-chevron-right"></i></span>
+                                <h2>AI</h2>
+                                <p>Everything in one place — chat, research, arena, games, tools, knowledge management and diagnostics. Use category collapse to keep the sidebar tidy.</p>
+                                <span class="choice-btn">Open AI <i class="fas fa-chevron-right"></i></span>
                             </div>
                         </div>
                     </div>
