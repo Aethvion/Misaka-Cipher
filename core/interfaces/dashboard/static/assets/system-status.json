@@ -39,6 +39,7 @@
                     "Infrastructure: Aggressive Cache-Control middleware added to all 9 internal app servers + dashboard",
                     "Infrastructure: Launcher and main entry point now automatically configure developer environment flags",
                     "Sidebar: Dynamic tab counts for all sidebar categories (e.g. Workflow (3)) for better navigation",
+                    "Nexus: Added a dedicated refresh button to the permanent Nexus tab for easy dashboard reloading",
                     "AI Conversation: Participant display names stored directly in message history — prevents name collisions when two participants share the same model",
                     "AI Conversation: Personality field included in share payload and rendered on the share page",
                     "Code IDE: Historical python-exec blocks render as 'Ran' instead of 'Queued' when a thread is reloaded",

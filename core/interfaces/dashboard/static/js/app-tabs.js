@@ -486,6 +486,12 @@ const ATB = (() => {
         document.getElementById('atb-apps-btn')
             ?.addEventListener('click', e => { e.stopPropagation(); _toggleMenu(); });
 
+        document.getElementById('nexus-refresh')
+            ?.addEventListener('click', e => {
+                e.stopPropagation();
+                window.location.reload();
+            });
+
         document.getElementById('atb-apps-menu')
             ?.addEventListener('click', e => e.stopPropagation());
 
