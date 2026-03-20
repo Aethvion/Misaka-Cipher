@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
@@ -224,6 +224,106 @@ async def get_defaults():
         }
     except Exception:
         return {"model_id": None, "voice_id": None}
+
+
+@router.post("/models/register-to-registry")
+async def register_to_registry(req: SetDefaultRequest, request: Request):
+    """Register an audio model in the main model_registry.json with TTS/STT capability tags."""
+    try:
+        from core.interfaces.dashboard.registry_routes import _load_registry, _save_registry
+
+        # Look up capabilities from suggested config
+        caps: list[str] = []
+        if SUGGESTED_PATH.exists():
+            try:
+                data = json.loads(SUGGESTED_PATH.read_text(encoding="utf-8"))
+                for m in data.get("audio_models", []):
+                    if m["id"] == req.model_id:
+                        caps = [c.upper() for c in (m.get("capabilities") or [])]
+                        break
+            except Exception:
+                pass
+        if not caps:
+            caps = ["TTS"]  # safe fallback
+
+        registry = _load_registry()
+        providers = registry.setdefault("providers", {})
+        if "audio_models" not in providers:
+            providers["audio_models"] = {
+                "name": "Local Audio Models",
+                "active": True,
+                "models": {},
+            }
+
+        providers["audio_models"]["models"][req.model_id] = {
+            "input_cost_per_1m_tokens": 0,
+            "output_cost_per_1m_tokens": 0,
+            "capabilities": caps,
+            "description": f"Local audio model: {req.model_id}",
+        }
+
+        _save_registry(registry)
+        if hasattr(request.app.state, "nexus"):
+            request.app.state.nexus.reload_config()
+
+        return {"success": True, "model_id": req.model_id, "capabilities": caps}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@router.get("/models/registry-status")
+async def get_registry_status():
+    """Return which audio models are already registered in the main registry."""
+    try:
+        from core.interfaces.dashboard.registry_routes import _load_registry
+        registry = _load_registry()
+        registered = set(registry.get("providers", {}).get("audio_models", {}).get("models", {}).keys())
+        return {"registered": list(registered)}
+    except Exception:
+        return {"registered": []}
+
+
+@router.get("/models/tts-for-dropdown")
+async def get_tts_for_dropdown():
+    """Return all TTS-capable models from the registry, grouped by provider,
+    enriched with current load status. Used to populate voice-output dropdowns."""
+    try:
+        from core.interfaces.dashboard.registry_routes import _load_registry
+        registry = _load_registry()
+
+        # Current load status from tts_manager
+        mgr = _mgr()
+        loaded_ids: set[str] = set()
+        if mgr:
+            for s in mgr.get_all_statuses():
+                if s.get("loaded"):
+                    loaded_ids.add(s["id"])
+
+        providers_out = []
+        for provider_key, provider_cfg in registry.get("providers", {}).items():
+            models_out = []
+            for model_id, model_info in provider_cfg.get("models", {}).items():
+                caps = [c.upper() for c in (model_info.get("capabilities") or [])]
+                if "TTS" not in caps:
+                    continue
+                models_out.append({
+                    "id": model_id,
+                    "name": model_info.get("description", model_id).replace("Local audio model: ", ""),
+                    "description": model_info.get("description", ""),
+                    "loaded": model_id in loaded_ids,
+                    "capabilities": caps,
+                })
+            if models_out:
+                providers_out.append({
+                    "key": provider_key,
+                    "name": provider_cfg.get("name", provider_key),
+                    "models": models_out,
+                })
+
+        return {"providers": providers_out}
+    except Exception as e:
+        logger.warning(f"tts-for-dropdown error: {e}")
+        return {"providers": []}
 
 
 @router.post("/install")

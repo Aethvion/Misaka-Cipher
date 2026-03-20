@@ -1517,3 +1517,55 @@ function initColumnResizeHandles() {
     // Agents column (right of chat): dragging left expands agents
     setupHandle('resize-chat-agents',  '--col-agents',  200, 500, 'right');
 }
+
+// ── Preferences (defined here so all scripts can use `prefs` on load) ─────────
+window.prefs = {
+    data: {},
+
+    async load() {
+        try {
+            const response = await fetch('/api/preferences');
+            this.data = await response.json();
+            if (!window._hasCheckedUpdates) {
+                window._hasCheckedUpdates = true;
+                setTimeout(() => { if (typeof runStartupUpdateCheck === 'function') runStartupUpdateCheck(); }, 2500);
+            }
+            return this.data;
+        } catch (error) {
+            console.error('Failed to load preferences:', error);
+            return {};
+        }
+    },
+
+    get(key, defaultValue) {
+        if (key.includes('.')) {
+            const parts = key.split('.');
+            let current = this.data;
+            for (const part of parts) {
+                if (current === undefined || current === null) return defaultValue;
+                current = current[part];
+            }
+            return current !== undefined ? current : defaultValue;
+        }
+        return this.data[key] !== undefined ? this.data[key] : defaultValue;
+    },
+
+    async set(key, value) {
+        if (key.includes('.')) {
+            const parts = key.split('.');
+            if (!this.data[parts[0]]) this.data[parts[0]] = {};
+            this.data[parts[0]][parts[1]] = value;
+        } else {
+            this.data[key] = value;
+        }
+        try {
+            await fetch(`/api/preferences/${key}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key, value })
+            });
+        } catch (error) {
+            console.error(`Failed to save preference ${key}:`, error);
+        }
+    }
+};

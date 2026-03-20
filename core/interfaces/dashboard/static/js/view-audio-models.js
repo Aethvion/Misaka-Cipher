@@ -6,6 +6,7 @@
 const AudioModels = (() => {
     let _suggested = [];
     let _statuses  = {};   // model_id → status dict
+    let _registered = new Set(); // model_ids registered in model_registry.json
     let _currentTab = 'tts';
     let _cloneModelId = null;
     let _cloneAudioB64 = null;
@@ -26,9 +27,10 @@ const AudioModels = (() => {
 
     async function _loadStatuses() {
         try {
-            const [modR, defR] = await Promise.all([
+            const [modR, defR, regR] = await Promise.all([
                 fetch('/api/audio/local/models'),
                 fetch('/api/audio/local/models/defaults'),
+                fetch('/api/audio/local/models/registry-status'),
             ]);
             if (modR.ok) {
                 const d = await modR.json();
@@ -39,6 +41,10 @@ const AudioModels = (() => {
                 const d = await defR.json();
                 _defaultModel = d.model_id;
                 _defaultVoice = d.voice_id;
+            }
+            if (regR.ok) {
+                const d = await regR.json();
+                _registered = new Set(d.registered || []);
             }
         } catch (e) { console.warn('Audio model status fetch failed:', e); }
     }
@@ -85,6 +91,18 @@ const AudioModels = (() => {
         else if (installed)        statusPill = `<span class="am-status am-status-installed">Installed</span>`;
 
         const isDefault = _defaultModel === m.id;
+        const isRegistered = _registered.has(m.id);
+
+        // Register button (shown when installed, regardless of loaded state)
+        const registerBtn = installed
+            ? `<button class="action-btn ${isRegistered ? 'success' : 'secondary'} am-register-btn"
+                onclick="AudioModels.registerToRegistry('${m.id}', this)"
+                title="Add to model registry with TTS/STT capability tags"
+                ${isRegistered ? 'disabled' : ''}>
+                <i class="fas fa-${isRegistered ? 'check-circle' : 'plus-circle'}"></i>
+                ${isRegistered ? 'Registered' : 'Register'}
+            </button>`
+            : '';
 
         // Action buttons
         let actions = '';
@@ -105,7 +123,7 @@ const AudioModels = (() => {
             }
             actions = `${sizeSelect}<button class="action-btn primary" onclick="AudioModels.load('${m.id}', this)">
                 <i class="fas fa-play"></i> Load Model
-            </button>`;
+            </button>${registerBtn}`;
         } else {
             actions = `
                 <button class="action-btn secondary" onclick="AudioModels.unload('${m.id}', this)">
@@ -114,7 +132,8 @@ const AudioModels = (() => {
                 <button class="action-btn ${isDefault ? 'success' : 'secondary'}" onclick="AudioModels.setDefault('${m.id}', this)" title="Use as default TTS in Misaka Cipher">
                     <i class="fas fa-${isDefault ? 'star' : 'star'}" style="${isDefault ? 'color:#f59e0b' : 'opacity:0.5'}"></i>
                     ${isDefault ? 'Default' : 'Set Default'}
-                </button>`;
+                </button>
+                ${registerBtn}`;
         }
 
         // Test section (only when loaded)
@@ -290,6 +309,36 @@ const AudioModels = (() => {
             showNotification('Load request failed', 'error');
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-play"></i> Load Model';
+        }
+    }
+
+    async function registerToRegistry(modelId, btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        try {
+            const r = await fetch('/api/audio/local/models/register-to-registry', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({model_id: modelId}),
+            });
+            const d = await r.json();
+            if (d.success) {
+                _registered.add(modelId);
+                const caps = (d.capabilities || []).join(', ');
+                showNotification(`${modelId} registered (${caps})`, 'success');
+                // Update just this button without full re-render
+                btn.innerHTML = '<i class="fas fa-check-circle"></i> Registered';
+                btn.classList.remove('secondary');
+                btn.classList.add('success');
+            } else {
+                showNotification(`Registration failed: ${d.detail || 'Error'}`, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plus-circle"></i> Register';
+            }
+        } catch (e) {
+            showNotification('Registration request failed', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plus-circle"></i> Register';
         }
     }
 
@@ -474,5 +523,5 @@ const AudioModels = (() => {
         registerTabInit('audio-models', init);
     }
 
-    return { init, refresh, switchTab, install, load, unload, testTTS, testSTT, cloneVoice, deleteVoice, _selectVoiceModel };
+    return { init, refresh, switchTab, install, load, unload, registerToRegistry, setDefault, testTTS, testSTT, cloneVoice, deleteVoice, _selectVoiceModel };
 })();

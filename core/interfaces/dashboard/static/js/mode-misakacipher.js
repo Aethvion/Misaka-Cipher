@@ -1193,26 +1193,41 @@ async function loadMisakaTTSModels() {
     const sel = document.getElementById('misaka-voice-model');
     if (!sel) return;
     try {
-        const res = await fetch('/api/audio/local/models');
+        const res = await fetch('/api/audio/local/models/tts-for-dropdown');
         const data = await res.json();
-        const ttsModels = (data.models || []).filter(m => m.capabilities && m.capabilities.includes('tts') && m.status === 'loaded');
-        // Preserve current selection
-        const current = sel.value;
-        // Clear and rebuild (keep placeholder)
-        while (sel.options.length > 1) sel.remove(1);
-        ttsModels.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m.id;
-            opt.textContent = m.name || m.id;
-            sel.appendChild(opt);
-        });
-        // Restore saved default
+        const providers = data.providers || [];
+
         const savedModel = window.prefs ? prefs.get('misakacipher.voice_model', '') : '';
-        if (savedModel && [...sel.options].some(o => o.value === savedModel)) {
-            sel.value = savedModel;
-        } else if (current && [...sel.options].some(o => o.value === current)) {
-            sel.value = current;
+        const current = sel.value;
+
+        // Rebuild — keep the placeholder <option value="">
+        while (sel.options.length > 1) sel.remove(1);
+
+        providers.forEach(prov => {
+            const group = document.createElement('optgroup');
+            group.label = prov.name;
+            prov.models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                const loadedHint = m.loaded ? '' : ' (not loaded)';
+                opt.textContent = (m.name || m.id) + loadedHint;
+                opt.disabled = !m.loaded;
+                group.appendChild(opt);
+            });
+            sel.appendChild(group);
+        });
+
+        // Restore saved / current selection (only enabled options)
+        const restore = savedModel || current;
+        const match = [...sel.options].find(o => o.value === restore && !o.disabled);
+        if (match) {
+            sel.value = match.value;
+        } else {
+            // Auto-select the first loaded model
+            const first = [...sel.options].find(o => o.value && !o.disabled);
+            if (first) sel.value = first.value;
         }
+
         if (sel.value) loadMisakaVoiceOptions();
     } catch (e) {
         console.warn('[Misaka Voice] Failed to load TTS models:', e);

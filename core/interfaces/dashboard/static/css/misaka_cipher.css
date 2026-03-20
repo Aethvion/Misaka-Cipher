@@ -773,9 +773,47 @@
     gap: 6px;
 }
 
+.setting-select {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 0.35rem 0.7rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s, color 0.2s;
+    appearance: auto;
+}
+
+.setting-select:hover,
+.setting-select:focus {
+    border-color: rgba(255, 255, 255, 0.25);
+    color: var(--text-primary);
+}
+
+.setting-select option,
+.setting-select optgroup {
+    background: #18181b;
+    color: var(--text-primary);
+}
+
+.setting-select optgroup {
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted, #6b7280);
+    font-weight: 600;
+}
+
+.setting-select option:disabled {
+    color: var(--text-muted, #4b5563);
+    font-style: italic;
+}
+
 .misaka-voice-options .setting-select-sm {
     font-size: 0.75rem;
     padding: 3px 8px;
     height: 28px;
-    max-width: 150px;
+    max-width: 160px;
 }

@@ -1,66 +1,6 @@
 // Misaka Cipher - Preferences & Settings View
 // Handles interacting with user preferences and provider configuration data
 
-// Make prefs global for other scripts
-window.prefs = {
-    data: {},
-
-    async load() {
-        try {
-            const response = await fetch('/api/preferences');
-            this.data = await response.json();
-            
-            // On very first load, trigger update check logic async
-            if (!window._hasCheckedUpdates) {
-                window._hasCheckedUpdates = true;
-                setTimeout(() => runStartupUpdateCheck(), 2500);
-            }
-
-            console.log('Loaded preferences:', this.data);
-            return this.data;
-        } catch (error) {
-            console.error('Failed to load preferences:', error);
-            return {};
-        }
-    },
-
-    get(key, defaultValue) {
-        // Generic dot notation support
-        if (key.includes('.')) {
-            const parts = key.split('.');
-            let current = this.data;
-            for (const part of parts) {
-                if (current === undefined || current === null) return defaultValue;
-                current = current[part];
-            }
-            return current !== undefined ? current : defaultValue;
-        }
-
-        return this.data[key] !== undefined ? this.data[key] : defaultValue;
-    },
-
-    async set(key, value) {
-        // Update local cache immediately
-        if (key.includes('.')) {
-            const parts = key.split('.');
-            if (!this.data[parts[0]]) this.data[parts[0]] = {};
-            this.data[parts[0]][parts[1]] = value;
-        } else {
-            this.data[key] = value;
-        }
-
-        // Save to server
-        try {
-            await fetch(`/api/preferences/${key}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key, value })
-            });
-        } catch (error) {
-            console.error(`Failed to save preference ${key}:`, error);
-        }
-    }
-};
 
 async function loadPreferences() {
     await prefs.load();
@@ -1807,7 +1747,7 @@ async function openAddModelModal(providerName) {
         }
     };
 
-    document.getElementById('confirm-add-model').onclick = () => {
+    document.getElementById('confirm-add-model').onclick = async () => {
         const modelId = customInput.value.trim();
         if (!modelId) {
             showNotification('Model ID is required.', 'warning');
@@ -1830,9 +1770,10 @@ async function openAddModelModal(providerName) {
         _registryData.providers[providerName].models[modelId] = modelEntry;
 
         closeModal();
-        markSettingsDirty();
         renderProviderCards(_registryData);
-        showNotification(`Model ${modelId} added (unsaved).`, 'info');
+        await saveRegistry();
+        clearSettingsDirty();
+        showNotification(`Model ${modelId} added and saved.`, 'success');
     };
 }
 
