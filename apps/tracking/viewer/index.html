@@ -3,173 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aethvion Tracking — Suite</title>
+    <title>Aethvion Tracking — Professional</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
     <link rel="stylesheet" href="/viewer/style.css">
 </head>
 <body>
     <div class="layout">
 
-        <!-- ── Left sidebar ─────────────────────────────────────────────── -->
+        <!-- ── Sidebar ── -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <span class="sidebar-icon">👁️</span>
+                <div class="sidebar-logo">
+                    <i class="fa-solid fa-eye-low-vision"></i>
+                </div>
                 <div>
-                    <div class="sidebar-title">Aethvion Tracking</div>
+                    <div class="sidebar-title">AETHVION</div>
                     <div class="sidebar-sub">Tracking Dashboard</div>
                 </div>
             </div>
 
             <div class="sidebar-body">
+                
+                <!-- Section: CONTROL -->
+                <div class="sidebar-section">
+                    <div class="section-label"><i class="fa-solid fa-sliders"></i> Control</div>
+                    
+                    <div class="ctrl-group">
+                        <label class="ctrl-label">Tracking Backend</label>
+                        <div class="select-wrapper">
+                            <select id="tracker-select" class="ctrl-select">
+                                <option value="">Loading engines…</option>
+                            </select>
+                        </div>
+                    </div>
 
-                <!-- Backend selector -->
-                <div class="ctrl-group">
-                    <label class="ctrl-label">Backend</label>
-                    <select id="tracker-select" class="ctrl-select">
-                        <option value="">Loading…</option>
-                    </select>
+                    <div class="ctrl-group" id="source-group">
+                        <label class="ctrl-label">Input Source</label>
+                        <div class="select-wrapper">
+                            <select id="source-select" class="ctrl-select">
+                                <option value="webcam:0">Webcam 0</option>
+                                <option value="webcam:1">Webcam 1</option>
+                                <option value="monitor:0">Monitor 1</option>
+                                <option value="monitor:1">Monitor 2</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="action-grid">
+                        <button id="btn-start" class="btn primary">
+                            <i class="fa-solid fa-play"></i> Start Engine
+                        </button>
+                        <button id="btn-stop" class="btn danger" disabled>
+                            <i class="fa-solid fa-stop"></i> Stop
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Camera source (hidden for OSF) -->
-                <div class="ctrl-group" id="source-group">
-                    <label class="ctrl-label">Video Source</label>
-                    <select id="source-select" class="ctrl-select">
-                        <option value="webcam:0">Webcam 0</option>
-                        <option value="webcam:1">Webcam 1</option>
-                        <option value="monitor:0">Primary Monitor</option>
-                        <option value="monitor:1">Secondary Monitor</option>
-                    </select>
-                </div>
-
-                <!-- OpenSeeFace config (shown only when OSF selected) -->
-                <div id="osf-config" style="display:none;">
-
-                    <!-- ── OSF Install / Launch manager ── -->
-                    <div class="osf-manager" id="osf-manager">
-
-                        <!-- Status badge row -->
+                <!-- Section: ENGINE (Contextual for OSF) -->
+                <div id="osf-config" class="sidebar-section" style="display:none;">
+                    <div class="section-label"><i class="fa-solid fa-gears"></i> Tracking Engine</div>
+                    
+                    <div class="osf-manager-card" id="osf-manager">
                         <div class="osf-mgr-status" id="osf-mgr-status">
                             <span class="osf-mgr-dot" id="osf-mgr-dot"></span>
-                            <span id="osf-mgr-label">Checking…</span>
+                            <span id="osf-mgr-label">Checking Installation…</span>
                         </div>
 
-                        <!-- NOT installed: install button + progress -->
+                        <!-- Install -->
                         <div id="osf-install-section" style="display:none;">
-                            <button class="btn primary full-width" id="btn-osf-install">
-                                ⬇ Install OpenSeeFace
+                            <button class="btn accent full-width" id="btn-osf-install">
+                                <i class="fa-solid fa-download"></i> Install OpenSeeFace
                             </button>
                             <div class="osf-install-progress" id="osf-install-progress" style="display:none;">
                                 <div class="osf-prog-bar">
                                     <div class="osf-prog-fill" id="osf-prog-fill"></div>
                                 </div>
-                                <div class="osf-prog-msg" id="osf-prog-msg">Installing…</div>
+                                <div class="osf-prog-msg" id="osf-prog-msg">Initializing…</div>
                             </div>
                         </div>
 
-                        <!-- INSTALLED: camera + launch controls -->
+                        <!-- Launch -->
                         <div id="osf-launch-section" style="display:none;">
-                            <div class="ctrl-group">
-                                <label class="ctrl-label">Camera Index</label>
-                                <input id="osf-camera" type="number" value="0"
-                                       min="0" max="9" class="ctrl-input" />
+                            <div class="ctrl-grid">
+                                <div class="ctrl-group">
+                                    <label class="ctrl-label">Cam Index</label>
+                                    <input id="osf-camera" type="number" value="0" min="0" max="9" class="ctrl-input" />
+                                </div>
+                                <div class="ctrl-group">
+                                    <label class="ctrl-label">UDP Port</label>
+                                    <input id="osf-port" type="number" value="11573" min="1024" max="65535" class="ctrl-input" />
+                                </div>
                             </div>
-                            <div class="ctrl-btns">
-                                <button class="btn primary" id="btn-osf-launch">▶ Launch</button>
-                                <button class="btn danger"  id="btn-osf-kill" disabled>■ Stop</button>
+                            <div class="action-grid mt-10">
+                                <button class="btn accent" id="btn-osf-launch">
+                                    <i class="fa-solid fa-rocket"></i> Launch
+                                </button>
+                                <button class="btn danger" id="btn-osf-kill" disabled>
+                                    <i class="fa-solid fa-power-off"></i> Kill
+                                </button>
                             </div>
                         </div>
-
-                    </div><!-- /osf-manager -->
-
-                    <div class="osf-divider"></div>
-
-                    <div class="ctrl-group">
-                        <label class="ctrl-label">UDP Port</label>
-                        <input id="osf-port" type="number" value="11573"
-                               min="1024" max="65535" class="ctrl-input" />
                     </div>
 
-                    <!-- Live debug stats -->
-                    <div class="osf-stats" id="osf-stats" style="display:none;">
-                        <div class="osf-stats-row">
-                            <span class="osf-stats-label">Packets in</span>
-                            <span class="osf-stats-val" id="stat-rx">0</span>
+                    <div class="info-card">
+                        <div class="info-header">Connection String</div>
+                        <code id="osf-cmd-display">...</code>
+                        <div class="info-note">
+                            UDP Stream: 127.0.0.1:<span id="osf-port-display">11573</span>
                         </div>
-                        <div class="osf-stats-row">
-                            <span class="osf-stats-label">Parsed OK</span>
-                            <span class="osf-stats-val" id="stat-ok">0</span>
+                    </div>
+                </div>
+
+                <!-- Section: DIAGNOSTICS -->
+                <div class="sidebar-section">
+                    <div class="section-label"><i class="fa-solid fa-chart-line"></i> Diagnostics</div>
+                    
+                    <div id="preview-group" class="mb-15">
+                        <button id="btn-preview" class="btn secondary full-width">
+                            <i class="fa-solid fa-camera"></i> Toggle Feed Preview
+                        </button>
+                    </div>
+
+                    <div class="diag-stats" id="osf-stats" style="display:none;">
+                        <div class="stat-line">
+                            <span class="stat-key">Packets In</span>
+                            <span class="stat-val" id="stat-rx">0</span>
                         </div>
-                        <div class="osf-stats-row">
-                            <span class="osf-stats-label">Last size</span>
-                            <span class="osf-stats-val" id="stat-sz">—</span>
+                        <div class="stat-line">
+                            <span class="stat-key">Parsed OK</span>
+                            <span class="stat-val" id="stat-ok">0</span>
                         </div>
-                        <div class="osf-stats-row">
-                            <span class="osf-stats-label">Format</span>
-                            <span class="osf-stats-val" id="stat-fmt">—</span>
+                        <div class="stat-line">
+                            <span class="stat-key">Format</span>
+                            <span class="stat-val id-stat-fmt" id="stat-fmt">—</span>
+                        </div>
+                        <div class="stat-line">
+                            <span class="stat-key">Size</span>
+                            <span class="stat-val" id="stat-sz">—</span>
                         </div>
                         <div class="osf-error" id="stat-err" style="display:none;"></div>
                     </div>
 
-                    <div class="osf-hint">
-                        <div class="osf-hint-title">
-                            <span class="tb-title">AETHVION TRACKING</span> Connection info
+                    <div class="status-indicator">
+                        <div class="status-dot-large" id="status-dot"></div>
+                        <div class="status-info">
+                            <div class="stat-label">System Status</div>
+                            <div id="status-text" class="status-text offline">ENGINE OFFLINE</div>
                         </div>
-                        <p>Launched command:</p>
-                        <code id="osf-cmd-display">facetracker.exe -c 0 -P 1</code>
-                        <p class="osf-note">
-                            Synapse listens on <strong>0.0.0.0:<span id="osf-port-display">11573</span></strong>.
-                            The preview shows a live wireframe once data arrives.
-                        </p>
-                        <a class="osf-link" href="https://github.com/emilianavt/OpenSeeFace"
-                           target="_blank" rel="noopener">OpenSeeFace on GitHub ↗</a>
                     </div>
                 </div>
 
-                <!-- Action buttons -->
-                <div class="ctrl-btns">
-                    <button id="btn-start"   class="btn primary">Start Tracking</button>
-                    <button id="btn-stop"    class="btn danger"  disabled>Stop</button>
-                </div>
-                <div id="preview-group">
-                    <button id="btn-preview" class="btn secondary full-width">Show Preview</button>
-                </div>
-
-                <!-- Status -->
-                <div class="status-row">
-                    <span class="status-dot" id="status-dot"></span>
-                    <span id="status-text" class="status-offline">Offline</span>
-                </div>
-
-            </div><!-- /sidebar-body -->
+            </div>
         </aside>
 
-        <!-- ── Main video area ───────────────────────────────────────────── -->
+        <!-- ── Main Viewport ── -->
         <main class="video-main" id="video-main">
-
-            <!-- Full-area video feed -->
-            <img id="video-feed" class="video-feed" alt="" />
-
-            <!-- Placeholder when no feed -->
-            <div class="video-placeholder" id="video-placeholder">
-                <div class="placeholder-icon">👁️</div>
-                <div class="placeholder-text">Start tracking to see the live feed</div>
+            
+            <!-- HUD: Top Left -->
+            <div class="hud hud-top-left">
+                <div class="hud-item">
+                    <div class="hud-label">STREAM</div>
+                    <div class="hud-value" id="hud-status">STANDBY</div>
+                </div>
+                <div class="hud-item">
+                    <div class="hud-label">LATENCY</div>
+                    <div class="hud-value" id="hud-latency">-- ms</div>
+                </div>
             </div>
 
-            <!-- ── Floating parameter panel ──── -->
+            <!-- HUD: Top Right -->
+            <div class="hud hud-top-right">
+                <div class="hud-item text-right">
+                    <div class="hud-label">FRAME RATE</div>
+                    <div class="hud-value" id="hud-fps">0.0 FPS</div>
+                </div>
+            </div>
+
+            <img id="video-feed" class="video-feed" alt="" />
+
+            <div class="video-placeholder" id="video-placeholder">
+                <div class="placeholder-ring">
+                    <i class="fa-solid fa-eye"></i>
+                </div>
+                <div class="placeholder-text">AETHVION TRACKING SYSTEM</div>
+                <div class="placeholder-sub">Initialize engine to begin live telemetry</div>
+            </div>
+
+            <!-- ── Parameters Panel ── -->
             <div class="float-panel" id="float-panel">
                 <div class="float-header" id="float-drag">
-                    <span class="float-title">⬡ Live Parameters</span>
+                    <span class="float-title"><i class="fa-solid fa-microchip"></i> Live Telemetry</span>
                     <div class="float-header-btns">
-                        <button class="float-btn" id="btn-collapse" title="Collapse">−</button>
-                        <button class="float-btn" id="btn-pin"      title="Pin / unpin">📌</button>
+                        <button class="float-tool-btn" id="btn-collapse" title="Collapse"><i class="fa-solid fa-minus"></i></button>
+                        <button class="float-tool-btn" id="btn-pin" title="Pin / Unpin"><i class="fa-solid fa-thumbtack"></i></button>
                     </div>
                 </div>
                 <div class="float-body" id="float-body">
-                    <pre class="param-output" id="data-output">Waiting for data stream…</pre>
+                    <div id="data-output" class="param-grid">
+                        <div class="param-placeholder">Waiting for synchronization...</div>
+                    </div>
                 </div>
             </div>
 
-        </main><!-- /video-main -->
-    </div><!-- /layout -->
+        </main>
+    </div>
 
     <script src="/viewer/app.js"></script>
 </body>

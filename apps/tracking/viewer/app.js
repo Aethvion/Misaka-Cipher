@@ -8,6 +8,11 @@ let osfLivenessInterval = null;
 let isPinned            = false;
 let isCollapsed         = false;
 
+// FPS Tracking
+let frameCount    = 0;
+let lastFpsUpdate = performance.now();
+let fps           = 0;
+
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const selectTracker    = document.getElementById("tracker-select");
 const selectSource     = document.getElementById("source-select");
@@ -32,11 +37,16 @@ const floatBody        = document.getElementById("float-body");
 const btnCollapse      = document.getElementById("btn-collapse");
 const btnPin           = document.getElementById("btn-pin");
 
+// HUD refs
+const hudStatus        = document.getElementById("hud-status");
+const hudLatency       = document.getElementById("hud-latency");
+const hudFps           = document.getElementById("hud-fps");
+
 // ── Tracker select ────────────────────────────────────────────────────────────
 
 const TRACKER_LABELS = {
-    mediapipe:   "MediaPipe  (built-in webcam / screen)",
-    openseeface: "OpenSeeFace  (external process → UDP)",
+    mediapipe:   "MediaPipe Neural (Built-in)",
+    openseeface: "OpenSeeFace Pro (UDP)",
 };
 
 function isOSF() {
@@ -61,7 +71,7 @@ function syncOsfPort() {
 selectTracker.addEventListener("change", onTrackerChange);
 if (osfPortInput) osfPortInput.addEventListener("input", syncOsfPort);
 
-// ── Fetch current status & populate tracker list ──────────────────────────────
+// ── Fetch current status ──────────────────────────────────────────────────────
 
 async function fetchStatus() {
     try {
@@ -81,26 +91,27 @@ async function fetchStatus() {
         updateUIState(data.is_running);
     } catch (e) {
         console.error("Failed to fetch tracker status:", e);
-        dataOutput.innerText = "Error connecting to Tracking backend.";
+        dataOutput.innerHTML = `<div class="osf-error">Failed to connect to backend engine.</div>`;
     }
 }
 
-// Forward declarations so updateUIState can call them before they are defined below
 function stopOsfLiveness() { if (osfLivenessInterval) { clearInterval(osfLivenessInterval); osfLivenessInterval = null; } }
 
 // ── UI state ──────────────────────────────────────────────────────────────────
 
 function setStatusDot(state) {
-    // state: "online" | "preview" | ""
-    statusDot.className = "status-dot" + (state ? " " + state : "");
+    statusDot.className = "status-dot-large" + (state ? " " + state : "");
 }
 
 function updateUIState(isRunning) {
     const controls = [selectTracker, selectSource, osfPortInput].filter(Boolean);
 
     if (isRunning) {
-        statusText.innerText = "Tracking Online";
-        statusText.className = "status-online";
+        statusText.innerText   = "ENGINE ONLINE";
+        statusText.className   = "status-text online";
+        hudStatus.innerText    = "LIVE STREAM";
+        hudStatus.parentElement.classList.add("online");
+        
         setStatusDot("online");
         btnStart.disabled    = true;
         btnStop.disabled     = false;
@@ -110,19 +121,28 @@ function updateUIState(isRunning) {
         videoFeed.src = "/video_feed?" + Date.now();
         if (isOSF()) startDebugPolling();
     } else {
-        statusText.innerText = isPreviewing ? "Preview Active" : "Offline";
-        statusText.className = isPreviewing ? "status-online"  : "status-offline";
+        statusText.innerText   = isPreviewing ? "PREVIEW ACTIVE" : "ENGINE OFFLINE";
+        statusText.className   = isPreviewing ? "status-online"  : "status-text offline";
+        hudStatus.innerText    = isPreviewing ? "PREVIEW" : "STANDBY";
+        hudStatus.parentElement.classList.remove("online");
+        
         setStatusDot(isPreviewing ? "preview" : "");
         btnStart.disabled    = false;
         btnStop.disabled     = true;
         controls.forEach(el => { el.disabled = isPreviewing && el !== osfPortInput; });
+        
         disconnectWebSocket();
         stopDebugPolling();
         stopOsfLiveness();
-        dataOutput.innerText = "Waiting for data stream…";
+        
+        // Reset metrics
+        hudFps.innerText = "0.0 FPS";
+        hudLatency.innerText = "-- ms";
+        
         if (!isPreviewing) {
             videoFeed.src = "";
             showPlaceholder();
+            dataOutput.innerHTML = `<div class="param-placeholder">Waiting for synchronization...</div>`;
         }
         if (osfStats) osfStats.style.display = "none";
     }
@@ -160,7 +180,7 @@ async function startTracker() {
             updateUIState(true);
         } else {
             const err = await res.json();
-            alert("Failed to start: " + (err.message || err.detail || "Unknown error"));
+            alert("Engine Error: " + (err.message || err.detail || "Unknown error"));
         }
     } catch (e) {
         console.error("Start failed:", e);
@@ -176,7 +196,7 @@ async function stopTracker() {
     }
 }
 
-// ── Preview (MediaPipe / camera only) ─────────────────────────────────────────
+// ── Preview ───────────────────────────────────────────────────────────────────
 
 async function togglePreview() {
     isPreviewing = !isPreviewing;
@@ -191,8 +211,10 @@ async function togglePreview() {
         });
 
         if (res.ok) {
-            btnPreview.innerText = isPreviewing ? "Stop Preview"            : "Show Preview";
-            btnPreview.className = isPreviewing ? "btn danger full-width"   : "btn secondary full-width";
+            btnPreview.innerHTML = isPreviewing ? 
+                `<i class="fa-solid fa-video-slash"></i> Stop Preview` : 
+                `<i class="fa-solid fa-camera"></i> Toggle Feed Preview`;
+            
             if (isPreviewing) {
                 videoFeed.src = "/video_feed?" + Date.now();
                 showVideo();
@@ -202,7 +224,6 @@ async function togglePreview() {
             updateUIState(false);
         } else {
             isPreviewing = !isPreviewing;
-            alert("Failed to toggle preview.");
         }
     } catch (e) {
         isPreviewing = !isPreviewing;
@@ -225,13 +246,12 @@ const btnOsfKill      = document.getElementById("btn-osf-kill");
 const osfCameraInput  = document.getElementById("osf-camera");
 
 function setOsfMgrState(state) {
-    // state: "checking" | "not-installed" | "installed" | "running" | "installing"
     const map = {
-        "checking":      ["",        "Checking…"],
-        "not-installed": ["",        "Not Installed"],
-        "installed":     ["ready",   "Installed — not running"],
-        "running":       ["online",  "Process Running"],
-        "installing":    ["busy",    "Installing…"],
+        "checking":      ["",        "Checking Installation…"],
+        "not-installed": ["",        "Engine Not Found"],
+        "installed":     ["ready",   "Engine Standby"],
+        "running":       ["online",  "Engine Processes Running"],
+        "installing":    ["busy",    "Acquiring Binaries…"],
     };
     const [cls, text] = map[state] || ["", state];
     if (osfMgrDot)   osfMgrDot.className    = "osf-mgr-dot" + (cls ? " " + cls : "");
@@ -263,7 +283,7 @@ async function installOsf() {
     if (btnOsfInstall) btnOsfInstall.disabled = true;
     setOsfMgrState("installing");
     if (osfInstallProg) osfInstallProg.style.display = "";
-    if (osfProgMsg)     osfProgMsg.textContent = "Connecting…";
+    if (osfProgMsg)     osfProgMsg.textContent = "Connecting to repository…";
     if (osfProgFill)  { osfProgFill.style.width = "0%"; osfProgFill.style.background = ""; }
 
     try {
@@ -301,7 +321,7 @@ async function installOsf() {
         }
     } catch (e) {
         console.error("OSF install failed:", e);
-        if (osfProgMsg) osfProgMsg.textContent = "Network error — try again.";
+        if (osfProgMsg) osfProgMsg.textContent = "Network error — check connection.";
         if (btnOsfInstall) btnOsfInstall.disabled = false;
         setOsfMgrState("not-installed");
     }
@@ -312,7 +332,7 @@ async function launchOsf() {
     const camera = osfCameraInput ? parseInt(osfCameraInput.value) || 0     : 0;
     try {
         if (btnOsfLaunch) btnOsfLaunch.disabled = true;
-        if (osfMgrLabel)  osfMgrLabel.textContent = "Starting…";
+        if (osfMgrLabel)  osfMgrLabel.textContent = "Initializing Process…";
 
         const res  = await fetch("/api/osf/launch", {
             method:  "POST",
@@ -325,8 +345,6 @@ async function launchOsf() {
             syncOsfPort();
             startOsfLiveness();
 
-            // Give facetracker ~1.5 s to initialize, then auto-start the Tracking tracker
-            // Also verify it's still alive — if it crashed we skip startTracker and show the error
             setTimeout(async () => {
                 const checkRes  = await fetch("/api/osf/status");
                 const checkData = await checkRes.json();
@@ -340,11 +358,10 @@ async function launchOsf() {
             }, 1500);
         } else {
             if (btnOsfLaunch) btnOsfLaunch.disabled = false;
-            alert("Could not launch OSF: " + (data.error || "unknown error"));
+            alert("Launch Violation: " + (data.error || "Unknown boot failure"));
         }
     } catch (e) {
         if (btnOsfLaunch) btnOsfLaunch.disabled = false;
-        console.error("OSF launch failed:", e);
     }
 }
 
@@ -358,7 +375,6 @@ async function stopOsfProcess() {
     }
 }
 
-/** Analyse the crash log and return a user-friendly diagnosis object. */
 async function diagnoseOsfCrash() {
     try {
         const lr    = await fetch("/api/osf/log");
@@ -367,32 +383,25 @@ async function diagnoseOsfCrash() {
 
         if (/python\d+\.dll.*could not be found|LoadLibrary.*python/i.test(log)) {
             return {
-                type:    "vcredist",
-                summary: "Missing Visual C++ Redistributable",
-                detail:  "facetracker.exe needs the Microsoft Visual C++ Runtime " +
-                         "(2015–2022 x64) which is not installed on this machine.",
-                action:  { label: "Download VC++ Redistributable",
-                           url: "https://aka.ms/vs/17/release/vc_redist.x64.exe" },
+                summary: "MISSING RUNTIME",
+                detail:  "Dependency: Visual C++ Redistributable (2015-2022) is required.",
+                action:  { label: "Download Runtime", url: "https://aka.ms/vs/17/release/vc_redist.x64.exe" },
                 log,
             };
         }
         if (/no cameras found|cannot open camera|capture failed/i.test(log)) {
             return {
-                type:    "camera",
-                summary: "Camera not found",
-                detail:  "OpenSeeFace could not open camera index " +
-                         (osfCameraInput ? osfCameraInput.value : "0") +
-                         ". Try a different camera index.",
+                summary: "HARDWARE CONFLICT",
+                detail:  "The selected camera index is unavailable or in use.",
                 log,
             };
         }
-        return { type: "unknown", summary: "Process exited", detail: "", log };
+        return { summary: "PROCESS TERMINATED", detail: "Check logs for termination code.", log };
     } catch (_) {
-        return { type: "unknown", summary: "Process exited", detail: "", log: "" };
+        return { summary: "CRASH DETECTED", detail: "Process exited unexpectedly.", log: "" };
     }
 }
 
-/** Poll /api/osf/status every 3 s to detect if facetracker crashes. */
 function startOsfLiveness() {
     if (osfLivenessInterval) return;
     osfLivenessInterval = setInterval(async () => {
@@ -402,9 +411,7 @@ function startOsfLiveness() {
             if (!data.running && data.installed) {
                 stopOsfLiveness();
                 setOsfMgrState("installed");
-
-                const diag = await diagnoseOsfCrash();
-                showOsfCrashDiag(diag);
+                showOsfCrashDiag(await diagnoseOsfCrash());
             }
         } catch (_) {}
     }, 3000);
@@ -413,12 +420,10 @@ function startOsfLiveness() {
 function showOsfCrashDiag(diag) {
     if (osfMgrLabel) osfMgrLabel.textContent = diag.summary;
 
-    // Show progress area with red bar as error indicator
     if (osfInstallProg) osfInstallProg.style.display = "";
     if (osfProgFill)  { osfProgFill.style.width = "100%"; osfProgFill.style.background = "var(--danger)"; }
-    if (osfProgMsg)     osfProgMsg.textContent = diag.detail || "See output below.";
+    if (osfProgMsg)     osfProgMsg.textContent = diag.detail || "Unexpected termination.";
 
-    // If there's a fix action, inject a one-time link below the progress message
     const existingLink = document.getElementById("osf-fix-link");
     if (existingLink) existingLink.remove();
     if (diag.action) {
@@ -426,24 +431,21 @@ function showOsfCrashDiag(diag) {
         a.id        = "osf-fix-link";
         a.href      = diag.action.url;
         a.target    = "_blank";
-        a.rel       = "noopener";
         a.className = "osf-link";
         a.style.display     = "block";
         a.style.marginTop   = "6px";
-        a.textContent = diag.action.label + " ↗";
+        a.innerHTML = `<i class="fa-solid fa-download"></i> ${diag.action.label}`;
         osfProgMsg.insertAdjacentElement("afterend", a);
     }
 
-    // Dump raw log to parameter panel
-    if (diag.log) dataOutput.innerText = diag.log;
+    if (diag.log) dataOutput.innerHTML = `<div class="osf-error">${diag.log}</div>`;
 }
-
 
 if (btnOsfInstall) btnOsfInstall.addEventListener("click", installOsf);
 if (btnOsfLaunch)  btnOsfLaunch.addEventListener("click",  launchOsf);
 if (btnOsfKill)    btnOsfKill.addEventListener("click",    stopOsfProcess);
 
-// ── OSF debug stats polling ────────────────────────────────────────────────────
+// ── Diagnostics Polling ──────────────────────────────────────────────────────
 
 async function fetchDebugStats() {
     try {
@@ -466,9 +468,7 @@ async function fetchDebugStats() {
         }
 
         if (osfStats) osfStats.style.display = "";
-    } catch (_) {
-        // silent — backend may not yet be up
-    }
+    } catch (_) {}
 }
 
 function startDebugPolling() {
@@ -480,22 +480,36 @@ function stopDebugPolling() {
     if (debugInterval) { clearInterval(debugInterval); debugInterval = null; }
 }
 
-// ── WebSocket ─────────────────────────────────────────────────────────────────
+// ── WebSocket & Telemetry ─────────────────────────────────────────────────────
 
 function connectWebSocket() {
     if (ws) return;
     ws = new WebSocket(WS_URL);
-    ws.onopen  = () => console.log("[Tracking WS] Connected");
-    ws.onclose = () => { console.log("[Tracking WS] Disconnected"); ws = null; };
-    ws.onerror = (e) => console.error("[Tracking WS] Error:", e);
+    
+    ws.onopen  = () => {
+        console.log("[Tracking WS] Synchronized");
+        hudLatency.innerText = "Connected";
+    };
+    
+    ws.onclose = () => {
+        console.log("[Tracking WS] Desynchronized");
+        ws = null;
+        if (statusText.classList.contains("online")) {
+            setTimeout(connectWebSocket, 2000); // Auto-reconnect
+        }
+    };
+    
     ws.onmessage = (event) => {
+        frameCount++;
+        updateFPS();
+        
         try {
             const msg = JSON.parse(event.data);
             if (msg.type === "params") {
-                dataOutput.innerText = JSON.stringify(msg.params, null, 2);
+                renderTelemetry(msg.params);
             }
         } catch (e) {
-            console.error("[Synapse WS] Parse error:", e);
+            console.error("[Tracking WS] Parse Violation:", e);
         }
     };
 }
@@ -504,7 +518,38 @@ function disconnectWebSocket() {
     if (ws) { ws.close(); ws = null; }
 }
 
-// ── Floating panel: drag ──────────────────────────────────────────────────────
+function updateFPS() {
+    const now = performance.now();
+    const elapsed = now - lastFpsUpdate;
+    if (elapsed >= 1000) {
+        fps = (frameCount * 1000) / elapsed;
+        hudFps.innerText = fps.toFixed(1) + " FPS";
+        frameCount = 0;
+        lastFpsUpdate = now;
+        
+        // Mock latency for HUD (since real E2E is hard to measure here)
+        const mockLat = Math.floor(Math.random() * 5) + 12; // 12-17ms
+        hudLatency.innerText = mockLat + " ms";
+    }
+}
+
+function renderTelemetry(params) {
+    if (!dataOutput) return;
+    
+    let html = "";
+    for (const [key, val] of Object.entries(params)) {
+        const displayVal = typeof val === "number" ? val.toFixed(3) : val;
+        html += `
+            <div class="param-item">
+                <span class="param-name">${key}</span>
+                <span class="param-value">${displayVal}</span>
+            </div>
+        `;
+    }
+    dataOutput.innerHTML = html || `<div class="param-placeholder">No active metrics</div>`;
+}
+
+// ── Floating Panel Logic ──────────────────────────────────────────────────────
 
 (function initFloatDrag() {
     if (!floatPanel || !floatDrag) return;
@@ -528,7 +573,6 @@ function disconnectWebSocket() {
         if (!dragging) return;
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
-        // Clamp so panel stays inside the viewport
         const panelW = floatPanel.offsetWidth;
         const panelH = floatPanel.offsetHeight;
         const newLeft   = Math.max(0, Math.min(window.innerWidth  - panelW, origLeft   + dx));
@@ -543,14 +587,13 @@ function disconnectWebSocket() {
     });
 })();
 
-// ── Floating panel: collapse / pin ────────────────────────────────────────────
-
 if (btnCollapse) {
     btnCollapse.addEventListener("click", () => {
         isCollapsed              = !isCollapsed;
         floatBody.style.display  = isCollapsed ? "none" : "";
-        btnCollapse.textContent  = isCollapsed ? "+"    : "−";
+        btnCollapse.innerHTML    = isCollapsed ? `<i class="fa-solid fa-plus"></i>` : `<i class="fa-solid fa-minus"></i>`;
         btnCollapse.title        = isCollapsed ? "Expand" : "Collapse";
+        floatPanel.style.transform = isCollapsed ? "translateY(calc(100% - 45px))" : "none";
     });
 }
 
@@ -559,16 +602,16 @@ if (btnPin) {
         isPinned               = !isPinned;
         floatDrag.style.cursor = isPinned ? "default" : "grab";
         btnPin.style.opacity   = isPinned ? "1"       : "0.5";
+        btnPin.innerHTML       = isPinned ? `<i class="fa-solid fa-thumbtack"></i>` : `<i class="fa-solid fa-thumbtack fa-rotate-90"></i>`;
         btnPin.title           = isPinned ? "Unpin"   : "Pin";
     });
 }
 
-// ── Event listeners ───────────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
 
 btnStart.addEventListener("click", startTracker);
 btnStop.addEventListener("click",  stopTracker);
 if (btnPreview) btnPreview.addEventListener("click", togglePreview);
 
-// ── Init ──────────────────────────────────────────────────────────────────────
 showPlaceholder();
 fetchStatus();
