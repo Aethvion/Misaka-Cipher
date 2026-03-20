@@ -212,6 +212,8 @@ class AudioProcessRequest(BaseModel):
     prompt: str
     model: str
     mode: str
+    provider: Optional[str] = None
+    voice: Optional[str] = None
     input_audio: Optional[str] = None
 
 
@@ -1001,45 +1003,64 @@ async def process_audio(req: AudioProcessRequest):
         if req.mode == 'stt':
             if not req.input_audio:
                 raise HTTPException(status_code=400, detail="Input audio is required for transcription.")
-            
+
             audio_bytes = decode_b64(req.input_audio)
-            
-            # Identify provider/model
-            # If model is specified, find the provider for it
-            target_provider = None
-            if req.model:
-                target_provider = manager.model_to_provider_map.get(req.model)
-            
+
+            # Route local audio_models provider through tts_manager
+            if req.provider == 'audio_models' or req.model == 'whisper':
+                try:
+                    import asyncio
+                    from apps.audio.tts_manager import tts_manager
+                    text = await asyncio.to_thread(tts_manager.transcribe, audio_bytes, req.model or 'whisper')
+                    return {"success": True, "text": text, "model": req.model, "provider": "audio_models"}
+                except Exception as local_err:
+                    logger.warning(f"Local STT failed, falling back to provider: {local_err}")
+
+            # API provider path
+            target_provider = manager.model_to_provider_map.get(req.model) if req.model else None
             response = manager.transcribe(
                 audio_bytes=audio_bytes,
                 trace_id=trace_id,
                 provider=target_provider,
                 model=req.model if req.model else None
             )
-            
             if not response.success:
                 return {"success": False, "error": response.error}
-                
             return {
                 "success": True,
                 "text": response.content,
                 "model": response.model,
                 "provider": response.provider
             }
-            
+
         elif req.mode == 'tts':
             if not req.prompt:
                 raise HTTPException(status_code=400, detail="Prompt text is required for speech generation.")
-            
-            # Identify provider/model
-            target_provider = None
-            if req.model:
-                target_provider = manager.model_to_provider_map.get(req.model)
-            
-            # Get voice/format from kwargs if we had them, otherwise defaults
-            # For now use defaults or simple extraction from prompt/model
-            voice = "alloy"
-            
+
+            # Route local audio_models provider through tts_manager
+            if req.provider == 'audio_models':
+                try:
+                    import asyncio
+                    from apps.audio.tts_manager import tts_manager
+                    audio_bytes = await asyncio.to_thread(
+                        tts_manager.generate_tts,
+                        req.prompt, req.model, req.voice or None
+                    )
+                    audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
+                    return {
+                        "success": True,
+                        "audio": f"data:audio/wav;base64,{audio_b64}",
+                        "model": req.model,
+                        "provider": "audio_models",
+                        "format": "wav"
+                    }
+                except Exception as local_err:
+                    logger.warning(f"Local TTS failed: {local_err}")
+                    return {"success": False, "error": f"Local TTS error: {local_err}"}
+
+            # API provider path
+            target_provider = manager.model_to_provider_map.get(req.model) if req.model else None
+            voice = req.voice or "alloy"
             response = manager.generate_speech(
                 text=req.prompt,
                 trace_id=trace_id,
@@ -1047,18 +1068,13 @@ async def process_audio(req: AudioProcessRequest):
                 model=req.model if req.model else None,
                 voice=voice
             )
-            
             if not response.success:
                 return {"success": False, "error": response.error}
-            
             audio_bytes = response.metadata.get('audio')
             if not audio_bytes:
                 return {"success": False, "error": "Provider returned success but no audio data found."}
-                
-            # Return as base64 for the frontend player
             audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
             mime_type = f"audio/{response.metadata.get('format', 'mp3')}"
-            
             return {
                 "success": True,
                 "audio": f"data:{mime_type};base64,{audio_b64}",

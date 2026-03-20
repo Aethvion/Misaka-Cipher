@@ -221,6 +221,12 @@ function initializeAudioStudio() {
 
         uploadGroup.style.display = (mode === 'stt' || mode === 'edit') ? 'block' : 'none';
 
+        // Hide voice dropdown when switching away from TTS
+        if (mode !== 'tts') {
+            const vg = document.getElementById('audio-voice-group');
+            if (vg) vg.style.display = 'none';
+        }
+
         if (mode === 'tts') {
             promptInput.placeholder = "Enter text to convert to speech...";
         } else if (mode === 'stt') {
@@ -257,7 +263,7 @@ function initializeAudioStudio() {
             }
 
             const checkedModels = Array.from(document.querySelectorAll('.audio-model-checkbox:checked')).map(cb => {
-                return { key: cb.value, provider: cb.dataset.provider };
+                return { key: cb.value, provider: cb.dataset.provider, isLocal: cb.dataset.local === 'true' };
             });
 
             if (checkedModels.length === 0) {
@@ -270,6 +276,7 @@ function initializeAudioStudio() {
             processBtn.textContent = 'PROCESSING...';
 
             const m = checkedModels[0];
+            const selectedVoice = document.getElementById('audio-voice-select')?.value || null;
 
             try {
                 const response = await fetch('/api/audio/process', {
@@ -279,6 +286,8 @@ function initializeAudioStudio() {
                         prompt: prompt,
                         model: m.key,
                         mode: mode,
+                        provider: m.provider,
+                        voice: selectedVoice || undefined,
                         input_audio: currentAudioInputBase64
                     })
                 });
@@ -331,7 +340,7 @@ async function loadAudioModels() {
     if (!checklist) return;
 
     if (typeof _registryData === 'undefined' || !_registryData) {
-        if (typeof loadProviderSettings === 'function') await loadProviderSettings();
+        if (typeof window.loadProviderSettings === 'function') await window.loadProviderSettings();
     }
     if (typeof _registryData === 'undefined' || !_registryData || !_registryData.providers) return;
 
@@ -341,38 +350,109 @@ async function loadAudioModels() {
 
     for (const [providerName, config] of Object.entries(_registryData.providers)) {
         if (!config.models) continue;
+        const providerLabel = config.name
+            || providerName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
         for (const [key, info] of Object.entries(config.models)) {
             const caps = (info.capabilities || []).map(c => c.toUpperCase());
-            const isAudioModel = caps.includes('AUDIO') ||
-                (mode === 'stt' && caps.includes('VOICEINPUT')) ||
-                (mode === 'tts' && caps.includes('VOICEOUTPUT'));
-            if (isAudioModel) {
-                const audioConfig = info.audio_config || {};
-                if (mode === 'stt' && audioConfig.supports_stt === false) continue;
-                if (mode === 'tts' && audioConfig.supports_tts === false) continue;
 
-                models.push({
-                    key: key,
-                    id: info.id || key,
-                    provider: providerName,
-                    name: `${providerName}: ${info.id || key}`
-                });
-            }
+            // Match TTS-capable models: VOICEOUTPUT (API), TTS (local audio), AUDIO (generic)
+            // Match STT-capable models: VOICEINPUT (API), STT (local audio)
+            const isTTS = caps.includes('VOICEOUTPUT') || caps.includes('TTS') || caps.includes('AUDIO');
+            const isSTT = caps.includes('VOICEINPUT') || caps.includes('STT');
+
+            const isAudioModel =
+                (mode === 'tts' && isTTS) ||
+                (mode === 'stt' && isSTT);
+
+            if (!isAudioModel) continue;
+
+            const audioConfig = info.audio_config || {};
+            if (mode === 'stt' && audioConfig.supports_stt === false) continue;
+            if (mode === 'tts' && audioConfig.supports_tts === false) continue;
+
+            // Built-in voice list for API models (stored in audio_config.voices)
+            const builtInVoices = audioConfig.voices || [];
+
+            models.push({
+                key,
+                provider: providerName,
+                providerLabel,
+                name: info.name || key,
+                builtInVoices,
+                isLocal: providerName === 'audio_models',
+            });
         }
     }
 
     if (models.length === 0) {
-        html = '<div style="color:var(--text-secondary); font-size:0.85em; padding: 10px; text-align: center;">No audio models found.</div>';
+        const modeLabel = mode === 'tts' ? 'TTS' : 'STT';
+        html = `<div style="color:var(--text-secondary); font-size:0.85em; padding: 10px; text-align: center;">No ${modeLabel} models found. Register one in Audio Models or Model Registry.</div>`;
     } else {
         models.forEach((m, idx) => {
+            const displayName = m.isLocal ? `Local: ${m.name}` : `${m.providerLabel}: ${m.name}`;
             html += `<label class="checklist-item" style="display:flex; align-items:center; gap:8px; padding:6px 10px; cursor:pointer; font-size: 0.85rem; border-bottom: 1px solid var(--border-light);">
-                <input type="radio" name="selected_audio_model" class="audio-model-checkbox" value="${m.key}" data-provider="${m.provider}" ${idx === 0 ? 'checked' : ''}>
-                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${m.name}</span>
+                <input type="radio" name="selected_audio_model" class="audio-model-checkbox"
+                    value="${m.key}" data-provider="${m.provider}"
+                    data-local="${m.isLocal}" data-voices='${JSON.stringify(m.builtInVoices)}'
+                    ${idx === 0 ? 'checked' : ''}>
+                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${displayName}</span>
             </label>`;
         });
     }
 
     checklist.innerHTML = html;
+
+    // Wire voice loading whenever selection changes
+    checklist.querySelectorAll('.audio-model-checkbox').forEach(cb => {
+        cb.addEventListener('change', () => _loadVoicesForSelectedModel());
+    });
+
+    // Load voices for the initially-selected model
+    if (mode === 'tts') _loadVoicesForSelectedModel();
+}
+
+async function _loadVoicesForSelectedModel() {
+    const voiceGroup = document.getElementById('audio-voice-group');
+    const voiceSelect = document.getElementById('audio-voice-select');
+    if (!voiceGroup || !voiceSelect) return;
+
+    const checked = document.querySelector('.audio-model-checkbox:checked');
+    if (!checked) { voiceGroup.style.display = 'none'; return; }
+
+    const isLocal = checked.dataset.local === 'true';
+    const builtInVoices = JSON.parse(checked.dataset.voices || '[]');
+
+    if (isLocal) {
+        // Fetch voices from the local audio API
+        try {
+            const modelId = checked.value;
+            const res = await fetch(`/api/audio/local/voices/${modelId}`);
+            if (res.ok) {
+                const data = await res.json();
+                const voices = data.voices || [];
+                if (voices.length > 0) {
+                    voiceSelect.innerHTML = voices.map(v =>
+                        `<option value="${v.id || v.name}">${v.name}</option>`
+                    ).join('');
+                    voiceGroup.style.display = 'block';
+                    return;
+                }
+            }
+        } catch (e) { /* fall through */ }
+        // No voices available — hide the dropdown
+        voiceGroup.style.display = 'none';
+
+    } else if (builtInVoices.length > 0) {
+        // API model with known voice list (e.g. OpenAI tts-1)
+        voiceSelect.innerHTML = builtInVoices.map(v =>
+            `<option value="${v}">${v}</option>`
+        ).join('');
+        voiceGroup.style.display = 'block';
+
+    } else {
+        voiceGroup.style.display = 'none';
+    }
 }
 
 if (typeof registerTabInit === 'function') {
