@@ -142,12 +142,13 @@ async function loadThreads() {
 
         renderThreadList();
 
-        // Auto-select first thread if none selected
-        if (!currentThreadId || currentThreadId === 'default') {
-            const threadKeys = Object.keys(threads);
+        // Auto-select first thread if none selected, or if currently on an agent thread
+        const onAgentThread = currentThreadId && currentThreadId.startsWith('agents-');
+        if (!currentThreadId || currentThreadId === 'default' || onAgentThread) {
+            const threadKeys = Object.keys(threads).filter(id => !id.startsWith('agents-'));
             if (threadKeys.length > 0) {
                 // Sort by date desc
-                const sorted = Object.values(threads).sort((a, b) =>
+                const sorted = threadKeys.map(id => threads[id]).sort((a, b) =>
                     new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
                 );
                 switchThread(sorted[0].id);

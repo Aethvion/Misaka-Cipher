@@ -143,6 +143,10 @@ async def list_threads():
         threads = []
         for thread in list(task_manager.threads.values()):
             try:
+                # Skip agent workspace threads — they belong to the Agents tab only
+                thread_id = getattr(thread, 'id', '') or ''
+                if thread_id.startswith('agents-'):
+                    continue
                 threads.append(thread.to_dict())
             except Exception as te:
                 logger.error(f"Failed to serialize thread {getattr(thread, 'id', 'unknown')}: {te}")

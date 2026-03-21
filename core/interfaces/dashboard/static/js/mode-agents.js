@@ -54,7 +54,8 @@ async function agentsLoadWorkspaces() {
 function _agentsPopulateWorkspaceSelect() {
     const sel = _agEl('agents-workspace-select');
     if (!sel) return;
-    const prev = sel.value;
+    // Prefer in-page value, fall back to localStorage
+    const prev = sel.value || localStorage.getItem('agents_workspace_id') || '';
     sel.innerHTML = '<option value="">— select workspace —</option>';
     for (const ws of _agentsWorkspaces) {
         const opt = document.createElement('option');
@@ -76,6 +77,10 @@ async function _agentsOnWorkspaceSelectChange() {
     const ws = _agentsWorkspaces.find(w => w.id === wsId) || null;
     _agentsCurrentWorkspace = ws;
     _agentsCurrentThread = null;
+
+    // Persist selection
+    if (ws) localStorage.setItem('agents_workspace_id', ws.id);
+    else localStorage.removeItem('agents_workspace_id');
 
     // Update path display
     const pathEl = _agEl('agents-workspace-path-display');
@@ -129,7 +134,10 @@ async function agentsLoadThreads(workspaceId) {
 function _agentsPopulateThreadSelect(threads) {
     const sel = _agEl('agents-thread-select');
     if (!sel) return;
-    const prev = sel.value;
+    // Prefer in-page value, fall back to localStorage (scoped to current workspace)
+    const wsId = _agentsCurrentWorkspace ? _agentsCurrentWorkspace.id : '';
+    const savedKey = `agents_thread_id_${wsId}`;
+    const prev = sel.value || localStorage.getItem(savedKey) || '';
     sel.innerHTML = '<option value="">— select thread —</option>';
     for (const t of threads) {
         const opt = document.createElement('option');
@@ -169,12 +177,16 @@ async function _agentsOnThreadSelectChange() {
 
     if (!threadId) {
         _agentsCurrentThread = null;
+        localStorage.removeItem(`agents_thread_id_${_agentsCurrentWorkspace.id}`);
         if (editBtn) editBtn.style.display = 'none';
         if (delBtn) delBtn.style.display = 'none';
         _agentsShowEmptyState('No thread selected', 'Create or select a thread to start working');
         _agentsUpdateSubmitState();
         return;
     }
+
+    // Persist thread selection scoped to this workspace
+    localStorage.setItem(`agents_thread_id_${_agentsCurrentWorkspace.id}`, threadId);
 
     if (editBtn) editBtn.style.display = '';
     if (delBtn) delBtn.style.display = '';
@@ -966,6 +978,11 @@ async function agentsLoadModels() {
             opt.textContent = m.display_name || m.name || opt.value;
             sel.appendChild(opt);
         }
+        // Restore saved model
+        const saved = localStorage.getItem('agents_model_id');
+        if (saved && sel.querySelector(`option[value="${CSS.escape(saved)}"]`)) {
+            sel.value = saved;
+        }
     } catch (e) {
         console.error('[Agents] Failed to load models:', e);
     }
@@ -980,6 +997,12 @@ function agentsInitEventHandlers() {
     // Thread select change
     const tSel = _agEl('agents-thread-select');
     if (tSel) tSel.addEventListener('change', _agentsOnThreadSelectChange);
+
+    // Model select change — persist selection
+    const mSel = _agEl('agents-model-select');
+    if (mSel) mSel.addEventListener('change', () => {
+        localStorage.setItem('agents_model_id', mSel.value);
+    });
 
     // Add workspace button
     const addWsBtn = _agEl('agents-add-workspace-btn');

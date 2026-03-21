@@ -1,7 +1,7 @@
-"""Agent Runner — multi-step ReAct-style execution loop."""
-import re
+"""Agent Runner — multi-step ReAct-style execution loop with persistent state."""
 import json
 import subprocess
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional, List, Dict, Any
 
@@ -11,37 +11,182 @@ logger = get_logger(__name__)
 
 MAX_ITERATIONS = 20
 
-# Use <action> XML tags instead of backticks — backticks in prompts can
-# trigger Gemini's internal safety parser and return 500 INTERNAL.
 SYSTEM_PROMPT = """\
-You are an AI coding assistant that builds software by taking real actions step by step.
+You are an expert software engineer completing coding tasks efficiently.
 
 Working directory: {workspace}
 
-To perform an action, output a JSON object wrapped in <action> tags.
+HOW TO TAKE ACTIONS (write ACTION: followed by JSON, multiple per response allowed):
 
-Write or create a file (use FULL content — no placeholders):
-<action>{{"type": "write_file", "path": "relative/path.html", "content": "full content here"}}</action>
+ACTION: {{"type": "write_file", "path": "relative/path.txt", "content": "FULL file content here"}}
+ACTION: {{"type": "read_file", "path": "relative/file.txt"}}
+ACTION: {{"type": "list_dir", "path": ""}}
+ACTION: {{"type": "run_command", "command": "npm install"}}
+ACTION: {{"type": "set_plan", "steps": ["step 1", "step 2", "step 3"]}}
+ACTION: {{"type": "mark_done", "step": "exact step text"}}
+ACTION: {{"type": "add_note", "note": "important context to remember"}}
+ACTION: {{"type": "done", "summary": "brief summary of what was accomplished"}}
 
-Read a file:
-<action>{{"type": "read_file", "path": "relative/path"}}</action>
-
-List a directory:
-<action>{{"type": "list_dir", "path": ""}}</action>
-
-Run a shell command:
-<action>{{"type": "run_command", "command": "npm install"}}</action>
-
-Mark the task as fully complete:
-<action>{{"type": "done", "summary": "What was accomplished"}}</action>
-
-Rules:
-1. Create REAL, COMPLETE files — no stubs, no placeholders.
-2. After each action you will see its result. Use that to plan the next step.
-3. All paths are relative to the working directory.
-4. Keep going until the task is genuinely finished, then use the done action.
-5. You have up to {max_iterations} actions total.
+EFFICIENCY RULES:
+1. Write REAL, COMPLETE file content — never stubs or placeholders.
+2. WORKSPACE STATE (shown below) lists all known files. Files marked [cached] have known content — do NOT re-read them unless you need to modify them.
+3. Start complex tasks with set_plan. Use mark_done as you complete steps.
+4. Batch multiple ACTION lines per response to minimize round-trips.
+5. You have up to {max_iterations} actions — be strategic.
 """
+
+
+class AgentState:
+    """Persistent state for an AgentRunner session.
+
+    State is stored as JSON at state_path (if provided) and loaded on
+    construction so sessions can resume after a crash or restart.
+    """
+
+    _MAX_NOTES = 10
+    _MAX_LOG = 30
+
+    def __init__(self, state_path: Optional[Path] = None):
+        self.state_path = state_path
+
+        # Mutable state fields
+        self.plan: List[Dict[str, Any]] = []        # [{"text": str, "done": bool}]
+        self.notes: List[str] = []
+        self.file_cache: Dict[str, Dict[str, Any]] = {}  # path -> {size, cached_at}
+        self.workspace_map: List[str] = []
+        self.action_log: List[Dict[str, Any]] = []  # [{i, type, detail, at}]
+
+        self._load()
+
+    # ── persistence ───────────────────────────────────────────────
+
+    def _load(self) -> None:
+        if not self.state_path:
+            return
+        try:
+            p = Path(self.state_path)
+            if p.exists():
+                data = json.loads(p.read_text(encoding="utf-8"))
+                self.plan = data.get("plan", [])
+                self.notes = data.get("notes", [])
+                self.file_cache = data.get("file_cache", {})
+                self.workspace_map = data.get("workspace_map", [])
+                self.action_log = data.get("action_log", [])
+                logger.info(f"[AgentState] Loaded state from {self.state_path}")
+        except Exception as e:
+            logger.warning(f"[AgentState] Could not load state from {self.state_path}: {e}")
+
+    def save(self) -> None:
+        if not self.state_path:
+            return
+        try:
+            p = Path(self.state_path)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            data = {
+                "plan": self.plan,
+                "notes": self.notes,
+                "file_cache": self.file_cache,
+                "workspace_map": self.workspace_map,
+                "action_log": self.action_log,
+            }
+            p.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"[AgentState] Could not save state to {self.state_path}: {e}")
+
+    # ── file cache ────────────────────────────────────────────────
+
+    def is_cached(self, path: str) -> bool:
+        return path in self.file_cache
+
+    def cache_file(self, path: str, size: int) -> None:
+        self.file_cache[path] = {
+            "size": size,
+            "cached_at": datetime.utcnow().isoformat(),
+        }
+        if path not in self.workspace_map:
+            self.workspace_map.append(path)
+
+    def update_workspace_map(self, entries: List[str]) -> None:
+        """Replace workspace_map with entries from list_dir, evicting stale cache."""
+        self.workspace_map = list(entries)
+        stale = [p for p in list(self.file_cache.keys()) if p not in entries]
+        for p in stale:
+            del self.file_cache[p]
+
+    # ── plan ──────────────────────────────────────────────────────
+
+    def set_plan(self, steps: List[str]) -> None:
+        self.plan = [{"text": s, "done": False} for s in steps]
+
+    def mark_done(self, step_text: str) -> None:
+        """Mark a plan step done using exact match first, then fuzzy substring."""
+        step_lower = step_text.lower().strip()
+        # Exact match
+        for item in self.plan:
+            if item["text"].lower().strip() == step_lower:
+                item["done"] = True
+                return
+        # Fuzzy: first plan item whose text contains the query as substring
+        for item in self.plan:
+            if step_lower in item["text"].lower():
+                item["done"] = True
+                return
+
+    # ── notes ─────────────────────────────────────────────────────
+
+    def add_note(self, note: str) -> None:
+        self.notes.append(note)
+        if len(self.notes) > self._MAX_NOTES:
+            self.notes = self.notes[-self._MAX_NOTES:]
+
+    # ── action log ────────────────────────────────────────────────
+
+    def log_action(self, iteration: int, action_type: str, detail: str) -> None:
+        self.action_log.append({
+            "i": iteration,
+            "type": action_type,
+            "detail": detail,
+            "at": datetime.utcnow().isoformat(),
+        })
+        if len(self.action_log) > self._MAX_LOG:
+            self.action_log = self.action_log[-self._MAX_LOG:]
+
+    # ── context builder ───────────────────────────────────────────
+
+    def build_context(self) -> str:
+        """Return a compact context string injected into every prompt."""
+        parts: List[str] = []
+
+        # Files line
+        if self.workspace_map:
+            file_tokens: List[str] = []
+            for fname in self.workspace_map:
+                if fname in self.file_cache:
+                    info = self.file_cache[fname]
+                    file_tokens.append(f"{fname} ({info['size']}b, cached)")
+                else:
+                    file_tokens.append(fname)
+            parts.append("Files: " + ", ".join(file_tokens))
+
+        # Plan
+        if self.plan:
+            plan_lines = ["Plan:"]
+            for item in self.plan:
+                marker = "[x]" if item["done"] else "[ ]"
+                plan_lines.append(f"  {marker} {item['text']}")
+            parts.append("\n".join(plan_lines))
+
+        # Notes
+        if self.notes:
+            parts.append("Notes: " + "; ".join(self.notes))
+
+        # Recent actions
+        if self.action_log:
+            recent = self.action_log[-6:]
+            tokens = [f"{e['type']}({e['detail']})" for e in recent]
+            parts.append("Recent: " + ", ".join(tokens))
+
+        return "\n".join(parts)
 
 
 class AgentRunner:
@@ -53,6 +198,7 @@ class AgentRunner:
         step_callback: Callable[[Dict[str, Any]], None],
         model_id: Optional[str] = None,
         trace_id: Optional[str] = None,
+        state_path: Optional[Path] = None,
     ):
         self.task = task
         self.workspace = Path(workspace_path) if workspace_path else Path.cwd()
@@ -61,71 +207,168 @@ class AgentRunner:
         self.model_id = model_id
         self.trace_id = trace_id
         self.conversation: List[str] = []
+        self.state = AgentState(state_path)
 
     # ── emit ──────────────────────────────────────────────────────
+
     def _emit(self, event: Dict[str, Any]) -> None:
         self.step_callback(event)
 
     # ── LLM call ──────────────────────────────────────────────────
+
     def _build_prompt(self) -> str:
+        """Mirror the exact format used by the working Code IDE (_messages_to_prompt):
+        system + double-newline-separated 'User:' / 'Assistant:' blocks."""
         system = SYSTEM_PROMPT.format(
             workspace=str(self.workspace),
             max_iterations=MAX_ITERATIONS,
         )
-        parts = [system, f"Task: {self.task}"]
-        parts.extend(self.conversation)
+        parts = [system]
+
+        ctx = self.state.build_context()
+        if ctx:
+            parts.append(f"Context:\n{ctx}")
+
+        parts.append(f"User: {self.task}")
+
+        # Last 4 conversation entries (2 round-trips) stored as role-prefixed blocks
+        recent = self.conversation[-4:] if len(self.conversation) > 4 else self.conversation
+        parts.extend(recent)
+
         return "\n\n".join(parts)
 
     def _call_llm(self, iteration: int = 0) -> str:
-        from core.nexus_core import Request
+        """Use streaming — same path as the working Code IDE — for reliability."""
+        prompt = self._build_prompt()
+        logger.info(f"[AgentRunner iter={iteration}] prompt_chars={len(prompt)}")
         try:
-            req = Request(
-                prompt=self._build_prompt(),
-                request_type="generation",
-                temperature=0.2,
+            chunks: list[str] = []
+            for chunk in self.nexus.provider_manager.call_with_failover_stream(
+                prompt=prompt,
                 trace_id=f"{self.trace_id}-i{iteration}",
+                temperature=0.2,
                 model=self.model_id,
-            )
-            resp = self.nexus.route_request(req)
-            return resp.content if resp.success else f"(LLM error: {resp.error})"
+                request_type="generation",
+                source="agent",
+                max_tokens=8192,
+            ):
+                chunks.append(chunk)
+            full = "".join(chunks).strip()
+            if not full:
+                return "(LLM error: Provider returned empty response)"
+            return full
         except Exception as e:
             logger.error(f"AgentRunner LLM call failed: {e}")
             return f"(Error calling LLM: {e})"
 
     # ── parsing ───────────────────────────────────────────────────
+
     def _parse_actions(self, text: str) -> List[Dict[str, Any]]:
-        pattern = r"<action>\s*(.*?)\s*</action>"
+        """Find every ACTION: {...} using raw_decode so nested braces are handled."""
         actions = []
-        for m in re.findall(pattern, text, re.DOTALL):
+        decoder = json.JSONDecoder()
+        search_from = 0
+        while True:
+            idx = text.find("ACTION:", search_from)
+            if idx == -1:
+                break
+            json_start = text.find("{", idx)
+            if json_start == -1:
+                break
             try:
-                actions.append(json.loads(m.strip()))
+                obj, json_end = decoder.raw_decode(text, json_start)
+                if isinstance(obj, dict):
+                    actions.append(obj)
+                search_from = json_end  # raw_decode returns absolute index, not relative
             except json.JSONDecodeError:
-                pass
+                search_from = json_start + 1
         return actions
 
     def _thinking_text(self, text: str) -> str:
-        idx = text.find("<action>")
-        return text[:idx].strip() if idx != -1 else text.strip()
+        idx = text.find("ACTION:")
+        raw = text[:idx].strip() if idx != -1 else text.strip()
+        return raw.strip()
 
     # ── tool execution ────────────────────────────────────────────
-    def _execute(self, action: Dict[str, Any]) -> str:
+
+    def _execute(self, action: Dict[str, Any], iteration: int = 0) -> Optional[str]:
+        """Execute an action. Returns result string, or None for state-only actions."""
         t = action.get("type", "")
+
+        if t == "set_plan":
+            steps = action.get("steps", [])
+            self.state.set_plan(steps)
+            return None  # state-only, not sent to LLM
+
+        if t == "mark_done":
+            step = action.get("step", "")
+            self.state.mark_done(step)
+            return None  # state-only
+
+        if t == "add_note":
+            note = action.get("note", "")
+            self.state.add_note(note)
+            return None  # state-only
+
         if t == "write_file":
-            return self._write_file(action.get("path", ""), action.get("content", ""))
+            path = action.get("path", "")
+            content = action.get("content", "")
+            result = self._write_file(path, content)
+            self.state.cache_file(path, len(content.encode()))
+            self.state.log_action(iteration, "write_file", path)
+            return result
+
         if t == "read_file":
-            return self._read_file(action.get("path", ""))
+            path = action.get("path", "")
+            result = self._read_file(path)
+            # Cache with actual byte size of result if successful
+            if not result.startswith("Error:") and not result.startswith("Not found:"):
+                self.state.cache_file(path, len(result.encode()))
+            self.state.log_action(iteration, "read_file", path)
+            return result
+
         if t == "list_dir":
-            return self._list_dir(action.get("path", ""))
+            path = action.get("path", "")
+            result = self._list_dir(path)
+            # Parse flat filenames from result to update workspace map
+            if result and result != "(empty)" and not result.startswith("Error:"):
+                entries = self._parse_list_dir_entries(result)
+                if entries:
+                    self.state.update_workspace_map(entries)
+            self.state.log_action(iteration, "list_dir", path or ".")
+            return result
+
         if t == "run_command":
-            return self._run_command(action.get("command", ""))
+            cmd = action.get("command", "")
+            result = self._run_command(cmd)
+            short_cmd = cmd[:40] if len(cmd) > 40 else cmd
+            self.state.log_action(iteration, "run_command", short_cmd)
+            return result
+
         return f"Unknown action: {t}"
+
+    def _parse_list_dir_entries(self, listing: str) -> List[str]:
+        """Extract bare filenames from _list_dir output (strips emoji prefix)."""
+        entries = []
+        for line in listing.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            # Strip folder/file emoji prefixes added by _list_dir
+            for prefix in ("\U0001f4c1 ", "\U0001f4c4 "):
+                if line.startswith(prefix):
+                    line = line[len(prefix):]
+                    break
+            if line:
+                entries.append(line)
+        return entries
 
     def _write_file(self, path: str, content: str) -> str:
         try:
             fp = self.workspace / path
             fp.parent.mkdir(parents=True, exist_ok=True)
             fp.write_text(content, encoding="utf-8")
-            return f"✓ Written {len(content.encode()):,} bytes"
+            return f"Written {len(content.encode()):,} bytes"
         except Exception as e:
             return f"Error: {e}"
 
@@ -170,24 +413,46 @@ class AgentRunner:
             return f"Error: {e}"
 
     # ── event builder ─────────────────────────────────────────────
+
     def _make_event(self, action: Dict[str, Any]) -> Dict[str, Any]:
         t = action.get("type", "")
         path = action.get("path", "")
         cmd = action.get("command", "")
         content = action.get("content", "")
+
+        if t == "set_plan":
+            steps = action.get("steps", [])
+            return {"type": "thinking", "title": "Planning (set_plan)",
+                    "detail": "\n".join(f"  - {s}" for s in steps)}
+
+        if t == "mark_done":
+            step = action.get("step", "")
+            return {"type": "thinking", "title": "Planning (mark_done)",
+                    "detail": f"Marked done: {step}"}
+
+        if t == "add_note":
+            note = action.get("note", "")
+            return {"type": "thinking", "title": "Planning (add_note)",
+                    "detail": note}
+
         if t == "write_file":
             preview = content[:400] + ("\u2026" if len(content) > 400 else "")
             return {"type": t, "title": f"Writing {path}", "path": path,
                     "detail": preview, "bytes": len(content.encode())}
+
         if t == "read_file":
             return {"type": t, "title": f"Reading {path}", "path": path, "detail": ""}
+
         if t == "list_dir":
             return {"type": t, "title": f"Listing {path or 'workspace'}", "path": path, "detail": ""}
+
         if t == "run_command":
             return {"type": t, "title": f"$ {cmd[:80]}", "command": cmd, "detail": ""}
-        return {"type": t, "title": t, "detail": ""}
+
+        return {"type": t, "title": t, "detail": str(action)}
 
     # ── main loop ─────────────────────────────────────────────────
+
     def run(self) -> str:
         self._emit({"type": "start", "title": "Starting task", "detail": self.task})
 
@@ -196,58 +461,72 @@ class AgentRunner:
 
             thinking = self._thinking_text(response)
             if thinking:
-                self._emit({"type": "thinking", "title": "Planning" if iteration == 0 else "Continuing", "detail": thinking})
+                self._emit({
+                    "type": "thinking",
+                    "title": "Planning" if iteration == 0 else "Continuing",
+                    "detail": thinking,
+                })
 
             actions = self._parse_actions(response)
 
-
             if not actions:
                 self._emit({"type": "done", "title": "Complete", "detail": thinking or response})
+                self.state.save()
                 return thinking or response
 
-            results = []
+            results: List[str] = []
             done_triggered = False
             done_summary = ""
-            compact_actions = []
+            compact_actions: List[str] = []
 
             for action in actions:
-                if action.get("type") == "done":
+                action_type = action.get("type", "")
+
+                if action_type == "done":
                     done_summary = action.get("summary", "Task complete.")
                     done_triggered = True
                     break
 
+                # Emit event first (before executing so UI updates immediately)
                 event = self._make_event(action)
-                result = self._execute(action)
+                result = self._execute(action, iteration)
+
+                if result is None:
+                    # State-only action — emit thinking event, skip LLM result
+                    self._emit(event)
+                    self.state.save()
+                    continue
+
                 event["result"] = result
                 self._emit(event)
-                results.append(f"<result>{result}</result>")
+                self.state.save()
 
-                # Build compact action summary (strip large content fields)
-                t = action.get("type", "")
-                if t == "write_file":
-                    compact_actions.append(f'write_file("{action.get("path")}")')
-                elif t == "read_file":
-                    compact_actions.append(f'read_file("{action.get("path")}")')
-                elif t == "list_dir":
-                    compact_actions.append(f'list_dir("{action.get("path", "")}")')
-                elif t == "run_command":
-                    compact_actions.append(f'run_command("{action.get("command")}")')
+                path = action.get("path", "")
+                cmd = action.get("command", "")
+                short = path or (cmd[:30] if cmd else "")
+                results.append(f"{action_type}({short}): {result}")
+                compact_actions.append(f"{action_type}({short})")
 
             if done_triggered:
                 self._emit({"type": "done", "title": "Complete", "detail": done_summary})
+                self.state.save()
                 return done_summary
 
-            # Store compact history (no large content blobs) to avoid bloating future prompts
-            thinking = self._thinking_text(response)
-            history_entry = thinking or "(no reasoning)"
+            # Store as "Assistant:" / "User:" to match Code IDE _messages_to_prompt format
+            agent_line = thinking or "(working)"
             if compact_actions:
-                history_entry += "\nActions taken: " + ", ".join(compact_actions)
-            self.conversation.append(f"Assistant: {history_entry}")
-            self.conversation.append(
-                "Results:\n" + "\n".join(results) +
-                "\n\nContinue working on the task. Use the done action when fully complete."
-            )
+                agent_line += "\nDid: " + ", ".join(compact_actions)
+            self.conversation.append(f"Assistant: {agent_line}")
+            if results:
+                self.conversation.append(
+                    "User: Results:\n" + "\n".join(results) +
+                    "\nKeep going until the task is fully complete."
+                )
+            # Keep conversation bounded to last 4 entries (2 round-trips)
+            if len(self.conversation) > 4:
+                self.conversation = self.conversation[-4:]
 
         summary = f"Reached {MAX_ITERATIONS} action limit."
         self._emit({"type": "done", "title": "Stopped (limit)", "detail": summary})
+        self.state.save()
         return summary
