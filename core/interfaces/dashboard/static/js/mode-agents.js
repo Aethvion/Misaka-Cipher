@@ -230,6 +230,16 @@ function _agentsAppendMessage(msg, scroll = true) {
     const container = _agEl('agents-messages');
     if (!container) return;
 
+    // Agent step history — render as step cards
+    if (msg.role === 'agent_steps') {
+        for (const event of (msg.events || [])) {
+            if (event.type === 'start') continue;
+            renderAgentStep(event);
+        }
+        if (scroll) container.scrollTop = container.scrollHeight;
+        return;
+    }
+
     // Remove empty state if present
     const emptyState = container.querySelector('.agents-empty-state');
     if (emptyState) emptyState.remove();

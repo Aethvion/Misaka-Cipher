@@ -288,13 +288,22 @@ class TaskWorker:
                     if _ws_id2 and _ag_tid2:
                         try:
                             from core.interfaces.dashboard.agent_workspace_routes import workspace_manager as _agent_ws_mgr2
+                            from core.orchestrator.agent_events import get_snapshot
                             _now_iso = datetime.now().isoformat()
+                            # Collect agent step events for history
+                            _snap = get_snapshot(task.id)
+                            _events = _snap["events"] if _snap else []
                             _messages_to_save = [
                                 {
                                     "role": "user",
                                     "content": task.prompt,
                                     "timestamp": _now_iso,
                                     "task_id": task.id,
+                                },
+                                {
+                                    "role": "agent_steps",
+                                    "events": _events,
+                                    "timestamp": _now_iso,
                                 },
                                 {
                                     "role": "assistant",
