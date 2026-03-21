@@ -18,6 +18,7 @@ import os
 import subprocess
 from datetime import datetime
 
+from core.version import VERSION
 from core.utils import get_logger, fastapi_utils
 from core.config.settings_manager import get_settings_manager
 from core.utils.paths import WS_OUTPUTS, WS_MEDIA, WS_UPLOADS
@@ -32,7 +33,7 @@ RUNNING_APPS: Dict[str, int] = {}
 app = FastAPI(
     title="Aethvion Suite - Nexus Portal",
     description="Autonomous AI Orchestration System",
-    version="9.0.0"
+    version=str(VERSION)
 )
 fastapi_utils.add_dev_cache_control(app)
 
@@ -54,6 +55,10 @@ async def root():
     index_path = STATIC_DIR / "index.html"
     if index_path.exists():
         content = index_path.read_text(encoding="utf-8")
+        # Centralized version injection
+        content = content.replace("__VERSION__", f"v{VERSION}")
+        content = content.replace("__VNUM__", str(VERSION))
+        
         headers = {
             "Cache-Control": "no-cache, no-store, must-revalidate",
             "Pragma": "no-cache",

@@ -1,6 +1,6 @@
 # Getting Started with Aethvion Suite
 
-**Note: This documentation was updated on 2026-03-21 to reflect the current system state (v9.0.0).**
+**Note: This documentation was updated on 2026-03-21 to reflect the current system state (v10).**
 
 ---
 
@@ -498,7 +498,7 @@ forge.forge_tool(
 
 ## The Vision: Where We're Going
 
-**Current State (v9.0.0):**
+**Current State (v10):**
 - ✅ Core orchestration (Nexus)
 - ✅ Agent spawning (Factory) + **Agent Workspaces** with ReAct runner and SSE streaming
 - ✅ Tool generation (Forge)

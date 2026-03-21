@@ -1,6 +1,6 @@
 # Aethvion Suite - System Overview
 
-**Note: This documentation was updated on 2026-03-21 to reflect the current system state (v9.0.0).**
+**Note: This documentation was updated on 2026-03-21 to reflect the current system state (v10).**
 
 ---
 

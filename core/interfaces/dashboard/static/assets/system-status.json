@@ -2,10 +2,49 @@
     "system": {
         "name": "Aethvion Suite",
         "company": "Aethvion",
-        "version": "9",
-        "last_sync": "2026-03-18",
+        "version": "10",
+        "last_sync": "2026-03-21",
         "contact": "contact@aethvion.com",
         "changelog": [
+            {
+                "version": "10",
+                "date": "2026-03-21",
+                "added": [
+                    "Aethvion Finance: Professional Financial Analyst Dashboard — high-density UI with Bloomberg-style analytics",
+                    "Aethvion Finance: AI-Powered Deep Analysis — detailed company and financial insights with model configuration",
+                    "Aethvion Finance: Advanced Historical Charting — new period selectors (1M, 3M, 6M, 1Y, 5Y) for portfolio tracking",
+                    "Aethvion Tracking: 'Cyber-Terminal' UI Redesign — professional glassmorphism aesthetic with HUD overlays",
+                    "Aethvion Tracking: Live Metrics HUD — real-time FPS, latency, and engine status indicators",
+                    "Aethvion Tracking: Grid-Based Telemetry — structured parameter panel with collapse and pin functionality",
+                    "Infrastructure: Centralized Version Control — unified v10 single-integer versioning system across the entire suite",
+                    "Infrastructure: Dynamic Frontend Inversion — dashboard server now dynamically injects version metadata into index.html",
+                    "Sidebar: Dynamic tab counts for all sidebar categories (e.g. WORKFLOW (3))",
+                    "Nexus: Dedicated reload button added to the Nexus tab for quick dashboard troubleshooting",
+                    "Agents Tab: Full workspace and thread management system — workspaces map to filesystem directories, each with independent threads",
+                    "Agents Tab: ReAct-style agent execution loop — LLM plans and executes real file/command actions step by step until task is complete",
+                    "Agents Tab: Live SSE step streaming — each agent action (write_file, read_file, list_dir, run_command, thinking, done) streams to the UI in real time",
+                    "Agents Tab: Collapsible step cards with type-specific icons and foldout detail panels showing file content previews and command output",
+                    "Agents Tab: Server-side folder browser — inline directory navigator for selecting workspace paths without raw string input",
+                    "Agents Tab: Full step history persistence — all agent steps saved to thread history and replayed on thread reload",
+                    "Agents Tab: Thread history saved hierarchically under data/history/agents/{workspace_id}/threads/{thread_id}.json",
+                    "Infrastructure: Agent event store (agent_events.py) — thread-safe per-task SSE event store with snapshot reads",
+                    "Infrastructure: AgentRunner (agent_runner.py) — autonomous execution engine with write_file, read_file, list_dir, run_command, done tools",
+                    "Infrastructure: GET /api/agents/browse endpoint — server-side directory browser returning folder entries for a given path"
+                ],
+                "improved": [
+                    "UI: Standardized glassmorphism design language across Finance and Tracking modules",
+                    "UX: Improved navigation density and status transparency in the core dashboard",
+                    "Chat: Completely separated from Agents — chat always uses chat_only mode with no agent toggles or active agents column",
+                    "Misaka Cipher: Fully isolated from regular chat — persona logic, expressions, and mood tags no longer bleed into the Chat tab",
+                    "Agents: Compact conversation history in agent loop — file content stripped from LLM context between iterations to prevent prompt bloat and Gemini 500 errors"
+                ],
+                "fixed": [
+                    "Infrastructure: Resolved redundant version definitions across multiple source files",
+                    "Agents: Gemini 500 INTERNAL error on second agent iteration — caused by full HTML file content accumulating in LLM conversation history",
+                    "Agents: Step cards rendering as thin lines in history — added flex-shrink: 0 to .agent-step to prevent flex column from compressing overflow:hidden items to zero height",
+                    "Chat: Misaka Cipher persona expressions ([Emotion: x] [Mood: x]) incorrectly appearing in regular chat responses"
+                ]
+            },
             {
                 "version": "9",
                 "date": "2026-03-18",

@@ -3,7 +3,7 @@ Core architecture is consistent; tool implementations evolve during agentic spri
 
 SYSTEM IDENTITY
 Name: Misaka Cipher | Acronym: M.I.S.A.K.A. | Full Name: Multitask Intelligence & Strategic Analysis Kernel Architecture
-Version: v9.0.0 | Language: Python 3.10+ | Purpose: Self-evolving agentic system for autonomous tool generation and task execution
+Version: v10 | Language: Python 3.10+ | Purpose: Self-evolving agentic system for autonomous tool generation and task execution
 
 DIRECTORY STRUCTURE
 main.py - entry point (CLI/Web/Test modes)
@@ -252,7 +252,7 @@ MEMORY-001: ChromaDB connection failed | MEMORY-002: embedding generation failed
 SECURITY-001: PII detected | SECURITY-002: credential detected | SECURITY-003: request blocked
 
 VERSION
-Current: v9.0.0 (March 2026) | History: Sprint 1 (Nexus, Firewall), Sprint 2 (Factory, agents), Sprint 3 (Forge, tools, memory), v3 (Discord, PersonaManager, HistoryManager, IdentityManager, SocialRegistry, FileVectorStore), v5 (Audio standalone, Photo), v6 (Drive Info, Finance, multi-track audio), v7 (Code IDE, VTuber live mode, tracking bridge), v8 (self-update, standardized data directory, launcher refactor), v9 (Agent Workspaces + ReAct runner, local audio models, tabbed Model Registry, AI Conversation history/share/human-participant, Code IDE threads/streaming/Ctrl+P/python-exec/continuation, Finance AI analysis, Tracking HUD, centralized paths)
+CurrVersion: Current: v10 (March 2026) | History: Sprint 1-3 (Foundation), v3-v8 (Apps), v9 (Agent Workspaces, local models, Finance AI, Tracking HUD), v10 (Centralized Versioning, Financial Analyst Dashboard, Tracking Terminal Redesign)
 Breaking changes: v9 data paths migrated to data/ root (centralised via core/utils/paths.py); history moved from memory/storage/ to data/history/; vault data moved to data/vault/; localmodels paths changed from LocalModels/ to localmodels/gguf/ and localmodels/audio/
 
 PERFORMANCE TARGETS
