@@ -47,7 +47,7 @@ DEFAULT_DIRECTORS = [
         "type": "director",
         "gender": "Non-binary",
         "background": "An expert in scaling startups and optimizing unit economics. They focus on long-term sustainability, market expansion, and operational efficiency. They prioritize data-driven decisions and clear paths to profitability.",
-        "traits": {"Scaling": 9, "Efficiency": 10, "Risk-Assessment": 8, "Sustainability": 7},
+        "traits": {"Scaling": 9, "Efficiency": 10, "Risk_Assessment": 8, "Sustainability": 7},
         "memory": "Expert in operational infrastructure and market entry."
     },
     {
