@@ -96,9 +96,7 @@
         "filename": "NVIDIA-Nemotron3-Nano-4B-Q4_K_M.gguf",
         "size": "2.6 GB",
         "capabilities": ["CHAT"],
-        "description": "NVIDIA's Nemotron 3 Nano — uses the new 'nemotron_h' Mamba-hybrid architecture. Currently incompatible with llama-cpp-python (awaiting llama.cpp upstream support).",
-        "tags": ["NVIDIA", "Nemotron", "Unsupported"],
-        "unsupported": true,
-        "unsupported_reason": "Requires llama.cpp nemotron_h architecture support (not yet available)"
+        "description": "NVIDIA's Nemotron 3 Nano — compact Mamba-Transformer hybrid. Efficient and accurate at 4B parameters, ~18 tok/s on GPU. Best on CUDA; CPU-only may be unstable.",
+        "tags": ["NVIDIA", "Nemotron", "Efficient"]
     }
 ]

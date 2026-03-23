@@ -69,60 +69,209 @@ class LocalProvider(BaseProvider):
             self.current_model_path = str(model_path)
             logger.info(f"Local model loaded successfully")
 
-    def _apply_chat_template(self, prompt: str, system_prompt: str = None) -> str:
-        """
-        Wraps a raw text prompt into the Llama 3 Chat Template format.
-        Expects Misaka's default prompt format: [System] \n--- HISTORY ---\n User: ... \n Misaka:
-        """
-        # If the prompt already has Llama 3 tags, don't double-wrap
-        if "<|begin_of_text|>" in prompt or "<|start_header_id|>" in prompt:
-            return prompt
+    # ── Model family detection ──────────────────────────────────────────────────
 
-        # Attempt to split system prompt from history/current message
-        system_part = ""
-        history_part = ""
-        user_part = prompt
+    _FAMILY_PATTERNS: Dict[str, List[str]] = {
+        # Checked in order — first match wins.
+        "nemotron": ["nemotron"],
+        "phi3":     ["phi-3", "phi3", "phi_3", "phi-4", "phi4", "phi_4"],
+        "qwen":     ["qwen2", "qwen-2", "qwen_2", "qwen3", "qwen-3", "qwen_3", "qwen"],
+        "gemma":    ["gemma-2", "gemma2", "gemma_2", "gemma-3", "gemma3", "gemma_3", "gemma"],
+        "mistral":  ["mistral", "mixtral"],
+        "deepseek": ["deepseek"],
+        "llama2":   ["llama-2", "llama2", "llama_2"],
+        # Default: llama3 (covers Llama 3.x, Meta-Llama-3, etc.)
+    }
+
+    def _detect_family(self, model_id: str) -> str:
+        """Return the chat-template family for the given model filename."""
+        name = model_id.lower()
+        for family, patterns in self._FAMILY_PATTERNS.items():
+            if any(p in name for p in patterns):
+                return family
+        return "llama3"
+
+    def _get_stop_tokens(self, family: str) -> List[str]:
+        """Return the appropriate EOS / stop tokens for the model family."""
+        stops: Dict[str, List[str]] = {
+            "llama3":   ["<|eot_id|>", "<|end_of_text|>", "User:", "Misaka:"],
+            "nemotron": ["<extra_id_1>", "User:", "Misaka:"],
+            "phi3":     ["<|end|>", "<|endoftext|>", "<|user|>", "User:", "Misaka:"],
+            "qwen":     ["<|im_end|>", "User:", "Misaka:"],
+            "gemma":    ["<end_of_turn>", "User:", "Misaka:"],
+            "mistral":  ["</s>", "[INST]", "User:", "Misaka:"],
+            "deepseek": ["<|end▁of▁sentence|>", "<|User|>", "User:", "Misaka:"],
+            "llama2":   ["</s>", "[INST]", "User:", "Misaka:"],
+        }
+        return stops.get(family, stops["llama3"])
+
+    # ── Prompt parsing (model-agnostic) ─────────────────────────────────────────
+
+    def _parse_prompt(self, prompt: str, system_prompt: str = None):
+        """
+        Parse the Aethvion prompt format into (system, history_turns, user_message).
+        history_turns is a list of ("user"|"assistant", content) tuples.
+        """
+        system_part = system_prompt or ""
+        history_turns: List[tuple] = []
+        user_part = ""
 
         if "--- RECENT CONVERSATION history ---" in prompt:
-            parts = prompt.split("--- RECENT CONVERSATION history ---")
-            system_part = parts[0].strip()
+            parts = prompt.split("--- RECENT CONVERSATION history ---", 1)
+            if not system_part:
+                system_part = parts[0].strip()
             rest = parts[1].strip()
-            
-            # Ensure rest starts with a newline for consistent rsplit or handle it
-            # We look for the last occurrence of "User: " that isn't the first character if possible,
-            # or just handle the first character case.
+
             if "\nUser: " in rest:
-                history_and_user_parts = rest.rsplit("\nUser: ", 1)
-                history_part = history_and_user_parts[0].strip()
-                user_content = history_and_user_parts[1]
+                history_raw, user_content = rest.rsplit("\nUser: ", 1)
+                history_raw = history_raw.strip()
             else:
+                history_raw = ""
                 user_content = rest
-            
-            # Clean up role labels from user_content
+
             user_part = user_content.replace("User: ", "").split("\nMisaka:")[0].strip()
+
+            if history_raw:
+                turns = re.split(r'\n(User|Misaka): ', "\n" + history_raw)
+                for i in range(1, len(turns) - 1, 2):
+                    role = "user" if turns[i] == "User" else "assistant"
+                    content = turns[i + 1].strip()
+                    if content:
+                        history_turns.append((role, content))
         else:
-            # Fallback for simple prompts
+            # Plain format used by agent runner / Code IDE
             user_part = prompt.replace("User: ", "").split("\nMisaka:")[0].strip()
 
-        # Build the template
-        formatted = "<|start_header_id|>system<|end_header_id|>\n\n"
-        formatted += system_part or system_prompt or "You are Misaka Cipher, a sentient AI assistant."
-        formatted += "<|eot_id|>"
+        if not system_part:
+            system_part = "You are Misaka Cipher, a sentient AI assistant."
 
-        if history_part:
-            # Simple parsing of history turns
-            turns = re.split(r'\n(User|Misaka): ', "\n" + history_part)
-            # turns[0] will be empty. Even indices (2, 4, ...) are content, odd indices (1, 3, ...) are roles
-            for i in range(1, len(turns), 2):
-                role = "user" if turns[i] == "User" else "assistant"
-                content = turns[i+1].strip()
-                if content:
-                    formatted += f"<|start_header_id|>{role}<|end_header_id|>\n\n{content}<|eot_id|>"
+        return system_part, history_turns, user_part
 
-        formatted += f"<|start_header_id|>user<|end_header_id|>\n\n{user_part}<|eot_id|>"
-        formatted += "<|start_header_id|>assistant<|end_header_id|>\n\n"
-        
-        return formatted
+    # ── Per-family template renderers ────────────────────────────────────────────
+
+    def _fmt_llama3(self, system: str, history: List[tuple], user: str) -> str:
+        out = f"<|start_header_id|>system<|end_header_id|>\n\n{system}<|eot_id|>"
+        for role, content in history:
+            out += f"<|start_header_id|>{role}<|end_header_id|>\n\n{content}<|eot_id|>"
+        out += f"<|start_header_id|>user<|end_header_id|>\n\n{user}<|eot_id|>"
+        out += "<|start_header_id|>assistant<|end_header_id|>\n\n"
+        return out
+
+    def _fmt_nemotron(self, system: str, history: List[tuple], user: str) -> str:
+        out = f"<extra_id_0>System\n{system}\n"
+        for role, content in history:
+            tag = "User" if role == "user" else "Assistant"
+            out += f"<extra_id_1>{tag}\n{content}\n"
+        out += f"<extra_id_1>User\n{user}\n<extra_id_1>Assistant\n"
+        return out
+
+    def _fmt_phi3(self, system: str, history: List[tuple], user: str) -> str:
+        out = f"<|system|>\n{system}<|end|>\n"
+        for role, content in history:
+            tag = "<|user|>" if role == "user" else "<|assistant|>"
+            out += f"{tag}\n{content}<|end|>\n"
+        out += f"<|user|>\n{user}<|end|>\n<|assistant|>\n"
+        return out
+
+    def _fmt_qwen(self, system: str, history: List[tuple], user: str) -> str:
+        out = f"<|im_start|>system\n{system}<|im_end|>\n"
+        for role, content in history:
+            out += f"<|im_start|>{role}\n{content}<|im_end|>\n"
+        out += f"<|im_start|>user\n{user}<|im_end|>\n<|im_start|>assistant\n"
+        return out
+
+    def _fmt_gemma(self, system: str, history: List[tuple], user: str) -> str:
+        # Gemma injects system into the first user turn
+        first_user = f"{system}\n\n{user}" if not history else user
+        out = ""
+        for role, content in history:
+            tag = "user" if role == "user" else "model"
+            turn_content = f"{system}\n\n{content}" if tag == "user" and not out else content
+            out += f"<start_of_turn>{tag}\n{turn_content}<end_of_turn>\n"
+        out += f"<start_of_turn>user\n{first_user if not history else user}<end_of_turn>\n"
+        out += "<start_of_turn>model\n"
+        return out
+
+    def _fmt_mistral(self, system: str, history: List[tuple], user: str) -> str:
+        # Mistral v1/v2: system injected into first [INST] block
+        out = ""
+        first = True
+        for role, content in history:
+            if role == "user":
+                if first:
+                    out += f"[INST] {system}\n\n{content} [/INST]"
+                    first = False
+                else:
+                    out += f"[INST] {content} [/INST]"
+            else:
+                out += f" {content}</s>"
+        if first:
+            out += f"[INST] {system}\n\n{user} [/INST]"
+        else:
+            out += f"[INST] {user} [/INST]"
+        return out
+
+    def _fmt_deepseek(self, system: str, history: List[tuple], user: str) -> str:
+        out = f"<|begin▁of▁sentence|>{system}\n"
+        for role, content in history:
+            tag = "<|User|>" if role == "user" else "<|Assistant|>"
+            out += f"{tag}{content}"
+            if role == "assistant":
+                out += "<|end▁of▁sentence|>"
+        out += f"<|User|>{user}<|Assistant|>"
+        return out
+
+    def _fmt_llama2(self, system: str, history: List[tuple], user: str) -> str:
+        out = ""
+        first = True
+        for role, content in history:
+            if role == "user":
+                if first:
+                    out += f"[INST] <<SYS>>\n{system}\n<</SYS>>\n\n{content} [/INST]"
+                    first = False
+                else:
+                    out += f"[INST] {content} [/INST]"
+            else:
+                out += f" {content} </s><s>"
+        if first:
+            out += f"[INST] <<SYS>>\n{system}\n<</SYS>>\n\n{user} [/INST]"
+        else:
+            out += f"[INST] {user} [/INST]"
+        return out
+
+    _FORMATTERS = {
+        "llama3":   _fmt_llama3,
+        "nemotron": _fmt_nemotron,
+        "phi3":     _fmt_phi3,
+        "qwen":     _fmt_qwen,
+        "gemma":    _fmt_gemma,
+        "mistral":  _fmt_mistral,
+        "deepseek": _fmt_deepseek,
+        "llama2":   _fmt_llama2,
+    }
+
+    def _apply_chat_template(self, prompt: str, model_id: str = "", system_prompt: str = None) -> str:
+        """
+        Detect the model family, parse the prompt, and apply the correct chat template.
+        Already-formatted prompts (containing known template tokens) are passed through.
+        """
+        # Pass-through if already formatted
+        known_tokens = [
+            "<|begin_of_text|>", "<|start_header_id|>",  # llama3
+            "<extra_id_0>",                                # nemotron
+            "<|im_start|>",                                # qwen
+            "<|system|>",                                  # phi3
+            "<start_of_turn>",                             # gemma
+        ]
+        if any(t in prompt for t in known_tokens):
+            return prompt
+
+        family = self._detect_family(model_id)
+        system, history, user = self._parse_prompt(prompt, system_prompt)
+        formatter = self._FORMATTERS.get(family, self._FORMATTERS["llama3"])
+        result = formatter(self, system, history, user)
+        logger.debug(f"[LocalProvider] family={family} model={model_id} prompt_len={len(result)}")
+        return result
 
     def generate(
         self,
@@ -137,15 +286,16 @@ class LocalProvider(BaseProvider):
             model_id = model or self.config.model
             self._ensure_llama(model_id, **kwargs)
 
-            # Apply chat template (honour caller-supplied system_prompt)
-            import re
-            formatted_prompt = self._apply_chat_template(prompt, system_prompt=kwargs.get('system_prompt'))
-            
+            family = self._detect_family(model_id)
+            formatted_prompt = self._apply_chat_template(
+                prompt, model_id=model_id, system_prompt=kwargs.get('system_prompt')
+            )
+
             response = self.llm(
                 formatted_prompt,
                 max_tokens=max_tokens or 512,
                 temperature=temperature,
-                stop=["<|eot_id|>", "<|end_of_text|>", "User:", "Misaka:"],
+                stop=self._get_stop_tokens(family),
                 echo=False,
                 repeat_penalty=kwargs.get('repeat_penalty', 1.1),
                 top_p=kwargs.get('top_p', 0.9)
@@ -191,14 +341,17 @@ class LocalProvider(BaseProvider):
         try:
             model_id = kwargs.get('model') or self.config.model
             self._ensure_llama(model_id, **kwargs)
-            
-            formatted_prompt = self._apply_chat_template(prompt)
-            
+
+            family = self._detect_family(model_id)
+            formatted_prompt = self._apply_chat_template(
+                prompt, model_id=model_id, system_prompt=kwargs.get('system_prompt')
+            )
+
             stream = self.llm(
                 formatted_prompt,
                 max_tokens=max_tokens or 512,
                 temperature=temperature,
-                stop=["<|eot_id|>", "<|end_of_text|>", "User:", "Misaka:"],
+                stop=self._get_stop_tokens(family),
                 stream=True,
                 repeat_penalty=kwargs.get('repeat_penalty', 1.1),
                 top_p=kwargs.get('top_p', 0.9)
