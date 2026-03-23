@@ -11,8 +11,13 @@ async function loadDocumentation() {
         if (!response.ok) throw new Error('Failed to fetch documentation');
 
         const data = await response.json();
+        console.log('Documentation data received:', data);
+        
+        if (!data || !data.docs) {
+            throw new Error('Invalid documentation data received from server');
+        }
+        
         const docs = data.docs;
-
         if (Object.keys(docs).length === 0) {
             container.innerHTML = '<div class="empty-state">No documentation files found in the repository.</div>';
             return;
@@ -164,9 +169,23 @@ document.head.appendChild(styleSheet);
 
 // Initialize when the tab is clicked (handled by core.js general tab logic usually, 
 // but we might need a custom hook if it doesn't auto-load)
+// Initialize when the tab is clicked or if it's already active on load
 document.addEventListener('DOMContentLoaded', () => {
-    // We listen for the custom event if available or check on tab change
-    const docBtn = document.querySelector('[data-subtab="documentation"]');
+    // Listen for tab changes from core.js
+    document.addEventListener('tabChanged', (e) => {
+        if (e.detail && (e.detail.tab === 'documentation' || e.detail.tab === 'panel-documentation')) {
+            loadDocumentation();
+        }
+    });
+
+    // Auto-load if the documentation panel is already showing (e.g. on refresh)
+    const docPanel = document.getElementById('documentation-panel');
+    if (docPanel && (docPanel.classList.contains('active') || window.getComputedStyle(docPanel).display !== 'none')) {
+        setTimeout(loadDocumentation, 200);
+    }
+    
+    // Fallback for click if event doesn't fire for some reason
+    const docBtn = document.querySelector('[data-subtab="documentation"]') || document.querySelector('[data-maintab="documentation"]');
     if (docBtn) {
         docBtn.addEventListener('click', () => {
             loadDocumentation();

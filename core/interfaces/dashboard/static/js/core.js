@@ -900,6 +900,9 @@ function switchMainTab(tabName, save = true) {
     else if (actualTabName === 'agents' && typeof onAgentsPanelActivated === 'function') {
         onAgentsPanelActivated();
     }
+    else if (actualTabName === 'documentation' && typeof loadDocumentation === 'function') {
+        loadDocumentation();
+    }
 
     // Update layout based on mode
     updateChatLayout();

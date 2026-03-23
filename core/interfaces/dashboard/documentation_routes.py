@@ -5,8 +5,9 @@ from typing import Dict, List, Any
 
 router = APIRouter(prefix="/api/documentation", tags=["Documentation"])
 
-PROJECT_ROOT = Path("c:/Aethvion/Misaka-Cipher")
-EXCLUDE_DIRS = {'.git', 'node_modules', '.venv', 'venv', '__pycache__', '.gemini', 'data'}
+# Dynamic project root (4 levels up from this file: dashboard/interfaces/core/Aethvion-Suite)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+EXCLUDE_DIRS = {'.git', 'node_modules', '.venv', 'venv', '__pycache__', '.gemini', 'data', 'dist', 'build', '.pytest_cache'}
 
 @router.get("")
 async def get_documentation():
