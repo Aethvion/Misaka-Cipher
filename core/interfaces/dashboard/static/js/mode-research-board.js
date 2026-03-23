@@ -13,7 +13,7 @@ let rbSprintCount = 0;
 // Elements (initialized in init)
 let rbPromptInput, rbModelSelect, rbStartBtn, rbTranscript;
 let rbDirectorsStrip, rbStatusText, rbProgressInfo, rbSynthesisPane, rbSynthesisBody, rbAddMemberBtn;
-let rbUserInputArea, rbUserSubmitBtn, rbSynthesisTriggerBtn;
+let rbUserInputArea, rbUserSubmitBtn, rbSynthesisTriggerBtn, rbMembersDetails;
 
 async function initResearchBoard() {
     // Capture elements
@@ -31,6 +31,7 @@ async function initResearchBoard() {
     rbUserInputArea = document.getElementById('rb-user-input-area');
     rbUserSubmitBtn = document.getElementById('rb-user-submit-btn');
     rbSynthesisTriggerBtn = document.getElementById('rb-synthesis-trigger');
+    rbMembersDetails = document.getElementById('rb-members-details');
 
     if (rbStartBtn) {
         rbStartBtn.addEventListener('click', startBoardMeeting);
@@ -114,6 +115,48 @@ function renderDirectorPills() {
     }
 
     rbDirectorsStrip.innerHTML = html;
+    renderMemberDetails();
+}
+
+function renderMemberDetails() {
+    if (!rbMembersDetails) return;
+    
+    const currentMembers = rbAllPersonas.filter(p => rbSelectedMemberIds.includes(p.id));
+    let html = '';
+
+    for (const p of currentMembers) {
+        let traitsHtml = '';
+        if (p.traits) {
+            for (const [name, val] of Object.entries(p.traits)) {
+                traitsHtml += `
+                    <div class="rb-trait-row">
+                        <span class="rb-trait-label">${name}</span>
+                        <div class="rb-trait-bar-bg">
+                            <div class="rb-trait-bar-fill" style="width: ${val * 10}%;"></div>
+                        </div>
+                        <span class="rb-trait-value">${val}</span>
+                    </div>
+                `;
+            }
+        }
+
+        html += `
+            <div class="rb-member-detail-card">
+                <div class="rb-card-role">Director Perspective</div>
+                <div class="rb-card-name">${p.name}</div>
+                <div class="rb-card-bio">${p.background || 'Professional consultant specializing in business strategy.'}</div>
+                <div class="rb-card-traits">
+                    ${traitsHtml}
+                </div>
+            </div>
+        `;
+    }
+
+    if (currentMembers.length === 0) {
+        html = '<div class="placeholder-text" style="padding:1rem; opacity:0.5;">Select consultants above to view their perspectives.</div>';
+    }
+
+    rbMembersDetails.innerHTML = html;
 }
 
 window.removeBoardMember = function(id) {
@@ -204,6 +247,7 @@ async function startBoardMeeting() {
         
         // Hide initial config
         document.querySelector('.rb-config-bar').style.display = 'none';
+        if (rbMembersDetails) rbMembersDetails.classList.add('collapsed');
         rbSynthesisTriggerBtn.style.display = 'inline-block';
         
         // Start first sprint
@@ -381,6 +425,7 @@ function resetRb() {
     rbIsRunning = false;
     rbStartBtn.disabled = false;
     rbStartBtn.innerHTML = '<i class="fas fa-play"></i> Start Board Meeting';
+    if (rbMembersDetails) rbMembersDetails.classList.remove('collapsed');
 }
 
 // Basic markdown-to-html for synthesis
