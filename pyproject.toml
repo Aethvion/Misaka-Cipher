@@ -55,6 +55,7 @@ dependencies = [
 
     # Web server extensions
     "python-multipart>=0.0.7",
+    "slowapi>=0.1.9",
 
     # Communication
     "discord.py>=2.3.0",

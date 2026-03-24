@@ -5,7 +5,7 @@ REST API and WebSocket server for web dashboard
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
@@ -17,6 +17,9 @@ import sys
 import os
 import subprocess
 from datetime import datetime
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from core.version import VERSION
 from core.utils import get_logger, fastapi_utils
@@ -37,20 +40,57 @@ app = FastAPI(
 )
 fastapi_utils.add_dev_cache_control(app)
 
+# Rate limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+app.state.limiter = limiter
+
+
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"error": "rate_limit_exceeded", "detail": str(exc.detail), "retry_after": 60},
+    )
+
+
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
+
+# CORS origins from environment
+CORS_ORIGINS = os.getenv(
+    "CORS_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080"
+).split(",")
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Restrict in production
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Auth middleware (added after CORS so CORS headers are set first)
+from .auth import AuthMiddleware, router as auth_router  # noqa: E402
+app.add_middleware(AuthMiddleware)
+
 # --- INSTANT ACCESSIBILITY SECTION ---
 STATIC_DIR = Path(__file__).parent / "static"
 
+# Auth endpoints
+app.include_router(auth_router)
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page():
+    """Serve the login page."""
+    login_path = STATIC_DIR / "login.html"
+    if login_path.exists():
+        return HTMLResponse(content=login_path.read_text(encoding="utf-8"))
+    return HTMLResponse("<h1>Login page not found</h1>", status_code=404)
+
+
 @app.get("/", response_class=HTMLResponse)
-async def root():
+@limiter.limit("60/minute")
+async def root(request: Request):
     """Serve the main dashboard page instantly."""
     index_path = STATIC_DIR / "index.html"
     if index_path.exists():
