@@ -19,6 +19,7 @@ if (typeof marked !== 'undefined') {
 let _agentsWorkspaces = [];
 let _agentsCurrentWorkspace = null;  // workspace object
 let _agentsCurrentThread = null;     // thread metadata object (no messages)
+let _agentsModelCosts = {};          // model_id → {input, output} per 1M tokens
 let _agentsPollTimer = null;
 let _agentsCurrentTaskId = null;
 let _agentsIsPolling = false;
@@ -194,6 +195,9 @@ async function _agentsOnThreadSelectChange() {
     // Load thread messages
     await agentsLoadThreadMessages(_agentsCurrentWorkspace.id, threadId);
     _agentsUpdateSubmitState();
+
+    // Show existing thread token totals in stats panel
+    _agUpdateThreadStats();
 }
 
 async function agentsLoadThreadMessages(workspaceId, threadId) {
@@ -215,6 +219,22 @@ async function agentsLoadThreadMessages(workspaceId, threadId) {
     }
 }
 
+// ── Thread token totals from history ──────────────────────────
+function _agCalcThreadTotalsFromMessages(messages) {
+    let totalIn = 0, totalOut = 0;
+    for (const msg of messages) {
+        if (msg.role === 'agent_steps') {
+            for (const ev of (msg.events || [])) {
+                if (ev.type === 'usage') {
+                    totalIn  += ev.input_tokens  || 0;
+                    totalOut += ev.output_tokens || 0;
+                }
+            }
+        }
+    }
+    return { in: totalIn, out: totalOut };
+}
+
 // ── Message rendering ─────────────────────────────────────────
 function _agentsRenderMessages(messages) {
     const container = _agEl('agents-messages');
@@ -233,6 +253,14 @@ function _agentsRenderMessages(messages) {
         return;
     }
 
+    // Pre-calculate accurate thread totals from full history (prevents
+    // localStorage from growing on each refresh due to replay accumulation)
+    const threadId = _agentsCurrentThread?.id;
+    if (threadId) {
+        const totals = _agCalcThreadTotalsFromMessages(messages);
+        localStorage.setItem(`agents_thread_stats_${threadId}`, JSON.stringify(totals));
+    }
+
     for (const msg of messages) {
         _agentsAppendMessage(msg, false);
     }
@@ -246,7 +274,7 @@ function _agentsAppendMessage(msg, scroll = true) {
     // Agent step history — replay through the dashboard renderer
     if (msg.role === 'agent_steps') {
         for (const event of (msg.events || [])) {
-            renderAgentStep(event);
+            renderAgentStep(event, true); // isReplay = true
         }
         if (scroll) container.scrollTop = container.scrollHeight;
         return;
@@ -524,7 +552,7 @@ function _agResetDashboard() {
 }
 
 // ── Bootstrap a new run ───────────────────────────────────────
-function _agInitRender() {
+function _agInitRender(isReplay = false) {
     const container = _agEl('agents-messages');
     if (!container) return null;
 
@@ -568,8 +596,13 @@ function _agInitRender() {
         fileCards: {},   // path → { row, expand, sizeEl, contentEl, writeCount }
         fileCount: 0,
         cmdCount: 0,
+        searchCount: 0,
+        tokensIn: 0,
+        tokensOut: 0,
+        tpsValues: [],   // tok_per_sec per API call — averaged for display
         startTime,
         timerInterval,
+        isReplay,        // true when replaying history (skip localStorage writes)
     };
     return _agentsRenderState;
 }
@@ -664,14 +697,104 @@ function _agRenderPlanItems() {
     });
 }
 
-// ── Stats ─────────────────────────────────────────────────────
+// ── Stats helpers ──────────────────────────────────────────────
+function _agFmtNum(n) {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
+    if (n >= 1_000)     return (n / 1_000).toFixed(1) + 'k';
+    return String(n);
+}
+
+function _agCalcCost(inTok, outTok) {
+    const modelId = (_agEl('agents-model-select') || {}).value || '';
+    const costs   = _agentsModelCosts[modelId];
+    if (!costs || (inTok + outTok) === 0) return null;
+    return (inTok / 1_000_000 * costs.input) + (outTok / 1_000_000 * costs.output);
+}
+
+function _agFmtCost(c) {
+    if (c === null) return '—';
+    if (c === 0)    return '$0.00';
+    if (c < 0.001)  return '<$0.001';
+    return '$' + c.toFixed(4);
+}
+
 function _agUpdateStats() {
     const s = _agentsRenderState;
     if (!s) return;
+
+    // Files / cmds
     const filesEl = _agEl('agents-stat-files');
     const cmdsEl  = _agEl('agents-stat-cmds');
     if (filesEl) filesEl.textContent = `${s.fileCount} file${s.fileCount !== 1 ? 's' : ''}`;
     if (cmdsEl)  cmdsEl.textContent  = `${s.cmdCount} cmd${s.cmdCount !== 1 ? 's' : ''}`;
+
+    // Tokens
+    const totalTok = s.tokensIn + s.tokensOut;
+    const inEl  = _agEl('agents-stat-in-tok');
+    const outEl = _agEl('agents-stat-out-tok');
+    const totEl = _agEl('agents-stat-total-tok');
+    const costEl = _agEl('agents-stat-cost');
+    const tpsEl  = _agEl('agents-stat-tps');
+
+    if (inEl)  inEl.textContent  = s.tokensIn  > 0 ? `${_agFmtNum(s.tokensIn)} in`  : '—';
+    if (outEl) outEl.textContent = s.tokensOut > 0 ? `${_agFmtNum(s.tokensOut)} out` : '—';
+    if (totEl) totEl.textContent = totalTok    > 0 ? _agFmtNum(totalTok)             : '—';
+    if (costEl) costEl.textContent = _agFmtCost(_agCalcCost(s.tokensIn, s.tokensOut));
+
+    // tok/s: average of per-call values from the API (avoids wall-clock distortion
+    // during history replay where all events process in near-zero elapsed time)
+    if (tpsEl) {
+        if (s.tpsValues && s.tpsValues.length > 0) {
+            const avg = s.tpsValues.reduce((a, b) => a + b, 0) / s.tpsValues.length;
+            tpsEl.textContent = `${Math.round(avg)} tok/s`;
+        } else {
+            tpsEl.textContent = '—';
+        }
+    }
+}
+
+function _agUpdateThreadStats() {
+    const threadId = _agentsCurrentThread?.id;
+    if (!threadId) return;
+    const data = JSON.parse(localStorage.getItem(`agents_thread_stats_${threadId}`) || '{"in":0,"out":0}');
+    const total = (data.in || 0) + (data.out || 0);
+    const grp   = _agEl('agents-stats-thread-group');
+    if (grp && total > 0) grp.style.display = 'block';
+    const tokEl  = _agEl('agents-stat-thread-tok');
+    const costEl = _agEl('agents-stat-thread-cost');
+    if (tokEl)  tokEl.textContent  = total > 0 ? _agFmtNum(total) : '—';
+    if (costEl) costEl.textContent = _agFmtCost(_agCalcCost(data.in || 0, data.out || 0));
+}
+
+function _agHandleUsage(event) {
+    const s = _agentsRenderState;
+    if (!s) return;
+    s.tokensIn  = event.run_input  || 0;
+    s.tokensOut = event.run_output || 0;
+
+    // Collect tok/s from the API (already calculated correctly per call)
+    if (event.tok_per_sec && event.tok_per_sec > 0) {
+        s.tpsValues.push(event.tok_per_sec);
+    }
+
+    // Only accumulate thread totals during live streaming — not history replay.
+    // During replay, thread totals are pre-calculated in _agentsRenderMessages
+    // from the full history JSON to avoid doubling on every page refresh.
+    if (!s.isReplay) {
+        const threadId = _agentsCurrentThread?.id;
+        if (threadId) {
+            const key  = `agents_thread_stats_${threadId}`;
+            const prev = JSON.parse(localStorage.getItem(key) || '{"in":0,"out":0}');
+            const updated = {
+                in:  (prev.in  || 0) + (event.input_tokens  || 0),
+                out: (prev.out || 0) + (event.output_tokens || 0),
+            };
+            localStorage.setItem(key, JSON.stringify(updated));
+            _agUpdateThreadStats();
+        }
+    }
+
+    _agUpdateStats();
 }
 
 // ── File activity rows ─────────────────────────────────────────
@@ -930,7 +1053,7 @@ function _agFinishRender(event) {
 }
 
 // ── Main entry point (called for every SSE event) ─────────────
-function renderAgentStep(event) {
+function renderAgentStep(event, isReplay = false) {
     const container = _agEl('agents-messages');
     if (!container) return;
     const emptyState = _agEl('agents-empty-state');
@@ -940,7 +1063,7 @@ function renderAgentStep(event) {
 
     if (event.type === 'start') {
         _agentsHideTyping();
-        _agInitRender();
+        _agInitRender(isReplay);
         _agPhaseAdd('start', '🚀', 'Started');
         const s = _agentsRenderState;
         if (s) {
@@ -953,7 +1076,7 @@ function renderAgentStep(event) {
         return;
     }
 
-    if (!_agentsRenderState) _agInitRender();
+    if (!_agentsRenderState) _agInitRender(isReplay);
     const s = _agentsRenderState;
 
     if (event.type === 'done' || event.type === 'error') {
@@ -973,6 +1096,7 @@ function renderAgentStep(event) {
         case 'run_command': _agHandleCommand(event);   break;
         case 'search_web':  _agHandleSearch(event);    break;
         case 'fetch_url':   _agHandleFetch(event);     break;
+        case 'usage':       _agHandleUsage(event);     break;
     }
 
     const ti = s.activity.querySelector('.agent-typing-indicator');
@@ -1363,20 +1487,28 @@ async function agentsLoadModels() {
         const resp = await fetch('/api/registry/models/chat');
         if (!resp.ok) return;
         const data = await resp.json();
-        const models = data.models || data || [];
-        const sel = _agEl('agents-model-select');
-        if (!sel || !models.length) return;
-        sel.innerHTML = '<option value="auto">Auto</option>';
-        for (const m of models) {
-            const opt = document.createElement('option');
-            opt.value = m.id || m.model_id || m.name;
-            opt.textContent = m.display_name || m.name || opt.value;
-            sel.appendChild(opt);
+
+        // Cache model costs for stats calculation
+        _agentsModelCosts = {};
+        for (const m of data.models || []) {
+            _agentsModelCosts[m.id] = {
+                input:  m.input_cost_per_1m_tokens  || 0,
+                output: m.output_cost_per_1m_tokens || 0,
+            };
         }
+
+        const sel = _agEl('agents-model-select');
+        if (!sel) return;
+
+        // Use the same grouped dropdown as other tabs
+        const opts = generateCategorizedModelOptions(data, 'chat');
+        sel.innerHTML = opts;
+
         // Restore saved model
         const saved = localStorage.getItem('agents_model_id');
-        if (saved && sel.querySelector(`option[value="${CSS.escape(saved)}"]`)) {
-            sel.value = saved;
+        if (saved) {
+            const opt = sel.querySelector(`option[value="${CSS.escape(saved)}"]`);
+            if (opt) sel.value = saved;
         }
     } catch (e) {
         console.error('[Agents] Failed to load models:', e);

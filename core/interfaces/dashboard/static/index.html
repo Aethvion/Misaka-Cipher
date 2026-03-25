@@ -883,9 +883,22 @@
                                 <!-- Stats -->
                                 <div class="agents-dash-section" id="agents-stats-section" style="display:none">
                                     <div class="agents-dash-section-label">Stats</div>
-                                    <div class="agents-stat-row"><span>⏱</span><span id="agents-stat-time">00:00</span></div>
-                                    <div class="agents-stat-row"><span>📄</span><span id="agents-stat-files">—</span></div>
-                                    <div class="agents-stat-row"><span>⚡</span><span id="agents-stat-cmds">—</span></div>
+                                    <div class="agents-stats-group">
+                                        <div class="agents-stats-group-label">Run</div>
+                                        <div class="agents-stat-row"><span>⏱</span><span id="agents-stat-time">00:00</span></div>
+                                        <div class="agents-stat-row" title="Input tokens"><span>↑</span><span id="agents-stat-in-tok">—</span></div>
+                                        <div class="agents-stat-row" title="Output tokens"><span>↓</span><span id="agents-stat-out-tok">—</span></div>
+                                        <div class="agents-stat-row" title="Total tokens"><span>#</span><span id="agents-stat-total-tok">—</span></div>
+                                        <div class="agents-stat-row" title="Estimated cost"><span>$</span><span id="agents-stat-cost">—</span></div>
+                                        <div class="agents-stat-row" title="Tokens per second"><span>⚡</span><span id="agents-stat-tps">—</span></div>
+                                        <div class="agents-stat-row"><span>📄</span><span id="agents-stat-files">—</span></div>
+                                        <div class="agents-stat-row"><span>🔧</span><span id="agents-stat-cmds">—</span></div>
+                                    </div>
+                                    <div class="agents-stats-group" id="agents-stats-thread-group" style="display:none">
+                                        <div class="agents-stats-group-label">Thread</div>
+                                        <div class="agents-stat-row" title="Total tokens this thread"><span>#</span><span id="agents-stat-thread-tok">—</span></div>
+                                        <div class="agents-stat-row" title="Estimated total cost"><span>$</span><span id="agents-stat-thread-cost">—</span></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -912,7 +925,7 @@
                         <div class="agents-input-row">
                             <textarea id="agents-task-input" class="agents-textarea" placeholder="Describe a task for the agent..." rows="3" disabled></textarea>
                             <div class="agents-input-actions">
-                                <select id="agents-model-select" class="agents-model-select" title="Model">
+                                <select id="agents-model-select" class="control-select" title="Model">
                                     <option value="auto">Auto</option>
                                 </select>
                                 <button id="agents-submit-btn" class="agents-submit-btn" disabled>

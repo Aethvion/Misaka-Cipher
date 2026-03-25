@@ -214,6 +214,9 @@ class AgentRunner:
         self.trace_id = trace_id
         self.conversation: List[str] = []
         self.state = AgentState(state_path)
+        self._start_time = datetime.utcnow()
+        self.run_input_tokens = 0
+        self.run_output_tokens = 0
 
     # ── emit ──────────────────────────────────────────────────────
 
@@ -262,6 +265,24 @@ class AgentRunner:
             full = "".join(chunks).strip()
             if not full:
                 return "(LLM error: Provider returned empty response)"
+
+            # Estimate token usage (~4 chars/token) and emit for the UI
+            est_in  = len(prompt) // 4
+            est_out = len(full)   // 4
+            self.run_input_tokens  += est_in
+            self.run_output_tokens += est_out
+            elapsed = (datetime.utcnow() - self._start_time).total_seconds()
+            total   = self.run_input_tokens + self.run_output_tokens
+            self._emit({
+                "type":          "usage",
+                "input_tokens":  est_in,
+                "output_tokens": est_out,
+                "run_input":     self.run_input_tokens,
+                "run_output":    self.run_output_tokens,
+                "run_total":     total,
+                "tok_per_sec":   round(total / elapsed, 1) if elapsed > 0 else 0,
+            })
+
             return full
         except Exception as e:
             logger.error(f"AgentRunner LLM call failed: {e}")

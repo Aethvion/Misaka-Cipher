@@ -788,6 +788,23 @@
     text-transform: none;
 }
 
+/* ── Stats groups ────────────────────────────────────────────── */
+.agents-stats-group {
+    margin-bottom: 0.35rem;
+}
+
+.agents-stats-group-label {
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    opacity: 0.45;
+    margin: 0.4rem 0 0.25rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid var(--border);
+}
+
 /* ── Stat rows ───────────────────────────────────────────────── */
 .agents-stat-row {
     display: flex;
