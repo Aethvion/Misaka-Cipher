@@ -616,6 +616,14 @@ function _agInitRender(isReplay = false) {
     if (planList)     planList.innerHTML          = '';
     if (vtl)          vtl.innerHTML               = '';
 
+    // Reset right panel (chain of thought)
+    const rightEmpty  = _agEl('agents-dash-right-empty');
+    const thoughtsList= _agEl('agents-thoughts-list');
+    const thoughtBadge= _agEl('agents-thought-badge');
+    if (rightEmpty)   { rightEmpty.style.display   = 'flex'; }
+    if (thoughtsList) { thoughtsList.style.display = 'none'; thoughtsList.innerHTML = ''; }
+    if (thoughtBadge) { thoughtBadge.style.display = 'none'; thoughtBadge.textContent = ''; }
+
     // Elapsed-time timer
     const startTime = Date.now();
     const timerInterval = setInterval(() => {
@@ -640,6 +648,7 @@ function _agInitRender(isReplay = false) {
         startTime,
         timerInterval,
         isReplay,        // true when replaying history (skip localStorage writes)
+        thoughtCount: 0, // number of thought cards added to right panel
     };
     return _agentsRenderState;
 }
@@ -711,6 +720,62 @@ function _agHandleThinking(event) {
         if (!marked) { const next = s.planItems.find(p => !p.done); if (next) next.done = true; }
         _agRenderPlanItems();
     }
+
+    // Push general thinking text (non-plan ops) to right chain-of-thought panel
+    const detail = (event.detail || '').trim();
+    if (detail && op !== 'set_plan' && op !== 'mark_done' && op !== 'add_note') {
+        _agAddThoughtCard(event.title || 'Thinking', detail);
+    }
+}
+
+function _agAddThoughtCard(title, detail) {
+    const s = _agentsRenderState;
+    if (!s) return;
+
+    const thoughtsList = _agEl('agents-thoughts-list');
+    const rightEmpty   = _agEl('agents-dash-right-empty');
+    const badge        = _agEl('agents-thought-badge');
+    if (!thoughtsList) return;
+
+    // Show the list, hide empty state
+    if (rightEmpty)   rightEmpty.style.display   = 'none';
+    thoughtsList.style.display = 'flex';
+
+    s.thoughtCount++;
+    if (badge) { badge.style.display = 'inline'; badge.textContent = s.thoughtCount; }
+
+    const card = document.createElement('div');
+    card.className = 'agent-thought-card agent-thought-card--active';
+
+    const header = document.createElement('div');
+    header.className = 'agent-thought-header';
+    header.innerHTML = `
+        <span class="agent-thought-num">#${s.thoughtCount}</span>
+        <span class="agent-thought-label">${_htmlEscape(title)}</span>
+        <span class="agent-thought-chevron">▾</span>`;
+
+    const body = document.createElement('div');
+    body.className = 'agent-thought-body';
+    body.innerHTML = _agentsRenderMarkdown(detail);
+
+    card.appendChild(header);
+    card.appendChild(body);
+
+    // Toggle expand/collapse
+    let open = true;
+    header.addEventListener('click', () => {
+        open = !open;
+        body.style.display = open ? 'block' : 'none';
+        header.querySelector('.agent-thought-chevron').textContent = open ? '▾' : '▸';
+    });
+
+    thoughtsList.appendChild(card);
+    thoughtsList.scrollTop = thoughtsList.scrollHeight;
+
+    // Remove 'active' glow from previous cards
+    thoughtsList.querySelectorAll('.agent-thought-card--active').forEach(c => {
+        if (c !== card) c.classList.remove('agent-thought-card--active');
+    });
 }
 
 function _agRenderPlanItems() {
@@ -1151,11 +1216,35 @@ function _agFinishRender(event) {
 
     const item = document.createElement('div');
     item.className = 'agent-act-item';
-    const row = document.createElement('div');
     const label = event.title || (isOk ? 'Completed' : 'Error');
+    const detail = (event.detail || '').trim();
+
+    const row = document.createElement('div');
     row.className = `agent-act-row agent-act--summary ${isOk ? 'agent-act--done' : 'agent-act--error'}`;
-    row.innerHTML = `<span class="agent-act-icon">${isOk ? '✅' : '❌'}</span><span class="agent-act-name">${_htmlEscape(label)}</span>${event.detail ? `<span class="agent-act-path">${_htmlEscape(event.detail.slice(0, 120))}</span>` : ''}`;
-    item.appendChild(row);
+
+    if (detail) {
+        const chevron = document.createElement('span');
+        chevron.className = 'agent-act-chevron';
+        chevron.textContent = '▾'; // open by default
+        row.innerHTML = `<span class="agent-act-icon">${isOk ? '✅' : '❌'}</span><span class="agent-act-name">${_htmlEscape(label)}</span>`;
+        row.appendChild(chevron);
+
+        const expand = document.createElement('div');
+        expand.className = 'agent-done-summary';
+        expand.innerHTML = _agentsRenderMarkdown(detail);
+
+        item.appendChild(row);
+        item.appendChild(expand);
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', () => {
+            const open = expand.style.display !== 'none';
+            expand.style.display = open ? 'none' : 'block';
+            chevron.textContent = open ? '▸' : '▾';
+        });
+    } else {
+        row.innerHTML = `<span class="agent-act-icon">${isOk ? '✅' : '❌'}</span><span class="agent-act-name">${_htmlEscape(label)}</span>`;
+        item.appendChild(row);
+    }
     s.activity.appendChild(item);
 }
 

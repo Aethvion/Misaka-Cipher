@@ -829,7 +829,7 @@
    DASHBOARD LAYOUT
    ══════════════════════════════════════════════════════════════ */
 
-/* ── Body: left panel + main area ────────────────────────────── */
+/* ── Body: left panel + main area + right panel ──────────────── */
 .agents-body {
     display: flex;
     flex-direction: row;
@@ -1037,6 +1037,169 @@
     flex-direction: column;
     overflow: hidden;
 }
+
+/* ── Right panel: chain of thought ───────────────────────────── */
+.agents-dash-right {
+    width: 270px;
+    min-width: 270px;
+    max-width: 270px;
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+
+.agents-dash-right-header {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.6rem 0.85rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.agents-dash-right-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.agents-dash-right-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1.5rem 1rem;
+    color: var(--text-tertiary, var(--text-secondary));
+    font-size: 0.73rem;
+    text-align: center;
+    line-height: 1.45;
+    opacity: 0.6;
+}
+
+.agents-thoughts-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.5rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* ── Individual thought card ─────────────────────────────────── */
+.agent-thought-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+
+.agent-thought-card--active {
+    border-color: rgba(139, 92, 246, 0.45);
+    box-shadow: 0 0 0 1px rgba(139,92,246,0.12);
+}
+
+.agent-thought-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.6rem;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+}
+
+.agent-thought-header:hover { background: rgba(255,255,255,0.055); }
+
+.agent-thought-num {
+    font-size: 0.64rem;
+    font-weight: 700;
+    color: rgba(139,92,246,0.8);
+    font-family: 'Fira Code', monospace;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+}
+
+.agent-thought-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.agent-thought-chevron {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+}
+
+.agent-thought-body {
+    padding: 0.55rem 0.65rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+/* Markdown inside thought body */
+.agent-thought-body p { margin: 0 0 0.4rem; }
+.agent-thought-body p:last-child { margin-bottom: 0; }
+.agent-thought-body ul, .agent-thought-body ol {
+    margin: 0.2rem 0 0.4rem 1.1rem;
+    padding: 0;
+}
+.agent-thought-body li { margin-bottom: 0.18rem; }
+.agent-thought-body code {
+    background: rgba(255,255,255,0.07);
+    padding: 0.1em 0.35em;
+    border-radius: 3px;
+    font-size: 0.85em;
+    font-family: 'Fira Code', monospace;
+}
+.agent-thought-body strong { color: var(--text-primary); font-weight: 600; }
+.agent-thought-body h1, .agent-thought-body h2, .agent-thought-body h3 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0.4rem 0 0.2rem;
+}
+
+/* ── Done summary markdown fix ───────────────────────────────── */
+.agent-done-summary {
+    padding: 0.55rem 0.75rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+}
+.agent-done-summary p { margin: 0 0 0.35rem; }
+.agent-done-summary p:last-child { margin-bottom: 0; }
+.agent-done-summary ul, .agent-done-summary ol {
+    margin: 0.2rem 0 0.35rem 1.2rem;
+    padding: 0;
+}
+.agent-done-summary li { margin-bottom: 0.2rem; }
+.agent-done-summary code {
+    background: rgba(255,255,255,0.07);
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+.agent-done-summary strong { color: var(--text-primary); }
 
 /* ── Agent run wrapper ───────────────────────────────────────── */
 .agent-run {
