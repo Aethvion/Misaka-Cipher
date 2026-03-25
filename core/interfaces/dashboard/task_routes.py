@@ -54,12 +54,19 @@ async def submit_task(request: TaskSubmitRequest):
     try:
         task_manager = get_task_queue_manager()
         
-        # Any text content from attachments can be prepended if needed
+        # Prepend text file attachment content (images are passed via the
+        # images kwarg to the provider; text files are embedded in the prompt)
         prompt_text = request.prompt
         if request.attached_files:
+            text_parts = []
             for file_data in request.attached_files:
                 if not file_data.get('is_image') and file_data.get('content'):
-                    prompt_text = f"{file_data['content']}\n\n{prompt_text}"
+                    name = file_data.get('filename', 'attachment')
+                    text_parts.append(
+                        f"[Attached file: {name}]\n{file_data['content']}\n[End of {name}]"
+                    )
+            if text_parts:
+                prompt_text = "\n\n".join(text_parts) + "\n\n" + prompt_text
             
         task_id = await task_manager.submit_task(
             prompt=prompt_text,

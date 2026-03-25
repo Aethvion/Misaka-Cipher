@@ -215,6 +215,13 @@ class AgentRunner:
         self.trace_id = trace_id
         self.conversation: List[str] = []
         self.state = AgentState(state_path)
+        # Each task starts with a clean slate — reset state fields that are
+        # task-specific (plan, action log, notes) so previous task runs in the
+        # same thread don't contaminate the new task's prompt context.
+        # File cache and workspace map are kept as they reflect real disk state.
+        self.state.plan = []
+        self.state.action_log = []
+        self.state.notes = []
         self._start_time = datetime.utcnow()
         self.run_input_tokens = 0
         self.run_output_tokens = 0

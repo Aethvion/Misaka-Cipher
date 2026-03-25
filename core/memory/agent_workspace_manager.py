@@ -55,6 +55,7 @@ class AgentWorkspaceManager:
         now = datetime.now().isoformat()
         self._ws_dir(workspace_id).mkdir(parents=True, exist_ok=True)
         self._threads_dir(workspace_id).mkdir(exist_ok=True)
+        (self._ws_dir(workspace_id) / "uploads").mkdir(exist_ok=True)
         workspace = {
             "id": workspace_id,
             "name": name,

@@ -1592,10 +1592,15 @@ async function _agentsHandleFileSelect(files) {
         attachBtn.disabled = true;
     }
     try {
+        const wsId = _agentsCurrentWorkspace?.id;
+        if (!wsId) {
+            console.error('[Agents attach] No workspace selected');
+            return;
+        }
         for (const file of Array.from(files)) {
             const fd = new FormData();
             fd.append('file', file);
-            const resp = await fetch('/api/agents/upload', { method: 'POST', body: fd });
+            const resp = await fetch(`/api/agents/upload?workspace_id=${encodeURIComponent(wsId)}`, { method: 'POST', body: fd });
             if (!resp.ok) {
                 const err = await resp.json().catch(() => ({}));
                 console.error('[Agents attach]', err.detail || `HTTP ${resp.status}`);

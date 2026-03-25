@@ -229,15 +229,26 @@ async def get_thread_history(workspace_id: str, thread_id: str, limit: int = 20)
 
 # ── File upload ─────────────────────────────────────────────────────────────
 
-_AGENTS_UPLOADS = Path(__file__).parent / "static" / "uploads" / "agents"
 _AGENTS_MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 @router.post("/upload")
-async def upload_agent_file(file: UploadFile = File(...)):
+async def upload_agent_file(
+    file: UploadFile = File(...),
+    workspace_id: str = Query(..., description="Target workspace ID"),
+):
     """
-    Accept a file upload from the agents frontend (images, text, code, etc.)
-    and return metadata so the frontend can include it in the task payload.
+    Upload a file into the workspace's uploads/ folder.
+    Each workspace has the structure:
+      data/history/agents/{workspace_id}/
+        workspace.json
+        threads/
+        uploads/
     """
+    # Validate workspace exists
+    ws = workspace_manager.get_workspace(workspace_id)
+    if not ws:
+        raise HTTPException(status_code=404, detail=f"Workspace '{workspace_id}' not found")
+
     raw = await file.read()
     if len(raw) > _AGENTS_MAX_FILE_SIZE:
         raise HTTPException(
@@ -250,7 +261,7 @@ async def upload_agent_file(file: UploadFile = File(...)):
     mime_type = mime_type or "application/octet-stream"
     is_image = mime_type.startswith("image/")
 
-    # Try to decode text content
+    # Try to decode text content for non-images
     text_content: Optional[str] = None
     if not is_image:
         try:
@@ -258,10 +269,8 @@ async def upload_agent_file(file: UploadFile = File(...)):
         except Exception:
             pass
 
-    # Save to disk
-    import datetime
-    month_str = datetime.datetime.now().strftime("%Y-%m")
-    uploads_dir = _AGENTS_UPLOADS / month_str
+    # Save into workspace uploads/ folder
+    uploads_dir = HISTORY_AGENTS / workspace_id / "uploads"
     uploads_dir.mkdir(parents=True, exist_ok=True)
 
     safe_filename = f"{uuid.uuid4().hex[:8]}_{filename}"
