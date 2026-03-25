@@ -97,7 +97,6 @@
 .companion-layout.mood-danger .status-line {
     color: #ff3c1e;
     text-shadow: 0 0 10px rgba(255, 60, 30, 0.6);
-    animation: pulse-danger 1.2s infinite ease-in-out;
 }
 
 .companion-layout.mood-mystery .status-line {
@@ -105,17 +104,6 @@
     text-shadow: 0 0 10px rgba(220, 60, 120, 0.5);
 }
 
-@keyframes pulse-danger {
-
-    0%,
-    100% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.5;
-    }
-}
 
 /* Mood indicator badge */
 .mood-badge {
@@ -184,7 +172,6 @@
     text-transform: uppercase;
     letter-spacing: 2px;
     text-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
-    animation: pulse 2s infinite ease-in-out;
 }
 
 /* ─── Settings Gear Button ─── */
@@ -476,17 +463,6 @@
 }
 
 
-@keyframes pulse {
-
-    0%,
-    100% {
-        opacity: 0.8;
-    }
-
-    50% {
-        opacity: 0.4;
-    }
-}
 
 /* Neural Memory Panel */
 .neural-memory-layout {
@@ -641,6 +617,7 @@
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 3;
+    line-clamp: 3;
     -webkit-box-orient: vertical;
 }
 
