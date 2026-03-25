@@ -1181,6 +1181,23 @@
 .agent-act--fetch .agent-act-icon { color: #a5b4fc; }
 .agent-act--fetch .agent-act-name { color: #a5b4fc; font-family: 'Fira Code', monospace; font-size: 0.75rem; }
 
+/* ── Observe row ─────────────────────────────────────────────── */
+.agent-act--observe { background: rgba(251, 191, 36, 0.04); border-left: 2px solid rgba(251,191,36,0.35); border-radius: 0 6px 6px 0; margin-bottom: 0.25rem; }
+.agent-act--observe .agent-act-icon { color: #fbbf24; }
+.agent-act--observe .agent-act-name { color: #fbbf24; font-weight: 600; }
+.agent-act-observe-body { padding: 0.5rem 0.75rem 0.5rem 2.1rem; }
+.agent-act-observe-text { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; }
+.agent-act-observe-text p { margin: 0 0 0.35rem; }
+.agent-act-observe-text ul, .agent-act-observe-text ol { margin: 0.2rem 0 0.35rem 1rem; }
+.agent-act-observe-text code { background: rgba(255,255,255,0.07); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.85em; }
+
+/* ── Delete row ──────────────────────────────────────────────── */
+.agent-act--delete { opacity: 0.75; }
+.agent-act--delete .agent-act-icon { color: #f87171; }
+.agent-act-name--del { color: var(--text-secondary); text-decoration: line-through; font-size: 0.8rem; }
+.agent-act--deleted .agent-act-name { text-decoration: line-through; opacity: 0.5; }
+.agent-act-error-inline { font-size: 0.72rem; color: #f87171; margin-left: 0.5rem; }
+
 .agent-search-result {
     padding: 0.4rem 0.6rem 0.4rem 2.1rem;
     border-left: 2px solid rgba(147,197,253,0.25);

@@ -19,6 +19,7 @@ Working directory: {workspace}
 HOW TO TAKE ACTIONS (write ACTION: followed by JSON, multiple per response allowed):
 
 ACTION: {{"type": "write_file", "path": "relative/path.txt", "content": "FULL file content here"}}
+ACTION: {{"type": "delete_file", "path": "relative/file.txt"}}
 ACTION: {{"type": "read_file", "path": "relative/file.txt"}}
 ACTION: {{"type": "list_dir", "path": ""}}
 ACTION: {{"type": "run_command", "command": "npm install"}}
@@ -27,18 +28,21 @@ ACTION: {{"type": "fetch_url", "url": "https://api.github.com/repos/owner/repo"}
 ACTION: {{"type": "set_plan", "steps": ["step 1", "step 2", "step 3"]}}
 ACTION: {{"type": "mark_done", "step": "exact step text"}}  ← call this AFTER the real action succeeds, never instead of it
 ACTION: {{"type": "add_note", "note": "important context to remember"}}
+ACTION: {{"type": "observe", "content": "I see a screenshot showing X, Y, Z. The error is on line N."}}  ← describe images or key findings
 ACTION: {{"type": "done", "summary": "brief summary of what was accomplished"}}
 
 EFFICIENCY RULES:
 1. Write REAL, COMPLETE file content — never stubs or placeholders.
-2. WORKSPACE STATE (shown below) lists all known files. Files marked [cached] have known content — do NOT re-read them unless you need to modify them.
-3. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result — mark_done does NOT create files or run code, it is a tracker only.
-4. Batch multiple ACTION lines per response to minimize round-trips.
-5. You have up to {max_iterations} actions — be strategic.
-6. For internet research use search_web. For fetching a specific URL or API (e.g. GitHub API, JSON endpoints) use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
-7. Do NOT repeat the same search more than twice. If a search doesn't give you the exact data you need, use fetch_url with a known API URL or proceed with the best available information — never loop on searches.
-8. Write ALL deliverable files (reports, analysis, code output) BEFORE writing or running any verification/test scripts. A script that checks a file's existence must run AFTER that file is written.
-9. Before calling done, check your plan — every [ ] step must have a corresponding write_file or run_command result in this conversation. If any step is unmarked, complete it first.
+2. ALWAYS start each task with list_dir (path "") to discover the true current state of the workspace. Do NOT rely on any cached or assumed file state.
+3. If images are attached to the task, use observe as your FIRST action to describe exactly what you see in each image before doing anything else.
+4. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones. Never leave orphaned files from a previous approach.
+5. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result — mark_done does NOT create files or run code, it is a tracker only.
+6. Batch multiple ACTION lines per response to minimize round-trips.
+7. You have up to {max_iterations} actions — be strategic.
+8. For internet research use search_web. For fetching a specific URL or API (e.g. GitHub API, JSON endpoints) use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
+9. Do NOT repeat the same search more than twice. If a search doesn't give you the exact data you need, use fetch_url with a known API URL or proceed with the best available information — never loop on searches.
+10. Write ALL deliverable files (reports, analysis, code output) BEFORE writing or running any verification/test scripts. A script that checks a file's existence must run AFTER that file is written.
+11. Before calling done, check your plan — every [ ] step must have a corresponding write_file or run_command result in this conversation. If any step is unmarked, complete it first.
 """
 
 
@@ -215,13 +219,15 @@ class AgentRunner:
         self.trace_id = trace_id
         self.conversation: List[str] = []
         self.state = AgentState(state_path)
-        # Each task starts with a clean slate — reset state fields that are
-        # task-specific (plan, action log, notes) so previous task runs in the
-        # same thread don't contaminate the new task's prompt context.
-        # File cache and workspace map are kept as they reflect real disk state.
+        # Each task starts with a clean slate — reset ALL task-specific state
+        # so previous task runs in the same thread don't contaminate the new task.
+        # file_cache and workspace_map are also reset so the agent always does a
+        # fresh list_dir instead of relying on stale file listings from a prior task.
         self.state.plan = []
         self.state.action_log = []
         self.state.notes = []
+        self.state.file_cache = {}
+        self.state.workspace_map = []
         self._start_time = datetime.utcnow()
         self.run_input_tokens = 0
         self.run_output_tokens = 0
@@ -357,12 +363,30 @@ class AgentRunner:
             self.state.add_note(note)
             return None  # state-only
 
+        if t == "observe":
+            # Observation action — purely informational, emitted to the UI.
+            # Return the observation text so the LLM keeps context of what it said.
+            content = action.get("content", "")
+            self.state.log_action(iteration, "observe", content[:60])
+            return content  # returned to LLM as confirmation
+
         if t == "write_file":
             path = action.get("path", "")
             content = action.get("content", "")
             result = self._write_file(path, content)
             self.state.cache_file(path, len(content.encode()))
             self.state.log_action(iteration, "write_file", path)
+            return result
+
+        if t == "delete_file":
+            path = action.get("path", "")
+            result = self._delete_file(path)
+            # Remove from state caches on success
+            if not result.startswith("Error:") and not result.startswith("Not found:"):
+                self.state.file_cache.pop(path, None)
+                if path in self.state.workspace_map:
+                    self.state.workspace_map.remove(path)
+            self.state.log_action(iteration, "delete_file", path)
             return result
 
         if t == "read_file":
@@ -429,6 +453,20 @@ class AgentRunner:
             fp.parent.mkdir(parents=True, exist_ok=True)
             fp.write_text(content, encoding="utf-8")
             return f"Written {len(content.encode()):,} bytes"
+        except Exception as e:
+            return f"Error: {e}"
+
+    def _delete_file(self, path: str) -> str:
+        try:
+            fp = self.workspace / path
+            if not fp.exists():
+                return f"Not found: {path}"
+            if fp.is_dir():
+                import shutil
+                shutil.rmtree(fp)
+                return f"Deleted directory {path}"
+            fp.unlink()
+            return f"Deleted {path}"
         except Exception as e:
             return f"Error: {e}"
 
@@ -532,10 +570,17 @@ class AgentRunner:
             return {"type": "thinking", "title": "Planning (add_note)",
                     "detail": note}
 
+        if t == "observe":
+            obs_content = action.get("content", "")
+            return {"type": "observe", "title": "Observation", "detail": obs_content}
+
         if t == "write_file":
             preview = content[:400] + ("\u2026" if len(content) > 400 else "")
             return {"type": t, "title": f"Writing {path}", "path": path,
                     "detail": preview, "bytes": len(content.encode())}
+
+        if t == "delete_file":
+            return {"type": "delete_file", "title": f"Deleting {path}", "path": path, "detail": ""}
 
         if t == "read_file":
             return {"type": t, "title": f"Reading {path}", "path": path, "detail": ""}

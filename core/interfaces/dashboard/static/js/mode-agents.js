@@ -834,11 +834,81 @@ function _agHandleUsage(event) {
     _agUpdateStats();
 }
 
+// ── Observation (image / context acknowledgement) ─────────────
+function _agHandleObserve(event) {
+    const s = _agentsRenderState;
+    if (!s) return;
+    _agPhaseAdd('observe', '👁️', 'Observation');
+
+    const detail = event.detail || '';
+    const item = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--observe';
+    row.innerHTML = `<span class="agent-act-icon">👁️</span><span class="agent-act-name">Observation</span>`;
+
+    if (detail) {
+        const chevron = document.createElement('span');
+        chevron.className = 'agent-act-chevron';
+        chevron.textContent = '▾';  // open by default
+        row.appendChild(chevron);
+        const expand = document.createElement('div');
+        expand.className = 'agent-act-expand agent-act-observe-body';
+        // Render as markdown so formatting is preserved
+        const body = document.createElement('div');
+        body.className = 'agent-act-observe-text';
+        body.innerHTML = _agentsRenderMarkdown(detail);
+        expand.appendChild(body);
+        item.appendChild(row);
+        item.appendChild(expand);
+        row.addEventListener('click', () => {
+            const open = expand.style.display !== 'none';
+            expand.style.display = open ? 'none' : 'block';
+            chevron.textContent = open ? '▸' : '▾';
+        });
+    } else {
+        item.appendChild(row);
+    }
+    s.activity.appendChild(item);
+}
+
 // ── File activity rows ─────────────────────────────────────────
 function _agFormatBytes(b) {
     if (b < 1024)        return `${b} B`;
     if (b < 1048576)     return `${(b / 1024).toFixed(1)} KB`;
     return `${(b / 1048576).toFixed(1)} MB`;
+}
+
+// ── Delete file activity row ───────────────────────────────────
+function _agHandleDeleteFile(event) {
+    const s = _agentsRenderState;
+    if (!s) return;
+    const path     = event.path || (event.title || '').replace(/^Deleting\s+/, '').trim();
+    const filename = path.replace(/\\/g, '/').split('/').pop() || path;
+    const result   = event.result || '';
+
+    // Remove from fileCards if it was tracked
+    if (s.fileCards[path]) {
+        const fc = s.fileCards[path];
+        fc.row.closest('.agent-act-item')?.classList.add('agent-act--deleted');
+        const nameEl = fc.row.querySelector('.agent-act-name');
+        if (nameEl) nameEl.style.textDecoration = 'line-through';
+        delete s.fileCards[path];
+    }
+
+    const item = document.createElement('div');
+    item.className = 'agent-act-item';
+    const row = document.createElement('div');
+    row.className = 'agent-act-row agent-act--delete';
+    row.innerHTML = `<span class="agent-act-icon">🗑️</span><span class="agent-act-name agent-act-name--del">${_htmlEscape(filename)}</span><span class="agent-act-path">${_htmlEscape(path)}</span>`;
+    if (result && result.startsWith('Error')) {
+        const err = document.createElement('span');
+        err.className = 'agent-act-error-inline';
+        err.textContent = result;
+        row.appendChild(err);
+    }
+    item.appendChild(row);
+    s.activity.appendChild(item);
 }
 
 function _agHandleWriteFile(event) {
@@ -1126,14 +1196,16 @@ function renderAgentStep(event, isReplay = false) {
     }
 
     switch (event.type) {
-        case 'thinking':    _agHandleThinking(event);  break;
-        case 'write_file':  _agHandleWriteFile(event); break;
-        case 'read_file':   _agHandleReadFile(event);  break;
-        case 'list_dir':    _agHandleListDir(event);   break;
-        case 'run_command': _agHandleCommand(event);   break;
-        case 'search_web':  _agHandleSearch(event);    break;
-        case 'fetch_url':   _agHandleFetch(event);     break;
-        case 'usage':       _agHandleUsage(event);     break;
+        case 'thinking':     _agHandleThinking(event);    break;
+        case 'observe':      _agHandleObserve(event);     break;
+        case 'write_file':   _agHandleWriteFile(event);   break;
+        case 'delete_file':  _agHandleDeleteFile(event);  break;
+        case 'read_file':    _agHandleReadFile(event);    break;
+        case 'list_dir':     _agHandleListDir(event);     break;
+        case 'run_command':  _agHandleCommand(event);     break;
+        case 'search_web':   _agHandleSearch(event);      break;
+        case 'fetch_url':    _agHandleFetch(event);       break;
+        case 'usage':        _agHandleUsage(event);       break;
     }
 
     const ti = s.activity.querySelector('.agent-typing-indicator');
