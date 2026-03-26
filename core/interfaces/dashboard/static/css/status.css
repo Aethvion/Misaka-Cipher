@@ -63,11 +63,11 @@
 
 .live-indicator {
     color: var(--error);
-    animation: pulse-live 2s infinite;
+    /* animation: pulse-live 2s infinite; */
     font-size: 0.7rem;
 }
 
-@keyframes pulse-live {
+/* @keyframes pulse-live {
     0% {
         opacity: 1;
     }
@@ -79,7 +79,7 @@
     100% {
         opacity: 1;
     }
-}
+} */
 
 .xs-btn {
     padding: 0.2rem 0.6rem;

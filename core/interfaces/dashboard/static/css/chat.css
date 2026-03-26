@@ -16,10 +16,10 @@
 .icon-btn.voice-btn.active {
     background: var(--accent);
     color: var(--bg-primary);
-    animation: pulseMic 1.5s infinite;
+    /* animation: pulseMic 1.5s infinite; */
 }
 
-@keyframes pulseMic {
+/* @keyframes pulseMic {
     0% {
         box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.4);
     }
@@ -31,7 +31,7 @@
     100% {
         box-shadow: 0 0 0 0 rgba(45, 212, 191, 0);
     }
-}
+} */
 
 /* Usage Chart Controls overlay */
 .chart-header-row {

@@ -517,7 +517,7 @@ function initializeUI() {
 
     if (domainFilter) domainFilter.addEventListener('change', loadFiles);
     if (typeFilter) typeFilter.addEventListener('change', loadFiles);
-    if (refreshFilesList) refreshFilesList.addEventListener('click', loadFiles);
+    // if (refreshFilesList) refreshFilesList.addEventListener('click', loadFiles);
 
     // Tools forge button
     const forgeBtn = document.getElementById('forge-tool-button');

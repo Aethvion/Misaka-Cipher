@@ -243,7 +243,7 @@ h6 {
     background: var(--success);
     border-radius: 50%;
     box-shadow: 0 0 8px var(--success);
-    animation: pulse 2s infinite;
+    /* animation: pulse 2s infinite; */
 }
 
 .status-text {
@@ -251,7 +251,7 @@ h6 {
     font-weight: 500;
 }
 
-@keyframes pulse {
+/* @keyframes pulse {
 
     0%,
     100% {

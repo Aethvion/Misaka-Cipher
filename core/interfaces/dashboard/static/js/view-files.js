@@ -137,7 +137,7 @@ async function loadFiles(category = 'output', refresh = false) {
     grid.innerHTML = `
         <div class="loading-container" style="text-align: center; padding: 3rem;">
             <div class="loading-spinner"></div>
-            <p style="margin-top: 1rem; color: var(--text-secondary); animation: pulse 1.5s infinite;">Scanning ${category}...</p>
+            <p style="margin-top: 1rem; color: var(--text-secondary);">Scanning ${category}...</p>
         </div>
     `;
 
