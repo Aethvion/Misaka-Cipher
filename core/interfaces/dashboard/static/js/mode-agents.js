@@ -738,44 +738,30 @@ function _agAddThoughtCard(title, detail) {
     if (!thoughtsList) return;
 
     // Show the list, hide empty state
-    if (rightEmpty)   rightEmpty.style.display   = 'none';
+    if (rightEmpty) rightEmpty.style.display = 'none';
     thoughtsList.style.display = 'flex';
 
     s.thoughtCount++;
     if (badge) { badge.style.display = 'inline'; badge.textContent = s.thoughtCount; }
 
-    const card = document.createElement('div');
-    card.className = 'agent-thought-card agent-thought-card--active';
+    const msg = document.createElement('div');
+    msg.className = 'agent-thought-msg';
 
-    const header = document.createElement('div');
-    header.className = 'agent-thought-header';
-    header.innerHTML = `
-        <span class="agent-thought-num">#${s.thoughtCount}</span>
-        <span class="agent-thought-label">${_htmlEscape(title)}</span>
-        <span class="agent-thought-chevron">▾</span>`;
+    // Label chip (source tag: "Thinking", "🔍 Found…", etc.)
+    const tag = document.createElement('span');
+    tag.className = 'agent-thought-tag';
+    tag.textContent = title;
+    msg.appendChild(tag);
 
+    // Body text rendered as markdown
     const body = document.createElement('div');
     body.className = 'agent-thought-body';
     body.innerHTML = _agentsRenderMarkdown(detail);
+    msg.appendChild(body);
 
-    card.appendChild(header);
-    card.appendChild(body);
-
-    // Toggle expand/collapse
-    let open = true;
-    header.addEventListener('click', () => {
-        open = !open;
-        body.style.display = open ? 'block' : 'none';
-        header.querySelector('.agent-thought-chevron').textContent = open ? '▾' : '▸';
-    });
-
-    thoughtsList.appendChild(card);
+    thoughtsList.appendChild(msg);
+    // Keep scroll pinned to bottom (Twitch-style)
     thoughtsList.scrollTop = thoughtsList.scrollHeight;
-
-    // Remove 'active' glow from previous cards
-    thoughtsList.querySelectorAll('.agent-thought-card--active').forEach(c => {
-        if (c !== card) c.classList.remove('agent-thought-card--active');
-    });
 }
 
 function _agRenderPlanItems() {

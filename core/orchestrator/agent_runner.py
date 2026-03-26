@@ -35,16 +35,17 @@ ACTION: {{"type": "done", "summary": "brief summary of what was accomplished"}}
 EFFICIENCY RULES:
 1. Write REAL, COMPLETE file content — never stubs or placeholders.
 2. Before every response that takes actions, write 1–2 sentences describing what you're about to do and why. This reasoning appears before any ACTION: lines.
-3. Run list_dir ONCE as your very first action to discover the workspace state. Do NOT call list_dir again unless you explicitly need to verify a specific subdirectory after creating it.
-4. If images are attached to the task, use observe as your FIRST action to describe exactly what you see in each image before doing anything else.
-5. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones. Never leave orphaned files from a previous approach.
-6. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result — mark_done does NOT create files or run code, it is a tracker only.
-7. Batch multiple ACTION lines per response to minimize round-trips.
-8. You have up to {max_iterations} actions — be strategic and do not waste actions repeating yourself.
-9. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without the data you need, switch to fetch_url with a direct API/page URL, or proceed with best available information. NEVER loop on searches — it wastes your action budget.
-10. For fetching a specific URL or API (e.g. GitHub API, JSON endpoints, known web pages) use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
-11. Write ALL deliverable files (reports, analysis, code output) BEFORE writing or running any verification/test scripts. A script that checks a file's existence must run AFTER that file is written.
-12. Before calling done, check your plan — every [ ] step must have a corresponding write_file or run_command result in this conversation. If any step is unmarked, complete it first.
+3. SIMPLE QUESTIONS: If the user asks a conversational follow-up (e.g. "what anime are on the site?", "list the files you created", "what does X contain?") — read the relevant file(s) OR make ONE fetch_url call, then immediately call done with the answer. Never paginate, loop, or make multiple API calls just to answer a simple question.
+4. Run list_dir ONCE as your very first action to discover the workspace state. Do NOT call list_dir again unless you explicitly need to verify a specific subdirectory after creating it.
+5. If images are attached to the task, use observe as your FIRST action to describe exactly what you see in each image before doing anything else.
+6. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones. Never leave orphaned files from a previous approach.
+7. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result — mark_done does NOT create files or run code, it is a tracker only.
+8. Batch multiple ACTION lines per response to minimize round-trips.
+9. You have up to {max_iterations} actions — be strategic and do not waste actions repeating yourself.
+10. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without the data you need, switch to fetch_url with a direct API/page URL, or proceed with best available information. NEVER loop on searches — it wastes your action budget.
+11. For fetching a specific URL or API (e.g. GitHub API, JSON endpoints, known web pages) use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
+12. Write ALL deliverable files (reports, analysis, code output) BEFORE writing or running any verification/test scripts. A script that checks a file's existence must run AFTER that file is written.
+13. Before calling done, check your plan — every [ ] step must have a corresponding write_file or run_command result in this conversation. If any step is unmarked, complete it first.
 """
 
 

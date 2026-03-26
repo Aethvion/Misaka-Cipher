@@ -1090,66 +1090,46 @@
     padding: 0.5rem 0.6rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-}
-
-/* ── Individual thought card ─────────────────────────────────── */
-.agent-thought-card {
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    overflow: hidden;
-    transition: border-color 0.2s;
-}
-
-.agent-thought-card--active {
-    border-color: rgba(139, 92, 246, 0.45);
-    box-shadow: 0 0 0 1px rgba(139,92,246,0.12);
-}
-
-.agent-thought-header {
-    display: flex;
-    align-items: center;
+    justify-content: flex-end; /* push cards to bottom like a chat */
     gap: 0.4rem;
-    padding: 0.35rem 0.6rem;
+    /* Ensure scroll works correctly with flex-end */
+    min-height: 0;
+}
+
+/* When there are enough cards to fill the panel, justify-content has no effect
+   and items just stack naturally from top — that's fine and correct */
+.agents-thoughts-list > * {
+    flex-shrink: 0;
+}
+
+/* ── Thought chat messages ───────────────────────────────────── */
+.agent-thought-msg {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: 8px;
     background: rgba(255,255,255,0.03);
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    user-select: none;
+    border-left: 2px solid rgba(139,92,246,0.35);
+    animation: thoughtFadeIn 0.2s ease;
 }
 
-.agent-thought-header:hover { background: rgba(255,255,255,0.055); }
+@keyframes thoughtFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
 
-.agent-thought-num {
-    font-size: 0.64rem;
+.agent-thought-tag {
+    font-size: 0.62rem;
     font-weight: 700;
-    color: rgba(139,92,246,0.8);
-    font-family: 'Fira Code', monospace;
-    letter-spacing: 0.02em;
-    flex-shrink: 0;
-}
-
-.agent-thought-label {
-    font-size: 0.68rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.agent-thought-chevron {
-    font-size: 0.65rem;
-    color: var(--text-secondary);
-    opacity: 0.5;
-    flex-shrink: 0;
-    transition: transform 0.15s;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(139,92,246,0.75);
+    line-height: 1;
 }
 
 .agent-thought-body {
-    padding: 0.55rem 0.65rem;
-    font-size: 0.75rem;
+    font-size: 0.76rem;
     color: var(--text-secondary);
     line-height: 1.55;
     overflow-wrap: break-word;
@@ -1157,13 +1137,13 @@
 }
 
 /* Markdown inside thought body */
-.agent-thought-body p { margin: 0 0 0.4rem; }
+.agent-thought-body p { margin: 0 0 0.35rem; }
 .agent-thought-body p:last-child { margin-bottom: 0; }
 .agent-thought-body ul, .agent-thought-body ol {
-    margin: 0.2rem 0 0.4rem 1.1rem;
+    margin: 0.15rem 0 0.35rem 1.1rem;
     padding: 0;
 }
-.agent-thought-body li { margin-bottom: 0.18rem; }
+.agent-thought-body li { margin-bottom: 0.15rem; }
 .agent-thought-body code {
     background: rgba(255,255,255,0.07);
     padding: 0.1em 0.35em;
@@ -1176,7 +1156,7 @@
     font-size: 0.8rem;
     font-weight: 700;
     color: var(--text-primary);
-    margin: 0.4rem 0 0.2rem;
+    margin: 0.3rem 0 0.15rem;
 }
 
 /* ── Done summary markdown fix ───────────────────────────────── */
