@@ -516,7 +516,7 @@ async function sendMisakaMessage() {
 
     try {
         const statusLine = document.getElementById('misaka-status-line');
-        if (statusLine) statusLine.textContent = "Processing neural paths...";
+        if (statusLine) statusLine.textContent = "Processing...";
 
         const response = await fetch('/api/misakacipher/chat', {
             method: 'POST',
@@ -548,6 +548,8 @@ async function sendMisakaMessage() {
 
                     if (data.type === 'message') {
                         removeAssistantToolStatus(); // hide dots as soon as text starts
+                        if (statusLine && statusLine.textContent === "Processing...")
+                            statusLine.textContent = "Composing reply...";
                         untypedText += data.content;
 
                         // Process the untyped buffer for breaks and packets
@@ -633,12 +635,16 @@ async function sendMisakaMessage() {
                             }
                         }
 
+                        const idleStatus = data.expression
+                            ? _misakaPrettifyExpression(data.expression)
+                            : "Neural core engaged.";
+
                         if (data.memory_updated || data.synthesis_ran) {
                             await refreshMisakaMemory();
                             if (statusLine) statusLine.textContent = "Memory synchronized.";
-                            setTimeout(() => { if (statusLine) statusLine.textContent = "Neural core engaged."; }, 4000);
+                            setTimeout(() => { if (statusLine) statusLine.textContent = idleStatus; }, 4000);
                         } else {
-                            if (statusLine) statusLine.textContent = "Neural core engaged.";
+                            if (statusLine) statusLine.textContent = idleStatus;
                         }
                     }
                     else if (data.type === 'error') {
@@ -657,7 +663,8 @@ async function sendMisakaMessage() {
     } catch (err) {
         console.error("Misaka send error:", err);
         addAssistantMessageStatic('misaka', `I encountered a neural synchronization error: ${err.message}`, ts);
-        if (statusLine) statusLine.textContent = "Neural core error.";
+        if (statusLine) statusLine.textContent = "Neural error — check console.";
+        setTimeout(() => { if (statusLine) statusLine.textContent = "Neural core engaged."; }, 5000);
         if (window.ParticleSphere) ParticleSphere.setActive(false);
     }
 }
@@ -771,10 +778,15 @@ async function appendToStreamingBubble(bubble, newChunk) {
 
         // Immediate Expression/Mood trigger
         if (raw.endsWith(']')) {
-            const emotionMatch = raw.match(/\[Emotion:\s*(\w+)\]$/i);
-            if (emotionMatch) updateMisakaExpression(emotionMatch[1].toLowerCase());
-            const moodMatch = raw.match(/\[Mood:\s*(\w+)\]$/i);
-            if (moodMatch) updateMisakaMood(moodMatch[1].toLowerCase());
+            const emotionMatch = raw.match(/\[Emotion:\s*([^\]]+)\]$/i);
+            if (emotionMatch) {
+                const emo = emotionMatch[1].trim().toLowerCase();
+                updateMisakaExpression(emo);
+                const sl = document.getElementById('misaka-status-line');
+                if (sl) sl.textContent = _misakaPrettifyExpression(emo);
+            }
+            const moodMatch = raw.match(/\[Mood:\s*([^\]]+)\]$/i);
+            if (moodMatch) updateMisakaMood(moodMatch[1].trim().toLowerCase());
         }
 
         // Display current state cleaned: removed msg_break replacement here, sendMisakaMessage handles it
@@ -824,6 +836,44 @@ async function addAssistantMessageTyped(fullText, attachments = null) {
 
         if (attachments) appendAttachmentsToMessage(bubble.parentElement, attachments);
     }
+}
+
+function _misakaPrettifyExpression(expr) {
+    // Resolve aliases first (same map as updateMisakaExpression)
+    const aliases = {
+        'smile': 'happy_closedeyes_widesmile',
+        'smiling': 'happy_closedeyes_widesmile',
+        'happy': 'happy_closedeyes_widesmile',
+        'grin': 'happy_closedeyes_smilewithteeth',
+        'blush': 'blushing',
+        'cry': 'crying',
+        'sad': 'crying',
+        'sleep': 'sleeping',
+        'surprise': 'surprised',
+        'shock': 'surprised',
+        'think': 'thinking',
+        'hm': 'thinking',
+        'pouting': 'pout',
+        'mad': 'angry'
+    };
+    const resolved = aliases[expr.toLowerCase()] || expr.toLowerCase();
+    const labels = {
+        'default':                          'Neural core engaged.',
+        'thinking':                         'Deep in thought...',
+        'happy_closedeyes_widesmile':       'Feeling cheerful.',
+        'happy_closedeyes_smilewithteeth':  'In a great mood!',
+        'blushing':                         'Feeling a little flustered.',
+        'wink':                             'Being playful.',
+        'surprised':                        'Caught off guard!',
+        'pout':                             'A bit sulky.',
+        'angry':                            'Feeling frustrated.',
+        'crying':                           'Feeling sad.',
+        'bored':                            'A little bored.',
+        'exhausted':                        'Running low on energy.',
+        'sleeping':                         'Resting...',
+        'error':                            'Something went wrong.'
+    };
+    return labels[resolved] || `Feeling ${resolved.replace(/_/g, ' ')}.`;
 }
 
 function updateMisakaExpression(expression) {

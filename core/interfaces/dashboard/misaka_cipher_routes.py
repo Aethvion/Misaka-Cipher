@@ -1074,10 +1074,10 @@ CRITICAL: Never output raw JSON or technical jargon unless specifically requeste
                 # Strip <memory_update> XML blocks (expected format)
                 t = re.sub(r'<memory_update>.*?</memory_update>', '', t, flags=re.IGNORECASE | re.DOTALL)
                 t = re.sub(r'<memory_update>.*$', '', t, flags=re.IGNORECASE)
-                # Strip [Emotion:] and [Mood:] tags — should never reach the user
-                # Use [^\]]+ so multi-word emotions like "warm smile" are matched
-                t = re.sub(r'\[Emotion:[^\]]*\]?', '', t, flags=re.IGNORECASE)
-                t = re.sub(r'\[Mood:[^\]]*\]?', '', t, flags=re.IGNORECASE)
+                # NOTE: [Emotion:] and [Mood:] tags are NOT stripped here.
+                # They must reach the client so appendToStreamingBubble() can
+                # detect them and call updateMisakaExpression(). The client's
+                # cleanStreamingDisplay() handles removing them from visible text.
                 # Strip bare JSON memory blobs the model outputs without the XML wrapper
                 # e.g. { "recent_observations": [...] } or { "user_info": {...}, ... }
                 _mem_keys = r'"(?:user_info|recent_observations|base_info|synthesis_notes)"'
