@@ -1218,7 +1218,7 @@ function _agHandleFetch(event) {
     item.className = 'agent-act-item';
     const row = document.createElement('div');
     row.className = 'agent-act-row agent-act--fetch';
-    const shortUrl = url.replace(/^https?:\/\//, '').slice(0, 60);
+    const shortUrl = url.replace(/^https?:\/\//, '');
     row.innerHTML = `<span class="agent-act-icon">🌐</span><span class="agent-act-name agent-act-name--mono">${_htmlEscape(shortUrl)}</span>`;
     if (result) {
         const chevron = document.createElement('span');

@@ -1254,7 +1254,7 @@
 
 .agent-act-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start; /* icon stays at top when name wraps */
     gap: 0.45rem;
     padding: 0.22rem 0.6rem;
     border-radius: 5px;
@@ -1273,16 +1273,16 @@
     width: 1.1rem;
     text-align: center;
     opacity: 0.75;
+    padding-top: 0.15rem; /* nudge icon to align with first text line */
 }
 
 .agent-act-name {
     font-weight: 500;
     color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 180px;
-    flex-shrink: 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    min-width: 0;   /* allows flex child to shrink below content size */
+    flex: 1;        /* take remaining row width */
 }
 
 .agent-act-path {
@@ -1314,16 +1314,13 @@
     text-align: center;
     transition: transform 0.15s;
     cursor: pointer;
+    padding-top: 0.15rem; /* align with first text line when name wraps */
 }
 
-/* Expandable content */
+/* Expandable content — toggled by JS via display:none / display:block */
 .agent-act-expand {
     overflow: hidden;
-    max-height: 0;
-    transition: max-height 0.2s ease;
 }
-
-.agent-act-expand.open { max-height: 400px; }
 
 .agent-act-result,
 .agent-act-content {
