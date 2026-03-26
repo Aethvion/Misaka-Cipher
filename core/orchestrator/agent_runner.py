@@ -258,11 +258,12 @@ class AgentRunner:
         # Images attached to this task — consumed on first LLM call only
         self._images: Optional[List[Dict]] = images or None
         self._images_sent: bool = False
-        # Hard search limits enforced in code — the model cannot exceed these
+        # Hard fetch limits enforced in code — the model cannot exceed these
         # regardless of what the prompt rules say, because conversation history
-        # is bounded to 4 entries and the model forgets previous searches.
+        # is bounded to 4 entries and the model forgets previous fetches/searches.
         self._search_count: int = 0
-        self._search_cache: Dict[str, str] = {}  # query → result (dedup same query)
+        self._search_cache: Dict[str, str] = {}   # query → result (dedup same query)
+        self._fetch_cache: Dict[str, str] = {}    # url   → result (dedup same URL)
 
     # ── emit ──────────────────────────────────────────────────────
 
@@ -468,7 +469,17 @@ class AgentRunner:
 
         if t == "fetch_url":
             url = action.get("url", "")
+            # Dedup: never fetch the same URL twice — return cached result instantly.
+            # This breaks the most common runaway loop: the model forgets it already
+            # fetched a URL (conversation window is only 4 entries) and retries it.
+            if url in self._fetch_cache:
+                cached = self._fetch_cache[url]
+                return (
+                    f"[DUPLICATE FETCH — you already fetched this URL. "
+                    f"Use the data from the cached result below and write your files now.]\n{cached}"
+                )
             result = self._fetch_url(url)
+            self._fetch_cache[url] = result
             self.state.log_action(iteration, "fetch_url", url[:40])
             return result
 
