@@ -246,7 +246,7 @@ class AgentRunner:
         self.trace_id = trace_id
         self.conversation: List[str] = []
         self.state = AgentState(state_path)
-        # Reset only task-specific planning state between tasks.
+        # Reset only per-task planning state between tasks.
         # file_cache and workspace_map are intentionally KEPT so the agent knows
         # what files it already created in this thread — follow-up tasks can skip
         # list_dir and re-reading files it already has in context.
