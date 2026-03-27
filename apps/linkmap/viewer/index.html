@@ -4,17 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aethvion LinkMap — 3D Context Visualization</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Inter:wght@400;500&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/3d-force-graph"></script>
     <style>
         :root {
             --bg-color: #030712;
-            --panel-bg: rgba(17, 24, 39, 0.7);
+            --panel-bg: rgba(10, 15, 25, 0.85);
             --accent-color: #00d2ff;
             --accent-glow: rgba(0, 210, 255, 0.3);
             --text-primary: #f9fafb;
             --text-secondary: #9ca3af;
             --border-color: rgba(255, 255, 255, 0.1);
+            --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
         }
 
         body {
@@ -24,31 +25,43 @@
             color: var(--text-primary);
             font-family: 'Inter', sans-serif;
             overflow: hidden;
-        }
-
-        #graph-container {
             width: 100vw;
             height: 100vh;
         }
 
-        /* UI Overlay */
-        .overlay {
+        #graph-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Overlays */
+        .overlay-layer {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 100;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            box-sizing: border-box;
         }
 
         .card {
             background: var(--panel-bg);
-            backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
+            padding: 20px;
             pointer-events: auto;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            box-shadow: var(--card-shadow);
+        }
+
+        /* Top Left Panel */
+        #main-controls {
+            width: fit-content;
+            max-width: 340px;
         }
 
         h1 {
@@ -62,87 +75,161 @@
         .subtitle {
             font-size: 0.875rem;
             color: var(--text-secondary);
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
 
         .controls {
             display: flex;
+            flex-wrap: wrap;
             gap: 8px;
-            margin-top: 12px;
         }
 
         button {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid var(--border-color);
             color: var(--text-primary);
-            padding: 6px 12px;
-            border-radius: 6px;
+            padding: 8px 12px;
+            border-radius: 8px;
             font-size: 0.75rem;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
             gap: 6px;
+            font-weight: 500;
         }
 
         button:hover {
             background: rgba(255, 255, 255, 0.1);
             border-color: var(--accent-color);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--accent-glow);
         }
 
-        button .icon {
-            font-size: 1rem;
+        button:active {
+            transform: translateY(0);
         }
 
+        /* Bottom Details Panel */
         #info-panel {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            width: 300px;
-            transition: transform 0.3s ease;
+            bottom: 24px;
+            left: 24px;
+            width: 340px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 1;
+            transform: translateY(0);
         }
 
-        .hidden {
-            transform: translateX(340px);
+        #info-panel.hidden {
+            opacity: 0;
+            transform: translateY(40px);
+            pointer-events: none;
         }
 
         .node-info {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
+        }
+
+        .info-group {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .info-group:last-child {
+            border-bottom: none;
         }
 
         .label {
             font-size: 0.625rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.1em;
             color: var(--text-secondary);
+            margin-bottom: 4px;
         }
 
         .value {
             font-size: 0.875rem;
             font-family: 'Outfit', sans-serif;
+            word-break: break-all;
+        }
+
+        /* Right Side Code Viewer */
+        #code-viewer {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            bottom: 24px;
+            width: 500px;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateX(540px);
+        }
+
+        #code-viewer.visible {
+            transform: translateX(0);
+        }
+
+        .viewer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .viewer-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            color: var(--accent-color);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #code-content {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.8125rem;
+            line-height: 1.5;
+            overflow: auto;
+            color: #d1d5db;
+            white-space: pre;
+            border: 1px solid var(--border-color);
         }
 
         /* Legend */
         .legend {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
+            bottom: 24px;
+            right: 24px;
             font-size: 0.75rem;
             color: var(--text-secondary);
             background: var(--panel-bg);
-            padding: 8px 12px;
-            border-radius: 8px;
+            padding: 10px 16px;
+            border-radius: 100px;
             border: 1px solid var(--border-color);
             display: flex;
-            gap: 16px;
+            gap: 20px;
+            pointer-events: auto;
+            transition: opacity 0.3s;
+        }
+
+        .legend.pushed {
+            opacity: 0;
+            pointer-events: none;
         }
 
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
         }
 
         .dot {
@@ -151,10 +238,10 @@
             border-radius: 50%;
         }
 
-        .dot.file { background-color: #00d2ff; }
-        .dot.function { background-color: #f472b6; }
+        .dot.file { background-color: #00d2ff; box-shadow: 0 0 8px var(--accent-glow); }
+        .dot.function { background-color: #f472b6; box-shadow: 0 0 8px rgba(244, 114, 182, 0.3); }
 
-        /* Loading Indicator */
+        /* Loading */
         #loading-overlay {
             position: fixed;
             top: 0;
@@ -172,24 +259,25 @@
 
         .dots {
             display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
+            gap: 12px;
+            margin-bottom: 24px;
         }
 
         .dot-pulse {
-            width: 12px;
-            height: 12px;
+            width: 14px;
+            height: 14px;
             background: var(--accent-color);
             border-radius: 50%;
-            animation: pulse 1s infinite alternate;
+            animation: pulse 1s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 12px var(--accent-glow);
         }
 
         .dot-pulse:nth-child(2) { animation-delay: 0.2s; }
         .dot-pulse:nth-child(3) { animation-delay: 0.4s; }
 
         @keyframes pulse {
-            from { opacity: 0.3; transform: scale(0.8); }
-            to { opacity: 1; transform: scale(1.1); }
+            from { opacity: 0.2; transform: scale(0.7); }
+            to { opacity: 1; transform: scale(1.2); }
         }
     </style>
 </head>
@@ -201,17 +289,20 @@
             <div class="dot-pulse"></div>
             <div class="dot-pulse"></div>
         </div>
-        <div class="subtitle">Generating Context Map...</div>
+        <div class="subtitle" style="font-family: 'Outfit'; letter-spacing: 0.1em; text-transform: uppercase;">Synthesizing Context Map</div>
     </div>
 
     <div id="graph-container"></div>
 
-    <div class="overlay">
-        <div class="card">
+    <div class="overlay-layer">
+        <div id="main-controls" class="card">
             <h1>Aethvion LinkMap</h1>
             <div class="subtitle">3D Project Architecture Explorer</div>
             
             <div class="controls">
+                <button onclick="browseFolder()">
+                    <span class="icon">📂</span> Browse
+                </button>
                 <button onclick="refreshMap()">
                     <span class="icon">🔄</span> Refresh
                 </button>
@@ -219,7 +310,7 @@
                     <span class="icon">🔍</span> Toggle Funcs
                 </button>
                 <button onclick="resetCamera()">
-                    <span class="icon">🎥</span> Reset CAM
+                    <span class="icon">🎥</span> Reset
                 </button>
             </div>
         </div>
@@ -227,22 +318,39 @@
 
     <div id="info-panel" class="card hidden">
         <div class="node-info">
-            <div>
-                <div class="label">Name</div>
+            <div class="info-group">
+                <div class="label">Identifier</div>
                 <div id="info-name" class="value">-</div>
             </div>
-            <div>
-                <div class="label">Path</div>
-                <div id="info-path" class="value">-</div>
+            <div class="info-group">
+                <div class="label">Relative Path</div>
+                <div id="info-path" class="value" style="font-family: 'Fira Code'; font-size: 0.75rem; color: var(--text-secondary);">-</div>
             </div>
-            <div>
-                <div class="label">Connections</div>
-                <div id="info-links" class="value">0</div>
+            <div class="info-group" style="display: flex; justify-content: space-between;">
+                <div>
+                    <div class="label">Type</div>
+                    <div id="info-type" class="value" style="text-transform: capitalize;">-</div>
+                </div>
+                <div>
+                    <div class="label">Links</div>
+                    <div id="info-links" class="value">0</div>
+                </div>
             </div>
+            <button id="view-code-btn" style="width: 100%; justify-content: center; margin-top: 4px;">
+                View Source Code
+            </button>
         </div>
     </div>
 
-    <div class="legend">
+    <div id="code-viewer" class="card">
+        <div class="viewer-header">
+            <div class="viewer-title" id="viewer-filename">filename.py</div>
+            <button onclick="closeCodeViewer()" style="padding: 4px 8px;">✕</button>
+        </div>
+        <div id="code-content">Loading...</div>
+    </div>
+
+    <div id="legendbox" class="legend">
         <div class="legend-item">
             <div class="dot file"></div>
             <span>File</span>
@@ -257,6 +365,8 @@
         let graph;
         let showFunctions = true;
         let allData = { nodes: [], links: [] };
+        let selectedNode = null;
+        let scanPath = null;
 
         async function init() {
             const container = document.getElementById('graph-container');
@@ -265,29 +375,36 @@
                 .backgroundColor('#030712')
                 .showNavInfo(false)
                 .nodeId('id')
-                .nodeLabel(node => `<div style="background: rgba(0,0,0,0.8); padding: 4px 8px; border-radius: 4px; border: 1px solid #00d2ff; color: #fff;">${node.name}</div>`)
+                .nodeLabel(node => `<div style="background: rgba(10,15,25,0.95); padding: 8px 12px; border-radius: 8px; border: 1px solid #00d2ff; color: #fff; font-family: 'Outfit'; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+                    <div style="font-size: 10px; color: #9ca3af; text-transform: uppercase;">${node.type}</div>
+                    <div style="font-size: 14px; font-weight: 600;">${node.name}</div>
+                </div>`)
                 .nodeColor(node => node.type === 'file' ? '#00d2ff' : '#f472b6')
                 .nodeOpacity(0.9)
-                .nodeRelSize(4)
-                .linkWidth(1)
-                .linkColor(() => 'rgba(255,255,255,0.2)')
+                .nodeRelSize(5)
+                .linkWidth(node => node.type === 'contains' ? 0.5 : 1.5)
+                .linkColor(link => link.type === 'contains' ? 'rgba(255,255,255,0.1)' : 'rgba(0, 210, 255, 0.4)')
                 .linkDirectionalArrowLength(3)
                 .linkDirectionalArrowRelPos(1)
                 .onNodeClick(node => {
-                    showNodeInfo(node);
-                    // Aim at node from outside it
-                    const distance = 80;
-                    const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
-                    graph.cameraPosition(
-                        { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, // new pos
-                        node, // lookAt pos
-                        3000  // ms transition duration
-                    );
+                    handleNodeSelection(node);
+                    focusNode(node);
                 });
 
             await loadData();
-            document.getElementById('loading-overlay').style.opacity = '0';
-            setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 500);
+            hideLoading();
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.style.opacity = '0';
+            setTimeout(() => overlay.style.display = 'none', 500);
+        }
+
+        function showLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
         }
 
         async function loadData() {
@@ -316,19 +433,33 @@
             graph.graphData({ nodes, links });
         }
 
-        async function refreshMap() {
-            document.getElementById('loading-overlay').style.display = 'flex';
-            document.getElementById('loading-overlay').style.opacity = '1';
-            
+        async function browseFolder() {
             try {
-                const response = await fetch('/api/scan', { method: 'POST' });
+                const res = await fetch('/api/fs/browse', { method: 'POST' });
+                const data = await res.json();
+                if (data.path) {
+                    scanPath = data.path;
+                    refreshMap();
+                }
+            } catch (err) {
+                console.error('Browse failed:', err);
+            }
+        }
+
+        async function refreshMap() {
+            showLoading();
+            try {
+                const response = await fetch('/api/scan', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: scanPath })
+                });
                 allData = await response.json();
                 updateGraph();
             } catch (err) {
                 console.error('Refresh failed:', err);
             } finally {
-                document.getElementById('loading-overlay').style.opacity = '0';
-                setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 500);
+                hideLoading();
             }
         }
 
@@ -341,17 +472,64 @@
             graph.zoomToFit(1000);
         }
 
-        function showNodeInfo(node) {
+        function handleNodeSelection(node) {
+            selectedNode = node;
             const panel = document.getElementById('info-panel');
             panel.classList.remove('hidden');
+            
             document.getElementById('info-name').innerText = node.name;
             document.getElementById('info-path').innerText = node.path;
+            document.getElementById('info-type').innerText = node.type;
             
             const connections = allData.links.filter(l => 
                 (l.source.id || l.source) === node.id || 
                 (l.target.id || l.target) === node.id
             ).length;
             document.getElementById('info-links').innerText = connections;
+
+            // Update View Code button
+            const btn = document.getElementById('view-code-btn');
+            if (node.type === 'file') {
+                btn.style.display = 'flex';
+                btn.onclick = () => openCodeViewer(node.path, node.name);
+            } else {
+                btn.style.display = 'none';
+            }
+        }
+
+        function focusNode(node) {
+            const distance = 100;
+            const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+            graph.cameraPosition(
+                { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
+                node,
+                1500
+            );
+        }
+
+        async function openCodeViewer(path, filename) {
+            const viewer = document.getElementById('code-viewer');
+            const legend = document.getElementById('legendbox');
+            const content = document.getElementById('code-content');
+            const title = document.getElementById('viewer-filename');
+            
+            viewer.classList.add('visible');
+            legend.classList.add('pushed');
+            title.innerText = filename;
+            content.innerText = 'Analyzing source...';
+
+            try {
+                const res = await fetch(`/api/file/read?path=${encodeURIComponent(path)}`);
+                const data = await res.json();
+                content.innerText = data.content;
+            } catch (err) {
+                content.innerText = 'Failed to load source code.';
+            }
+        }
+
+        function closeCodeViewer() {
+            document.getElementById('code-viewer').classList.remove('visible');
+            document.getElementById('legendbox').classList.remove('pushed');
         }
 
         // Initialize on load

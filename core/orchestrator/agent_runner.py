@@ -1055,8 +1055,8 @@ class AgentRunner:
                 hist_result = (
                     result if len(result) <= MAX_HIST
                     else result[:MAX_HIST]
-                    + f"\n…[{len(result):,} chars total — see Knowledge block for structure, "
-                    f"or use read_file with offset={offset + (limit or 200)} for more]"
+                    + f"\n…[{len(result):,} chars total — see Knowledge block for full structure, "
+                    f"or re-read with a specific offset for more content]"
                 )
                 results.append(f"{action_type}({short}): {hist_result}")
                 compact_actions.append(f"{action_type}({short})")

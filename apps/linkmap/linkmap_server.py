@@ -15,6 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uvicorn
+import tkinter as tk
+from tkinter import filedialog
 
 # ---------------------------------------------------------------------------
 # Bootstrap workspace root & imports
@@ -210,6 +212,39 @@ if VIEWER_DIR.exists():
 async def health():
     return {"status": "ok"}
 
+@app.post("/api/fs/browse")
+async def browse_folder():
+    """Open a native folder picker."""
+    try:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        folder = filedialog.askdirectory(parent=root, title="Select Project Folder")
+        root.destroy()
+        if folder:
+            return {"path": folder.replace("\\", "/")}
+        return {"path": None}
+    except Exception as e:
+        logger.error(f"Browse failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/file/read")
+async def read_file(path: str):
+    """Read file content."""
+    # Ensure path is absolute or relative to WORKSPACE_ROOT
+    target = Path(path)
+    if not target.is_absolute():
+        target = WORKSPACE_ROOT / target
+        
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+        
+    try:
+        content = target.read_text(encoding="utf-8", errors="ignore")
+        return {"content": content, "path": str(target)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/scan")
 async def scan_project(req: ScanRequest = ScanRequest()):
     global current_map
@@ -218,6 +253,8 @@ async def scan_project(req: ScanRequest = ScanRequest()):
         raise HTTPException(status_code=404, detail="Path not found")
         
     logger.info(f"Scanning project at {target_path}...")
+    # Update analyzer root if a new path is provided
+    analyzer.root = target_path
     current_map = analyzer.scan(target_path)
     
     # Save to disk
