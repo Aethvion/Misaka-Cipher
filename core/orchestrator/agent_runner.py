@@ -22,6 +22,7 @@ Current date: {current_date}
 HOW TO TAKE ACTIONS (write ACTION: followed by JSON, multiple per response allowed):
 
 ACTION: {{"type": "patch_file", "path": "relative/file.txt", "old": "exact text to replace", "new": "replacement text"}}
+ACTION: {{"type": "append_file", "path": "relative/file.txt", "content": "content to add at end of file"}}
 ACTION: {{"type": "write_file", "path": "relative/path.txt", "content": "FULL file content here"}}
 ACTION: {{"type": "delete_file", "path": "relative/file.txt"}}
 ACTION: {{"type": "read_file", "path": "relative/file.txt"}}
@@ -43,23 +44,25 @@ SURGICAL EDIT RULES (most important):
 3. MINIMAL CHANGES: Only change what the user asked for. Do not reformat, restructure, restyle, or "clean up" anything that wasn't part of the request. If the user says "add a button", add the button — nothing else changes.
 4. PRESERVE EVERYTHING: When adding to existing code, preserve the existing indentation, style, variable names, class names, comments, and structure. Never rename, reorder, or reorganise untouched sections.
 5. write_file is for NEW files or for cases where the user explicitly asks for a full rewrite. Never use write_file on an existing file just to make a small change.
+6. ADDING NEW FUNCTIONS/SECTIONS: Use append_file to add new functions, classes, or CSS rules to the end of an existing file. This requires no "old" string matching and cannot fail due to content mismatch. Prefer this over write_file for "add X to the file" tasks.
 
 EFFICIENCY RULES:
-6. Write REAL, COMPLETE file content — never stubs or placeholders. (For new files via write_file.)
-7. Before every response that takes actions, write 1–2 sentences describing what you're about to do and why. This reasoning appears before any ACTION: lines.
-8. SIMPLE QUESTIONS: If the user asks a conversational follow-up — read the relevant file(s), then immediately call done with the answer. Never paginate or loop.
-9. WORKSPACE CONTEXT: If "Files:" are already listed in the Context block above, you already know what exists — skip list_dir and proceed directly.
-10. If images are attached to the task, use observe as your FIRST action to describe exactly what you see in each image before doing anything else.
-11. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones.
-12. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result.
-13. BATCH EVERYTHING: Issue all independent ACTION lines in a single response. Multiple patch_file calls for different files are fine in one response.
-14. FILE READING: read_file returns up to 50,000 chars per call — enough for most files in one shot. If a result ends with [TRUNCATED], use the exact offset shown to continue. NEVER re-read the same path+offset — the system blocks it and forces you forward. NEVER use shell commands (PowerShell, sed, grep, etc.) to paginate files; use offset instead.
-15. Be strategic: do not repeat the same action. If an action returns DUPLICATE or BLOCKED, move on immediately.
-16. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without data, switch to fetch_url or proceed with what you have.
-17. For fetching a specific URL or API use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
-18. Write ALL deliverable files BEFORE writing or running verification/test scripts.
-19. Before calling done, check your plan — every [ ] step must have a corresponding action result. Complete any unmarked steps first.
-20. NAMING: Never name user projects, games, apps, or deliverables after the workspace directory path. Use the name the user specified, or a descriptive/generic name if none was given.
+7. Write REAL, COMPLETE file content — never stubs or placeholders. (For new files via write_file.)
+8. Before every response that takes actions, write 1–2 sentences describing what you're about to do and why. This reasoning appears before any ACTION: lines.
+9. SIMPLE QUESTIONS: If the user asks a conversational follow-up — read the relevant file(s), then immediately call done with the answer. Never paginate or loop.
+10. WORKSPACE CONTEXT: If "Files:" are already listed in the Context block above, you already know what exists — skip list_dir and proceed directly.
+11. If images are attached to the task, use observe as your FIRST action to describe exactly what you see in each image before doing anything else.
+12. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones.
+13. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result.
+14. BATCH EVERYTHING: Issue all independent ACTION lines in a single response. Multiple patch_file/append_file calls for different files are fine in one response.
+15. FILE READING: read_file returns up to 50,000 chars per call — enough for most files in one shot. If a result ends with [TRUNCATED], use the exact offset shown to continue. NEVER re-read the same path+offset — the system blocks it and forces you forward. NEVER use shell commands (PowerShell, sed, grep, etc.) to paginate files; use offset instead.
+16. SPIN PREVENTION: If a patch_file is blocked with [SPIN BLOCKED], you have tried the same patch 3+ times. Stop and try a different approach: re-read the file to get the exact current content, switch to append_file for new functions, or use write_file to replace the whole file.
+17. Be strategic: do not repeat the same action. If an action returns DUPLICATE, BLOCKED, or SPIN BLOCKED, move on immediately.
+18. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without data, switch to fetch_url or proceed with what you have.
+19. For fetching a specific URL or API use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
+20. Write ALL deliverable files BEFORE writing or running verification/test scripts.
+21. Before calling done, check your plan — every [ ] step must have a corresponding action result. Complete any unmarked steps first.
+22. NAMING: Never name user projects, games, apps, or deliverables after the workspace directory path. Use the name the user specified, or a descriptive/generic name if none was given.
 """
 
 
@@ -198,10 +201,11 @@ class AgentState:
         """Return a compact context string injected into every prompt."""
         parts: List[str] = []
 
-        # Prior task history (most recent last so it's closest to the current task)
+        # Prior task history (most recent last so it's closest to the current task).
+        # Capped at 3 to keep prompt overhead low in long sessions.
         if self.prior_tasks:
             history_lines = ["Thread history (previous tasks in this thread):"]
-            for pt in self.prior_tasks[-5:]:
+            for pt in self.prior_tasks[-3:]:
                 history_lines.append(f"  • Task: {pt['task']}")
                 history_lines.append(f"    Result: {pt['summary']}")
             parts.append("\n".join(history_lines))
@@ -279,6 +283,9 @@ class AgentRunner:
         self._search_cache: Dict[str, str] = {}   # query → result (dedup same query)
         self._fetch_cache: Dict[str, str] = {}    # url   → result (dedup same URL)
         self._read_cache: Dict[str, int] = {}     # "path:offset" → read count (dedup loops)
+        # Repetition guard: track consecutive failed/no-progress actions per path.
+        # Key = "type:path", value = consecutive count.  Reset on success.
+        self._action_repeats: Dict[str, int] = {}
 
     # ── cache helpers ─────────────────────────────────────────────
 
@@ -430,11 +437,31 @@ class AgentRunner:
             path = action.get("path", "")
             old  = action.get("old", "")
             new  = action.get("new", "")
+            repeat_key = f"patch_file:{path}:{old[:60]}"
+            self._action_repeats[repeat_key] = self._action_repeats.get(repeat_key, 0) + 1
+            if self._action_repeats[repeat_key] > 3:
+                return (
+                    f"[SPIN BLOCKED — you have attempted the same patch_file on {path} "
+                    f"{self._action_repeats[repeat_key]} times without making progress. "
+                    f"Use read_file to get the current file content and ensure your 'old' "
+                    f"string exactly matches, or use append_file to add new content at the "
+                    f"end of the file, or use write_file to replace the whole file.]"
+                )
             result = self._patch_file(path, old, new)
             self.state.log_action(iteration, "patch_file", path)
             self._emit({"type": "write_file", "path": path, "detail": f"patch: {len(old)}→{len(new)} chars"})
-            # File was modified — clear its read-dedup entries so the agent can
-            # re-read the updated content on the next iteration if needed.
+            if not result.startswith("patch_file FAILED"):
+                # Successful patch — reset the repeat counter and clear read dedup
+                self._action_repeats.pop(repeat_key, None)
+                self._invalidate_read_cache(path)
+            return result
+
+        if t == "append_file":
+            path    = action.get("path", "")
+            content = action.get("content", "")
+            result  = self._append_file(path, content)
+            self.state.log_action(iteration, "append_file", path)
+            self._emit({"type": "write_file", "path": path, "detail": f"append: {len(content)} chars"})
             self._invalidate_read_cache(path)
             return result
 
@@ -587,6 +614,20 @@ class AgentRunner:
             fp.parent.mkdir(parents=True, exist_ok=True)
             fp.write_text(content, encoding="utf-8")
             return f"Written {len(content.encode()):,} bytes"
+        except Exception as e:
+            return f"Error: {e}"
+
+    def _append_file(self, path: str, content: str) -> str:
+        """Append `content` to the end of a file (creates it if it doesn't exist)."""
+        try:
+            fp = self.workspace / path
+            fp.parent.mkdir(parents=True, exist_ok=True)
+            with open(fp, "a", encoding="utf-8") as f:
+                # Ensure we start on a new line if the file already has content
+                if fp.stat().st_size > 0:
+                    f.write("\n")
+                f.write(content)
+            return f"Appended {len(content.encode()):,} bytes to {path}"
         except Exception as e:
             return f"Error: {e}"
 
@@ -849,7 +890,16 @@ class AgentRunner:
                 path = action.get("path", "")
                 cmd = action.get("command", "")
                 short = path or (cmd[:30] if cmd else "")
-                results.append(f"{action_type}({short}): {result}")
+                # Cap large results (e.g. big file reads) stored in conversation history.
+                # The full content was already processed by the LLM in this iteration.
+                # Storing 13k of file content in every subsequent prompt wastes tokens.
+                MAX_HIST = 5_000
+                hist_result = (
+                    result if len(result) <= MAX_HIST
+                    else result[:MAX_HIST]
+                    + f"\n…[{len(result):,} chars total — use read_file with offset if you need more]"
+                )
+                results.append(f"{action_type}({short}): {hist_result}")
                 compact_actions.append(f"{action_type}({short})")
 
             if done_triggered:
