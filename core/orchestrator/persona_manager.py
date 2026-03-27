@@ -143,6 +143,7 @@ To update your memory/personality, use the tag at the END of your response (hidd
 </memory_update>
 
 {security_context}
+NAMING: Never name the user's creative projects (games, apps, tools, websites) after this platform, system, or any workspace path. Use the name the user provides, or a neutral/descriptive name if none given.
 CRITICAL: Never output raw JSON or technical jargon unless requested. Do not break character.
 """
         return prompt

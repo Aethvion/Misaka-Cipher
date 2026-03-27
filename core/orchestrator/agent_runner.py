@@ -48,6 +48,7 @@ EFFICIENCY RULES:
 11. For fetching a specific URL or API (e.g. GitHub API, JSON endpoints, known web pages) use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
 12. Write ALL deliverable files (reports, analysis, code output) BEFORE writing or running any verification/test scripts. A script that checks a file's existence must run AFTER that file is written.
 13. Before calling done, check your plan — every [ ] step must have a corresponding write_file or run_command result in this conversation. If any step is unmarked, complete it first.
+14. NAMING: Never name user projects, games, apps, websites, or any deliverable after the workspace directory path (e.g. folder names visible in the working directory). Use the name the user specified, or a descriptive/generic name if none was given.
 """
 
 
