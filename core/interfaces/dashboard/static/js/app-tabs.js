@@ -41,6 +41,7 @@ const ATB = (() => {
         { id: 'finance',      label: 'Finance',        emoji: '💰', port: null, portKey: 'Aethvion Finance'      },
         { id: 'tracking',     label: 'Tracking',       emoji: '📡', port: null, portKey: 'Aethvion Tracking'     },
         { id: 'driveinfo',    label: 'Drive Info',     emoji: '💿', port: null, portKey: 'Aethvion Drive Info'   },
+        { id: 'linkmap',      label: 'LinkMap',        emoji: '🗺️', port: null, portKey: 'Aethvion LinkMap'      },
     ];
 
     const NEXUS_PANEL = 'panel-nexus';

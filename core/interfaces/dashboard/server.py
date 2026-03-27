@@ -576,6 +576,7 @@ async def run_module_script(request: dict):
         "finance":   "apps/finance/Start_Finance.bat",
         "code":      "apps/code/Start_Code.bat",
         "hardwareinfo": "apps/hardwareinfo/Start_HardwareInfo.bat",
+        "linkmap":      "apps/linkmap/Start_LinkMap.bat",
     }
     
     if module_name not in module_map:

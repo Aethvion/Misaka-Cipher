@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aethvion LinkMap — 3D Context Visualization</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/3d-force-graph"></script>
+    <style>
+        :root {
+            --bg-color: #030712;
+            --panel-bg: rgba(17, 24, 39, 0.7);
+            --accent-color: #00d2ff;
+            --accent-glow: rgba(0, 210, 255, 0.3);
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        #graph-container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* UI Overlay */
+        .overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            pointer-events: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            margin: 0 0 4px 0;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            color: var(--accent-color);
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--accent-color);
+        }
+
+        button .icon {
+            font-size: 1rem;
+        }
+
+        #info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            transition: transform 0.3s ease;
+        }
+
+        .hidden {
+            transform: translateX(340px);
+        }
+
+        .node-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .label {
+            font-size: 0.625rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        .value {
+            font-size: 0.875rem;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: var(--panel-bg);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            gap: 16px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .dot.file { background-color: #00d2ff; }
+        .dot.function { background-color: #f472b6; }
+
+        /* Loading Indicator */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.5s;
+        }
+
+        .dots {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .dot-pulse {
+            width: 12px;
+            height: 12px;
+            background: var(--accent-color);
+            border-radius: 50%;
+            animation: pulse 1s infinite alternate;
+        }
+
+        .dot-pulse:nth-child(2) { animation-delay: 0.2s; }
+        .dot-pulse:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes pulse {
+            from { opacity: 0.3; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-overlay">
+        <div class="dots">
+            <div class="dot-pulse"></div>
+            <div class="dot-pulse"></div>
+            <div class="dot-pulse"></div>
+        </div>
+        <div class="subtitle">Generating Context Map...</div>
+    </div>
+
+    <div id="graph-container"></div>
+
+    <div class="overlay">
+        <div class="card">
+            <h1>Aethvion LinkMap</h1>
+            <div class="subtitle">3D Project Architecture Explorer</div>
+            
+            <div class="controls">
+                <button onclick="refreshMap()">
+                    <span class="icon">🔄</span> Refresh
+                </button>
+                <button onclick="toggleFunctions()">
+                    <span class="icon">🔍</span> Toggle Funcs
+                </button>
+                <button onclick="resetCamera()">
+                    <span class="icon">🎥</span> Reset CAM
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="info-panel" class="card hidden">
+        <div class="node-info">
+            <div>
+                <div class="label">Name</div>
+                <div id="info-name" class="value">-</div>
+            </div>
+            <div>
+                <div class="label">Path</div>
+                <div id="info-path" class="value">-</div>
+            </div>
+            <div>
+                <div class="label">Connections</div>
+                <div id="info-links" class="value">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="dot file"></div>
+            <span>File</span>
+        </div>
+        <div class="legend-item">
+            <div class="dot function"></div>
+            <span>Function</span>
+        </div>
+    </div>
+
+    <script>
+        let graph;
+        let showFunctions = true;
+        let allData = { nodes: [], links: [] };
+
+        async function init() {
+            const container = document.getElementById('graph-container');
+            
+            graph = ForceGraph3D()(container)
+                .backgroundColor('#030712')
+                .showNavInfo(false)
+                .nodeId('id')
+                .nodeLabel(node => `<div style="background: rgba(0,0,0,0.8); padding: 4px 8px; border-radius: 4px; border: 1px solid #00d2ff; color: #fff;">${node.name}</div>`)
+                .nodeColor(node => node.type === 'file' ? '#00d2ff' : '#f472b6')
+                .nodeOpacity(0.9)
+                .nodeRelSize(4)
+                .linkWidth(1)
+                .linkColor(() => 'rgba(255,255,255,0.2)')
+                .linkDirectionalArrowLength(3)
+                .linkDirectionalArrowRelPos(1)
+                .onNodeClick(node => {
+                    showNodeInfo(node);
+                    // Aim at node from outside it
+                    const distance = 80;
+                    const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+                    graph.cameraPosition(
+                        { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, // new pos
+                        node, // lookAt pos
+                        3000  // ms transition duration
+                    );
+                });
+
+            await loadData();
+            document.getElementById('loading-overlay').style.opacity = '0';
+            setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 500);
+        }
+
+        async function loadData() {
+            try {
+                const response = await fetch('/api/map');
+                allData = await response.json();
+                updateGraph();
+            } catch (err) {
+                console.error('Failed to load map data:', err);
+            }
+        }
+
+        function updateGraph() {
+            let nodes = allData.nodes;
+            let links = allData.links;
+
+            if (!showFunctions) {
+                nodes = nodes.filter(n => n.type === 'file');
+                links = links.filter(l => {
+                    const src = nodes.find(n => n.id === (l.source.id || l.source));
+                    const tgt = nodes.find(n => n.id === (l.target.id || l.target));
+                    return src && tgt;
+                });
+            }
+
+            graph.graphData({ nodes, links });
+        }
+
+        async function refreshMap() {
+            document.getElementById('loading-overlay').style.display = 'flex';
+            document.getElementById('loading-overlay').style.opacity = '1';
+            
+            try {
+                const response = await fetch('/api/scan', { method: 'POST' });
+                allData = await response.json();
+                updateGraph();
+            } catch (err) {
+                console.error('Refresh failed:', err);
+            } finally {
+                document.getElementById('loading-overlay').style.opacity = '0';
+                setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 500);
+            }
+        }
+
+        function toggleFunctions() {
+            showFunctions = !showFunctions;
+            updateGraph();
+        }
+
+        function resetCamera() {
+            graph.zoomToFit(1000);
+        }
+
+        function showNodeInfo(node) {
+            const panel = document.getElementById('info-panel');
+            panel.classList.remove('hidden');
+            document.getElementById('info-name').innerText = node.name;
+            document.getElementById('info-path').innerText = node.path;
+            
+            const connections = allData.links.filter(l => 
+                (l.source.id || l.source) === node.id || 
+                (l.target.id || l.target) === node.id
+            ).length;
+            document.getElementById('info-links').innerText = connections;
+        }
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
