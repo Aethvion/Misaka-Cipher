@@ -23,7 +23,7 @@ call ".venv\Scripts\activate.bat"
 echo [CHECK] Looking for NVIDIA CUDA Toolkit...
 nvcc --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [WARNING] CUDA Toolkit compiler (nvcc) not found in PATH!
+    echo [WARNING] CUDA Toolkit compiler ^(nvcc^) not found in PATH!
     echo To compile GPU acceleration, you must install the NVIDIA CUDA Toolkit.
     echo Without it, the installation will fail with a massive wall of red text.
     echo.
