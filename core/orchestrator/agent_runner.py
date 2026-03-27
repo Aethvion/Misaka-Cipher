@@ -280,6 +280,15 @@ class AgentRunner:
         self._fetch_cache: Dict[str, str] = {}    # url   → result (dedup same URL)
         self._read_cache: Dict[str, int] = {}     # "path:offset" → read count (dedup loops)
 
+    # ── cache helpers ─────────────────────────────────────────────
+
+    def _invalidate_read_cache(self, path: str) -> None:
+        """Remove all read-dedup entries for `path` so the agent can re-read
+        it after a write/patch without being blocked by the duplicate guard."""
+        keys = [k for k in self._read_cache if k == path or k.startswith(path + ":")]
+        for k in keys:
+            del self._read_cache[k]
+
     # ── emit ──────────────────────────────────────────────────────
 
     def _emit(self, event: Dict[str, Any]) -> None:
@@ -302,8 +311,10 @@ class AgentRunner:
 
         parts.append(f"User: {self.task}")
 
-        # Last 4 conversation entries (2 round-trips) stored as role-prefixed blocks
-        recent = self.conversation[-4:] if len(self.conversation) > 4 else self.conversation
+        # Last 8 conversation entries (4 round-trips) stored as role-prefixed blocks.
+        # 8 entries keeps file content in context through multi-step edit sequences
+        # without ballooning token usage.
+        recent = self.conversation[-8:] if len(self.conversation) > 8 else self.conversation
         parts.extend(recent)
 
         return "\n\n".join(parts)
@@ -422,6 +433,9 @@ class AgentRunner:
             result = self._patch_file(path, old, new)
             self.state.log_action(iteration, "patch_file", path)
             self._emit({"type": "write_file", "path": path, "detail": f"patch: {len(old)}→{len(new)} chars"})
+            # File was modified — clear its read-dedup entries so the agent can
+            # re-read the updated content on the next iteration if needed.
+            self._invalidate_read_cache(path)
             return result
 
         if t == "write_file":
@@ -430,6 +444,8 @@ class AgentRunner:
             result = self._write_file(path, content)
             self.state.cache_file(path, len(content.encode()))
             self.state.log_action(iteration, "write_file", path)
+            # File was written — clear its read-dedup entries.
+            self._invalidate_read_cache(path)
             return result
 
         if t == "delete_file":
@@ -783,6 +799,22 @@ class AgentRunner:
             actions = self._parse_actions(response)
 
             if not actions:
+                # No ACTION: lines in the response.
+                # If the plan still has incomplete steps, this is likely a confused
+                # mid-task response (e.g. the model wrote JSON in thinking text instead
+                # of as an ACTION). Push back rather than auto-completing.
+                incomplete = [s["text"] for s in self.state.plan if not s.get("done")]
+                if incomplete:
+                    self.conversation.append(f"Assistant: {thinking or '(no actions)'}")
+                    self.conversation.append(
+                        "User: Your plan still has incomplete steps: "
+                        + "; ".join(incomplete)
+                        + ". Do NOT call done yet. Read the file if you need the current content, "
+                        "then execute the remaining patches as ACTION: lines."
+                    )
+                    if len(self.conversation) > 8:
+                        self.conversation = self.conversation[-8:]
+                    continue
                 self._emit({"type": "done", "title": "Complete", "detail": thinking or response})
                 self.state.save()
                 return thinking or response
@@ -836,9 +868,9 @@ class AgentRunner:
                     "User: Results:\n" + "\n".join(results) +
                     "\nKeep going until the task is fully complete."
                 )
-            # Keep conversation bounded to last 4 entries (2 round-trips)
-            if len(self.conversation) > 4:
-                self.conversation = self.conversation[-4:]
+            # Keep conversation bounded to last 8 entries (4 round-trips)
+            if len(self.conversation) > 8:
+                self.conversation = self.conversation[-8:]
 
         summary = f"Reached {MAX_ITERATIONS} action limit."
         self._emit({"type": "done", "title": "Stopped (limit)", "detail": summary})
