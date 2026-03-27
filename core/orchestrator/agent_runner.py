@@ -282,6 +282,11 @@ class AgentRunner:
         self.trace_id = trace_id
         self.conversation: List[str] = []
         self.state = AgentState(state_path)
+        # Subclasses override these to control per-prompt cost without touching run():
+        #   _conv_window  — recent conversation entries to keep in each prompt
+        #   _task_short   — compact reminder used for iterations 1+ (None = repeat full task)
+        self._conv_window: int = 8
+        self._task_short: Optional[str] = None
         # Reset only per-task planning state between tasks.
         # file_cache and workspace_map are intentionally KEPT so the agent knows
         # what files it already created in this thread — follow-up tasks can skip
@@ -418,25 +423,34 @@ class AgentRunner:
     def _build_prompt(self) -> str:
         """Mirror the exact format used by the working Code IDE (_messages_to_prompt):
         system + double-newline-separated 'User:' / 'Assistant:' blocks."""
-        system = SYSTEM_PROMPT.format(
-            workspace=str(self.workspace),
-            current_date=datetime.utcnow().strftime("%B %d, %Y"),
-        )
+        system = self._get_system_prompt()
         parts = [system]
 
         ctx = self.state.build_context()
         if ctx:
             parts.append(f"Context:\n{ctx}")
 
-        parts.append(f"User: {self.task}")
+        # For iterations 1+ use a compact task reminder when _task_short is set.
+        # The full context was in iteration 0 which is stored in conversation history.
+        # Repeating 5k+ chars of memory/board/log on every call wastes tokens.
+        if self._task_short and self.conversation:
+            parts.append(f"User: {self._task_short}")
+        else:
+            parts.append(f"User: {self.task}")
 
-        # Last 8 conversation entries (4 round-trips) stored as role-prefixed blocks.
-        # 8 entries keeps file content in context through multi-step edit sequences
-        # without ballooning token usage.
-        recent = self.conversation[-8:] if len(self.conversation) > 8 else self.conversation
+        # Configurable conversation window — subclasses (e.g. CorpWorkerRunner)
+        # can reduce this to cut token cost for focused single-file tasks.
+        recent = self.conversation[-self._conv_window:]
         parts.extend(recent)
 
         return "\n\n".join(parts)
+
+    def _get_system_prompt(self) -> str:
+        """Return the formatted system prompt. Subclasses override for a shorter version."""
+        return SYSTEM_PROMPT.format(
+            workspace=str(self.workspace),
+            current_date=datetime.utcnow().strftime("%B %d, %Y"),
+        )
 
     def _call_llm(self, iteration: int = 0) -> str:
         """Use streaming — same path as the working Code IDE — for reliability."""

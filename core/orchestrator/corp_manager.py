@@ -761,6 +761,8 @@ class CorpManager:
                             corp_id=corp_id,
                             worker_id=worker_id,
                             worker_name=worker_name,
+                            task_title="Planning next tasks",
+                            corp_name=cfg_fresh.get("name", ""),
                         )
 
                         try:
@@ -893,6 +895,8 @@ class CorpManager:
                     corp_id=corp_id,
                     worker_id=worker_id,
                     worker_name=worker_name,
+                    task_title=task.get("title", ""),
+                    corp_name=live_cfg.get("name", ""),
                 )
 
                 try:
@@ -961,9 +965,21 @@ class CorpManager:
     # ── prompt builder ────────────────────────────────────────────────────────
 
     def _build_worker_prompt(self, corp_id: str, worker: Dict, task: Dict) -> str:
-        cfg       = self.get_corp(corp_id)
-        memory    = self.read_worker_memory(corp_id, worker["id"])
-        recent_log = self.read_log(corp_id, last_n=20)
+        """Build the iteration-0 task prompt for a corp worker.
+
+        This is the FULL context prompt — sent only on the first LLM call of each
+        task.  Subsequent iterations use CorpWorkerRunner._task_short (~200 chars)
+        so we don't repeat 7 k chars of memory/board/log on every call.
+
+        Keep this lean:
+          • Shared log  — last 5 lines only (was 20)
+          • Task board  — up to 6 pending/in-progress tasks (was 12)
+          • Corp tools  — compact one-liner (full syntax is in CORP_SYSTEM_PROMPT)
+          • Memory      — capped at 300 words via update_memory guideline
+        """
+        cfg        = self.get_corp(corp_id)
+        memory     = self.read_worker_memory(corp_id, worker["id"])
+        recent_log = self.read_log(corp_id, last_n=5)      # 5 lines ← was 20
 
         tasks = self.get_tasks(corp_id)
         board_lines = []
@@ -971,50 +987,32 @@ class CorpManager:
             if t["status"] in ("pending", "in_progress"):
                 board_lines.append(
                     f"[{t['status'].upper()}] {t['task_id']}: {t['title']} "
-                    f"(assigned: {t['assigned_to']})"
+                    f"→ {t['assigned_to']}"
                 )
-        board_summary = "\n".join(board_lines[:12]) or "No pending tasks."
+        board_summary = "\n".join(board_lines[:6]) or "No pending tasks."  # 6 ← was 12
 
-        # Build names list for assigned_to hints
-        worker_names = ", ".join(
-            w["name"] for w in cfg.get("workers", [])
-        ) or "any"
+        worker_names = ", ".join(w["name"] for w in cfg.get("workers", [])) or "any"
 
         goal_section = ""
         if cfg.get("goal", "").strip():
-            goal_section = f"## Company Goal\n{cfg['goal'].strip()}\n\n"
+            goal_section = f"Goal: {cfg['goal'].strip()}\n"
 
         return (
-            f"You are {worker['name']}, a {worker['role']} at {cfg['name']}.\n\n"
-            f"## Company\n"
-            f"{cfg['name']}: {cfg.get('description', '')}\n\n"
-            f"{goal_section}"
-            f"## Your Personality\n"
-            f"{worker.get('personality', 'Professional and helpful.')}\n\n"
-            f"## Your Persistent Memory\n"
-            f"{memory or 'No memory yet — this is your first task.'}\n\n"
-            f"## Task Board (reference — do not re-assign yourself; focus on YOUR task)\n"
+            f"You are {worker['name']}, {worker['role']} at {cfg['name']}.\n"
+            f"{cfg['name']}: {cfg.get('description', '')}  {goal_section}\n"
+            f"Style: {worker.get('personality', 'Professional and helpful.')}\n\n"
+            f"## Your Memory\n"
+            f"{memory or 'No memory yet.'}\n\n"
+            f"## Task Board\n"
             f"{board_summary}\n\n"
             f"## Recent Team Messages\n"
             f"{recent_log or 'No messages yet.'}\n\n"
-            f"## Your Current Task\n"
+            f"## Your Task\n"
             f"{task['description']}\n\n"
-            f"## Corp-Specific Tools\n"
-            f"Use these ACTION types in addition to the standard write_file, search_web, etc.:\n"
-            f"  ACTION: {{\"type\": \"post_to_log\", \"message\": \"...\", \"to\": \"All\"}}\n"
-            f"  ACTION: {{\"type\": \"create_task\", \"title\": \"...\", \"description\": \"...\", "
-            f"\"assigned_to\": \"worker_name_or_any\", \"priority\": \"medium\"}}\n"
-            f"  ACTION: {{\"type\": \"update_memory\", \"content\": \"full replacement memory text\"}}\n"
-            f"  ACTION: {{\"type\": \"read_log\"}}\n"
-            f"  ACTION: {{\"type\": \"read_task_board\"}}\n\n"
-            f"Team members (for assigned_to): {worker_names}\n\n"
-            f"Guidelines:\n"
-            f"- Use post_to_log when you have findings relevant to teammates.\n"
-            f"- Use create_task when you identify work for another team member.\n"
-            f"- Use update_memory at the end of each task to capture key context "
-            f"(keep under 400 words — be concise).\n"
-            f"- Complete the task thoroughly, then call "
-            f'ACTION: {{"type": "done", "summary": "brief summary"}}.\n'
+            f"Corp tools: post_to_log(msg,to), create_task(title,desc,assigned_to,priority), "
+            f"update_memory(content), read_log, read_task_board, done(summary).\n"
+            f"Team members: {worker_names}\n"
+            f"On finish: update_memory (≤200 words), then done(summary).\n"
         )
 
     def _build_planning_prompt(self, corp_id: str, worker: Dict) -> str:
