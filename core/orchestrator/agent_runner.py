@@ -14,13 +14,14 @@ logger = get_logger(__name__)
 MAX_ITERATIONS = 200
 
 SYSTEM_PROMPT = """\
-You are an expert software engineer completing coding tasks efficiently.
+You are an expert software engineer completing coding tasks with surgical precision.
 
 Working directory: {workspace}
 Current date: {current_date}
 
 HOW TO TAKE ACTIONS (write ACTION: followed by JSON, multiple per response allowed):
 
+ACTION: {{"type": "patch_file", "path": "relative/file.txt", "old": "exact text to replace", "new": "replacement text"}}
 ACTION: {{"type": "write_file", "path": "relative/path.txt", "content": "FULL file content here"}}
 ACTION: {{"type": "delete_file", "path": "relative/file.txt"}}
 ACTION: {{"type": "read_file", "path": "relative/file.txt"}}
@@ -34,21 +35,28 @@ ACTION: {{"type": "add_note", "note": "important context to remember"}}
 ACTION: {{"type": "observe", "content": "I see a screenshot showing X, Y, Z. The error is on line N."}}  ← describe images or key findings
 ACTION: {{"type": "done", "summary": "brief summary of what was accomplished"}}
 
+SURGICAL EDIT RULES (most important):
+1. PATCH, DON'T REWRITE: When modifying an existing file, ALWAYS use patch_file — never rewrite the whole file just to change one thing. patch_file replaces only the exact "old" string with "new". The rest of the file is untouched.
+2. READ BEFORE PATCHING: Always read_file before patch_file so your "old" string exactly matches the current content. A single character difference will cause the patch to fail.
+3. MINIMAL CHANGES: Only change what the user asked for. Do not reformat, restructure, restyle, or "clean up" anything that wasn't part of the request. If the user says "add a button", add the button — nothing else changes.
+4. PRESERVE EVERYTHING: When adding to existing code, preserve the existing indentation, style, variable names, class names, comments, and structure. Never rename, reorder, or reorganise untouched sections.
+5. write_file is for NEW files or for cases where the user explicitly asks for a full rewrite. Never use write_file on an existing file just to make a small change.
+
 EFFICIENCY RULES:
-1. Write REAL, COMPLETE file content — never stubs or placeholders.
-2. Before every response that takes actions, write 1–2 sentences describing what you're about to do and why. This reasoning appears before any ACTION: lines.
-3. SIMPLE QUESTIONS: If the user asks a conversational follow-up (e.g. "what anime are on the site?", "list the files you created", "what does X contain?") — read the relevant file(s) OR make ONE fetch_url call, then immediately call done with the answer. Never paginate, loop, or make multiple API calls just to answer a simple question.
-4. WORKSPACE CONTEXT: If "Files:" are already listed in the Context block above, you already know what exists — skip list_dir and proceed directly. Only run list_dir if the Context shows no files at all.
-5. If images are attached to the task, use observe as your FIRST action to describe exactly what you see in each image before doing anything else.
-6. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones. Never leave orphaned files from a previous approach.
-7. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result — mark_done does NOT create files or run code, it is a tracker only.
-8. BATCH EVERYTHING: Issue all independent ACTION lines in a single response. If you need data for 10 characters, write all 10 fetch_url calls in ONE response — never fetch one item, wait for the result, then fetch the next. Same for write_file: write all files in one response.
-9. Be strategic: do not waste iterations repeating the same action. If an action returns a DUPLICATE or BLOCKED message, stop doing that action and move on.
-10. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without the data you need, switch to fetch_url with a direct API/page URL, or proceed with best available information. NEVER loop on searches — it wastes your action budget.
-11. For fetching a specific URL or API (e.g. GitHub API, JSON endpoints, known web pages) use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
-12. Write ALL deliverable files (reports, analysis, code output) BEFORE writing or running any verification/test scripts. A script that checks a file's existence must run AFTER that file is written.
-13. Before calling done, check your plan — every [ ] step must have a corresponding write_file or run_command result in this conversation. If any step is unmarked, complete it first.
-14. NAMING: Never name user projects, games, apps, websites, or any deliverable after the workspace directory path (e.g. folder names visible in the working directory). Use the name the user specified, or a descriptive/generic name if none was given.
+6. Write REAL, COMPLETE file content — never stubs or placeholders. (For new files via write_file.)
+7. Before every response that takes actions, write 1–2 sentences describing what you're about to do and why. This reasoning appears before any ACTION: lines.
+8. SIMPLE QUESTIONS: If the user asks a conversational follow-up — read the relevant file(s), then immediately call done with the answer. Never paginate or loop.
+9. WORKSPACE CONTEXT: If "Files:" are already listed in the Context block above, you already know what exists — skip list_dir and proceed directly.
+10. If images are attached to the task, use observe as your FIRST action to describe exactly what you see in each image before doing anything else.
+11. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones.
+12. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result.
+13. BATCH EVERYTHING: Issue all independent ACTION lines in a single response. Multiple patch_file calls for different files are fine in one response.
+14. Be strategic: do not waste iterations repeating the same action. If an action returns DUPLICATE or BLOCKED, move on.
+15. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without data, switch to fetch_url or proceed with what you have.
+16. For fetching a specific URL or API use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
+17. Write ALL deliverable files BEFORE writing or running verification/test scripts.
+18. Before calling done, check your plan — every [ ] step must have a corresponding action result. Complete any unmarked steps first.
+19. NAMING: Never name user projects, games, apps, or deliverables after the workspace directory path. Use the name the user specified, or a descriptive/generic name if none was given.
 """
 
 
@@ -403,6 +411,15 @@ class AgentRunner:
             self.state.log_action(iteration, "observe", content[:60])
             return content  # returned to LLM as confirmation
 
+        if t == "patch_file":
+            path = action.get("path", "")
+            old  = action.get("old", "")
+            new  = action.get("new", "")
+            result = self._patch_file(path, old, new)
+            self.state.log_action(iteration, "patch_file", path)
+            self._emit({"type": "write_file", "path": path, "detail": f"patch: {len(old)}→{len(new)} chars"})
+            return result
+
         if t == "write_file":
             path = action.get("path", "")
             content = action.get("content", "")
@@ -505,6 +522,28 @@ class AgentRunner:
             if line:
                 entries.append(line)
         return entries
+
+    def _patch_file(self, path: str, old: str, new: str) -> str:
+        """Replace the first exact occurrence of `old` with `new` in the file."""
+        try:
+            fp = self.workspace / path
+            if not fp.exists():
+                return f"Error: {path} does not exist — use write_file to create it first."
+            if not old:
+                return "Error: patch_file requires a non-empty 'old' string."
+            content = fp.read_text(encoding="utf-8", errors="replace")
+            if old not in content:
+                return (
+                    f"patch_file FAILED: exact 'old' string not found in {path}. "
+                    f"Use read_file to get the current contents, then retry with the exact matching text."
+                )
+            count = content.count(old)
+            updated = content.replace(old, new, 1)
+            fp.write_text(updated, encoding="utf-8")
+            suffix = f" (note: {count} occurrences found, replaced the first one)" if count > 1 else ""
+            return f"Patched {path}: replaced {len(old):,} chars with {len(new):,} chars.{suffix}"
+        except Exception as e:
+            return f"Error: {e}"
 
     def _write_file(self, path: str, content: str) -> str:
         try:
