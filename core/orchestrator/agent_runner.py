@@ -25,6 +25,8 @@ ACTION: {{"type": "patch_file", "path": "relative/file.txt", "old": "exact text 
 ACTION: {{"type": "write_file", "path": "relative/path.txt", "content": "FULL file content here"}}
 ACTION: {{"type": "delete_file", "path": "relative/file.txt"}}
 ACTION: {{"type": "read_file", "path": "relative/file.txt"}}
+ACTION: {{"type": "read_file", "path": "relative/file.txt", "offset": 300}}           ← start at line 300
+ACTION: {{"type": "read_file", "path": "relative/file.txt", "offset": 300, "limit": 200}}  ← lines 300–500
 ACTION: {{"type": "list_dir", "path": ""}}
 ACTION: {{"type": "run_command", "command": "npm install"}}
 ACTION: {{"type": "search_web", "query": "your search query", "max_results": 6}}
@@ -51,12 +53,13 @@ EFFICIENCY RULES:
 11. When switching tech stack or approach (e.g. React → plain HTML/CSS/JS), use delete_file to remove ALL old files that no longer belong BEFORE writing new ones.
 12. Start complex tasks with set_plan. Call mark_done only AFTER the real action for that step has executed and returned a result.
 13. BATCH EVERYTHING: Issue all independent ACTION lines in a single response. Multiple patch_file calls for different files are fine in one response.
-14. Be strategic: do not waste iterations repeating the same action. If an action returns DUPLICATE or BLOCKED, move on.
-15. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without data, switch to fetch_url or proceed with what you have.
-16. For fetching a specific URL or API use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
-17. Write ALL deliverable files BEFORE writing or running verification/test scripts.
-18. Before calling done, check your plan — every [ ] step must have a corresponding action result. Complete any unmarked steps first.
-19. NAMING: Never name user projects, games, apps, or deliverables after the workspace directory path. Use the name the user specified, or a descriptive/generic name if none was given.
+14. FILE READING: read_file returns up to 50,000 chars per call — enough for most files in one shot. If a result ends with [TRUNCATED], use the exact offset shown to continue. NEVER re-read the same path+offset — the system blocks it and forces you forward. NEVER use shell commands (PowerShell, sed, grep, etc.) to paginate files; use offset instead.
+15. Be strategic: do not repeat the same action. If an action returns DUPLICATE or BLOCKED, move on immediately.
+16. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without data, switch to fetch_url or proceed with what you have.
+17. For fetching a specific URL or API use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
+18. Write ALL deliverable files BEFORE writing or running verification/test scripts.
+19. Before calling done, check your plan — every [ ] step must have a corresponding action result. Complete any unmarked steps first.
+20. NAMING: Never name user projects, games, apps, or deliverables after the workspace directory path. Use the name the user specified, or a descriptive/generic name if none was given.
 """
 
 
@@ -275,6 +278,7 @@ class AgentRunner:
         self._search_count: int = 0
         self._search_cache: Dict[str, str] = {}   # query → result (dedup same query)
         self._fetch_cache: Dict[str, str] = {}    # url   → result (dedup same URL)
+        self._read_cache: Dict[str, int] = {}     # "path:offset" → read count (dedup loops)
 
     # ── emit ──────────────────────────────────────────────────────
 
@@ -440,12 +444,28 @@ class AgentRunner:
             return result
 
         if t == "read_file":
-            path = action.get("path", "")
-            result = self._read_file(path)
+            path   = action.get("path", "")
+            offset = int(action.get("offset", 0))   # line offset (0 = start)
+            limit  = action.get("limit")            # max lines to return (None = all)
+            limit  = int(limit) if limit is not None else None
+
+            # Dedup: block re-reading the same section to prevent infinite read loops.
+            cache_key = f"{path}:{offset}"
+            self._read_cache[cache_key] = self._read_cache.get(cache_key, 0) + 1
+            if self._read_cache[cache_key] > 1:
+                return (
+                    f"[DUPLICATE READ BLOCKED — you already read {path} at offset {offset}. "
+                    f"Re-reading the same section will NOT give different content. "
+                    f"If the file was truncated, use offset={offset + (limit or 300)} to read the next section. "
+                    f"If you already have all the content you need, stop reading and apply your fix now.]"
+                )
+
+            result = self._read_file(path, offset=offset, limit=limit)
             # Cache with actual byte size of result if successful
             if not result.startswith("Error:") and not result.startswith("Not found:"):
                 self.state.cache_file(path, len(result.encode()))
-            self.state.log_action(iteration, "read_file", path)
+            suffix = f"@{offset}" if offset else ""
+            self.state.log_action(iteration, "read_file", f"{path}{suffix}")
             return result
 
         if t == "list_dir":
@@ -568,15 +588,52 @@ class AgentRunner:
         except Exception as e:
             return f"Error: {e}"
 
-    def _read_file(self, path: str) -> str:
+    def _read_file(self, path: str, offset: int = 0, limit: Optional[int] = None) -> str:
+        """Read a file, optionally starting at line `offset` and capping at `limit` lines.
+
+        The per-chunk char cap is 50,000 — large enough to read most source files in
+        a single call.  If a chunk is still truncated, the response says exactly what
+        offset to use next so the agent can continue without shell-command workarounds.
+        """
+        MAX_CHARS = 50_000
         try:
             fp = self.workspace / path
             if not fp.exists():
                 return f"Not found: {path}"
             content = fp.read_text(encoding="utf-8", errors="replace")
-            if len(content) > 6000:
-                return content[:6000] + f"\n...(truncated, {len(content):,} total chars)"
-            return content
+            lines   = content.splitlines(keepends=True)
+            total   = len(lines)
+
+            # Apply line-based offset / limit
+            if offset:
+                lines = lines[offset:]
+            if limit is not None:
+                lines = lines[:limit]
+
+            chunk = "".join(lines)
+
+            if len(chunk) <= MAX_CHARS:
+                # Entire requested slice fits — include a summary footer so the agent
+                # knows whether it has the whole file or just a slice.
+                end_line = offset + len(lines)
+                if end_line < total:
+                    return (
+                        chunk
+                        + f"\n\n[File: {total} total lines. Showing lines {offset}–{end_line}. "
+                        f"To read more use: ACTION: {{\"type\": \"read_file\", \"path\": \"{path}\", \"offset\": {end_line}}}]"
+                    )
+                return chunk  # whole file (or final slice) — no footer needed
+
+            # Chunk itself is too large: trim to MAX_CHARS and tell agent the next offset
+            trimmed = chunk[:MAX_CHARS]
+            lines_returned = trimmed.count("\n")
+            next_offset = offset + lines_returned
+            return (
+                trimmed
+                + f"\n\n[TRUNCATED at {MAX_CHARS:,} chars. "
+                f"File has {total} lines. Next offset: {next_offset}. "
+                f"Continue with: ACTION: {{\"type\": \"read_file\", \"path\": \"{path}\", \"offset\": {next_offset}}}]"
+            )
         except Exception as e:
             return f"Error: {e}"
 
