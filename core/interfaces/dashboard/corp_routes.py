@@ -46,6 +46,7 @@ class UpdateWorkerRequest(BaseModel):
     personality: Optional[str] = None
     color: Optional[str] = None
     can_create_tasks: Optional[bool] = None
+    paused: Optional[bool] = None
 
 
 class CreateTaskRequest(BaseModel):
@@ -61,6 +62,10 @@ class UpdateTaskRequest(BaseModel):
     priority: Optional[str] = None
     title: Optional[str] = None
     description: Optional[str] = None
+
+
+class SteerRequest(BaseModel):
+    message: str
 
 
 # ── Corp CRUD ─────────────────────────────────────────────────────────────────
@@ -125,6 +130,18 @@ async def remove_worker(corp_id: str, worker_id: str):
     return {"ok": True}
 
 
+@router.post("/{corp_id}/workers/{worker_id}/pause")
+async def pause_worker(corp_id: str, worker_id: str):
+    get_corp_manager().pause_worker(corp_id, worker_id)
+    return {"ok": True}
+
+
+@router.post("/{corp_id}/workers/{worker_id}/resume")
+async def resume_worker(corp_id: str, worker_id: str):
+    get_corp_manager().resume_worker(corp_id, worker_id)
+    return {"ok": True}
+
+
 # ── Corp control ──────────────────────────────────────────────────────────────
 
 @router.post("/{corp_id}/start")
@@ -165,11 +182,31 @@ async def update_task(corp_id: str, task_id: str, req: UpdateTaskRequest):
     return {"ok": True}
 
 
+@router.post("/{corp_id}/tasks/{task_id}/reject")
+async def reject_task(corp_id: str, task_id: str):
+    mgr = get_corp_manager()
+    mgr.update_task(corp_id, task_id, status="rejected")
+    mgr.emit(corp_id, {
+        "type":    "task_update",
+        "task_id": task_id,
+        "status":  "rejected",
+    })
+    return {"ok": True}
+
+
 # ── Message log ───────────────────────────────────────────────────────────────
 
 @router.get("/{corp_id}/log")
 async def get_log(corp_id: str):
     return {"log": get_corp_manager().read_log(corp_id, last_n=100)}
+
+
+@router.post("/{corp_id}/message")
+async def send_message(corp_id: str, req: SteerRequest):
+    if not req.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    get_corp_manager().send_user_message(corp_id, req.message.strip())
+    return {"ok": True}
 
 
 # ── Stats ─────────────────────────────────────────────────────────────────────

@@ -34,6 +34,9 @@ logger = get_logger(__name__)
 
 FEED_MAX_LINES = 500   # cap the on-disk feed so it never grows unbounded
 
+# Task priority ordering — lower number = higher priority
+_PRIORITY_ORDER = {"urgent": 0, "high": 1, "medium": 2, "low": 3}
+
 
 # ── Cost estimation ──────────────────────────────────────────────────────────
 
@@ -140,6 +143,9 @@ class CorpManager:
         self._worker_tasks: Dict[str, List[asyncio.Task]] = {}
         # corp_id → list of asyncio.Queue (one per SSE subscriber)
         self._queues: Dict[str, List[asyncio.Queue]] = {}
+        self._stopping: set = set()        # corp_ids being soft-stopped
+        self._paused_workers: Dict[str, set] = {}   # corp_id → set of paused worker_ids
+        self._active_workers: Dict[str, set] = {}   # corp_id → set of running worker_ids
 
     # ── path helpers ──────────────────────────────────────────────────────────
 
@@ -288,6 +294,26 @@ class CorpManager:
                 break
         self._save_config(corp_id, cfg)
 
+    def pause_worker(self, corp_id: str, worker_id: str) -> None:
+        """Pause a worker — it finishes any in-progress task then idles."""
+        self.update_worker(corp_id, worker_id, paused=True)
+        self._paused_workers.setdefault(corp_id, set()).add(worker_id)
+        self.emit(corp_id, {
+            "type":      "worker_status",
+            "worker_id": worker_id,
+            "status":    "paused",
+        })
+
+    def resume_worker(self, corp_id: str, worker_id: str) -> None:
+        """Resume a previously paused worker."""
+        self.update_worker(corp_id, worker_id, paused=False)
+        self._paused_workers.get(corp_id, set()).discard(worker_id)
+        self.emit(corp_id, {
+            "type":      "worker_status",
+            "worker_id": worker_id,
+            "status":    "idle",
+        })
+
     # ── task management ───────────────────────────────────────────────────────
 
     def get_tasks(self, corp_id: str) -> List[Dict[str, Any]]:
@@ -343,17 +369,25 @@ class CorpManager:
         self._save_tasks(corp_id, tasks)
 
     def get_next_task_for_worker(self, corp_id: str, worker: Dict) -> Optional[Dict]:
-        """Return the next pending task this worker can pick up, or None."""
+        """Return the highest-priority pending task this worker can pick up, or None."""
         tasks = self.get_tasks(corp_id)
         worker_id   = worker["id"]
         worker_name = worker["name"].lower()
+        eligible = []
         for t in tasks:
             if t["status"] != "pending":
                 continue
             assigned = str(t.get("assigned_to", "any")).lower()
             if assigned in ("any", worker_id, worker_name):
-                return t
-        return None
+                eligible.append(t)
+        if not eligible:
+            return None
+        # Sort: urgent first, then high, medium, low; within same priority, FIFO
+        eligible.sort(key=lambda t: (
+            _PRIORITY_ORDER.get(t.get("priority", "medium"), 2),
+            t.get("created_at", ""),
+        ))
+        return eligible[0]
 
     # ── message log ──────────────────────────────────────────────────────────
 
@@ -383,6 +417,22 @@ class CorpManager:
             "content":     message,
         })
 
+    def send_user_message(self, corp_id: str, message: str) -> None:
+        """Broadcast a steering message from the operator to the whole company."""
+        ts   = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+        line = f"[{ts}] [Operator → All] {message}\n"
+        log_path = self._log_path(corp_id)
+        try:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(line)
+        except Exception as e:
+            logger.warning(f"[CorpManager] Could not write steering message: {e}")
+        self.emit(corp_id, {
+            "type":    "user_message",
+            "content": message,
+            "ts":      ts,
+        })
+
     def read_log(self, corp_id: str, last_n: int = 30) -> str:
         p = self._log_path(corp_id)
         if not p.exists():
@@ -397,7 +447,7 @@ class CorpManager:
     # Event types that are worth persisting across reloads.
     _FEED_PERSIST_TYPES = frozenset({
         "worker_thought", "worker_action", "worker_message",
-        "task_update", "corp_status",
+        "task_update", "corp_status", "user_message",
     })
 
     def _append_feed(self, corp_id: str, event: Dict[str, Any]) -> None:
@@ -529,6 +579,10 @@ class CorpManager:
             t.cancel()
         self._worker_tasks[corp_id] = []
 
+        self._stopping.discard(corp_id)
+        self._stopped.discard(corp_id)
+        self._active_workers[corp_id] = set()
+
         cfg["status"] = "running"
         self._save_config(corp_id, cfg)
 
@@ -543,29 +597,46 @@ class CorpManager:
         logger.info(f"[CorpManager] Started corp {corp_id} with {len(cfg['workers'])} workers")
 
     async def stop_corp(self, corp_id: str) -> None:
-        self._stopped.add(corp_id)
-        for t in self._worker_tasks.get(corp_id, []):
-            t.cancel()
-        self._worker_tasks[corp_id] = []
+        """Soft stop — workers finish their current task then exit cleanly."""
+        self._stopping.add(corp_id)
 
+        try:
+            cfg = self.get_corp(corp_id)
+            cfg["status"] = "stopping"
+            self._save_config(corp_id, cfg)
+        except Exception:
+            pass
+
+        # If no workers are active, finalise immediately
+        if not self._active_workers.get(corp_id):
+            self._finalize_stop(corp_id)
+            return
+
+        self.emit(corp_id, {"type": "corp_status", "status": "stopping"})
+        logger.info(f"[CorpManager] Soft-stopping corp {corp_id}")
+
+    def _finalize_stop(self, corp_id: str) -> None:
+        """Mark corp fully stopped after all workers have exited."""
+        self._stopping.discard(corp_id)
+        self._stopped.add(corp_id)
+        self._worker_tasks.pop(corp_id, None)
         try:
             cfg = self.get_corp(corp_id)
             cfg["status"] = "stopped"
             self._save_config(corp_id, cfg)
         except Exception:
             pass
-
-        # Reset all worker stats for this corp
-        try:
-            cfg = self.get_corp(corp_id)
-            for w in cfg.get("workers", []):
-                if w["id"] in self._stats:
-                    self._stats[w["id"]].status = "stopped"
-        except Exception:
-            pass
-
         self.emit(corp_id, {"type": "corp_status", "status": "stopped"})
-        logger.info(f"[CorpManager] Stopped corp {corp_id}")
+        logger.info(f"[CorpManager] Corp {corp_id} fully stopped")
+
+    async def force_stop_corp(self, corp_id: str) -> None:
+        """Hard stop — immediately cancel all worker tasks."""
+        self._stopping.add(corp_id)
+        self._stopped.add(corp_id)
+        for t in self._worker_tasks.get(corp_id, []):
+            t.cancel()
+        self._active_workers.pop(corp_id, None)
+        self._finalize_stop(corp_id)
 
     # ── worker loop ───────────────────────────────────────────────────────────
 
@@ -573,6 +644,8 @@ class CorpManager:
         worker_id   = worker["id"]
         worker_name = worker["name"]
         worker_col  = worker.get("color", "#7c3aed")
+
+        self._active_workers.setdefault(corp_id, set()).add(worker_id)
 
         stats = WorkerStats()
         # Load cumulative counters persisted from previous sessions
@@ -592,6 +665,30 @@ class CorpManager:
 
         while corp_id not in self._stopped:
             try:
+                # Re-read worker config to pick up live pause/config changes
+                try:
+                    live_cfg    = self.get_corp(corp_id)
+                    live_worker = next((w for w in live_cfg.get("workers", [])
+                                        if w["id"] == worker_id), None)
+                    if live_worker:
+                        worker = live_worker   # refresh color, model, etc.
+                except Exception:
+                    pass
+
+                if worker.get("paused"):
+                    if stats.status != "paused":
+                        stats.status        = "paused"
+                        stats.current_thought = "Paused by operator."
+                        self.emit(corp_id, {
+                            "type":        "worker_stats",
+                            "worker_id":   worker_id,
+                            "worker_name": worker_name,
+                            "color":       worker.get("color", worker_col),
+                            "stats":       stats.to_dict(),
+                        })
+                    await asyncio.sleep(5)
+                    continue
+
                 task = self.get_next_task_for_worker(corp_id, worker)
 
                 if task is None:
@@ -683,6 +780,8 @@ class CorpManager:
                         await asyncio.sleep(2)
                     else:
                         # ── Standard idle wait ─────────────────────────────
+                        if corp_id in self._stopping:
+                            break   # soft-stop: no pending tasks, exit cleanly
                         stats.current_thought = "Waiting for tasks…"
                         stats.status = "idle"
                         self.emit(corp_id, {
@@ -835,6 +934,10 @@ class CorpManager:
 
                 await asyncio.sleep(1)   # brief cooldown between tasks
 
+                # Check soft-stop: task finished, exit if corp is stopping
+                if corp_id in self._stopping:
+                    break
+
             except asyncio.CancelledError:
                 logger.info(f"[CorpManager] Worker {worker_name} loop cancelled")
                 break
@@ -850,6 +953,10 @@ class CorpManager:
             "color":       worker_col,
             "status":      "stopped",
         })
+        # Unregister from active workers; if last one out, finalise the stop
+        self._active_workers.get(corp_id, set()).discard(worker_id)
+        if corp_id in self._stopping and not self._active_workers.get(corp_id):
+            self._finalize_stop(corp_id)
 
     # ── prompt builder ────────────────────────────────────────────────────────
 

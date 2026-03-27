@@ -12,6 +12,7 @@ let _corpTasks        = [];
 let _corpWorkerStats  = {};     // worker_id → stats dict
 let _corpSSE          = null;   // EventSource for live feed
 let _corpIsRunning    = false;
+let _corpIsStopping   = false;
 let _corpFeedItems    = [];     // accumulated feed events (cap at 200)
 const CORP_FEED_MAX   = 200;
 
@@ -105,6 +106,10 @@ async function corpOnSelect(corpId) {
     if (goalBar) goalBar.style.display = 'flex';
     if (goalInput) goalInput.value = _corpCurrent.goal || '';
 
+    // Show chat button when a corp is selected
+    const chatBtn = document.getElementById('corp-chat-btn');
+    if (chatBtn) chatBtn.style.display = '';
+
     // Determine running state
     _corpIsRunning = !!_corpCurrent.is_running;
     corpUpdateRunButtons();
@@ -162,6 +167,10 @@ function corpShowEmpty() {
     document.getElementById('corp-add-task-btn').style.display   = 'none';
     document.getElementById('corp-start-btn').style.display      = 'none';
     document.getElementById('corp-stop-btn').style.display       = 'none';
+    const chatBtn = document.getElementById('corp-chat-btn');
+    if (chatBtn) chatBtn.style.display = 'none';
+    const chatPopup = document.getElementById('corp-chat-popup');
+    if (chatPopup) chatPopup.style.display = 'none';
     const wsBar = document.getElementById('corp-workspace-bar');
     if (wsBar) wsBar.style.display = 'none';
     const goalBar = document.getElementById('corp-goal-bar');
@@ -193,6 +202,17 @@ function corpConnectSSE(corpId) {
 
             case 'worker_message':
                 _corpAddFeedItem('message', data);
+                _corpAddChatMessage('worker', data.worker_name, data.content, data.color);
+                break;
+
+            case 'user_message':
+                _corpAddFeedItem('message', {
+                    worker_name: 'You',
+                    color: '#3b82f6',
+                    to: 'All',
+                    content: data.content,
+                });
+                _corpAddChatMessage('user', 'You', data.content);
                 break;
 
             case 'worker_stats':
@@ -211,6 +231,7 @@ function corpConnectSSE(corpId) {
 
             case 'corp_status':
                 _corpIsRunning = (data.status === 'running');
+                _corpIsStopping = (data.status === 'stopping');
                 corpUpdateRunButtons();
                 _corpAddFeedItem('corp-event', {
                     worker_name: 'System',
@@ -262,9 +283,13 @@ async function corpRestoreFeed(corpId) {
             const t = ev.type;
             if (t === 'worker_thought')  _corpAddFeedItem('thought',     ev);
             else if (t === 'worker_action')   _corpAddFeedItem('action',      ev);
-            else if (t === 'worker_message')  _corpAddFeedItem('message',     ev);
+            else if (t === 'worker_message') {
+                _corpAddFeedItem('message', ev);
+                _corpAddChatMessage('worker', ev.worker_name, ev.content, ev.color);
+            }
             else if (t === 'task_update')     _corpAddFeedItem('task-update', ev);
             else if (t === 'corp_status')     _corpAddFeedItem('corp-event',  ev);
+            else if (t === 'user_message')    _corpAddChatMessage('user', 'You', ev.content);
         }
     } catch (e) {
         console.error('[AgentCorp] Failed to restore feed:', e);
@@ -319,7 +344,13 @@ function _corpBuildWorkerCard(worker) {
                 <div class="corp-worker-role">${_esc(worker.role)}</div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.25rem">
-                <div class="corp-worker-badge ${status}" id="corp-badge-${worker.id}">${status}</div>
+                <div style="display:flex;align-items:center;gap:4px">
+                    <div class="corp-worker-badge ${status}" id="corp-badge-${worker.id}">${status}</div>
+                    <button class="corp-worker-pause-btn" onclick="corpTogglePauseWorker('${_esc(worker.id)}')"
+                        title="${worker.paused ? 'Resume worker' : 'Pause worker'}">
+                        <i class="fas fa-${worker.paused ? 'play' : 'pause'}"></i>
+                    </button>
+                </div>
                 ${autoLabel}
             </div>
         </div>
@@ -479,6 +510,15 @@ function _corpBuildTaskCard(task) {
         </div>
         ${resultHtml}`;
 
+    if (task.status === 'pending' || task.status === 'in_progress') {
+        const rejectBtn = document.createElement('button');
+        rejectBtn.className = 'corp-task-reject-btn';
+        rejectBtn.title = 'Reject this task';
+        rejectBtn.innerHTML = '✕';
+        rejectBtn.onclick = (e) => { e.stopPropagation(); corpRejectTask(task.task_id); };
+        card.querySelector('.corp-task-id').after(rejectBtn);
+    }
+
     return card;
 }
 
@@ -605,10 +645,12 @@ function corpUpdateRunButtons() {
         if (stopBtn)  stopBtn.style.display  = 'none';
         return;
     }
-    if (startBtn) startBtn.style.display = _corpIsRunning ? 'none' : '';
-    if (stopBtn)  stopBtn.style.display  = _corpIsRunning ? ''     : 'none';
+    if (startBtn) startBtn.style.display = (_corpIsRunning || _corpIsStopping) ? 'none' : '';
+    if (stopBtn)  stopBtn.style.display  = (_corpIsRunning || _corpIsStopping) ? '' : 'none';
+    if (stopBtn)  stopBtn.textContent    = _corpIsStopping ? 'Stopping…' : '■ Stop';
     if (dot) {
-        dot.classList.toggle('running', _corpIsRunning);
+        dot.classList.toggle('running',  _corpIsRunning && !_corpIsStopping);
+        dot.classList.toggle('stopping', _corpIsStopping);
     }
 }
 
@@ -888,6 +930,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startBtn)     startBtn.addEventListener('click', corpStartCorp);
     if (stopBtn)      stopBtn.addEventListener('click', corpStopCorp);
 
+    const chatBtn2 = document.getElementById('corp-chat-btn');
+    if (chatBtn2) chatBtn2.addEventListener('click', corpToggleChat);
+
     // Create corp modal
     const createSubmit = document.getElementById('corp-create-submit');
     if (createSubmit) createSubmit.addEventListener('click', corpSubmitCreate);
@@ -981,4 +1026,90 @@ function _randomColor() {
         '#dc2626', '#db2777', '#0891b2', '#65a30d',
     ];
     return palette[Math.floor(Math.random() * palette.length)];
+}
+
+// ── Worker pause/resume ────────────────────────────────────────────────────────
+
+async function corpTogglePauseWorker(workerId) {
+    if (!_corpCurrent) return;
+    const worker = (_corpCurrent.workers || []).find(w => w.id === workerId);
+    if (!worker) return;
+    const action = worker.paused ? 'resume' : 'pause';
+    try {
+        await fetch(`/api/corp/${_corpCurrent.id}/workers/${workerId}/${action}`, { method: 'POST' });
+        // Optimistically update local state and re-render card
+        worker.paused = !worker.paused;
+        const card = document.getElementById(`corp-worker-card-${workerId}`);
+        if (card) {
+            const newCard = _corpBuildWorkerCard(worker);
+            card.replaceWith(newCard);
+        }
+    } catch (e) {
+        console.error('[AgentCorp] Pause/resume failed:', e);
+    }
+}
+
+// ── Task reject ────────────────────────────────────────────────────────────────
+
+async function corpRejectTask(taskId) {
+    if (!_corpCurrent) return;
+    if (!confirm(`Reject task ${taskId}? This cannot be undone.`)) return;
+    try {
+        await fetch(`/api/corp/${_corpCurrent.id}/tasks/${taskId}/reject`, { method: 'POST' });
+        await corpRefreshTasks();
+    } catch (e) {
+        console.error('[AgentCorp] Reject task failed:', e);
+    }
+}
+
+// ── Company chat ───────────────────────────────────────────────────────────────
+
+function corpToggleChat() {
+    const popup = document.getElementById('corp-chat-popup');
+    if (!popup) return;
+    popup.style.display = popup.style.display === 'none' ? 'flex' : 'none';
+}
+
+async function corpSendChatMessage() {
+    if (!_corpCurrent) return;
+    const input = document.getElementById('corp-chat-input');
+    const msg   = (input ? input.value : '').trim();
+    if (!msg) return;
+    try {
+        await fetch(`/api/corp/${_corpCurrent.id}/message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: msg }),
+        });
+        if (input) input.value = '';
+        // Optimistically add to chat (SSE will also fire, but showing immediately feels better)
+        _corpAddChatMessage('user', 'You', msg);
+    } catch (e) {
+        console.error('[AgentCorp] Send message failed:', e);
+    }
+}
+
+function _corpAddChatMessage(side, name, content, color) {
+    const container = document.getElementById('corp-chat-messages');
+    if (!container) return;
+    // Remove empty state placeholder
+    const empty = container.querySelector('.corp-chat-empty');
+    if (empty) empty.remove();
+
+    const div = document.createElement('div');
+    div.className = `corp-chat-msg ${side}`;
+
+    if (side === 'worker' && name) {
+        const who = document.createElement('div');
+        who.className = 'corp-chat-msg-who';
+        who.style.color = color || '#7c3aed';
+        who.textContent = name;
+        div.appendChild(who);
+    }
+    const text = document.createElement('div');
+    text.textContent = content || '';
+    div.appendChild(text);
+
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
 }

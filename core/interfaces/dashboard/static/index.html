@@ -992,6 +992,10 @@
                         <button id="corp-stop-btn" class="corp-stop-btn" style="display:none">
                             <i class="fas fa-stop"></i> Stop
                         </button>
+                        <div class="corp-topbar-sep"></div>
+                        <button id="corp-chat-btn" class="corp-chat-toggle-btn" style="display:none" title="Message the Company">
+                            <i class="fas fa-comments"></i> Chat
+                        </button>
                     </div>
 
                     <!-- Top bar (row 2: workspace path) -->
@@ -1108,6 +1112,10 @@
                                 <div style="font-size:.68rem;color:var(--text-secondary);margin-top:.25rem">Worker creates tasks autonomously to pursue the company goal</div>
                             </div>
                         </div>
+                        <div class="corp-modal-field" style="display:flex;align-items:center;gap:10px">
+                            <label class="corp-modal-label" style="margin:0">Allow task creation</label>
+                            <input type="checkbox" id="corp-wmodal-can-create" style="width:16px;height:16px">
+                        </div>
                         <div class="corp-modal-footer">
                             <button id="corp-worker-cancel" class="corp-modal-btn">Cancel</button>
                             <button id="corp-worker-submit" class="corp-modal-btn primary">Add Worker</button>
@@ -1138,6 +1146,7 @@
                             <div class="corp-modal-field">
                                 <label class="corp-modal-label">Priority</label>
                                 <select id="corp-tmodal-priority" class="corp-modal-input">
+                                    <option value="urgent">🔴 Urgent</option>
                                     <option value="high">High</option>
                                     <option value="medium" selected>Medium</option>
                                     <option value="low">Low</option>
@@ -1148,6 +1157,24 @@
                             <button id="corp-task-cancel" class="corp-modal-btn">Cancel</button>
                             <button id="corp-task-submit" class="corp-modal-btn primary">Add Task</button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Company Chat Popup -->
+                <div class="corp-chat-popup" id="corp-chat-popup" style="display:none">
+                    <div class="corp-chat-header">
+                        <i class="fas fa-comments" style="color:var(--primary)"></i>
+                        <span class="corp-chat-header-title">Company Chat</span>
+                        <button class="corp-chat-close-btn" onclick="corpToggleChat()" title="Close">✕</button>
+                    </div>
+                    <div class="corp-chat-messages" id="corp-chat-messages">
+                        <div class="corp-chat-empty">No messages yet. Send a message to steer the company.</div>
+                    </div>
+                    <div class="corp-chat-input-row">
+                        <textarea id="corp-chat-input" class="corp-chat-input" rows="2"
+                            placeholder="Give the team direction…"
+                            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();corpSendChatMessage();}"></textarea>
+                        <button class="corp-chat-send-btn" onclick="corpSendChatMessage()">Send</button>
                     </div>
                 </div>
 

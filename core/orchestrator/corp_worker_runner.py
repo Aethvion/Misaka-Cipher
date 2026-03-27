@@ -70,6 +70,9 @@ class CorpWorkerRunner(AgentRunner):
             description = action.get("description", "")
             assigned_to = action.get("assigned_to", "any")
             priority    = action.get("priority", "medium")
+            # Workers may not create urgent tasks — that privilege is reserved for operators
+            if priority == "urgent":
+                priority = "high"
             if not self._corp_manager:
                 return "[create_task] Corp manager not available."
             task = self._corp_manager.add_task(

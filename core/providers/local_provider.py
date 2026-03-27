@@ -5,12 +5,39 @@ Implementation for local LLMs using llama-cpp-python
 
 import os
 import re
+import sys
+import multiprocessing
 from pathlib import Path
 from typing import Dict, Optional, Iterator, Any, List
 from .base_provider import BaseProvider, ProviderResponse, ProviderConfig, ProviderStatus
 from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+def _safe_test_llama_load(model_path: str):
+    """
+    Run in an isolated process to catch hard C-level crashes (like missing AVX instructions).
+    """
+    try:
+        from llama_cpp import Llama
+        # Mute stdout/stderr so we don't spam the console during the test
+        with open(os.devnull, 'w') as devnull:
+            old_out = sys.stdout
+            old_err = sys.stderr
+            sys.stdout = devnull
+            sys.stderr = devnull
+            try:
+                # Load with vocab_only to skip full weight allocation but still trigger
+                # GGML backend initialization (which catches CPU instruction faults)
+                llm = Llama(model_path=model_path, vocab_only=True, n_ctx=8, verbose=False)
+            finally:
+                sys.stdout = old_out
+                sys.stderr = old_err
+    except Exception:
+        # Standard exceptions are fine, they don't hard-crash the process anyway.
+        # We only care if the process exits with a non-zero crash code (e.g. 0xC000001D).
+        pass
+    sys.exit(0)
 
 # Lazy import for llama-cpp-python
 Llama = None
@@ -59,7 +86,24 @@ class LocalProvider(BaseProvider):
 
         # Check if we need to (re)load the model
         if self.llm is None or self.current_model_path != str(model_path):
-            logger.info(f"Loading local model from {model_path}...")
+            logger.info(f"Safely testing local model stability for {model_path}...")
+            
+            # Spawn a subprocess to test if model loading triggers a fatal hardware crash
+            ctx = multiprocessing.get_context("spawn")
+            p = ctx.Process(target=_safe_test_llama_load, args=(str(model_path),))
+            p.start()
+            p.join()
+            
+            if p.exitcode != 0:
+                logger.error(f"FATAL: Local model initialisation crashed. Exit code: {p.exitcode}")
+                raise RuntimeError(
+                    f"Fatal Hardware Crash Detected (Exit code: {p.exitcode}).\n"
+                    f"Your PC's CPU may not support the modern instructions (like AVX/AVX2) required "
+                    f"by the currently installed llama-cpp-python package.\n"
+                    f"Fix: Uninstall and reinstall with basic CPU flags, or use Aethvion's minimal installer."
+                )
+
+            logger.info(f"Loading local model from {model_path} in main process...")
             # Unload old model if exists
             self.llm = None
             
