@@ -213,7 +213,7 @@ async def send_message(corp_id: str, req: SteerRequest):
 
 @router.get("/{corp_id}/stats")
 async def get_stats(corp_id: str):
-    """Return per-worker stats — live if running, disk-loaded if not."""
+    """Return per-worker stats — live if running, loaded from disk if not."""
     try:
         return get_corp_manager().get_all_worker_stats(corp_id)
     except FileNotFoundError:
