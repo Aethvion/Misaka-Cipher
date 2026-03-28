@@ -330,7 +330,13 @@ class AgentState:
     # ── notes ─────────────────────────────────────────────────────
 
     def update_file_digest(self, path: str, digest: str) -> None:
-        """Store or update the semantic digest for a file."""
+        """Store or update the semantic digest for a file.
+
+        Re-inserting the key moves it to the end of the dict so that
+        build_context() (which iterates in reverse) shows the most-recently-
+        accessed files first — most relevant to the current task.
+        """
+        self.file_digests.pop(path, None)   # remove old entry to reset position
         self.file_digests[path] = digest
 
     def add_note(self, note: str) -> None:
@@ -390,16 +396,36 @@ class AgentState:
 
         # Semantic file digests — compact structural knowledge about every file
         # ever read or modified; persists across all iterations in this thread.
+        # Show most-recently-updated first (dict preserves insertion order; re-inserting
+        # on update moves a key to the end, so reversing gives MRU-first).
+        # Hard cap at 1 500 chars so a session touching 30+ files stays lean.
         if self.file_digests:
             digest_lines = ["Knowledge (file structure — use this before re-reading):"]
-            for path, digest in self.file_digests.items():
-                digest_lines.append(f"  {digest}")
+            used = 0
+            hidden = 0
+            _DIGEST_CAP = 1500
+            for path, digest in reversed(list(self.file_digests.items())):
+                entry = f"  {digest}"
+                if used + len(entry) > _DIGEST_CAP:
+                    hidden += 1
+                else:
+                    digest_lines.append(entry)
+                    used += len(entry)
+            if hidden:
+                digest_lines.append(
+                    f"  … {hidden} more file(s) — call get_project_blueprint to see all"
+                )
             parts.append("\n".join(digest_lines))
 
-        # Recent actions
+        # Recent actions — always show every write/patch/append (so the model knows
+        # exactly what was changed), plus the last few non-write actions for context.
         if self.action_log:
-            recent = self.action_log[-6:]
-            tokens = [f"{e['type']}({e['detail']})" for e in recent]
+            _WRITE_TYPES = {"write_file", "patch_file", "append_file", "create_file"}
+            writes   = [e for e in self.action_log if e["type"] in _WRITE_TYPES]
+            non_writes = [e for e in self.action_log if e["type"] not in _WRITE_TYPES]
+            shown = writes[-10:] + non_writes[-4:]
+            shown.sort(key=lambda e: e.get("i", 0))
+            tokens = [f"{e['type']}({e['detail']})" for e in shown]
             parts.append("Recent: " + ", ".join(tokens))
 
         return "\n".join(parts)

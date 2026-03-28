@@ -50,8 +50,10 @@ ACTION: {{"type": "fetch_url",    "url": "https://..."}}
 ACTION: {{"type": "post_to_log",  "message": "...", "to": "All"}}
 ACTION: {{"type": "create_task",  "title": "...", "description": "...", "assigned_to": "name_or_any", "priority": "high|medium|low"}}
 ACTION: {{"type": "update_memory","content": "key facts, under 200 words"}}
-ACTION: {{"type": "read_shared_memory"}}                                                       ← see what teammates have already discovered
-ACTION: {{"type": "update_shared_memory", "key": "topic", "content": "findings to share"}}   ← save discoveries for teammates
+ACTION: {{"type": "read_shared_memory"}}                                                                        ← see what teammates discovered; check done:* keys for completed-task summaries
+ACTION: {{"type": "update_shared_memory", "key": "files:config", "content": "path/to/config.json"}}            ← share file locations (files: prefix)
+ACTION: {{"type": "update_shared_memory", "key": "stack:framework", "content": "Next.js 14 App Router"}}       ← share tech-stack facts (stack: prefix)
+ACTION: {{"type": "update_shared_memory", "key": "topic", "content": "any other findings"}}                     ← any key works
 ACTION: {{"type": "read_log"}}
 ACTION: {{"type": "read_task_board"}}
 ACTION: {{"type": "done",         "summary": "what was accomplished"}}
@@ -65,7 +67,9 @@ KEY RULES:
 6. KNOWLEDGE BLOCK — Context→Knowledge lists functions with exact line numbers (e.g. render@L145). \
 Use read_file with offset=145 to jump straight to that function.
 7. BATCH — issue all independent ACTION lines in one response.
-8. SHARE KNOWLEDGE — after significant research use update_shared_memory so teammates don't duplicate work.
+8. SHARE KNOWLEDGE — after significant research write to shared_memory with namespaced keys: \
+files:name for file locations, stack:name for tech-stack facts, any key for other findings. \
+Read shared_memory at task start — done:* entries show what teammates already completed.
 9. ON FINISH — call update_memory with key learnings (≤200 words), then call done(summary).
 10. TASKS YOU CREATE must be small and focused (completable in 3–5 actions). Never use "urgent" priority.
 """
@@ -105,6 +109,12 @@ class CorpWorkerRunner(AgentRunner):
         self._worker_id = worker_id
         self._worker_name = worker_name
 
+        # Operator message cache — avoid re-reading the log file on every LLM call.
+        # Refreshed lazily: when the corp log grows (new lines appended) the cached
+        # line count changes and we re-filter; otherwise we reuse the cached result.
+        self._op_cached_lines: list = []   # last extracted [Operator→ …] lines
+        self._op_log_line_count: int = 0   # log line count at last refresh
+
         # Route blueprint cache to the corp data dir so it never appears
         # inside the user's project workspace.
         if corp_manager and corp_id:
@@ -139,12 +149,18 @@ class CorpWorkerRunner(AgentRunner):
         task_block = self._task_short
         if self._corp_manager:
             try:
-                log = self._corp_manager.read_log(self._corp_id, last_n=20)
-                op_lines = [
-                    line for line in log.splitlines() if "[Operator →" in line
-                ]
-                if op_lines:
-                    recent_op = "\n".join(op_lines[-3:])
+                # Refresh operator-message cache only when the log has grown.
+                # read_log is a file read; doing it every LLM call is wasteful.
+                full_log = self._corp_manager.read_log(self._corp_id, last_n=200)
+                all_lines = full_log.splitlines()
+                current_count = len(all_lines)
+                if current_count != self._op_log_line_count:
+                    self._op_cached_lines = [
+                        ln for ln in all_lines if "[Operator →" in ln
+                    ]
+                    self._op_log_line_count = current_count
+                if self._op_cached_lines:
+                    recent_op = "\n".join(self._op_cached_lines[-3:])
                     task_block = (
                         f"OPERATOR STEERING (read and respond/act if relevant):\n"
                         f"{recent_op}\n\n{self._task_short}"

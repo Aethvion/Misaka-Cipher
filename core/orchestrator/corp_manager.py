@@ -50,7 +50,6 @@ def _load_model_prices() -> Dict[str, tuple]:
     Returns a dict mapping model_id → (input_cost_per_1m, output_cost_per_1m).
     Result is cached in _MODEL_PRICE_CACHE so the file is only read once.
     """
-    global _MODEL_PRICE_CACHE
     if _MODEL_PRICE_CACHE:
         return _MODEL_PRICE_CACHE
     try:
@@ -471,17 +470,23 @@ class CorpManager:
 
     # ── shared memory ────────────────────────────────────────────────────────
 
-    def read_shared_memory(self, corp_id: str, key: str = "") -> str:
-        """Return all (or a specific) shared-memory entries as a formatted string."""
+    def read_shared_memory(self, corp_id: str, key: str = "", raw: bool = False):
+        """Return shared-memory entries.
+
+        raw=True  → returns the raw dict {key: {content, author, ts}} for internal use.
+        raw=False → returns a human-readable formatted string (default, for agent use).
+        """
         p = self._shared_memory_path(corp_id)
         if not p.exists():
-            return "(shared memory is empty)"
+            return {} if raw else "(shared memory is empty)"
         try:
             data = json.loads(p.read_text(encoding="utf-8"))
         except Exception:
-            return "(shared memory read error)"
+            return {} if raw else "(shared memory read error)"
         if not data:
-            return "(shared memory is empty)"
+            return {} if raw else "(shared memory is empty)"
+        if raw:
+            return data
         if key:
             entry = data.get(key)
             if not entry:
@@ -995,6 +1000,21 @@ class CorpManager:
                                  status=task_status,
                                  completed_at=datetime.utcnow().isoformat(),
                                  result_summary=(summary or "")[:500])
+
+                # Auto-snapshot: write a compact task-completion entry to shared
+                # memory so future workers know what was done without reading the
+                # whole log.  Key format: "done:{task_id}" keeps entries namespaced.
+                if task_status == "done" and summary:
+                    try:
+                        snap_key = f"done:{task['task_id']}"
+                        snap_content = (
+                            f"[{task['title']}] {summary[:300]}"
+                        )
+                        self.update_shared_memory(
+                            corp_id, worker_name, snap_key, snap_content
+                        )
+                    except Exception:
+                        pass
                 self.emit(corp_id, {
                     "type":        "task_update",
                     "task_id":     task["task_id"],
@@ -1092,11 +1112,20 @@ class CorpManager:
             except Exception:
                 pass
 
-        # ── Shared memory (findings from other workers) ───────────────────────────
-        shared_mem = self.read_shared_memory(corp_id)
-        shared_section = ""
-        if shared_mem and not shared_mem.startswith("("):
-            shared_section = f"## Shared Team Knowledge\n{shared_mem}\n\n"
+        # ── Shared memory: split into completed-work log vs knowledge entries ────
+        shared_raw = self.read_shared_memory(corp_id, raw=True)   # returns dict or {}
+        completed_section = ""
+        knowledge_section = ""
+        if isinstance(shared_raw, dict) and shared_raw:
+            done_entries  = {k: v for k, v in shared_raw.items() if k.startswith("done:")}
+            other_entries = {k: v for k, v in shared_raw.items() if not k.startswith("done:")}
+            if done_entries:
+                lines = [f"  [{v['author']}] {k[5:]}: {v['content'][:200]}"
+                         for k, v in list(done_entries.items())[-8:]]
+                completed_section = "## Completed Work (by teammates)\n" + "\n".join(lines) + "\n\n"
+            if other_entries:
+                lines = [f"  {k}: {v['content'][:200]}" for k, v in other_entries.items()]
+                knowledge_section = "## Shared Team Knowledge\n" + "\n".join(lines) + "\n\n"
 
         return (
             f"You are {worker['name']}, {worker['role']} at {cfg['name']}.\n"
@@ -1105,7 +1134,8 @@ class CorpManager:
             f"## Your Memory\n"
             f"{memory or 'No memory yet.'}\n\n"
             f"{blueprint_section}"
-            f"{shared_section}"
+            f"{completed_section}"
+            f"{knowledge_section}"
             f"## Task Board\n"
             f"{board_summary}\n\n"
             f"## Recent Team Messages\n"
@@ -1155,11 +1185,20 @@ class CorpManager:
             except Exception:
                 pass
 
-        # Shared team knowledge
-        shared_mem = self.read_shared_memory(corp_id)
-        shared_section = ""
-        if shared_mem and not shared_mem.startswith("("):
-            shared_section = f"## Shared Team Knowledge\n{shared_mem}\n\n"
+        # Shared team knowledge — split done: entries from knowledge entries
+        shared_raw = self.read_shared_memory(corp_id, raw=True)
+        completed_section = ""
+        knowledge_section = ""
+        if isinstance(shared_raw, dict) and shared_raw:
+            done_entries  = {k: v for k, v in shared_raw.items() if k.startswith("done:")}
+            other_entries = {k: v for k, v in shared_raw.items() if not k.startswith("done:")}
+            if done_entries:
+                lines = [f"  [{v['author']}] {k[5:]}: {v['content'][:200]}"
+                         for k, v in list(done_entries.items())[-8:]]
+                completed_section = "## Completed Work (from shared memory)\n" + "\n".join(lines) + "\n\n"
+            if other_entries:
+                lines = [f"  {k}: {v['content'][:200]}" for k, v in other_entries.items()]
+                knowledge_section = "## Shared Team Knowledge\n" + "\n".join(lines) + "\n\n"
 
         return (
             f"You are {worker['name']}, a {worker['role']} at {cfg['name']}.\n\n"
@@ -1170,7 +1209,8 @@ class CorpManager:
             f"## Your Memory\n"
             f"{memory or 'No memory yet.'}\n\n"
             f"{blueprint_section}"
-            f"{shared_section}"
+            f"{completed_section}"
+            f"{knowledge_section}"
             f"## Current Task Board — Pending\n"
             f"{board_summary}\n\n"
             f"## Recently Completed / Failed\n"
