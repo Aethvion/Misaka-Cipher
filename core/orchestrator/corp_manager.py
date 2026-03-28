@@ -1001,7 +1001,7 @@ class CorpManager:
                                  completed_at=datetime.utcnow().isoformat(),
                                  result_summary=(summary or "")[:500])
 
-                # Auto-snapshot: write a compact task-completion entry to shared
+                # Auto-snapshot: write a compact completed task entry to shared
                 # memory so future workers know what was done without reading the
                 # whole log.  Key format: "done:{task_id}" keeps entries namespaced.
                 if task_status == "done" and summary:
