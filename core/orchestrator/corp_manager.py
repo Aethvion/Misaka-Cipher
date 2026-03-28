@@ -164,6 +164,9 @@ class CorpManager:
     def _feed_path(self, corp_id: str) -> Path:
         return self._corp_dir(corp_id) / "feed.jsonl"
 
+    def _shared_memory_path(self, corp_id: str) -> Path:
+        return self._corp_dir(corp_id) / "shared_memory.json"
+
     def _stats_path(self, corp_id: str, worker_id: str) -> Path:
         return self._worker_dir(corp_id, worker_id) / "stats.json"
 
@@ -442,6 +445,46 @@ class CorpManager:
         content_lines = [l for l in lines if l.strip() and not l.startswith("#")]
         return "\n".join(content_lines[-last_n:])
 
+    # ── shared memory ────────────────────────────────────────────────────────
+
+    def read_shared_memory(self, corp_id: str, key: str = "") -> str:
+        """Return all (or a specific) shared-memory entries as a formatted string."""
+        p = self._shared_memory_path(corp_id)
+        if not p.exists():
+            return "(shared memory is empty)"
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            return "(shared memory read error)"
+        if not data:
+            return "(shared memory is empty)"
+        if key:
+            entry = data.get(key)
+            if not entry:
+                return f"(no entry for key '{key}')"
+            return f"[{key}] {entry['content']}\n  — {entry['author']} at {entry['ts']}"
+        lines = [
+            f"[{k}] {v['content']}\n  — {v['author']} at {v['ts']}"
+            for k, v in data.items()
+        ]
+        return "\n\n".join(lines)
+
+    def update_shared_memory(self, corp_id: str, worker_name: str, key: str, content: str) -> str:
+        """Write or overwrite a key in the corp-wide shared memory store."""
+        p = self._shared_memory_path(corp_id)
+        try:
+            data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+        except Exception:
+            data = {}
+        data[key] = {
+            "content": content,
+            "author":  worker_name,
+            "ts":      datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+        }
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        return f"Shared memory updated: [{key}]"
+
     # ── persistent feed ──────────────────────────────────────────────────────
 
     # Event types that are worth persisting across reloads.
@@ -585,6 +628,17 @@ class CorpManager:
 
         cfg["status"] = "running"
         self._save_config(corp_id, cfg)
+
+        # Pre-generate workspace blueprint so workers don't have to walk the tree themselves.
+        # Runs synchronously before workers start; result is cached to _blueprint.txt.
+        try:
+            from core.orchestrator.agent_runner import build_workspace_blueprint
+            ws = self._workspace_path(corp_id)
+            if ws.exists():
+                build_workspace_blueprint(ws)
+                logger.info(f"[CorpManager] Blueprint generated for {corp_id}")
+        except Exception as e:
+            logger.warning(f"[CorpManager] Blueprint generation failed: {e}")
 
         for worker in cfg.get("workers", []):
             task = asyncio.create_task(
@@ -977,9 +1031,10 @@ class CorpManager:
           • Corp tools  — compact one-liner (full syntax is in CORP_SYSTEM_PROMPT)
           • Memory      — capped at 300 words via update_memory guideline
         """
+        from core.orchestrator.agent_runner import build_workspace_blueprint
         cfg        = self.get_corp(corp_id)
         memory     = self.read_worker_memory(corp_id, worker["id"])
-        recent_log = self.read_log(corp_id, last_n=5)      # 5 lines ← was 20
+        recent_log = self.read_log(corp_id, last_n=5)
 
         tasks = self.get_tasks(corp_id)
         board_lines = []
@@ -989,7 +1044,7 @@ class CorpManager:
                     f"[{t['status'].upper()}] {t['task_id']}: {t['title']} "
                     f"→ {t['assigned_to']}"
                 )
-        board_summary = "\n".join(board_lines[:6]) or "No pending tasks."  # 6 ← was 12
+        board_summary = "\n".join(board_lines[:6]) or "No pending tasks."
 
         worker_names = ", ".join(w["name"] for w in cfg.get("workers", [])) or "any"
 
@@ -997,12 +1052,33 @@ class CorpManager:
         if cfg.get("goal", "").strip():
             goal_section = f"Goal: {cfg['goal'].strip()}\n"
 
+        # ── Workspace blueprint (compact tree — replaces dozens of list_dir calls) ──
+        ws = self._workspace_path(corp_id)
+        blueprint_section = ""
+        if ws.exists():
+            try:
+                bp = build_workspace_blueprint(ws)
+                # Cap at 3 k chars in the prompt; workers can call get_project_blueprint for full view
+                if len(bp) > 3000:
+                    bp = bp[:3000] + "\n… [truncated — call get_project_blueprint for full view]"
+                blueprint_section = f"## Workspace Blueprint\n{bp}\n\n"
+            except Exception:
+                pass
+
+        # ── Shared memory (findings from other workers) ───────────────────────────
+        shared_mem = self.read_shared_memory(corp_id)
+        shared_section = ""
+        if shared_mem and not shared_mem.startswith("("):
+            shared_section = f"## Shared Team Knowledge\n{shared_mem}\n\n"
+
         return (
             f"You are {worker['name']}, {worker['role']} at {cfg['name']}.\n"
             f"{cfg['name']}: {cfg.get('description', '')}  {goal_section}\n"
             f"Style: {worker.get('personality', 'Professional and helpful.')}\n\n"
             f"## Your Memory\n"
             f"{memory or 'No memory yet.'}\n\n"
+            f"{blueprint_section}"
+            f"{shared_section}"
             f"## Task Board\n"
             f"{board_summary}\n\n"
             f"## Recent Team Messages\n"
@@ -1010,7 +1086,8 @@ class CorpManager:
             f"## Your Task\n"
             f"{task['description']}\n\n"
             f"Corp tools: post_to_log(msg,to), create_task(title,desc,assigned_to,priority), "
-            f"update_memory(content), read_log, read_task_board, done(summary).\n"
+            f"update_memory(content), read_shared_memory, update_shared_memory(key,content), "
+            f"get_project_blueprint, search_codebase(query,path), read_log, read_task_board, done(summary).\n"
             f"Team members: {worker_names}\n"
             f"On finish: update_memory (≤200 words), then done(summary).\n"
         )
@@ -1038,14 +1115,24 @@ class CorpManager:
 
         worker_names = ", ".join(w["name"] for w in cfg.get("workers", [])) or "any"
 
-        # Workspace listing (top-level only — keep prompt lean)
+        # Workspace blueprint (replaces the old flat top-level listing)
+        from core.orchestrator.agent_runner import build_workspace_blueprint
         ws_path = self._workspace_path(corp_id)
-        ws_listing = "(empty)"
-        try:
-            entries = list(ws_path.iterdir()) if ws_path.exists() else []
-            ws_listing = "\n".join(e.name for e in entries[:40]) or "(empty)"
-        except Exception:
-            pass
+        blueprint_section = ""
+        if ws_path.exists():
+            try:
+                bp = build_workspace_blueprint(ws_path)
+                if len(bp) > 3000:
+                    bp = bp[:3000] + "\n… [truncated — call get_project_blueprint for full view]"
+                blueprint_section = f"## Workspace Blueprint\n{bp}\n\n"
+            except Exception:
+                pass
+
+        # Shared team knowledge
+        shared_mem = self.read_shared_memory(corp_id)
+        shared_section = ""
+        if shared_mem and not shared_mem.startswith("("):
+            shared_section = f"## Shared Team Knowledge\n{shared_mem}\n\n"
 
         return (
             f"You are {worker['name']}, a {worker['role']} at {cfg['name']}.\n\n"
@@ -1055,14 +1142,14 @@ class CorpManager:
             f"{worker.get('personality', 'Professional and proactive.')}\n\n"
             f"## Your Memory\n"
             f"{memory or 'No memory yet.'}\n\n"
+            f"{blueprint_section}"
+            f"{shared_section}"
             f"## Current Task Board — Pending\n"
             f"{board_summary}\n\n"
             f"## Recently Completed / Failed\n"
             f"{done_summary}\n\n"
             f"## Recent Team Messages\n"
             f"{recent_log or 'No messages yet.'}\n\n"
-            f"## Workspace Contents (top-level)\n"
-            f"{ws_listing}\n\n"
             f"## Your Job RIGHT NOW\n"
             f"The task board is empty (or all tasks are assigned). Evaluate the company goal, "
             f"what has been done, and what is still needed. Then create 1-3 concrete, actionable "

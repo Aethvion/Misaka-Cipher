@@ -36,6 +36,9 @@ Workspace: {workspace}
 Date: {current_date}
 
 ACTIONS (write ACTION: then JSON — multiple per response allowed):
+ACTION: {{"type": "get_project_blueprint"}}                                                    ← full workspace tree instantly — use FIRST
+ACTION: {{"type": "get_project_blueprint", "path": "subdir"}}                                 ← expanded view of one subdirectory
+ACTION: {{"type": "search_codebase", "query": "text or regex", "path": "dir/or/file.html"}}  ← find text without reading whole files
 ACTION: {{"type": "patch_file",   "path": "f", "old": "exact current text", "new": "replacement"}}
 ACTION: {{"type": "append_file",  "path": "f", "content": "new content to add at end of file"}}
 ACTION: {{"type": "write_file",   "path": "f", "content": "full content"}}
@@ -47,19 +50,24 @@ ACTION: {{"type": "fetch_url",    "url": "https://..."}}
 ACTION: {{"type": "post_to_log",  "message": "...", "to": "All"}}
 ACTION: {{"type": "create_task",  "title": "...", "description": "...", "assigned_to": "name_or_any", "priority": "high|medium|low"}}
 ACTION: {{"type": "update_memory","content": "key facts, under 200 words"}}
+ACTION: {{"type": "read_shared_memory"}}                                                       ← see what teammates have already discovered
+ACTION: {{"type": "update_shared_memory", "key": "topic", "content": "findings to share"}}   ← save discoveries for teammates
 ACTION: {{"type": "read_log"}}
 ACTION: {{"type": "read_task_board"}}
 ACTION: {{"type": "done",         "summary": "what was accomplished"}}
 
 KEY RULES:
-1. PATCH, DON'T REWRITE — use patch_file for existing files; write_file for new files only.
-2. READ BEFORE PATCHING — read_file first so your "old" string exactly matches current content.
-3. MINIMAL CHANGES — only change what the task requires. Never reformat or restructure untouched code.
-4. KNOWLEDGE BLOCK — Context→Knowledge lists functions with exact line numbers (e.g. render@L145). \
+1. NAVIGATE SMART — call get_project_blueprint FIRST; never call list_dir on unknown dirs.
+2. FIND, DON'T READ — use search_codebase to locate text before reading any file.
+3. PATCH, DON'T REWRITE — use patch_file for existing files; write_file for new files only.
+4. READ BEFORE PATCHING — read_file first so your "old" string exactly matches current content.
+5. MINIMAL CHANGES — only change what the task requires. Never reformat or restructure untouched code.
+6. KNOWLEDGE BLOCK — Context→Knowledge lists functions with exact line numbers (e.g. render@L145). \
 Use read_file with offset=145 to jump straight to that function.
-5. BATCH — issue all independent ACTION lines in one response.
-6. ON FINISH — call update_memory with key learnings (≤200 words), then call done(summary).
-7. TASKS YOU CREATE must be small and focused (completable in 3–5 actions). Never use "urgent" priority.
+7. BATCH — issue all independent ACTION lines in one response.
+8. SHARE KNOWLEDGE — after significant research use update_shared_memory so teammates don't duplicate work.
+9. ON FINISH — call update_memory with key learnings (≤200 words), then call done(summary).
+10. TASKS YOU CREATE must be small and focused (completable in 3–5 actions). Never use "urgent" priority.
 """
 
 
@@ -107,9 +115,10 @@ class CorpWorkerRunner(AgentRunner):
         title = task_title or task.split("\n")[0][:80]
         self._task_short = (
             f"[{worker_name} continuing task: {title}]\n"
-            f"Corp tools: post_to_log, create_task(title,desc,assigned_to,priority), "
-            f"update_memory(content), read_log, read_task_board, done(summary).\n"
-            f"Use Knowledge block for file structure. patch_file for edits, append_file for new code."
+            f"Navigate: get_project_blueprint (tree) · search_codebase(query,path) (find text).\n"
+            f"Corp: post_to_log · create_task · update_memory · read_shared_memory · "
+            f"update_shared_memory(key,content) · read_log · read_task_board · done(summary).\n"
+            f"Edit: patch_file (existing files) · append_file (new code) · Knowledge block has line numbers."
         )
 
     # ── Corp-specific system prompt & prompt building ─────────────────────────
@@ -210,6 +219,23 @@ class CorpWorkerRunner(AgentRunner):
                 for task in tasks
             ]
             return "\n".join(lines) or "Empty task board."
+
+        if t == "update_shared_memory":
+            key     = action.get("key", "").strip()
+            content = action.get("content", "").strip()
+            if not key or not content:
+                return "[update_shared_memory] 'key' and 'content' are required."
+            if self._corp_manager:
+                return self._corp_manager.update_shared_memory(
+                    self._corp_id, self._worker_name, key, content
+                )
+            return "[update_shared_memory] Corp manager not available."
+
+        if t == "read_shared_memory":
+            if not self._corp_manager:
+                return "(shared memory not available)"
+            key = action.get("key", "")
+            return self._corp_manager.read_shared_memory(self._corp_id, key)
 
         # Everything else handled by parent (write_file, patch_file, search_web, etc.)
         return super()._execute(action, iteration)

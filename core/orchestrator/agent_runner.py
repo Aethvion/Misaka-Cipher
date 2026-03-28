@@ -14,6 +14,138 @@ logger = get_logger(__name__)
 # Safety backstop — effectively unlimited; the Stop button is the user's control.
 MAX_ITERATIONS = 200
 
+# ── Blueprint / search constants ──────────────────────────────────────────────
+BLUEPRINT_IGNORE_DIRS = frozenset({
+    '.git', 'node_modules', '__pycache__', '.next', 'dist', 'build',
+    '.venv', 'venv', 'env', '.tox', '.pytest_cache', '.mypy_cache',
+    'coverage', '.cache', 'tmp', 'temp', '.idea', '.vscode',
+})
+BLUEPRINT_SKIP_EXTS = frozenset({
+    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.webp', '.avif', '.tif', '.tiff',
+    '.ttf', '.woff', '.woff2', '.eot', '.otf',
+    '.mp4', '.mp3', '.wav', '.webm', '.avi', '.mov', '.ogg', '.flac',
+    '.zip', '.gz', '.tar', '.rar', '.7z', '.bz2',
+    '.pyc', '.pyo', '.so', '.dll', '.exe', '.bin', '.class',
+    '.map',
+})
+BLUEPRINT_MAX_FILES_PER_DIR = 20   # show first N files per directory, summarise the rest
+BLUEPRINT_MAX_DEPTH         = 6    # max folder depth to recurse
+BLUEPRINT_MAX_LINES         = 500  # hard cap on output lines
+BLUEPRINT_CACHE_SECS        = 120  # seconds before cached _blueprint.txt is stale
+
+
+def _bp_fmt_size(n: int) -> str:
+    if n < 1024:       return f"{n}B"
+    if n < 1_048_576:  return f"{n // 1024}k"
+    return f"{n / 1_048_576:.1f}M"
+
+
+def build_workspace_blueprint(workspace: Path, sub_path: str = "") -> str:
+    """Walk the workspace once and return a compact hierarchical file map.
+
+    • Caches result to ``_blueprint.txt`` in the workspace root for 120 s so
+      all corp workers share the same snapshot without re-walking the tree.
+    • Pass ``sub_path`` to get an expanded view of a specific subdirectory.
+    • Binary assets (images, fonts, video…) and tooling dirs (.git, node_modules…)
+      are silently excluded so the output stays focused on source files.
+    """
+    import time
+
+    root = workspace / sub_path if sub_path else workspace
+    if not root.exists():
+        return f"Error: path '{sub_path}' not found in workspace."
+
+    cache_path = workspace / "_blueprint.txt"
+    if not sub_path and cache_path.exists():
+        try:
+            if time.time() - cache_path.stat().st_mtime < BLUEPRINT_CACHE_SECS:
+                return cache_path.read_text(encoding="utf-8")
+        except Exception:
+            pass
+
+    lines: list[str] = []
+
+    def walk(path: Path, prefix: str, depth: int) -> None:
+        if depth > BLUEPRINT_MAX_DEPTH:
+            lines.append(f"{prefix}… (depth limit)")
+            return
+        try:
+            entries = sorted(path.iterdir(), key=lambda e: (e.is_file(), e.name.lower()))
+        except PermissionError:
+            return
+
+        dirs = [
+            e for e in entries
+            if e.is_dir() and e.name not in BLUEPRINT_IGNORE_DIRS and not e.name.startswith(".")
+        ]
+        files = [
+            e for e in entries
+            if e.is_file()
+            and e.suffix.lower() not in BLUEPRINT_SKIP_EXTS
+            and e.name != "_blueprint.txt"
+        ]
+
+        shown  = files[:BLUEPRINT_MAX_FILES_PER_DIR]
+        hidden = files[BLUEPRINT_MAX_FILES_PER_DIR:]
+
+        items = dirs + shown
+        for i, item in enumerate(items):
+            last_visible = (i == len(items) - 1) and not hidden
+            conn      = "└── " if last_visible else "├── "
+            child_pfx = prefix + ("    " if last_visible else "│   ")
+
+            if item.is_dir():
+                try:
+                    sub = list(item.iterdir())
+                    n_f = sum(1 for e in sub if e.is_file() and e.suffix.lower() not in BLUEPRINT_SKIP_EXTS)
+                    n_d = sum(1 for e in sub if e.is_dir()
+                              and e.name not in BLUEPRINT_IGNORE_DIRS and not e.name.startswith("."))
+                    ext_ctr: dict[str, int] = {}
+                    for e in sub:
+                        if e.is_file() and e.suffix.lower() not in BLUEPRINT_SKIP_EXTS:
+                            ext = e.suffix.lower() or "(no ext)"
+                            ext_ctr[ext] = ext_ctr.get(ext, 0) + 1
+                    top = sorted(ext_ctr.items(), key=lambda x: -x[1])[:3]
+                    ext_str = ", ".join(f"{c}×{e}" for e, c in top)
+                    meta = f"{n_f} files" + (f" [{ext_str}]" if ext_str else "") + (f", {n_d} subdirs" if n_d else "")
+                except Exception:
+                    meta = ""
+                lines.append(f"{prefix}{conn}{item.name}/  ({meta})")
+                walk(item, child_pfx, depth + 1)
+            else:
+                try:
+                    sz = _bp_fmt_size(item.stat().st_size)
+                except Exception:
+                    sz = ""
+                lines.append(f"{prefix}{conn}{item.name}  {sz}")
+
+        if hidden:
+            ext_ctr2: dict[str, int] = {}
+            for f in hidden:
+                ext = f.suffix.lower() or "(no ext)"
+                ext_ctr2[ext] = ext_ctr2.get(ext, 0) + 1
+            top2 = sorted(ext_ctr2.items(), key=lambda x: -x[1])[:3]
+            ext_str2 = ", ".join(f"{c}×{e}" for e, c in top2)
+            lines.append(f"{prefix}└── … {len(hidden)} more [{ext_str2}]  "
+                         f"(use get_project_blueprint with path=\"{path.relative_to(workspace)}\" for full list)")
+
+    walk(root, "", 0)
+
+    if len(lines) > BLUEPRINT_MAX_LINES:
+        lines = lines[:BLUEPRINT_MAX_LINES]
+        lines.append("… [truncated — use path= parameter to explore a specific subdirectory]")
+
+    header = f"# Blueprint: {sub_path or workspace.name}/  ({len(lines)} entries)\n"
+    result = header + "\n".join(lines)
+
+    if not sub_path:
+        try:
+            cache_path.write_text(result, encoding="utf-8")
+        except Exception:
+            pass
+
+    return result
+
 SYSTEM_PROMPT = """\
 You are an expert software engineer completing coding tasks with surgical precision.
 
@@ -29,6 +161,9 @@ ACTION: {{"type": "delete_file", "path": "relative/file.txt"}}
 ACTION: {{"type": "read_file", "path": "relative/file.txt"}}
 ACTION: {{"type": "read_file", "path": "relative/file.txt", "offset": 300}}           ← start at line 300
 ACTION: {{"type": "read_file", "path": "relative/file.txt", "offset": 300, "limit": 200}}  ← lines 300–500
+ACTION: {{"type": "get_project_blueprint"}}                                                    ← full workspace tree, zero reads needed
+ACTION: {{"type": "get_project_blueprint", "path": "subdir"}}                                 ← expanded view of one subdirectory
+ACTION: {{"type": "search_codebase", "query": "text or regex", "path": "dir/or/file.html"}}  ← find text without reading whole files; add "context": 2 for extra lines
 ACTION: {{"type": "list_dir", "path": ""}}
 ACTION: {{"type": "run_command", "command": "npm install"}}
 ACTION: {{"type": "search_web", "query": "your search query", "max_results": 6}}
@@ -65,6 +200,8 @@ EFFICIENCY RULES:
 21. Write ALL deliverable files BEFORE writing or running verification/test scripts.
 22. Before calling done, check your plan — every [ ] step must have a corresponding action result. Complete any unmarked steps first.
 23. NAMING: Never name user projects, games, apps, or deliverables after the workspace directory path. Use the name the user specified, or a descriptive/generic name if none was given.
+24. NAVIGATE SMART: On any unfamiliar workspace, call get_project_blueprint FIRST — it gives the full folder/file tree instantly without a single list_dir. Use list_dir only for a targeted spot-check of one directory.
+25. FIND, DON'T READ: Use search_codebase(query, path) to locate a string, class, or link in seconds. Only call read_file after you know exactly which file and roughly which line you need.
 """
 
 
@@ -738,7 +875,91 @@ class AgentRunner:
             self.state.log_action(iteration, "fetch_url", url[:40])
             return result
 
+        if t == "get_project_blueprint":
+            sub_path = action.get("path", "")
+            result = build_workspace_blueprint(self.workspace, sub_path)
+            self.state.log_action(iteration, "get_project_blueprint", sub_path or "workspace")
+            return result
+
+        if t == "search_codebase":
+            query = action.get("query", "")
+            path  = action.get("path", "")
+            ctx   = int(action.get("context", 1))
+            max_r = int(action.get("max_results", 30))
+            if not query:
+                return "[search_codebase] 'query' is required."
+            result = self._search_codebase(query, path, ctx, max_r)
+            self.state.log_action(iteration, "search_codebase", query[:40])
+            self._emit({"type": "read_file", "path": path or "workspace", "detail": f"search: {query[:40]}"})
+            return result
+
         return f"Unknown action: {t}"
+
+    def _search_codebase(self, query: str, path: str = "", context_lines: int = 1, max_results: int = 30) -> str:
+        """Search for a literal string or regex pattern across workspace source files.
+
+        Much cheaper than reading whole files: returns only matching lines with
+        a small context window, and the file + line number so the agent can jump
+        straight to the right offset with read_file.
+        """
+        search_root = self.workspace / path if path else self.workspace
+        if not search_root.exists():
+            return f"Error: path '{path}' does not exist in workspace."
+
+        try:
+            pattern = re.compile(query, re.IGNORECASE)
+        except re.error:
+            pattern = re.compile(re.escape(query), re.IGNORECASE)
+
+        if search_root.is_file():
+            files: List[Path] = [search_root]
+        else:
+            files = sorted(
+                f for f in search_root.rglob("*")
+                if f.is_file()
+                and f.suffix.lower() not in BLUEPRINT_SKIP_EXTS
+                and not any(part in BLUEPRINT_IGNORE_DIRS
+                            for part in f.relative_to(self.workspace).parts)
+            )
+
+        results: List[str] = []
+        total_matches = 0
+
+        for filepath in files:
+            if total_matches >= max_results:
+                break
+            try:
+                text = filepath.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+
+            file_lines = text.splitlines()
+            file_hits: List[str] = []
+
+            for lineno, line in enumerate(file_lines, 1):
+                if total_matches >= max_results:
+                    break
+                if pattern.search(line):
+                    total_matches += 1
+                    ctx_start = max(0, lineno - 1 - context_lines)
+                    ctx_end   = min(len(file_lines), lineno + context_lines)
+                    block = []
+                    for j in range(ctx_start, ctx_end):
+                        marker = "→" if j == lineno - 1 else " "
+                        block.append(f"  {marker} L{j + 1}: {file_lines[j].rstrip()}")
+                    file_hits.append("\n".join(block))
+
+            if file_hits:
+                rel = str(filepath.relative_to(self.workspace))
+                results.append(f"{rel}:\n" + "\n".join(file_hits))
+
+        if not results:
+            scope = f" in '{path}'" if path else ""
+            return f"No matches for '{query}'{scope}."
+
+        more = f" (first {max_results} shown)" if total_matches >= max_results else ""
+        header = f"Found {total_matches} match{'es' if total_matches != 1 else ''}{more} for '{query}':\n\n"
+        return header + "\n\n".join(results)
 
     def _parse_list_dir_entries(self, listing: str) -> List[str]:
         """Extract bare filenames from _list_dir output (strips emoji prefix)."""
