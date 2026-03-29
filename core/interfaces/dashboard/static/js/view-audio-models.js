@@ -86,9 +86,9 @@ const AudioModels = (() => {
         ).join('');
 
         // Status pill
-        let statusPill = `<span class="am-status am-status-missing">Not Installed</span>`;
-        if (installed && loaded)   statusPill = `<span class="am-status am-status-loaded">Loaded · ${device}</span>`;
-        else if (installed)        statusPill = `<span class="am-status am-status-installed">Installed</span>`;
+        let statusPill = `<span class="status-badge">Not Installed</span>`;
+        if (installed && loaded)   statusPill = `<span class="status-badge success-v12">Loaded · ${device}</span>`;
+        else if (installed)        statusPill = `<span class="status-badge warning-v12">Installed</span>`;
 
         const isDefault = _defaultModel === m.id;
         const isRegistered = _registered.has(m.id);
@@ -139,7 +139,7 @@ const AudioModels = (() => {
         // Test section (only when loaded)
         const testSection = loaded ? _testSection(m) : '';
 
-        return `<div class="am-model-card ${loaded ? 'am-card-loaded' : ''}" id="am-card-${m.id}">
+        return `<div class="am-model-card-v12 ${loaded ? 'am-card-loaded-v12' : ''}" id="am-card-${m.id}">
             <div class="am-card-header">
                 <div class="am-card-title">
                     <span class="am-model-name">${m.name}</span>
@@ -151,7 +151,7 @@ const AudioModels = (() => {
             <p class="am-model-desc">${m.description}</p>
             <div class="am-card-meta">
                 <span><i class="fas fa-hdd"></i> ${m.size_label}</span>
-                <span><i class="fas fa-memory"></i> ${m.vram_gb} GB VRAM</span>
+                <span><i class="fas fa-microchip"></i> ${m.vram_gb} GB VRAM</span>
             </div>
             <div class="am-tags">${tagBadges}</div>
             <div class="am-card-actions">${actions}</div>
@@ -236,9 +236,9 @@ const AudioModels = (() => {
                 return;
             }
             list.innerHTML = voices.map(v => `
-                <div class="am-voice-card">
+                <div class="am-voice-card-v12">
                     <div class="am-voice-name">${v.name}</div>
-                    <div class="am-voice-meta">${v.language} · ${v.gender}</div>
+                    <div class="am-voice-meta" style="font-weight: 700; color: var(--primary);">${v.language.toUpperCase()} · ${v.gender}</div>
                     <button class="am-voice-delete" onclick="AudioModels.deleteVoice('${v.id}', this)" title="Delete voice">
                         <i class="fas fa-trash"></i>
                     </button>
