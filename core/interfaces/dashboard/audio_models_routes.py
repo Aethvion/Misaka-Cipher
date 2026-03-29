@@ -328,7 +328,7 @@ async def get_tts_for_dropdown():
 
 @router.post("/install")
 async def install_packages(req: InstallRequest):
-    """pip-install the packages required by an audio model."""
+    """pip-install the packages required by an audio model (blocking, JSON response)."""
     packages = req.packages.strip().split()
     if not packages:
         raise HTTPException(400, "No packages specified")
@@ -343,3 +343,32 @@ async def install_packages(req: InstallRequest):
         return {"success": True, "output": proc.stdout[-500:]}
     except Exception as e:
         raise HTTPException(500, str(e))
+
+
+@router.post("/install/stream")
+async def install_packages_stream(req: InstallRequest):
+    """pip-install packages with SSE streaming — each output line is sent as a data event."""
+    from fastapi.responses import StreamingResponse
+
+    packages = req.packages.strip().split()
+    if not packages:
+        raise HTTPException(400, "No packages specified")
+
+    async def _generate():
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, "-m", "pip", "install", *packages,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        async for raw_line in proc.stdout:
+            line = raw_line.decode("utf-8", errors="replace").rstrip()
+            yield f"data: {json.dumps({'line': line})}\n\n"
+        await proc.wait()
+        rc = proc.returncode
+        yield f"data: {json.dumps({'done': True, 'success': rc == 0, 'returncode': rc})}\n\n"
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
