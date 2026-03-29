@@ -339,6 +339,9 @@
     padding: 1.3rem 1.4rem;
     overflow-x: auto;
     box-shadow: var(--shadow-md);
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
 }
 
 .table-header-row {
