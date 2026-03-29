@@ -3810,71 +3810,51 @@
                     </div>
                 </div>
                 <div class="panel-content">
-                    <div class="setting-card">
-                        <div class="card-header">
+                    <!-- Downloaded Models Section -->
+                    <div class="glass-panel">
+                        <div class="section-header-v12">
+                            <i class="fas fa-microchip"></i>
                             <h3>Downloaded Models</h3>
                         </div>
-                        <div class="card-body">
-                            <p class="section-desc">Manage GGUF models stored in <code>localmodels/gguf/</code>.</p>
-                            <table class="usage-table">
-                                <thead>
-                                    <tr>
-                                        <th>Filename</th>
-                                        <th>Size</th>
-                                        <th>Path</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="local-models-list">
-                                    <!-- Populated by JS -->
-                                    <tr>
-                                        <td colspan="4" class="placeholder-text">Checking for local models...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        <p class="section-desc">Manage GGUF models stored in <code>localmodels/gguf/</code>.</p>
+                        <table class="models-table-v12">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Size</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="local-models-list">
+                                <!-- Populated by JS -->
+                                <tr>
+                                    <td colspan="4" class="placeholder-text">Checking for local models...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
 
-                    <div class="setting-card">
-                        <div class="card-header">
+                    <!-- Suggested Models Section -->
+                    <div class="glass-panel">
+                        <div class="section-header-v12">
+                            <i class="fas fa-sparkles"></i>
                             <h3>Suggested Models</h3>
                         </div>
-                        <div class="card-body">
-                            <p class="section-desc">Recommended GGUF models for one-click installation from Hugging
-                                Face.</p>
-                            <div id="suggested-models-grid"
-                                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
-                                <!-- Populated by JS -->
-                                <div class="placeholder-text">Loading suggestions...</div>
-                            </div>
+                        <p class="section-desc">Recommended GGUF models for one-click installation from Hugging Face.</p>
+                        <div id="suggested-models-grid"
+                            style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+                            <!-- Populated by JS -->
+                            <div class="placeholder-text">Loading suggestions...</div>
                         </div>
                     </div>
 
-                    <div class="setting-card">
-                        <div class="card-header">
+                    <!-- Download New Models Section -->
+                    <div class="glass-panel">
+                        <div class="section-header-v12">
+                            <i class="fas fa-cloud-download-alt"></i>
                             <h3>Download New Models</h3>
                         </div>
-                        <div class="card-body">
-                            <p class="section-desc">Download GGUF models directly from Hugging Face.</p>
-                            <div class="download-form" style="display:flex; gap:10px; flex-wrap:wrap;">
-                                <div style="flex:1; min-width:250px;">
-                                    <label style="display:block; margin-bottom:5px; font-size:0.85rem;">HuggingFace Repo
-                                        ID</label>
-                                    <input type="text" id="hf-repo-id" class="term-input"
-                                        placeholder="e.g. unsloth/Llama-3.2-1-Instruct-GGUF" style="width:100%;">
-                                </div>
-                                <div style="flex:1; min-width:250px;">
-                                    <label style="display:block; margin-bottom:5px; font-size:0.85rem;">Filename</label>
-                                    <input type="text" id="hf-filename" class="term-input"
-                                        placeholder="e.g. Llama-3.2-1B-Instruct-Q4_K_M.gguf" style="width:100%;">
-                                </div>
-                                <div style="display:flex; align-items:flex-end;">
-                                    <button id="start-hf-download" class="action-btn primary" style="height:38px;">
-                                        <i class="fas fa-download"></i> Download
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="download-progress-container" style="display:none; margin-top:15px;">
                                 <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
                                     <span id="download-status">Downloading...</span>
                                     <span id="download-percent">0%</span>

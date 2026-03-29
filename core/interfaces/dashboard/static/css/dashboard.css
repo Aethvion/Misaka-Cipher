@@ -720,4 +720,198 @@
     from { background-position: 200% 0; }
     to { background-position: -200% 0; }
 }
+
+/* ===== Local Models Management Refinements (v12) ===== */
+
+.glass-panel {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+}
+
+.glass-panel:hover {
+    border-color: rgba(0, 217, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.section-header-v12 {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 0.75rem;
+}
+
+.section-header-v12 i {
+    color: var(--primary);
+    font-size: 1.1rem;
+    filter: drop-shadow(0 0 5px rgba(0, 217, 255, 0.4));
+}
+
+.section-header-v12 h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: #fff;
+    text-transform: uppercase;
+}
+
+/* Models Table Refinement */
+.models-table-v12 {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+    margin-top: -8px;
+}
+
+.models-table-v12 th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.models-table-v12 tr {
+    background: rgba(255, 255, 255, 0.02);
+    transition: background 0.2s;
+}
+
+.models-table-v12 tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.models-table-v12 td {
+    padding: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.models-table-v12 td:first-child {
+    border-left: 1px solid rgba(255, 255, 255, 0.03);
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+
+.models-table-v12 td:last-child {
+    border-right: 1px solid rgba(255, 255, 255, 0.03);
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+/* Suggestion Card Refinement */
+.suggestion-card-v12 {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+    padding: 1.5rem !important;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.suggestion-card-v12::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.suggestion-card-v12:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.07) !important;
+    border-color: rgba(0, 217, 255, 0.3) !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.suggestion-card-v12:hover::before {
+    opacity: 1;
+}
+
+.suggestion-card-v12 h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #fff;
+    font-weight: 600;
+}
+
+.suggestion-card-v12 .description {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0.75rem 0 1.25rem 0;
+    line-height: 1.5;
+    flex-grow: 1;
+}
+
+.tag-list {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.tag-v12 {
+    background: rgba(0, 217, 255, 0.08);
+    color: var(--primary);
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid rgba(0, 217, 255, 0.15);
+}
+
+.card-footer-v12 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.model-size-badge {
+    color: #fab1a0;
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.status-badge.success-v12 {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.status-badge.warning-v12 {
+    background: rgba(249, 115, 22, 0.1);
+    color: #f97316;
+    border: 1px solid rgba(249, 115, 22, 0.2);
+}
+
 

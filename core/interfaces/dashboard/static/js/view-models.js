@@ -45,21 +45,21 @@ const LocalModels = {
                 const isRegistered = !!registeredModels[filename];
                 return `
                     <tr>
-                        <td><strong>${filename}</strong></td>
-                        <td>${info.size_mb} MB</td>
+                        <td style="font-weight: 600; color: #fff;">${filename}</td>
+                        <td style="color: var(--text-secondary);">${info.size_mb} MB</td>
                         <td>
                             ${isRegistered ? 
-                                '<span style="color:#00b894; font-size:0.75rem; font-weight:bold;"><i class="fas fa-check-circle"></i> Registered</span>' : 
-                                '<span style="color:#fab1a0; font-size:0.75rem; font-weight:bold;"><i class="fas fa-exclamation-circle"></i> Unregistered</span>'
+                                '<span class="status-badge success-v12"><i class="fas fa-check-circle"></i> Registered</span>' : 
+                                '<span class="status-badge warning-v12"><i class="fas fa-exclamation-circle"></i> Unregistered</span>'
                             }
                         </td>
-                        <td style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <td style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center;">
                             ${!isRegistered ? `
-                                <button class="action-btn xs-btn register-model-btn" data-filename="${filename}" title="Register Model">
+                                <button class="action-btn sm-btn register-model-btn" data-filename="${filename}" title="Register Model">
                                     <i class="fas fa-plus"></i> Register
                                 </button>
                             ` : ''}
-                            <button class="btn-icon xs-btn delete-model-btn" data-filename="${filename}" title="Delete Model" style="color:#ff7675;">
+                            <button class="btn-icon sm-btn delete-model-btn" data-filename="${filename}" title="Delete Model" style="color: rgba(255, 118, 117, 0.8);">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -105,30 +105,29 @@ const LocalModels = {
 
             grid.innerHTML = suggestions.map(model => {
                 const isUnsupported = !!model.unsupported;
-                const cardBorder = isUnsupported
-                    ? 'border: 1px solid rgba(255,118,117,0.35); opacity: 0.75;'
-                    : 'border: 1px solid rgba(255,255,255,0.1);';
                 const actionHtml = isUnsupported
                     ? `<span title="${model.unsupported_reason || 'Not supported'}" style="font-size:0.75rem; color:#ff7675; display:flex; align-items:center; gap:0.3rem; cursor:help;">
                            <i class="fas fa-triangle-exclamation"></i> Not yet compatible
                        </span>`
                     : `<button class="action-btn sm-btn install-btn"
-                               onclick="LocalModels.installSuggestedModel('${model.id}', '${model.repo}', '${model.filename}')"
-                               style="font-size: 0.8rem; padding: 0.4rem 1rem;">
+                               onclick="LocalModels.installSuggestedModel('${model.id}', '${model.repo}', '${model.filename}')">
                            <i class="fas fa-download"></i> Install
                        </button>`;
+                
                 return `
-                <div class="model-card suggestion-card" id="suggested-${model.id}" style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 1.25rem; ${cardBorder} display: flex; flex-direction: column; transition: transform 0.2s, background 0.2s;">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
-                        <h4 style="margin: 0; font-size: 1.1rem; color: #fff;">${model.name}</h4>
-                        <span class="installed-badge" style="display: none; background: #00b894; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold;">INSTALLED</span>
+                <div class="suggestion-card-v12" id="suggested-${model.id}" style="${isUnsupported ? 'opacity: 0.6;' : ''}">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <h4>${model.name}</h4>
+                        <span class="installed-badge" style="display: none; background: var(--success); color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px;">INSTALLED</span>
                     </div>
-                    <p style="font-size: 0.85rem; color: #b2bec3; margin: 0 0 1rem 0; flex-grow: 1;">${model.description}</p>
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
-                        ${model.tags.map(tag => `<span style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem;">${tag}</span>`).join('')}
+                    <p class="description">${model.description}</p>
+                    <div class="tag-list">
+                        ${model.tags.map(tag => `<span class="tag-v12">${tag}</span>`).join('')}
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.8rem; font-weight: bold; color: #fab1a0;">${model.size}</span>
+                    <div class="card-footer-v12">
+                        <span class="model-size-badge">
+                            <i class="fas fa-microchip"></i> ${model.size}
+                        </span>
                         ${actionHtml}
                     </div>
                 </div>`;
