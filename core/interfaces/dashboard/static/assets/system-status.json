@@ -2,10 +2,55 @@
     "system": {
         "name": "Aethvion Suite",
         "company": "Aethvion",
-        "version": "10",
-        "last_sync": "2026-03-21",
+        "version": "11",
+        "last_sync": "2026-03-29",
         "contact": "contact@aethvion.com",
         "changelog": [
+            {
+                "version": "11",
+                "date": "2026-03-29",
+                "added": [
+                    "Agent Corp: get_project_blueprint action — generates a full hierarchical workspace tree in one call, replacing dozens of list_dir calls; cached for 120s in the corp data directory",
+                    "Agent Corp: search_codebase action — regex/literal search returning matching lines with line numbers so workers find code without reading whole files",
+                    "Agent Corp: read_shared_memory / update_shared_memory actions — corp-wide key-value knowledge store; workers share discoveries and avoid duplicate research",
+                    "Agent Corp: Namespaced shared-memory keys — files:name for file locations, stack:name for tech-stack facts; done:* keys auto-written on task completion",
+                    "Agent Corp: Post-task auto-snapshot — when a task completes the system automatically writes a done:{task_id} entry to shared memory so future workers see what was already done",
+                    "Agent Corp: Structured shared-memory display — worker and planner prompts split shared memory into Completed Work (done:* keys) and Shared Team Knowledge sections",
+                    "Agent Corp: Task detail modal — clicking a task card opens a read-only view with title, status badge, assignee, priority, description, and result summary",
+                    "Agent Corp: Task card hover previews — 120-character description shown on hover via title attribute",
+                    "Usage Analytics: Hero banner — large total spend with vs-previous-period delta indicator and 14-day mini sparkline",
+                    "Usage Analytics: Activity heatmap — GitHub-style 52-week contribution grid coloured by daily spend intensity with month labels and hover tooltips",
+                    "Usage Analytics: Daily spend bar chart — colour-gradient bars showing per-day cost over the selected range",
+                    "Usage Analytics: Timeline segmented control — switch between Tokens / Cost / Calls view without reloading",
+                    "Usage Analytics: Auto-generated insights row — top model share, peak day, avg cost per call, and input/output token split pills",
+                    "Usage Analytics: CSV export — one-click download of the current filtered history as a .csv file",
+                    "Usage Analytics: Live search filter on Recent API Calls table — filter by model, source, or provider",
+                    "Usage Analytics: vs-previous-period delta on hero banner comparing current period to the preceding equal period",
+                    "Usage Analytics: /api/usage/daily endpoint backed by get_daily_breakdown() for heatmap and bar chart data",
+                    "Infrastructure: Registry-based model pricing — _estimate_cost in corp_manager.py reads input_cost_per_1m_tokens and output_cost_per_1m_tokens from data/config/model_registry.json via a module-level cache; supports all configured providers",
+                    "License: Dual license (AGPLv3 + Commercial) replacing MIT; includes version history note, commercial trigger definitions, and CLA section",
+                    "License: Asset license v1.1 — CC BY-NC-ND 4.0 with explicit Commercial Inclusion, Modification, Standalone Redistribution, and Trademark Use clauses"
+                ],
+                "improved": [
+                    "Agent Corp: Knowledge block MRU ordering — file digests shown most-recently-used first with a 1,500-char hard cap; sessions touching 30+ files stay lean",
+                    "Agent Corp: File-write focused action log — Recent: always shows all write/patch/append actions so the model always sees what was changed",
+                    "Agent Corp: Operator message caching — log re-read only when line count changes, eliminating a redundant file read on every LLM call",
+                    "Agent Corp: Blueprint cache location — _blueprint.txt written to data/agent_corps/{id}/ instead of the user's project workspace",
+                    "Agent Corp: Worker prompt token efficiency — CORP_SYSTEM_PROMPT ~60% smaller than base; iterations 1+ use 270-char _task_short saving ~6,700 chars per call",
+                    "Agent Corp: t/s calculation — actual LLM streaming time (llm_elapsed_s) now used as denominator, excluding tool execution overhead",
+                    "Usage Analytics: Model breakdown table — added Input Cost, Output Cost, and Avg/Call columns (6 → 9 columns)",
+                    "Usage Analytics: Recent calls table increased from 25 to 100 rows",
+                    "Usage Analytics: 3M preset added alongside 1D / 1W / 1M / All",
+                    "Usage Analytics: Provider doughnut chart shows cost in tooltip alongside call count",
+                    "Usage Analytics: Stat cards redesigned with accent colours, icons, and descriptive sub-labels"
+                ],
+                "fixed": [
+                    "Agent Corp: Double message in company chat — removed optimistic local add; SSE echo is now the single source of truth",
+                    "Agent Corp: Workers ignoring operator messages — _build_prompt now injects last 3 [Operator → …] lines on every iteration 1+",
+                    "Agent Corp: Cost always defaulting to Sonnet pricing — replaced hardcoded substring table with model_registry.json lookup",
+                    "Agent Corp: Tokens-per-second showing unrealistically low values — was using wall-clock time including tool execution; fixed by measuring only LLM streaming window"
+                ]
+            },
             {
                 "version": "10",
                 "date": "2026-03-21",
