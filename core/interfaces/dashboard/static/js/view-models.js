@@ -148,7 +148,7 @@ const LocalModels = {
         const grid = document.getElementById('suggested-models-grid');
         if (!grid) return;
 
-        grid.querySelectorAll('.suggestion-card').forEach(card => {
+        grid.querySelectorAll('.suggestion-card-v12').forEach(card => {
             const installBtn = card.querySelector('.install-btn');
             const badge = card.querySelector('.installed-badge');
 
@@ -175,39 +175,91 @@ const LocalModels = {
 
     async installSuggestedModel(id, repo, filename) {
         const card = document.getElementById(`suggested-${id}`);
-        const btn = card ? card.querySelector('.install-btn') : null;
-        
+        const btn  = card ? card.querySelector('.install-btn') : null;
+
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installing...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting…';
         }
 
+        // Inject (or reuse) progress panel inside the card
+        let prog = card ? card.querySelector('.model-dl-progress') : null;
+        if (card && !prog) {
+            prog = document.createElement('div');
+            prog.className = 'model-dl-progress';
+            prog.innerHTML = `
+                <div class="model-dl-row">
+                    <span class="model-dl-label">Connecting…</span>
+                    <span class="model-dl-pct">0%</span>
+                </div>
+                <div class="model-dl-bar-wrap">
+                    <div class="model-dl-bar" style="width:0%"></div>
+                </div>
+                <span class="model-dl-size"></span>`;
+            card.appendChild(prog);
+        }
+
+        const dlLabel = prog?.querySelector('.model-dl-label');
+        const dlPct   = prog?.querySelector('.model-dl-pct');
+        const dlBar   = prog?.querySelector('.model-dl-bar');
+        const dlSize  = prog?.querySelector('.model-dl-size');
+
         try {
-            showNotification(`Starting installation of ${filename}...`, 'info');
-            
-            const res = await fetch('/api/registry/local/models/download', {
+            const resp = await fetch('/api/registry/local/models/download/stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ repo_id: repo, filename: filename })
+                body: JSON.stringify({ repo_id: repo, filename }),
             });
 
-            const result = await res.json();
-            if (res.ok) {
-                showNotification(`Successfully installed ${filename}`, 'success');
-                this.loadModels(); // This will also update suggested badges
-            } else {
-                showNotification(result.detail || 'Installation failed', 'error');
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-download"></i> Install';
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.detail || `HTTP ${resp.status}`);
+            }
+
+            const reader  = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let   buffer  = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+
+                const parts = buffer.split('\n\n');
+                buffer = parts.pop();
+
+                for (const part of parts) {
+                    if (!part.startsWith('data: ')) continue;
+                    let msg;
+                    try { msg = JSON.parse(part.slice(6)); } catch { continue; }
+
+                    if (msg.pct !== undefined) {
+                        if (dlBar)   dlBar.style.width    = msg.pct + '%';
+                        if (dlPct)   dlPct.textContent    = msg.pct + '%';
+                        if (dlLabel) dlLabel.textContent  = 'Downloading…';
+                        if (dlSize && msg.downloaded_mb)
+                            dlSize.textContent = `${msg.downloaded_mb} MB / ${msg.total_mb} MB`;
+                        if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${msg.pct}%`;
+                    } else if (msg.done) {
+                        if (msg.success) {
+                            if (dlBar)   { dlBar.style.width = '100%'; dlBar.classList.add('dl-bar-done'); }
+                            if (dlLabel) dlLabel.textContent = 'Complete!';
+                            if (dlPct)   dlPct.textContent   = '100%';
+                            if (btn)     { btn.disabled = true; btn.innerHTML = '<i class="fas fa-check"></i> Installed'; }
+                            showNotification(`${filename} downloaded successfully`, 'success');
+                            setTimeout(() => this.loadModels(), 500);
+                        } else {
+                            if (dlBar)   dlBar.classList.add('dl-bar-fail');
+                            if (dlLabel) dlLabel.textContent = 'Failed';
+                            showNotification(`Download failed: ${msg.error || 'Unknown error'}`, 'error');
+                            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Install'; }
+                        }
+                    }
                 }
             }
         } catch (e) {
-            showNotification('Error connecting to download service', 'error');
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-download"></i> Install';
-            }
+            showNotification(`Error: ${e.message || 'Connection failed'}`, 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Install'; }
         }
     },
 

@@ -881,6 +881,50 @@
     border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* ── Model download progress (inside suggestion cards) ─────────────────────── */
+.model-dl-progress {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.model-dl-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+}
+
+.model-dl-label { color: var(--text-secondary); font-weight: 600; }
+.model-dl-pct   { color: var(--primary); font-weight: 700; font-variant-numeric: tabular-nums; }
+.model-dl-size  { font-size: 0.7rem; color: var(--text-tertiary); }
+
+.model-dl-bar-wrap {
+    height: 5px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.model-dl-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 99px;
+    transition: width 0.3s ease;
+    animation: dl-bar-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes dl-bar-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.55; }
+}
+
+.model-dl-bar.dl-bar-done { background: #34d399; animation: none; }
+.model-dl-bar.dl-bar-fail { background: #f87171; animation: none; }
+
 .model-size-badge {
     color: #fab1a0;
     font-weight: 700;

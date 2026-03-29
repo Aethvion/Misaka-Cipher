@@ -616,6 +616,83 @@ async def get_suggested_local_models():
         return {"suggested": []}
 
 
+@router.post("/local/models/download/stream")
+async def download_local_model_stream(request: Request):
+    """Download a GGUF from HuggingFace with SSE byte-level progress."""
+    import asyncio
+    import threading
+    from fastapi.responses import StreamingResponse
+
+    data = await request.json()
+    repo_id  = (data.get("repo_id")  or "").strip()
+    filename = (data.get("filename") or "").strip()
+
+    if not repo_id or not filename:
+        raise HTTPException(400, "repo_id and filename are required")
+
+    loop = asyncio.get_event_loop()
+    q: asyncio.Queue = asyncio.Queue()
+
+    def _download():
+        try:
+            import requests
+            from huggingface_hub import hf_hub_url
+
+            url  = hf_hub_url(repo_id=repo_id, filename=filename)
+            dest = GGUF_DIR / filename
+            GGUF_DIR.mkdir(parents=True, exist_ok=True)
+            tmp  = dest.with_suffix(dest.suffix + ".part")
+
+            with requests.get(url, stream=True, timeout=60, allow_redirects=True) as r:
+                r.raise_for_status()
+                total      = int(r.headers.get("content-length", 0))
+                downloaded = 0
+                last_pct   = -1
+
+                with open(tmp, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded += len(chunk)
+                            if total > 0:
+                                pct = min(99, round(downloaded / total * 100, 1))
+                                if pct != last_pct:
+                                    last_pct = pct
+                                    loop.call_soon_threadsafe(q.put_nowait, {
+                                        "pct": pct,
+                                        "downloaded_mb": round(downloaded / 1024 / 1024, 1),
+                                        "total_mb":      round(total      / 1024 / 1024, 1),
+                                    })
+
+            tmp.rename(dest)
+            loop.call_soon_threadsafe(q.put_nowait, {
+                "done": True, "success": True, "pct": 100, "filename": filename,
+            })
+        except Exception as exc:
+            loop.call_soon_threadsafe(q.put_nowait, {
+                "done": True, "success": False, "error": str(exc),
+            })
+
+    threading.Thread(target=_download, daemon=True).start()
+
+    async def _generate():
+        while True:
+            try:
+                msg = await asyncio.wait_for(q.get(), timeout=30.0)
+            except asyncio.TimeoutError:
+                yield f"data: {json.dumps({'heartbeat': True})}\n\n"
+                continue
+            yield f"data: {json.dumps(msg)}\n\n"
+            if msg.get("done"):
+                break
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.post("/local/models/download")
 async def download_local_model(data: Dict[str, Any]):
     """Initiate a model download from Hugging Face."""
