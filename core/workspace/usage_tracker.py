@@ -551,15 +551,56 @@ class UsageTracker:
             "cost": round(cost, 6)
         }
 
-    def get_today_summary(self) -> Dict[str, Any]:
-        """Get total tokens and estimated cost for today UTC."""
-        day_logs = self._load_day_logs(datetime.utcnow())
-        tokens = 0
-        cost = 0.0
-        for entry in day_logs:
-            tokens += entry.get("total_tokens", 0)
-            cost += entry.get("estimated_cost", 0.0)
-        return {
-            "tokens": tokens,
-            "cost": round(cost, 6)
-        }
+    def get_daily_breakdown(
+        self,
+        days: int = 90,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        show_local: bool = True,
+        show_api: bool = True,
+    ) -> List[Dict[str, Any]]:
+        """Return cost/tokens/calls grouped by calendar day.
+
+        Default: last 90 days.  Used by the activity heatmap and daily-spend
+        bar chart in the Usage Dashboard.
+        """
+        if start_date:
+            entries = self._get_entries_for_range(start_date, end_date)
+        else:
+            cutoff_dt = datetime.utcnow() - timedelta(days=days)
+            entries = self._get_entries_for_range(cutoff_dt)
+
+        if not show_local or not show_api:
+            entries = [
+                e for e in entries
+                if (show_local and e.get("provider") == "local") or
+                   (show_api and e.get("provider") != "local")
+            ]
+
+        buckets: Dict[str, Dict] = defaultdict(
+            lambda: {"tokens": 0, "calls": 0, "cost": 0.0,
+                     "input_cost": 0.0, "output_cost": 0.0}
+        )
+        for entry in entries:
+            day_key = entry.get("timestamp", "")[:10]   # YYYY-MM-DD
+            if not day_key:
+                continue
+            ic, oc, c = self._compute_entry_costs(entry)
+            buckets[day_key]["tokens"]      += entry.get("total_tokens", 0)
+            buckets[day_key]["calls"]       += 1
+            buckets[day_key]["cost"]        += c
+            buckets[day_key]["input_cost"]  += ic
+            buckets[day_key]["output_cost"] += oc
+
+        result = []
+        for key in sorted(buckets.keys()):
+            b = buckets[key]
+            result.append({
+                "date":         key,
+                "tokens":       b["tokens"],
+                "calls":        b["calls"],
+                "cost":         round(b["cost"], 6),
+                "input_cost":   round(b["input_cost"], 6),
+                "output_cost":  round(b["output_cost"], 6),
+            })
+        return result

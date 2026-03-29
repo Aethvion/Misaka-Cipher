@@ -130,6 +130,25 @@ async def get_tokens_by_model(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/daily")
+async def get_daily_breakdown(
+    days: int = 90,
+    start: Optional[str] = None,
+    end: Optional[str] = None,
+    local: bool = True,
+    api: bool = True
+):
+    """Get cost/tokens/calls grouped by calendar day (for heatmap + daily bar chart)."""
+    try:
+        from core.workspace.usage_tracker import get_usage_tracker
+        tracker = get_usage_tracker()
+        s, e = parse_dates(start, end)
+        return {"days": tracker.get_daily_breakdown(days=days, start_date=s, end_date=e, show_local=local, show_api=api)}
+    except Exception as e:
+        logger.error(f"Failed to get daily breakdown: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/tools")
 async def get_tool_usage():
     """Get tool usage statistics from the tool registry."""
