@@ -3867,13 +3867,23 @@
                             <i class="fas fa-cloud-download-alt"></i>
                             <h3>Download New Models</h3>
                         </div>
-                                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
-                                    <span id="download-status">Downloading...</span>
-                                    <span id="download-percent">0%</span>
-                                </div>
-                                <div class="splash-loader-bar" style="height:8px;">
-                                    <div id="download-progress-bar" class="splash-progress" style="width:0%;"></div>
-                                </div>
+                        <p class="section-desc">Download a GGUF model directly from Hugging Face into your local models folder.</p>
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center;">
+                            <input type="text" id="hf-repo-id" class="setting-input" placeholder="Repo ID  (e.g. TheBloke/Mistral-7B-GGUF)" style="flex: 2; min-width: 200px;">
+                            <input type="text" id="hf-filename" class="setting-input" placeholder="Filename  (e.g. mistral-7b.Q4_K_M.gguf)" style="flex: 2; min-width: 200px;">
+                            <button id="start-hf-download" class="action-btn primary">
+                                <i class="fas fa-download"></i> Download
+                            </button>
+                        </div>
+                        <div id="download-progress-container" style="display:none;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                                <span id="download-status">Downloading…</span>
+                                <span id="download-percent">0%</span>
+                            </div>
+                            <div class="splash-loader-bar" style="height:8px;">
+                                <div id="download-progress-bar" class="splash-progress" style="width:0%;"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

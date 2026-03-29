@@ -783,6 +783,69 @@ async def get_system_status():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _get_git_remote_head(root_dir):
+    """Fetch the latest commit hash from the remote repository."""
+    try:
+        output = subprocess.check_output(
+            ['git', 'ls-remote', 'origin', 'HEAD'],
+            cwd=str(root_dir),
+            text=True,
+            stderr=subprocess.DEVNULL
+        )
+        if output:
+            return output.split()[0][:7]  # Short hash
+    except Exception:
+        pass
+    return None
+
+@app.get("/api/system/version-info")
+async def get_version_info():
+    """Get detailed local and remote version/commit information."""
+    root_dir = Path(__file__).resolve().parent.parent.parent.parent
+    
+    # 1. Local Version
+    from core.version import VERSION
+    
+    # 2. Current Commit (Local HEAD)
+    current_commit = "Unknown"
+    try:
+        current_commit = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            cwd=str(root_dir),
+            text=True,
+            stderr=subprocess.DEVNULL
+        ).strip()
+    except Exception: pass
+    
+    # 3. Full System Metadata (including last_update_commit and changelog)
+    last_update_commit = "Unknown"
+    changelog = []
+    status_path = Path(__file__).parent / "static" / "assets" / "system-status.json"
+    if status_path.exists():
+        try:
+            with open(status_path, 'r') as f:
+                data = json.load(f)
+                sys_data = data.get("system", {})
+                last_update_commit = sys_data.get("last_update_commit", "Unknown")
+                changelog = sys_data.get("changelog", [])
+        except Exception: pass
+        
+    # 4. Remote Commit (latest on GitHub)
+    remote_commit = await asyncio.to_thread(_get_git_remote_head, root_dir)
+    
+    return {
+        "local": {
+            "version": str(VERSION),
+            "commit": current_commit,
+            "last_update_commit": last_update_commit,
+            "changelog": changelog
+        },
+        "remote": {
+            "commit": remote_commit
+        }
+    }
+
+
 @app.post("/api/system/update")
 async def trigger_self_update():
     """Trigger the self-update process and shutdown with restart code."""
@@ -822,6 +885,30 @@ async def trigger_self_update():
             raise HTTPException(status_code=500, detail=f"Update failed: {err}")
 
         logger.info("Updater finished. Scheduling restart in 1.5 s...")
+
+        # After successful update, we should capture the NEW commit hash and save it
+        # so the UI knows what the 'last installed' commit is.
+        try:
+            new_commit = subprocess.check_output(
+                ['git', 'rev-parse', '--short', 'HEAD'],
+                cwd=str(root_dir),
+                text=True,
+                stderr=subprocess.DEVNULL
+            ).strip()
+            
+            status_path = Path(__file__).parent / "static" / "assets" / "system-status.json"
+            if status_path.exists():
+                with open(status_path, 'r') as f:
+                    status_data = json.load(f)
+                
+                status_data["system"]["last_update_commit"] = new_commit
+                status_data["system"]["last_sync"] = datetime.now().strftime("%Y-%m-%d")
+                
+                with open(status_path, 'w') as f:
+                    json.dump(status_data, f, indent=4)
+                logger.info(f"Updated system-status.json with new commit: {new_commit}")
+        except Exception as e:
+            logger.warning(f"Failed to update last_update_commit in JSON: {e}")
 
         async def _delayed_exit():
             await asyncio.sleep(1.5)
