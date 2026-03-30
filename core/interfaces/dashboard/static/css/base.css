@@ -1391,3 +1391,54 @@ kbd {
         display: none;
     }
 }
+
+/* ── App Suite Categorization Headers ─────────────────────────────────── */
+.app-suite-section {
+    display: block;
+    width: 100%;
+}
+
+.app-category-header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    margin: 1.8rem 0 0.4rem 0;
+}
+
+/* Reduce top margin for headers after the first one to keep it compact */
+.suite-app-grid .app-category-header:not(:first-child) {
+    margin-top: 1rem;
+}
+
+.app-category-header h4 {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.app-category-line {
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), rgba(255, 255, 255, 0));
+    flex: 1;
+}
+
+/* ── Apps Menu Categorization ────────────────────────────────────────── */
+.atb-apps-menu-category {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-tertiary);
+    font-weight: 700;
+    padding: 0.6rem 1rem 0.3rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    pointer-events: none;
+    margin-top: 4px;
+}
+.atb-apps-menu-category:first-of-type {
+    margin-top: 0;
+}

@@ -33,15 +33,15 @@ const ATB = (() => {
     // server side.  No hardcoded port numbers — the actual port is discovered
     // at runtime via the PortManager registry.
     const APPS = [
-        { id: 'code',         label: 'Code IDE',      emoji: '💻', port: null, portKey: 'Aethvion Code IDE'     },
-        { id: 'hardwareinfo', label: 'Hardware Info',  emoji: '🖥️', port: null, portKey: 'Aethvion Hardware Info' },
-        { id: 'vtuber',       label: 'VTuber',         emoji: '🎭', port: null, portKey: 'VTuber Engine'         },
-        { id: 'audio',        label: 'Audio Studio',   emoji: '🎙️', port: null, portKey: 'Aethvion Audio'        },
-        { id: 'photo',        label: 'Photo Studio',   emoji: '🎨', port: null, portKey: 'Aethvion Photo'        },
-        { id: 'finance',      label: 'Finance',        emoji: '💰', port: null, portKey: 'Aethvion Finance'      },
-        { id: 'tracking',     label: 'Tracking',       emoji: '📡', port: null, portKey: 'Aethvion Tracking'     },
-        { id: 'driveinfo',    label: 'Drive Info',     emoji: '💿', port: null, portKey: 'Aethvion Drive Info'   },
-        { id: 'linkmap',      label: 'LinkMap',        emoji: '🗺️', port: null, portKey: 'Aethvion LinkMap'      },
+        { id: 'code',         label: 'Code IDE',      emoji: '💻', category: 'Professional Development', port: null, portKey: 'Aethvion Code IDE'     },
+        { id: 'photo',        label: 'Photo Studio',   emoji: '🎨', category: 'Creative & Production',    port: null, portKey: 'Aethvion Photo'        },
+        { id: 'audio',        label: 'Audio Studio',   emoji: '🎙️', category: 'Creative & Production',    port: null, portKey: 'Aethvion Audio'        },
+        { id: 'vtuber',       label: 'VTuber',         emoji: '🎭', category: 'Streaming & Performance',  port: null, portKey: 'VTuber Engine'         },
+        { id: 'tracking',     label: 'Tracking',       emoji: '📡', category: 'Streaming & Performance',  port: null, portKey: 'Aethvion Tracking'     },
+        { id: 'hardwareinfo', label: 'Hardware Info',  emoji: '🖥️', category: 'System & Analytics',       port: null, portKey: 'Aethvion Hardware Info' },
+        { id: 'linkmap',      label: 'LinkMap',        emoji: '🗺️', category: 'System & Analytics',       port: null, portKey: 'Aethvion LinkMap'      },
+        { id: 'driveinfo',    label: 'Drive Info',     emoji: '💿', category: 'System & Analytics',       port: null, portKey: 'Aethvion Drive Info'   },
+        { id: 'finance',      label: 'Finance',        emoji: '💰', category: 'Other',                    port: null, portKey: 'Aethvion Finance'      },
     ];
 
     const NEXUS_PANEL = 'panel-nexus';
@@ -356,22 +356,50 @@ const ATB = (() => {
         if (!menu) return;
         menu.innerHTML = `<div class="atb-apps-menu-title">Aethvion Apps</div>`;
 
+        // Group apps by category
+        const categories = {};
         APPS.forEach(app => {
-            const isOpen  = !!document.getElementById(`panel-app-${app.id}`);
-            const portStr = app.port ? `:${app.port}` : '—';
-            const btn     = document.createElement('button');
-            btn.className = `atb-app-item${isOpen ? ' atb-app-item--open' : ''}`;
-            btn.dataset.appId = app.id;
-            btn.innerHTML = `
-                <span class="atb-app-emoji">${app.emoji}</span>
-                <span class="atb-app-name">${app.label}</span>
-                <span class="atb-app-port">${portStr}</span>
-                <span class="atb-app-checkmark">✓</span>`;
-            btn.addEventListener('click', () => {
-                openApp(app);
-                _closeMenu();
+            const cat = app.category || 'Other';
+            if (!categories[cat]) categories[cat] = [];
+            categories[cat].push(app);
+        });
+
+        // Use a predefined order for categories
+        const order = [
+            'Professional Development',
+            'Creative & Production',
+            'Streaming & Performance',
+            'System & Analytics',
+            'Other'
+        ];
+
+        order.forEach(catName => {
+            const appsInCat = categories[catName];
+            if (!appsInCat || appsInCat.length === 0) return;
+
+            // Add category header
+            const catHeader = document.createElement('div');
+            catHeader.className = 'atb-apps-menu-category';
+            catHeader.textContent = catName;
+            menu.appendChild(catHeader);
+
+            appsInCat.forEach(app => {
+                const isOpen  = !!document.getElementById(`panel-app-${app.id}`);
+                const portStr = app.port ? `:${app.port}` : '—';
+                const btn     = document.createElement('button');
+                btn.className = `atb-app-item${isOpen ? ' atb-app-item--open' : ''}`;
+                btn.dataset.appId = app.id;
+                btn.innerHTML = `
+                    <span class="atb-app-emoji">${app.emoji}</span>
+                    <span class="atb-app-name">${app.label}</span>
+                    <span class="atb-app-port">${portStr}</span>
+                    <span class="atb-app-checkmark">✓</span>`;
+                btn.addEventListener('click', () => {
+                    openApp(app);
+                    _closeMenu();
+                });
+                menu.appendChild(btn);
             });
-            menu.appendChild(btn);
         });
     }
 

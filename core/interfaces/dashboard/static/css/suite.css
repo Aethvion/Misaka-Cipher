@@ -113,6 +113,7 @@
 .sac-photo    { background: #ec4899; box-shadow: 0 0 10px rgba(236, 72,153,0.6);  }
 .sac-finance  { background: #10b981; box-shadow: 0 0 10px rgba(16, 185,129,0.6);  }
 .sac-tracking { background: #f59e0b; box-shadow: 0 0 10px rgba(245,158, 11,0.6);  }
+.sac-linkmap  { background: #22d3ee; box-shadow: 0 0 10px rgba(34, 211, 238, 0.6); }
 .sac-drive    { background: #64748b; box-shadow: 0 0 10px rgba(100,116,139,0.6);  }
 
 /* ── Icon ─────────────────────────────────────────────────────────────────── */
