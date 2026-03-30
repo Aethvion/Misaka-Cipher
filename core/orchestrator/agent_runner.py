@@ -64,6 +64,18 @@ def build_workspace_blueprint(
         return f"Error: path '{sub_path}' not found in workspace."
 
     effective_cache = cache_path or (workspace / "_blueprint.txt")
+
+    # When a custom cache_path is provided (i.e. data dir, not the workspace),
+    # evict any stale _blueprint.txt that may have been left in the workspace by
+    # an older code path.  Do this once, silently.
+    if cache_path is not None:
+        _old_ws_bp = workspace / "_blueprint.txt"
+        if _old_ws_bp.exists() and _old_ws_bp != effective_cache:
+            try:
+                _old_ws_bp.unlink()
+            except Exception:
+                pass
+
     if not sub_path and effective_cache.exists():
         try:
             if time.time() - effective_cache.stat().st_mtime < BLUEPRINT_CACHE_SECS:

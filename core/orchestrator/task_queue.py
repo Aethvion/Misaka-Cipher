@@ -201,6 +201,10 @@ class TaskWorker:
                             state_path=state_path,
                             images=images or None,
                         )
+                        # Store blueprint cache in the agent data dir, not in the user's project
+                        _bp_dir = HISTORY_AGENTS / ws_id
+                        _bp_dir.mkdir(parents=True, exist_ok=True)
+                        runner._blueprint_cache_path = _bp_dir / "_blueprint.txt"
                         summary = await loop.run_in_executor(None, runner.run)
                         mark_task_done(task.id)
 
