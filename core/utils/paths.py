@@ -44,8 +44,9 @@ APP_TRACKING  = APPS / "tracking"
 APP_VTUBER    = APPS / "vtuber"
 
 # ── Config files ──────────────────────────────────────────────────────────────
-MODEL_REGISTRY = CONFIG / "model_registry.json"
-SETTINGS       = CONFIG / "settings.json"
+MODEL_REGISTRY         = CONFIG / "model_registry.json"
+SETTINGS               = CONFIG / "settings.json"
+LOCAL_INFERENCE_CONFIG = CONFIG / "local_inference_config.json"
 
 # ── History ───────────────────────────────────────────────────────────────────
 HISTORY_CHAT     = HISTORY / "chat"             # Standard Misaka chat sessions

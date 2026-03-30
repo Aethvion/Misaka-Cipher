@@ -6,6 +6,7 @@ Local LLM implementation (llama-cpp-python)
 import os
 import re
 import sys
+import glob
 import multiprocessing
 from pathlib import Path
 from typing import Dict, Optional, Iterator, Any, List
@@ -13,6 +14,55 @@ from .base_provider import BaseProvider, ProviderResponse, ProviderConfig, Provi
 from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _register_cuda_dll_dirs() -> None:
+    """
+    On Windows, add CUDA runtime DLL directories to Python's DLL search path.
+    This is required when llama-cpp-python is built with CUDA support —
+    llama.dll depends on cudart64_*.dll / cublas64_*.dll which live in the
+    CUDA Toolkit bin folder and may not be on the system PATH.
+    Safe to call multiple times; duplicates are ignored by the OS.
+    """
+    if sys.platform != "win32":
+        return
+    if not hasattr(os, "add_dll_directory"):
+        return  # Python < 3.8 — nothing to do
+
+    search_roots = [
+        r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA",
+        r"C:\CUDA",
+    ]
+    # Also check CUDA_PATH / CUDA_PATH_Vx_y env vars set by the installer
+    for key, val in os.environ.items():
+        if key.startswith("CUDA_PATH"):
+            search_roots.append(val)
+
+    added: list[str] = []
+    for root in search_roots:
+        for cuda_bin in sorted(glob.glob(os.path.join(root, "v*", "bin")), reverse=True):
+            if os.path.isdir(cuda_bin) and cuda_bin not in added:
+                try:
+                    os.add_dll_directory(cuda_bin)
+                    added.append(cuda_bin)
+                    logger.debug(f"[LocalProvider] Added CUDA DLL dir: {cuda_bin}")
+                except OSError:
+                    pass
+
+    # Also add any nvcc / CUDA paths already on PATH that we might have missed
+    for p in os.environ.get("PATH", "").split(os.pathsep):
+        if "cuda" in p.lower() and os.path.isdir(p) and p not in added:
+            try:
+                os.add_dll_directory(p)
+                added.append(p)
+            except OSError:
+                pass
+
+
+# Register CUDA DLL paths at module import time so that the very first
+# `import llama_cpp` (which happens lazily inside _ensure_llama) can
+# resolve llama.dll's CUDA runtime dependencies.
+_register_cuda_dll_dirs()
 
 def _safe_test_llama_load(model_path: str):
     """
@@ -51,6 +101,7 @@ class LocalProvider(BaseProvider):
         super().__init__(config)
         self.llm = None
         self.current_model_path = None
+        self.current_n_gpu_layers = None
         
         # Determine base directory for GGUF models
         from core.utils.paths import LOCAL_MODELS_GGUF
@@ -84,8 +135,21 @@ class LocalProvider(BaseProvider):
             logger.error(f"Local model not found at {model_path}")
             raise FileNotFoundError(f"Local model not found: {model_path}")
 
+        # Peek at desired n_gpu_layers to detect config changes
+        _peek_icfg: dict = {}
+        try:
+            from core.utils.paths import LOCAL_INFERENCE_CONFIG
+            import json as _pj
+            if LOCAL_INFERENCE_CONFIG.exists():
+                _peek_icfg = _pj.loads(LOCAL_INFERENCE_CONFIG.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        _desired_gpu = int(kwargs.get('n_gpu_layers', _peek_icfg.get('n_gpu_layers', -1)))
+
         # Check if we need to (re)load the model
-        if self.llm is None or self.current_model_path != str(model_path):
+        if (self.llm is None
+                or self.current_model_path != str(model_path)
+                or self.current_n_gpu_layers != _desired_gpu):
             logger.info(f"Safely testing local model stability for {model_path}...")
             
             # Spawn a subprocess to test if model loading triggers a fatal hardware crash
@@ -103,18 +167,35 @@ class LocalProvider(BaseProvider):
                     f"Fix: Uninstall and reinstall with basic CPU flags, or use Aethvion's minimal installer."
                 )
 
-            logger.info(f"Loading local model from {model_path} in main process...")
+            # Read GPU / context config from local_inference_config.json
+            _icfg: dict = {}
+            try:
+                from core.utils.paths import LOCAL_INFERENCE_CONFIG
+                import json as _json
+                if LOCAL_INFERENCE_CONFIG.exists():
+                    _icfg = _json.loads(LOCAL_INFERENCE_CONFIG.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+
+            n_gpu_layers = int(kwargs.get('n_gpu_layers', _icfg.get('n_gpu_layers', -1)))
+            n_ctx        = int(kwargs.get('n_ctx',        _icfg.get('n_ctx',        4096)))
+            _nt          = int(kwargs.get('n_threads',    _icfg.get('n_threads',    -1)))
+            n_threads    = os.cpu_count() if _nt < 1 else _nt
+
+            logger.info(f"Loading local model from {model_path} — n_gpu_layers={n_gpu_layers} n_ctx={n_ctx} n_threads={n_threads}")
             # Unload old model if exists
             self.llm = None
-            
+
             # Load new model
             self.llm = Llama(
                 model_path=str(model_path),
-                n_ctx=kwargs.get('n_ctx', 4096),
-                n_threads=kwargs.get('n_threads', os.cpu_count()),
-                verbose=False
+                n_ctx=n_ctx,
+                n_threads=n_threads,
+                n_gpu_layers=n_gpu_layers,
+                verbose=False,
             )
             self.current_model_path = str(model_path)
+            self.current_n_gpu_layers = n_gpu_layers
             logger.info(f"Local model loaded successfully")
 
     # ── Model family detection ──────────────────────────────────────────────────

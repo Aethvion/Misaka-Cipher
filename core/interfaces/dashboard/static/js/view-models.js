@@ -9,9 +9,15 @@ const LocalModels = {
         // If we are already on this tab, load immediately
         if (typeof currentMainTab !== 'undefined' && currentMainTab === 'local-models') {
             console.log("[LocalModels] Already on tab, loading models...");
-            this.loadModels();
-            this.loadSuggestedModels();
+            this.loadAll();
         }
+    },
+
+    loadAll() {
+        this.loadModels();
+        this.loadSuggestedModels();
+        this.loadGPUStatus();
+        this.loadOllamaStatus();
     },
 
     addEventListeners() {
@@ -313,6 +319,335 @@ const LocalModels = {
         }
     },
 
+    // ── GPU configuration ──────────────────────────────────────────────────────
+
+    async loadGPUStatus() {
+        const statusRow  = document.getElementById('gpu-status-row');
+        const settingsEl = document.getElementById('gpu-settings-form');
+        if (!statusRow) return;
+
+        try {
+            const [gpuRes, cfgRes] = await Promise.all([
+                fetch('/api/registry/local/gpu-status'),
+                fetch('/api/registry/local/inference-config'),
+            ]);
+            const gpu = gpuRes.ok ? await gpuRes.json() : {};
+            const cfg = cfgRes.ok ? await cfgRes.json() : { n_gpu_layers: -1, n_ctx: 4096, n_threads: -1 };
+
+            // Populate settings form values
+            const slider = document.getElementById('gpu-layers-slider');
+            const numIn  = document.getElementById('gpu-layers-input');
+            const ctxSel = document.getElementById('gpu-ctx-select');
+            const thrIn  = document.getElementById('gpu-threads-input');
+            if (slider) slider.value = cfg.n_gpu_layers;
+            if (numIn)  numIn.value  = cfg.n_gpu_layers;
+            if (ctxSel) ctxSel.value = cfg.n_ctx;
+            if (thrIn)  thrIn.value  = cfg.n_threads;
+
+            // Sync slider ↔ number input
+            if (slider && numIn) {
+                slider.oninput = () => { numIn.value = slider.value; };
+                numIn.oninput  = () => { slider.value = numIn.value; };
+            }
+
+            // Build status badges
+            let html = '';
+            if (gpu.cuda_available && gpu.gpu_name) {
+                html += `<span class="gpu-badge gpu-badge-ok"><i class="fas fa-check-circle"></i> ${gpu.gpu_name} · ${gpu.vram_gb} GB VRAM</span>`;
+            } else {
+                html += `<span class="gpu-badge gpu-badge-off"><i class="fas fa-microchip"></i> No CUDA GPU detected</span>`;
+            }
+
+            if (gpu.llama_cuda) {
+                html += `<span class="gpu-badge gpu-badge-ok"><i class="fas fa-bolt"></i> llama.cpp CUDA build</span>`;
+                if (settingsEl) settingsEl.style.display = '';
+            } else {
+                html += `<span class="gpu-badge gpu-badge-warn"><i class="fas fa-exclamation-triangle"></i> llama.cpp CPU-only</span>`;
+                html += `<button class="action-btn primary" style="margin-left:auto;" onclick="LocalModels.installCudaLlama(this)">
+                    <i class="fas fa-bolt"></i> Install CUDA Build
+                </button>`;
+                // Still show settings form so n_ctx / n_threads can be configured even on CPU
+                if (settingsEl) settingsEl.style.display = '';
+            }
+            statusRow.innerHTML = html;
+
+        } catch (e) {
+            statusRow.innerHTML = `<span class="gpu-badge gpu-badge-off"><i class="fas fa-question-circle"></i> Status unavailable</span>`;
+        }
+    },
+
+    async installCudaLlama(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installing…';
+
+        // Inject log panel below the GPU status row
+        const panel = document.getElementById('gpu-config-panel');
+        let logEl = panel?.querySelector('.gpu-install-log');
+        if (panel && !logEl) {
+            logEl = document.createElement('div');
+            logEl.className = 'gpu-install-log am-install-log';
+            logEl.innerHTML = `
+                <div class="am-log-header">
+                    <span class="am-log-title"><i class="fas fa-terminal"></i> Installing llama-cpp-python (CUDA)…</span>
+                    <span class="am-log-pct">0%</span>
+                </div>
+                <div class="am-log-bar-wrap"><div class="am-log-bar"></div></div>
+                <pre class="am-log-output"></pre>`;
+            panel.appendChild(logEl);
+        }
+
+        const logTitle  = logEl?.querySelector('.am-log-title');
+        const logPct    = logEl?.querySelector('.am-log-pct');
+        const logBar    = logEl?.querySelector('.am-log-bar');
+        const logOutput = logEl?.querySelector('.am-log-output');
+        if (logBar)   { logBar.style.width = '5%'; logBar.className = 'am-log-bar'; }
+        if (logOutput) logOutput.textContent = '';
+
+        try {
+            const resp = await fetch('/api/registry/local/install-cuda-llama', { method: 'POST' });
+            const reader  = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let   buffer  = '';
+            let   lines   = 0;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const parts = buffer.split('\n\n');
+                buffer = parts.pop();
+
+                for (const part of parts) {
+                    if (!part.startsWith('data: ')) continue;
+                    let msg;
+                    try { msg = JSON.parse(part.slice(6)); } catch { continue; }
+
+                    if (msg.line !== undefined) {
+                        if (logOutput) { logOutput.textContent += msg.line + '\n'; logOutput.scrollTop = logOutput.scrollHeight; }
+                        lines++;
+                        const pct = Math.min(5 + lines * 1.5, 90);
+                        if (logBar) logBar.style.width = pct + '%';
+                        if (logPct) logPct.textContent = Math.round(pct) + '%';
+                    } else if (msg.done) {
+                        if (logBar) logBar.style.width = '100%';
+                        if (logPct) logPct.textContent = '100%';
+                        if (msg.success) {
+                            if (logBar)   logBar.classList.add('am-bar-done');
+                            if (logTitle) logTitle.innerHTML = '<i class="fas fa-check-circle" style="color:#34d399"></i> Installed — restart Aethvion to activate';
+                            showNotification('CUDA llama-cpp-python installed — please restart Aethvion Suite', 'success');
+                            setTimeout(() => this.loadGPUStatus(), 1000);
+                        } else {
+                            if (logBar)   logBar.classList.add('am-bar-fail');
+                            if (logTitle) logTitle.innerHTML = '<i class="fas fa-times-circle" style="color:#f87171"></i> Install failed — see log above';
+                            showNotification('Installation failed', 'error');
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            showNotification(`Error: ${e.message}`, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-bolt"></i> Install CUDA Build';
+        }
+    },
+
+    async saveGPUConfig() {
+        const saveStatus = document.getElementById('gpu-save-status');
+        const n_gpu_layers = parseInt(document.getElementById('gpu-layers-input')?.value ?? -1);
+        const n_ctx        = parseInt(document.getElementById('gpu-ctx-select')?.value   ?? 4096);
+        const n_threads    = parseInt(document.getElementById('gpu-threads-input')?.value ?? -1);
+
+        try {
+            const r = await fetch('/api/registry/local/inference-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ n_gpu_layers, n_ctx, n_threads }),
+            });
+            if (r.ok) {
+                if (saveStatus) {
+                    saveStatus.textContent = '✓ Saved — takes effect on next model load';
+                    setTimeout(() => { saveStatus.textContent = ''; }, 4000);
+                }
+                showNotification('GPU config saved', 'success');
+            } else {
+                showNotification('Failed to save GPU config', 'error');
+            }
+        } catch (e) {
+            showNotification('Error saving GPU config', 'error');
+        }
+    },
+
+    // ── Ollama ─────────────────────────────────────────────────────────────────
+
+    async loadOllamaStatus() {
+        const statusRow  = document.getElementById('ollama-status-row');
+        const modelsSection = document.getElementById('ollama-models-section');
+        if (!statusRow) return;
+
+        try {
+            const [statusRes, registryRes] = await Promise.all([
+                fetch('/api/ollama/status'),
+                fetch('/api/registry').catch(() => ({ ok: false })),
+            ]);
+            const status = statusRes.ok ? await statusRes.json() : { running: false };
+            const registry = registryRes.ok ? await registryRes.json() : {};
+            const registeredOllama = new Set(
+                Object.keys(registry.providers?.ollama?.models || {})
+            );
+
+            if (!status.running) {
+                statusRow.innerHTML = `
+                    <span class="gpu-badge gpu-badge-off"><i class="fas fa-circle"></i> Ollama not running</span>
+                    <span class="gpu-badge-hint">
+                        <a href="https://ollama.com/download" target="_blank" style="color:var(--primary)">Download Ollama</a>
+                        — install it and run <code>ollama serve</code>, then refresh.
+                    </span>`;
+                if (modelsSection) modelsSection.style.display = 'none';
+                return;
+            }
+
+            statusRow.innerHTML = `
+                <span class="gpu-badge gpu-badge-ok"><i class="fas fa-circle"></i> Ollama running</span>
+                <span style="font-size:0.8rem; color:var(--text-tertiary);">${status.models.length} model${status.models.length !== 1 ? 's' : ''} available</span>
+                <button class="action-btn secondary" style="margin-left:auto;" onclick="LocalModels.loadOllamaStatus()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>`;
+            if (modelsSection) modelsSection.style.display = '';
+
+            // Render model cards
+            const listEl = document.getElementById('ollama-models-list');
+            if (!listEl) return;
+
+            if (!status.models.length) {
+                listEl.innerHTML = '<p class="placeholder-text">No models pulled yet. Use the field above to pull one.</p>';
+                return;
+            }
+
+            listEl.innerHTML = status.models.map(name => {
+                const isReg = registeredOllama.has(name);
+                return `<div class="ollama-model-card ${isReg ? 'ollama-registered' : ''}" id="ollama-card-${CSS.escape(name)}">
+                    <div class="ollama-model-name">${name}</div>
+                    <div class="ollama-model-btns">
+                        <button class="action-btn ${isReg ? 'success' : 'primary'} sm-btn"
+                            onclick="LocalModels.toggleOllamaModel('${name}', ${isReg})"
+                            ${isReg ? 'disabled' : ''}>
+                            <i class="fas fa-${isReg ? 'check-circle' : 'plus-circle'}"></i>
+                            ${isReg ? 'In Registry' : 'Add to Aethvion'}
+                        </button>
+                        <button class="action-btn secondary sm-btn"
+                            onclick="LocalModels.deleteOllamaModel('${name}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+
+        } catch (e) {
+            statusRow.innerHTML = `<span class="gpu-badge gpu-badge-off">Status unavailable</span>`;
+        }
+    },
+
+    async pullOllamaModel() {
+        const input   = document.getElementById('ollama-pull-name');
+        const progEl  = document.getElementById('ollama-pull-progress');
+        const barEl   = document.getElementById('ollama-pull-bar');
+        const labelEl = document.getElementById('ollama-pull-label');
+        const pctEl   = document.getElementById('ollama-pull-pct');
+        const name    = input?.value?.trim();
+        if (!name) { showNotification('Enter a model name', 'warning'); return; }
+
+        if (progEl) progEl.style.display = '';
+        if (barEl)  { barEl.style.width = '0%'; barEl.className = 'model-dl-bar'; }
+        if (labelEl) labelEl.textContent = 'Pulling…';
+        if (pctEl)   pctEl.textContent   = '0%';
+
+        try {
+            const resp = await fetch('/api/ollama/pull', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: name }),
+            });
+            const reader  = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let   buffer  = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const parts = buffer.split('\n\n');
+                buffer = parts.pop();
+
+                for (const part of parts) {
+                    if (!part.startsWith('data: ')) continue;
+                    let msg;
+                    try { msg = JSON.parse(part.slice(6)); } catch { continue; }
+
+                    if (msg.status && !msg.done) {
+                        if (labelEl) labelEl.textContent = msg.status;
+                        if (msg.pct > 0) {
+                            if (barEl) barEl.style.width = msg.pct + '%';
+                            if (pctEl) pctEl.textContent = msg.pct + '%';
+                        }
+                    } else if (msg.done) {
+                        if (msg.success) {
+                            if (barEl)  { barEl.style.width = '100%'; barEl.classList.add('dl-bar-done'); }
+                            if (labelEl) labelEl.textContent = 'Complete!';
+                            if (pctEl)   pctEl.textContent   = '100%';
+                            if (input)   input.value = '';
+                            showNotification(`${name} pulled successfully`, 'success');
+                            setTimeout(() => this.loadOllamaStatus(), 600);
+                        } else {
+                            if (barEl) barEl.classList.add('dl-bar-fail');
+                            if (labelEl) labelEl.textContent = 'Failed';
+                            showNotification(`Pull failed: ${msg.error || 'unknown error'}`, 'error');
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            showNotification(`Error: ${e.message}`, 'error');
+        }
+    },
+
+    async toggleOllamaModel(name, isRegistered) {
+        if (isRegistered) return;
+        try {
+            const r = await fetch('/api/ollama/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: name }),
+            });
+            if (r.ok) {
+                showNotification(`${name} added to Aethvion registry`, 'success');
+                this.loadOllamaStatus();
+            } else {
+                showNotification('Registration failed', 'error');
+            }
+        } catch (e) {
+            showNotification('Error', 'error');
+        }
+    },
+
+    async deleteOllamaModel(name) {
+        if (!confirm(`Delete Ollama model "${name}"? This removes it from disk.`)) return;
+        try {
+            const r = await fetch('/api/ollama/model', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: name }),
+            });
+            if (r.ok) {
+                showNotification(`${name} deleted`, 'success');
+                this.loadOllamaStatus();
+            }
+        } catch (e) {
+            showNotification('Delete failed', 'error');
+        }
+    },
+
     async startDownload() {
         const repoId = document.getElementById('hf-repo-id').value.trim();
         const filename = document.getElementById('hf-filename').value.trim();
@@ -365,8 +700,7 @@ const LocalModels = {
 // Listen for tab changes from core.js
 document.addEventListener('tabChanged', (e) => {
     if (e.detail.tab === 'local-models') {
-        LocalModels.loadModels();
-        LocalModels.loadSuggestedModels();
+        LocalModels.loadAll();
     }
 });
 

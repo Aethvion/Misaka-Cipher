@@ -876,6 +876,135 @@
     border: 1px solid rgba(0, 217, 255, 0.15);
 }
 
+/* ── GPU Acceleration panel ────────────────────────────────────────────────── */
+
+.gpu-status-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
+
+.gpu-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.gpu-badge-ok     { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+.gpu-badge-warn   { background: rgba(251,191,36,0.12); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+.gpu-badge-off    { background: rgba(255,255,255,0.05); color: var(--text-tertiary); border: 1px solid rgba(255,255,255,0.1); }
+
+.gpu-badge-hint {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.gpu-badge-hint code {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.75rem;
+    color: var(--primary);
+    user-select: all;
+}
+
+.gpu-settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    margin-top: 0.25rem;
+}
+
+.gpu-setting-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.gpu-setting-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 200px;
+    flex: 1;
+}
+
+.gpu-setting-hint {
+    font-size: 0.73rem;
+    font-weight: 400;
+    color: var(--text-tertiary);
+}
+
+.gpu-setting-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.gpu-slider {
+    width: 140px;
+    accent-color: var(--primary);
+}
+
+.gpu-num-input { width: 80px; text-align: center; }
+
+/* ── Ollama panel ──────────────────────────────────────────────────────────── */
+
+.ollama-status-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.ollama-models-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.ollama-model-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: all 0.2s;
+}
+
+.ollama-model-card:hover {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(0,217,255,0.25);
+}
+
+.ollama-model-name  { font-weight: 700; font-size: 0.9rem; color: var(--text-primary); word-break: break-all; }
+.ollama-model-meta  { font-size: 0.75rem; color: var(--text-tertiary); }
+.ollama-model-btns  { display: flex; gap: 0.5rem; margin-top: 0.25rem; flex-wrap: wrap; }
+
+.ollama-model-card.ollama-registered {
+    border-color: rgba(0,217,255,0.35);
+    background: rgba(0,217,255,0.03);
+}
+
+/* ── Model download progress (inside suggestion cards) ─────────────────────── */
 .card-footer-v12 {
     display: flex;
     justify-content: space-between;

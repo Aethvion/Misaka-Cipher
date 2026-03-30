@@ -13,6 +13,7 @@ from .openai_provider import OpenAIProvider
 from .grok_provider import GrokProvider
 from .anthropic_provider import AnthropicProvider
 from .local_provider import LocalProvider
+from .ollama_provider import OllamaProvider
 from core.utils.logger import get_logger
 from core.utils.paths import MODEL_REGISTRY
 from core.workspace.usage_tracker import get_usage_tracker
@@ -30,7 +31,8 @@ class ProviderManager:
         'openai': OpenAIProvider,
         'grok': GrokProvider,
         'anthropic': AnthropicProvider,
-        'local': LocalProvider
+        'local': LocalProvider,
+        'ollama': OllamaProvider,
     }
     
     def __init__(self, config_path: Optional[str] = None):

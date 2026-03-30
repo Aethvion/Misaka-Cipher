@@ -34,6 +34,12 @@ providers:
     name: "Local Models"
     timeout: 300
 
+  ollama:
+    enabled: true
+    name: "Ollama"
+    endpoint: "http://localhost:11434"
+    timeout: 300
+
 # Failover Configuration
 failover:
   auto_failover: true

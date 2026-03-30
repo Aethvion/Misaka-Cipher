@@ -820,6 +820,130 @@ async def register_local_model(data: Dict[str, Any], request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ── Local inference config (n_gpu_layers, n_ctx, n_threads) ──────────────────
+
+from core.utils.paths import LOCAL_INFERENCE_CONFIG as _INFERENCE_CFG_PATH
+
+def _load_icfg() -> dict:
+    if _INFERENCE_CFG_PATH.exists():
+        try:
+            return json.loads(_INFERENCE_CFG_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"n_gpu_layers": -1, "n_ctx": 4096, "n_threads": -1}
+
+
+def _save_icfg(cfg: dict):
+    _INFERENCE_CFG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _INFERENCE_CFG_PATH.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+
+
+@router.get("/local/inference-config")
+async def get_inference_config():
+    return _load_icfg()
+
+
+@router.post("/local/inference-config")
+async def save_inference_config(request: Request):
+    data = await request.json()
+    cfg  = _load_icfg()
+    for key in ("n_gpu_layers", "n_ctx", "n_threads"):
+        if key in data:
+            cfg[key] = int(data[key])
+    _save_icfg(cfg)
+    return {"success": True, **cfg}
+
+
+@router.get("/local/gpu-status")
+async def get_gpu_status():
+    """Report GPU availability for local inference."""
+    import subprocess as _sp
+    result = {
+        "llama_cuda": False,
+        "cuda_available": False,
+        "gpu_name": None,
+        "vram_gb": None,
+    }
+
+    # 1 — Register CUDA DLL dirs so llama_cpp can load on Windows
+    try:
+        from core.providers.local_provider import _register_cuda_dll_dirs
+        _register_cuda_dll_dirs()
+    except Exception:
+        pass
+
+    # 2 — Check if CUDA llama-cpp build is active
+    try:
+        import llama_cpp
+        result["llama_cuda"] = bool(
+            getattr(llama_cpp, "llama_supports_gpu_offload", lambda: False)()
+        )
+    except Exception:
+        pass
+
+    # 2 — Detect GPU via nvidia-smi (works on Windows without torch)
+    try:
+        proc = _sp.run(
+            ["nvidia-smi",
+             "--query-gpu=name,memory.total",
+             "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if proc.returncode == 0 and proc.stdout.strip():
+            parts = [p.strip() for p in proc.stdout.strip().split(",")]
+            result["cuda_available"] = True
+            result["gpu_name"]       = parts[0]
+            result["vram_gb"]        = round(int(parts[1]) / 1024, 1)
+    except Exception:
+        pass
+
+    # 3 — Fallback: torch (if nvidia-smi wasn't found / failed)
+    if not result["cuda_available"]:
+        try:
+            import torch
+            result["cuda_available"] = torch.cuda.is_available()
+            if result["cuda_available"]:
+                result["gpu_name"] = torch.cuda.get_device_name(0)
+                result["vram_gb"]  = round(
+                    torch.cuda.get_device_properties(0).total_memory / 1e9, 1
+                )
+        except Exception:
+            pass
+
+    return result
+
+
+@router.post("/local/install-cuda-llama")
+async def install_cuda_llama():
+    """Reinstall llama-cpp-python with CUDA support, streaming pip output as SSE."""
+    import asyncio, os, sys
+    from fastapi.responses import StreamingResponse
+
+    env = os.environ.copy()
+    env["CMAKE_ARGS"] = "-DGGML_CUDA=on"
+
+    async def _generate():
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, "-m", "pip", "install",
+            "llama-cpp-python", "--force-reinstall", "--no-cache-dir",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+            env=env,
+        )
+        async for raw in proc.stdout:
+            line = raw.decode("utf-8", errors="replace").rstrip()
+            yield f"data: {json.dumps({'line': line})}\n\n"
+        await proc.wait()
+        rc = proc.returncode
+        yield f"data: {json.dumps({'done': True, 'success': rc == 0, 'returncode': rc})}\n\n"
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.post("/reload")
 async def reload_registry_config(request: Request):
     """Force reload of model registry and providers config."""
