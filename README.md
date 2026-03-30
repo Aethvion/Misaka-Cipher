@@ -37,7 +37,7 @@
 |:---:|:---:|
 | <img src="assets/showcase/AethvionSuite_Agent.png" alt="Agents" width="100%"> | <img src="assets/showcase/AethvionSuite_AgentCorp.png" alt="Agent Corp" width="100%"> |
 | **Agent Workspace** · Multi-step ReAct agent runner with real-time SSE event streaming | **Agent Corp** · Manage and collaborate with multiple persistent specialized agents |
-| <img src="assets/showcase/MisakaCipher_Chat.png" alt="Misaka Cipher Chat Interface" width="100%"> | <img src="assets/showcase/AethvionSuite_Photo.png" alt="Aethvion Suite Photo App" width="100%"> |
+| <img src="assets/showcase/AethvionSuite_MisakaCipher.png" alt="Misaka Cipher Chat Interface" width="100%"> | <img src="assets/showcase/AethvionSuite_Photo.png" alt="Aethvion Suite Photo App" width="100%"> |
 | **Misaka Cipher** · Multi-provider AI chat with threads, auto-routing, and context modes | **Aethvion Photo** · AI image generation and precision layer-based editing system |
 | <img src="assets/showcase/AethvionSuite_Audio.png" alt="Aethvion Suite Audio App" width="100%"> | <img src="assets/showcase/AethvionSuite_Code.png" alt="Aethvion Suite Code IDE" width="100%"> |
 | **Aethvion Audio** · Professional multi-track timeline editor with live waveforms and effects | **Aethvion Code IDE** · Monaco-based IDE with AI copilot and code execution |
@@ -46,7 +46,7 @@
 
 <br>
 
-<img src="assets/showcase/MisakaCipher_UsagePage.png" alt="Aethvion Suite Usage Page" width="100%">
+<img src="assets/showcase/AethvionSuite_UsagePage.png" alt="Aethvion Suite Usage Page" width="100%">
 
 **Usage & Cost Tracking** · Token usage, cost estimates, and granular per-query breakdowns
 
