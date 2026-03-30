@@ -57,7 +57,7 @@ class PackageIntelligence:
         """Initialize package intelligence system."""
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'Misaka-Cipher-Package-Intelligence/1.0'
+            'User-Agent': 'Aethvion-Suite-Package-Intelligence/1.0'
         })
         logger.info("Package Intelligence System initialized")
     

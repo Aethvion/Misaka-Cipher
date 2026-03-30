@@ -41,9 +41,6 @@ def validate_path(target_path: str, workspaces: List[dict], required_permission:
     """
     try:
         tp = Path(target_path).resolve()
-        self.session.headers.update({
-            'User-Agent': 'Aethvion-Suite-Package-Intelligence/1.0'
-        })
         for ws in workspaces:
             if required_permission not in ws.get("permissions", []):
                 continue
