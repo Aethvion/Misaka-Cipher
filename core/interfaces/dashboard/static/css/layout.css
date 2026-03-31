@@ -24,12 +24,22 @@
 
 .three-column-layout.threads-collapsed .threads-column,
 .three-column-layout.threads-collapsed #resize-threads-chat {
-    display: none;
+    width: 0;
+    overflow: hidden;
+    pointer-events: none;
+    border: none;
+    margin: 0;
+    padding: 0;
 }
 
 .three-column-layout.agents-collapsed .agents-column,
 .three-column-layout.agents-collapsed #resize-chat-agents {
-    display: none;
+    width: 0;
+    overflow: hidden;
+    pointer-events: none;
+    border: none;
+    margin: 0;
+    padding: 0;
 }
 
 .three-column-layout .column {
@@ -53,6 +63,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-width: 0;
     box-shadow: var(--shadow-md);
     transition: transform 0.2s, box-shadow 0.2s;
 }
