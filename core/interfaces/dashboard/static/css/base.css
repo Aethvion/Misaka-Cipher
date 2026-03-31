@@ -247,18 +247,17 @@ h6 {
     gap: 0.5rem;
     font-size: 0.8rem;
     padding: 0.3rem 0.8rem;
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
     border-radius: var(--radius-full);
-    color: var(--success);
+    color: var(--text-tertiary);
 }
 
 .status-dot {
     width: 6px;
     height: 6px;
-    background: var(--success);
+    background: var(--text-tertiary);
     border-radius: 50%;
-    box-shadow: 0 0 8px var(--success);
     /* animation: pulse 2s infinite; */
 }
 

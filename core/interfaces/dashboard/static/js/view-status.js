@@ -1,27 +1,37 @@
 // Handles interacting with the System Status and Roadmap data
 
 async function loadHeaderStatus() {
+    const indicator = document.getElementById('nexus-status-indicator');
+    const updateUI = (isOnline) => {
+        if (!indicator) return;
+        const dot = indicator.querySelector('.status-dot');
+        const text = indicator.querySelector('.status-text');
+        
+        const color = isOnline ? 'var(--success)' : 'var(--error)';
+        const statusText = isOnline ? 'ONLINE' : 'OFFLINE';
+        
+        if (dot) {
+            dot.style.backgroundColor = color;
+            if (isOnline) dot.style.boxShadow = `0 0 8px ${color}`;
+            else dot.style.boxShadow = 'none';
+        }
+        if (indicator) {
+            indicator.style.borderColor = isOnline ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+            indicator.style.background = isOnline ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+            indicator.style.color = color;
+        }
+        if (text) text.textContent = statusText;
+    };
+
     try {
         const response = await fetch('/api/system/status');
-        if (!response.ok) return;
-        const data = await response.json();
-
-        const indicator = document.getElementById('nexus-status-indicator');
-        if (indicator) {
-            const dot = indicator.querySelector('.status-dot');
-            const text = indicator.querySelector('.status-text');
-            const isOnline = data.nexus && data.nexus.initialized;
-
-            if (dot) dot.style.backgroundColor = isOnline ? 'var(--success)' : 'var(--error)';
-            if (indicator) indicator.style.borderColor = isOnline ? 'var(--success)' : 'var(--error)';
-            if (text) {
-                text.textContent = isOnline ? 'ONLINE' : 'OFFLINE';
-                text.style.color = isOnline ? 'var(--success)' : 'var(--error)';
-            }
+        if (!response.ok) {
+            updateUI(false);
+            return;
         }
-
-        const agentsCount = document.getElementById('agents-count');
-        if (agentsCount) agentsCount.textContent = data.factory ? data.factory.active_agents : '0';
+        const data = await response.json();
+        const isOnline = data.nexus && data.nexus.initialized;
+        updateUI(isOnline);
 
         if (data.usage_today) {
             const tokensEl = document.getElementById('tokens-today');
@@ -35,6 +45,7 @@ async function loadHeaderStatus() {
         }
     } catch (error) {
         console.error("Failed to load header status:", error);
+        updateUI(false);
     }
 }
 
