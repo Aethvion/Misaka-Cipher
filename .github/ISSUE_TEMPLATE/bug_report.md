@@ -29,7 +29,7 @@ If applicable, add screenshots to help explain your problem.
 ## 🖥️ Environment
 - **OS**: [e.g., Windows 11, macOS 13.0, Ubuntu 22.04]
 - **Python Version**: [e.g., 3.10.5]
-- **Misaka Cipher Version**: [e.g., 1.0.0]
+- **Aethvion Suite Version**: [e.g., 1.0.0]
 - **Installation Method**: [e.g., git clone, pip install]
 
 ## 📝 Configuration

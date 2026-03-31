@@ -1,6 +1,6 @@
 # Maintainers
 
-This document lists the current maintainers of Misaka Cipher and their responsibilities.
+This document lists the current maintainers of Aethvion Suite and their responsibilities.
 
 ## Core Maintainers
 
@@ -32,7 +32,7 @@ We welcome contributors who demonstrate consistent, high-quality involvement wit
 1. Contribute several meaningful pull requests
 2. Participate actively in issue discussions
 3. Help review other contributors' PRs
-4. Reach out via [GitHub Discussions](https://github.com/Aethvion/Misaka-Cipher/discussions)
+4. Reach out via [GitHub Discussions](https://github.com/Aethvion/Aethvion-Suite/discussions)
 
 ## Stepping Down
 
