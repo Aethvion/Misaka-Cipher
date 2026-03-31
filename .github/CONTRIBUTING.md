@@ -1,12 +1,12 @@
-# Contributing to Misaka Cipher
+# Contributing to Aethvion Suite
 
-First off, thank you for considering contributing to Misaka Cipher! It's people like you that make this self-evolving AI system better for everyone.
+First off, thank you for considering contributing to Aethvion Suite! It's people like you that make this self-evolving AI suite better for everyone.
 
 ## 🌟 How Can I Contribute?
 
 ### Reporting Bugs
 
-Before creating bug reports, please check the [issue list](https://github.com/Aethvion/Misaka-Cipher/issues) as you might find out that you don't need to create one. When you are creating a bug report, please include as many details as possible:
+Before creating bug reports, please check the [issue list](https://github.com/Aethvion/Aethvion-Suite/issues) as you might find out that you don't need to create one. When you are creating a bug report, please include as many details as possible:
 
 * **Use a clear and descriptive title** for the issue
 * **Describe the exact steps to reproduce the problem**
@@ -38,8 +38,8 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 1. Fork the repository
 2. Clone your fork:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/Misaka-Cipher.git
-   cd Misaka-Cipher
+   git clone https://github.com/YOUR_USERNAME/Aethvion-Suite.git
+   cd Aethvion-Suite
    ```
 
 3. Create a virtual environment:
@@ -68,7 +68,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 
 ### Naming Conventions
 
-Misaka Cipher follows the **Aethvion Naming Standard** for tools and agents:
+Aethvion Suite follows the **Aethvion Naming Standard** for tools and agents:
 
 **Format:** `[Domain]_[Action]_[Object]`
 
@@ -159,16 +159,16 @@ When contributing to Nexus Core:
 
 ## 📞 Getting Help
 
-* 💬 [Start a discussion](https://github.com/Aethvion/Misaka-Cipher/discussions)
-* 🐛 [Open an issue](https://github.com/Aethvion/Misaka-Cipher/issues)
+* 💬 [Start a discussion](https://github.com/Aethvion/Aethvion-Suite/discussions)
+* 🐛 [Open an issue](https://github.com/Aethvion/Aethvion-Suite/issues)
 * 📖 Read the [documentation](/documentation/)
 
 ## 📜 License
 
-By contributing to Misaka Cipher, you agree that your contributions will be licensed under the MIT License.
+By contributing to Aethvion Suite, you agree that your contributions will be licensed under the MIT License.
 
 ---
 
-**Thank you for contributing to Misaka Cipher!** 🚀
+**Thank you for contributing to Aethvion Suite!** 🚀
 
 Every contribution, no matter how small, helps make this system better for everyone.

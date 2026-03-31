@@ -1,6 +1,6 @@
 # Synapse Module
 
-Synapse is the dedicated face and body tracking module for the Misaka Cipher ecosystem. 
+Synapse is the dedicated face and body tracking module for the Aethvion Suite ecosystem. 
 It streams real-time tracking parameters to other connected modules (like Specter) acting as a secure and fast bridge.
 
 ## Architecture

@@ -105,4 +105,4 @@ Anything specific you want reviewers to focus on?
 
 ---
 
-**Thank you for contributing to Misaka Cipher!** 🚀
+**Thank you for contributing to Aethvion Suite!** 🚀

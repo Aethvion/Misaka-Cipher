@@ -164,7 +164,7 @@ Machine-readable specifications for AI agents operating within the system.
 ## 🤝 Contributing to Documentation
 
 ### Found an Error?
-1. Check if it's already reported in [Issues](https://github.com/Aethvion/Misaka-Cipher/issues)
+1. Check if it's already reported in [Issues](https://github.com/Aethvion/Aethvion-Suite/issues)
 2. If not, open a new issue with:
    - Documentation file name
    - Section/line number
