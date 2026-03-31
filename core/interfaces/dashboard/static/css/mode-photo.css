@@ -151,8 +151,6 @@
     backdrop-filter: blur(5px);
 }
 
-
-
 /* AI Conversations Typing Indicator */
 .disabled-typing-indicator {
     display: flex;

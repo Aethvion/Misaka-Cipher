@@ -256,7 +256,6 @@
     overflow-x: auto;
     margin: 8px 0;
     display: block;
-    /* Break out of inline flow */
 }
 
 .misaka-d-message.misaka pre code {

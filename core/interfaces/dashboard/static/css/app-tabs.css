@@ -9,8 +9,6 @@
 }
 
 /* ── Global offset ───────────────────────────────────────────────────────── */
-/* Body is already flex-column; the nexus panel is position:fixed, so we just
-   need to stop the body itself from showing a scrollbar. */
 body {
     overflow: hidden;
 }
@@ -18,9 +16,11 @@ body {
 /* ── Tab bar shell ───────────────────────────────────────────────────────── */
 #app-tab-bar {
     position: fixed;
-    top: 0; left: 0; right: 0;
+    top: 0;
+    left: 0;
+    right: 0;
     height: var(--atb-height);
-    z-index: 200;               /* below startup splash (z-index:9999) */
+    z-index: 200;
     background: var(--bg-primary);
     border-bottom: 1px solid var(--border);
     display: flex;
@@ -39,7 +39,10 @@ body {
     border-right: 1px solid var(--border);
     transition: background 0.15s;
 }
-.atb-brand:hover { background: rgba(255,255,255,0.04); }
+
+.atb-brand:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
 
 .atb-brand-logo {
     color: var(--primary);
@@ -47,6 +50,7 @@ body {
     text-shadow: var(--glow);
     line-height: 1;
 }
+
 .atb-brand-name {
     font-family: 'Outfit', sans-serif;
     font-size: 0.7rem;
@@ -64,7 +68,10 @@ body {
     overflow-x: auto;
     scrollbar-width: none;
 }
-.atb-tabs::-webkit-scrollbar { display: none; }
+
+.atb-tabs::-webkit-scrollbar {
+    display: none;
+}
 
 /* Individual tab ─────────────────────────────────────────────────────────── */
 .atb-tab {
@@ -87,8 +94,9 @@ body {
     transition: background 0.15s, color 0.15s;
     position: relative;
 }
+
 .atb-tab:hover {
-    background: rgba(255,255,255,0.04);
+    background: rgba(255, 255, 255, 0.04);
     color: var(--text-primary);
 }
 
@@ -97,10 +105,13 @@ body {
     background: var(--bg-tertiary);
     color: var(--text-primary);
 }
+
 .atb-tab--active::after {
     content: '';
     position: absolute;
-    bottom: 0; left: 0; right: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
     height: 2px;
     background: var(--primary);
     box-shadow: 0 0 8px var(--primary);
@@ -112,16 +123,19 @@ body {
     line-height: 1;
     flex-shrink: 0;
 }
+
 .atb-tab-label {
     overflow: hidden;
     text-overflow: ellipsis;
     flex: 1;
 }
+
 .atb-tab-close {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 16px; height: 16px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     font-size: 0.7rem;
     margin-left: 2px;
@@ -129,11 +143,13 @@ body {
     opacity: 0;
     transition: opacity 0.15s, background 0.15s, color 0.15s;
 }
+
 .atb-tab-refresh {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 16px; height: 16px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     font-size: 0.65rem;
     margin-left: 2px;
@@ -142,16 +158,20 @@ body {
     transition: opacity 0.15s, background 0.15s, color 0.15s;
     color: var(--text-muted);
 }
+
 .atb-tab:hover .atb-tab-close,
 .atb-tab--active .atb-tab-close,
 .atb-tab:hover .atb-tab-refresh,
-.atb-tab--active .atb-tab-refresh { opacity: 0.5; }
+.atb-tab--active .atb-tab-refresh {
+    opacity: 0.5;
+}
 
 .atb-tab-refresh:hover {
     opacity: 1 !important;
     background: rgba(0, 217, 255, 0.2);
     color: var(--primary);
 }
+
 .atb-tab-close:hover {
     opacity: 1 !important;
     background: rgba(239, 68, 68, 0.2);
@@ -169,14 +189,16 @@ body {
 }
 
 /* Apps button */
-.atb-apps-wrapper { position: relative; }
+.atb-apps-wrapper {
+    position: relative;
+}
 
 .atb-apps-btn {
     display: flex;
     align-items: center;
     gap: 6px;
     padding: 5px 12px;
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-secondary);
@@ -186,18 +208,28 @@ body {
     transition: background 0.15s, color 0.15s, border-color 0.15s;
     white-space: nowrap;
 }
+
 .atb-apps-btn:hover {
-    background: rgba(255,255,255,0.09);
+    background: rgba(255, 255, 255, 0.09);
     color: var(--text-primary);
     border-color: var(--border-hover);
 }
+
 .atb-apps-btn.open {
     background: var(--bg-tertiary);
     color: var(--text-primary);
     border-color: var(--primary);
 }
-.atb-chevron { transition: transform 0.2s; font-size: 0.62rem; opacity: 0.7; }
-.atb-apps-btn.open .atb-chevron { transform: rotate(180deg); }
+
+.atb-chevron {
+    transition: transform 0.2s;
+    font-size: 0.62rem;
+    opacity: 0.7;
+}
+
+.atb-apps-btn.open .atb-chevron {
+    transform: rotate(180deg);
+}
 
 /* Apps dropdown ──────────────────────────────────────────────────────────── */
 .atb-apps-menu {
@@ -215,7 +247,10 @@ body {
     gap: 2px;
     z-index: 9998;
 }
-.atb-apps-menu.open { display: flex; }
+
+.atb-apps-menu.open {
+    display: flex;
+}
 
 .atb-apps-menu-title {
     font-size: 0.68rem;
@@ -242,14 +277,24 @@ body {
     transition: background 0.15s;
     width: 100%;
 }
-.atb-app-item:hover { background: rgba(255,255,255,0.06); }
-.atb-app-item--open { color: var(--primary); }
+
+.atb-app-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.atb-app-item--open {
+    color: var(--primary);
+}
+
 .atb-app-item--open .atb-app-checkmark {
     display: inline;
     margin-left: auto;
     font-size: 0.75rem;
 }
-.atb-app-checkmark { display: none; }
+
+.atb-app-checkmark {
+    display: none;
+}
 
 .atb-app-emoji {
     font-size: 1rem;
@@ -257,7 +302,11 @@ body {
     text-align: center;
     flex-shrink: 0;
 }
-.atb-app-name { flex: 1; }
+
+.atb-app-name {
+    flex: 1;
+}
+
 .atb-app-port {
     font-size: 0.68rem;
     color: var(--text-tertiary);
@@ -266,18 +315,19 @@ body {
 }
 
 /* ── App panels ──────────────────────────────────────────────────────────── */
-/* All panels — fixed, filling space below the tab bar */
 .app-panel {
     position: fixed;
     top: var(--atb-height);
-    left: 0; right: 0; bottom: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     overflow: hidden;
     display: none;
 }
 
 /* Nexus panel: flex column (replaces the old body flex-column) */
 .app-panel--nexus {
-    display: flex;   /* shown by default; JS will toggle on tab switch */
+    display: flex;
     flex-direction: column;
 }
 
@@ -285,6 +335,7 @@ body {
 .app-iframe-panel {
     background: var(--bg-primary);
 }
+
 .app-iframe-panel iframe {
     width: 100%;
     height: 100%;
@@ -306,14 +357,19 @@ body {
     z-index: 10;
     transition: opacity 0.3s ease;
 }
+
 .app-iframe-loading-text {
     font-size: 1.1rem;
     font-weight: 700;
     color: #fff;
     margin: 0;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
-.app-iframe-loading p { margin: 0; }
+
+.app-iframe-loading p {
+    margin: 0;
+}
+
 .app-iframe-port {
     font-family: 'Fira Code', monospace;
     font-size: 0.72rem;
@@ -321,22 +377,39 @@ body {
 }
 
 .app-iframe-spinner {
-    width: 30px; height: 30px;
+    width: 30px;
+    height: 30px;
     border: 2px solid var(--border);
     border-top-color: var(--primary);
     border-radius: 50%;
     animation: atb-spin 0.8s linear infinite;
 }
-@keyframes atb-spin { to { transform: rotate(360deg); } }
 
-.app-iframe-error-icon { font-size: 2rem; opacity: 0.6; }
-.app-iframe-error { color: var(--error) !important; font-weight: 600; }
-.app-iframe-error-msg { color: var(--text-tertiary) !important; font-size: 0.78rem !important; }
+@keyframes atb-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.app-iframe-error-icon {
+    font-size: 2rem;
+    opacity: 0.6;
+}
+
+.app-iframe-error {
+    color: var(--error) !important;
+    font-weight: 600;
+}
+
+.app-iframe-error-msg {
+    color: var(--text-tertiary) !important;
+    font-size: 0.78rem !important;
+}
 
 .app-iframe-retry-btn {
     margin-top: 4px;
     padding: 6px 18px;
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     color: var(--text-primary);
@@ -345,7 +418,10 @@ body {
     cursor: pointer;
     transition: background 0.15s;
 }
-.app-iframe-retry-btn:hover { background: rgba(255,255,255,0.1); }
+
+.app-iframe-retry-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
 
 .app-iframe-hint {
     font-size: 0.8rem !important;
@@ -417,6 +493,7 @@ body {
     .atb-quit-btn span {
         display: none;
     }
+
     .atb-quit-btn {
         padding: 0 10px;
     }

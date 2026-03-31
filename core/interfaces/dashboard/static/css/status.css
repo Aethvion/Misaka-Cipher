@@ -3,7 +3,6 @@
     color: var(--text);
 }
 
-
 /* ===== System Status Panel ===== */
 
 .status-meta {
@@ -63,23 +62,8 @@
 
 .live-indicator {
     color: var(--error);
-    /* animation: pulse-live 2s infinite; */
     font-size: 0.7rem;
 }
-
-/* @keyframes pulse-live {
-    0% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.5;
-    }
-
-    100% {
-        opacity: 1;
-    }
-} */
 
 .xs-btn {
     padding: 0.2rem 0.6rem;
@@ -167,7 +151,6 @@
 .roadmap-tree {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    /* Force 3 columns side-by-side */
     gap: 2rem;
     position: relative;
     padding: 0;
@@ -180,7 +163,6 @@
 @media (max-width: 1024px) {
     .roadmap-tree {
         grid-template-columns: 1fr;
-        /* Stack on small screens */
     }
 }
 
@@ -297,7 +279,6 @@
 
 .roadmap-section.planned .roadmap-item::before {
     content: '∘';
-    /* Hollow circle or similar */
     color: var(--primary);
     font-weight: bold;
     font-size: 1.2em;
@@ -328,7 +309,6 @@
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
     padding: 0 2px;
-    /* Narrower padding for arrow */
     margin-left: 0;
     min-width: auto;
     min-height: 39px;
