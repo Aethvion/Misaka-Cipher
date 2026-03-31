@@ -141,6 +141,30 @@ class TaskWorker:
                                 context_prompt = f"Chat History:\n{history_str}\n\nCurrent Message:\n{task.prompt}"
                                 logger.info(f"[{task.id}] Injected context ({len(history_tasks)//2} turns)")
 
+                        # ── Persistent Memory Preparation ──────────────────────────────
+                        pm_system_prompt = None
+                        if settings.get('memory_mode') != 'nomemory':
+                            from core.memory.persistent_memory import get_persistent_memory
+                            pm = get_persistent_memory()
+                            pm_str = pm.get_all_memory()
+                            
+                            # Instructions are ALWAYS included if memory is enabled
+                            pm_system_prompt = (
+                                "[SYSTEM: PERSISTENT MEMORY]\n"
+                                "You have access to a long-term persistent memory system. "
+                                "To save important information (user preferences, facts, project details) that should be remembered across all conversations, "
+                                "you MUST include the following XML tag in your response:\n"
+                                "<memory_topic title=\"Topic Name\">Detailed information to remember</memory_topic>\n"
+                                "When the user asks you to remember something, or when you learn a significant fact about the user or their work, "
+                                "provide a natural response but ALSO include the tag. Only store truly important long-term information."
+                            )
+                            
+                            if pm_str:
+                                pm_system_prompt = f"{pm_str}\n\n{pm_system_prompt}"
+                            
+                            logger.info(f"[{task.id}] Prepared persistent memory system prompt")
+                        # ── End Persistent Memory Preparation ──────────────────────────
+
                     # ── Agent workspace routing ────────────────────────────────────
                     # Note: context_prompt is NOT used for the agent path (AgentRunner
                     # uses task.prompt directly and builds its own rolling history).
@@ -224,8 +248,13 @@ class TaskWorker:
                         result = await loop.run_in_executor(
                             None,  # Use default executor
                             lambda: self.orchestrator.process_message(
-                                context_prompt, mode=mode, trace_id=task.id,
-                                model_id=model_id, images=images, source="chat"
+                                context_prompt, 
+                                system_prompt=pm_system_prompt,
+                                mode=mode, 
+                                trace_id=task.id,
+                                model_id=model_id, 
+                                images=images, 
+                                source="chat"
                             )
                         )
                     
@@ -269,6 +298,18 @@ class TaskWorker:
                     
                     # Update task with result
                     task.status = TaskStatus.COMPLETED
+                    
+                    # ── Persistent Memory Extraction ──────────────────────────────
+                    final_response = result_dict.get('response', '')
+                    memory_updates = []
+                    if settings.get('memory_mode') != 'nomemory' and final_response:
+                        from core.memory.persistent_memory import get_persistent_memory
+                        pm = get_persistent_memory()
+                        final_response, memory_updates = pm.extract_and_update(final_response)
+                        result_dict['response'] = final_response
+                        result_dict['memory_updates'] = memory_updates
+                    # ── End Persistent Memory Extraction ──────────────────────────
+
                     task.result = result_dict
 
                     # Record actual model used — keep separate from selected_model to avoid duplication

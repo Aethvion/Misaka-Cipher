@@ -435,6 +435,8 @@
                         <span class="tab-icon">📓</span><span class="tab-label">Memory</span></button>
                     <button class="main-tab mode-ai sidebar-subitem" data-maintab="misaka-memory" data-tooltip="Misaka Memory">
                         <span class="tab-icon">🧬</span><span class="tab-label">Misaka Cipher Memory</span></button>
+                    <button class="main-tab mode-ai sidebar-subitem" data-maintab="persistent-memory" data-tooltip="Persistent Memory">
+                        <span class="tab-icon">🧠</span><span class="tab-label">Persistent Memory</span></button>
                 </div>
 
                 <!-- Diagnostics -->
@@ -722,6 +724,14 @@
                                     <label>WIN</label>
                                     <input type="number" id="global-ctx-window" class="control-select" min="1" max="50"
                                         value="5" style="width: 45px; text-align: center;">
+                                </div>
+                                <!-- MEM -->
+                                <div class="control-item" title="Persistent Memory">
+                                    <label>MEM</label>
+                                    <select id="chat-memory-mode" class="control-select">
+                                        <option value="enabled" selected>On</option>
+                                        <option value="nomemory">Off</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -1828,6 +1838,24 @@
                     <div class="memory-file-view">
                         <h4><i class="fas fa-brain"></i> MEMORY.JSON</h4>
                         <div id="misaka-dynamic-memory-viewer" class="json-viewer">Loading dynamic memory...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Persistent Memory Tab -->
+            <div class="main-tab-panel" id="persistent-memory-panel">
+                <div class="panel-header">
+                    <h2>Persistent Memory <span class="panel-ts-badge" data-panel-ts="persistent_memory"></span></h2>
+                    <div class="panel-controls">
+                        <button id="refresh-persistent-memory-btn" class="action-btn secondary" title="Refresh persistent memory">
+                            <i class="fas fa-redo"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-content" style="padding: 1.5rem; overflow-y: auto; height: calc(100% - 70px);">
+                    <div class="memory-grid" id="persistent-memory-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
+                        <!-- Topic cards will be injected here -->
+                        <div class="loading-placeholder">Loading persistent memory topics...</div>
                     </div>
                 </div>
             </div>
@@ -3956,6 +3984,7 @@
             <script src="/static/js/view-models.js?v=5"></script>
             <script src="/static/js/view-audio-models.js?v=__VNUM__"></script>
             <script src="/static/js/view-ports.js?v=5"></script>
+            <script src="/static/js/view-persistent-memory.js?v=__VNUM__"></script>
 
             <!-- Modes (Active Interactive Panels) -->
             <script src="/static/js/mode-photo.js?v=5"></script>

@@ -66,7 +66,7 @@ function initThreadManagement() {
     }
 
     // Global Settings Listeners
-    ['global-ctx-mode', 'global-ctx-window'].forEach(id => {
+    ['global-ctx-mode', 'global-ctx-window', 'chat-memory-mode'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', () => saveGlobalChatSettings());
     });
@@ -355,6 +355,23 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
         // Wrap in a div to ensure block styles work correctly after the strong tag
         messageContent = `${modelLabel} <strong>Chat:</strong> <div style="display:inline-block; width:100%;">${parsedContent}</div>`;
 
+
+        // Add persistent memory updates
+        if (taskData?.result?.memory_updates && taskData.result.memory_updates.length > 0) {
+            taskData.result.memory_updates.forEach(update => {
+                messageContent += `
+                    <details class="agent-step-details memory-update" open>
+                        <summary class="agent-step-summary memory-summary">
+                            <span class="step-icon">🧠</span>
+                            <span class="step-title">New info saved: ${update.topic}</span>
+                        </summary>
+                        <div class="step-content">
+                            ${marked.parse(update.content)}
+                        </div>
+                    </details>
+                `;
+            });
+        }
 
         // Add expandable task details only for complex tasks (tools used, agents spawned, or auto-routing happened)
         const _isComplexTask = taskData && (
@@ -837,6 +854,7 @@ function saveGlobalChatSettings() {
     const settings = {
         context_mode: document.getElementById('global-ctx-mode').value,
         context_window: parseInt(document.getElementById('global-ctx-window').value) || 5,
+        memory_mode: document.getElementById('chat-memory-mode').value || 'enabled'
     };
     localStorage.setItem('global_chat_settings', JSON.stringify(settings));
 }
@@ -848,6 +866,9 @@ function loadGlobalChatSettings() {
             const settings = JSON.parse(saved);
             document.getElementById('global-ctx-mode').value = settings.context_mode || 'smart';
             document.getElementById('global-ctx-window').value = settings.context_window || 5;
+            if (document.getElementById('chat-memory-mode')) {
+                document.getElementById('chat-memory-mode').value = settings.memory_mode || 'enabled';
+            }
         }
     } catch (e) {
         console.error("Failed to load global chat settings:", e);
@@ -1010,8 +1031,9 @@ async function sendMessage() {
 
     try {
         // Submit task to queue
-        const ctxMode = document.getElementById('global-ctx-mode').value;
-        const ctxWin = parseInt(document.getElementById('global-ctx-window').value) || 5;
+        const ctxMode = document.getElementById('global-ctx-mode')?.value || 'smart';
+        const ctxWin = parseInt(document.getElementById('global-ctx-window')?.value) || 5;
+        const memMode = document.getElementById('chat-memory-mode')?.value || 'enabled';
 
         const payload = {
             prompt: message || `Please review the attached file: ${attachedFileName || 'file'}`,
@@ -1021,7 +1043,8 @@ async function sendMessage() {
             mode: 'chat_only',
             settings: {
                 context_mode: ctxMode,
-                context_window: ctxWin
+                context_window: ctxWin,
+                memory_mode: memMode
             }
         };
 

@@ -248,6 +248,7 @@ class ProviderManager:
         self,
         prompt: str,
         trace_id: str,
+        system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         preferred_provider: Optional[str] = None,
@@ -507,6 +508,7 @@ class ProviderManager:
             try:
                 response = provider.generate(
                     prompt=prompt,
+                    system_prompt=system_prompt,
                     trace_id=trace_id,
                     temperature=temperature,
                     max_tokens=max_tokens,
@@ -566,6 +568,7 @@ class ProviderManager:
         self,
         prompt: str,
         trace_id: str,
+        system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
@@ -596,6 +599,7 @@ class ProviderManager:
                 for chunk in provider.stream(
                     prompt=prompt,
                     trace_id=trace_id,
+                    system_prompt=system_prompt,
                     temperature=temperature,
                     max_tokens=max_tokens,
                     model=model_id,

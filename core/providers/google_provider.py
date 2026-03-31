@@ -43,6 +43,7 @@ class GoogleAIProvider(BaseProvider):
         self,
         prompt: str,
         trace_id: str,
+        system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
@@ -54,8 +55,9 @@ class GoogleAIProvider(BaseProvider):
             active_model = model if model else self.config.model
             logger.debug(f"[{trace_id}] Generating with Google AI model {active_model}")
             
-            # Extract system prompt if provided
-            system_prompt = kwargs.pop('system_prompt', None)
+            # Extract system prompt from kwargs for backwards compatibility if needed, 
+            # but prefer the explicit parameter.
+            final_system_prompt = system_prompt or kwargs.pop('system_prompt', None)
             
             # Configure generation
             config_params = {
@@ -63,8 +65,8 @@ class GoogleAIProvider(BaseProvider):
             }
             if max_tokens:
                 config_params['max_output_tokens'] = max_tokens
-            if system_prompt:
-                config_params['system_instruction'] = system_prompt
+            if final_system_prompt:
+                config_params['system_instruction'] = final_system_prompt
             
             # Support JSON mode if requested
             if kwargs.get('json_mode'):
@@ -164,6 +166,7 @@ class GoogleAIProvider(BaseProvider):
         self,
         prompt: str,
         trace_id: str,
+        system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
@@ -174,12 +177,17 @@ class GoogleAIProvider(BaseProvider):
         try:
             logger.debug(f"[{trace_id}] Streaming with Google AI model {self.config.model}")
 
+            # Combine system_prompt
+            final_system_prompt = system_prompt or kwargs.pop('system_prompt', None)
+
             # Configure generation
             config_params = {
                 'temperature': temperature,
             }
             if max_tokens:
                 config_params['max_output_tokens'] = max_tokens
+            if final_system_prompt:
+                config_params['system_instruction'] = final_system_prompt
 
             # Build contents — include image parts if provided
             from google.genai import types

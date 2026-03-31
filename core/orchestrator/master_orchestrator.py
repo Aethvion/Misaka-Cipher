@@ -104,13 +104,13 @@ class MasterOrchestrator:
         """Set callback for real-time step monitoring."""
         self.step_callback = callback
     
-    def process_message(self, user_message: str, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, source: str = "unknown", security_context: str = "", allow_tools: bool = True) -> ExecutionResult:
+    def process_message(self, user_message: str, system_prompt: Optional[str] = None, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, source: str = "unknown", security_context: str = "", allow_tools: bool = True) -> ExecutionResult:
         """
         Process user message end-to-end.
         
         Args:
             user_message: User's input message
-            mode: Execution mode ("auto" or "chat_only")
+            system_prompt: Optional model-level instructions
             trace_id: Optional trace ID (if provided by caller)
             model_id: Optional specific model ID to force
             images: Optional list of attached images
@@ -168,13 +168,13 @@ class MasterOrchestrator:
                 logger.info(f"[{trace_id}] Intent: {intent.intent_type.value} (confidence: {intent.confidence:.2f})")
 
                 # Step 2: Create action plan for specialized tasks
-                plan = self.decide_action(intent, trace_id, model_id=model_id, images=images)
+                plan = self.decide_action(intent, trace_id, model_id=model_id, images=images, system_prompt=system_prompt)
                 logger.info(f"[{trace_id}] Action plan: {', '.join(plan.actions)}")
                 
                 # Step 3: Execute plan
                 result = self.execute_plan(plan)
                 
-                # Extract and update memory tags (already generic)
+                # Extract and update identity tags (handled by IdentityManager)
                 result.response = IdentityManager.extract_and_update(result.response)
             
             # Calculate execution time
@@ -260,12 +260,17 @@ class MasterOrchestrator:
                 error=str(e)
             )
 
-    async def _execute_persona_chat(self, user_message: str, trace_id: str, model_id: Optional[str], images: Optional[List[Dict[str, Any]]], source: str, security_context: str = "", allow_tools: bool = True) -> ExecutionResult:
+    async def _execute_persona_chat(self, user_message: str, trace_id: str, model_id: Optional[str], images: Optional[List[Dict[str, Any]]], source: str, system_prompt: Optional[str] = None, security_context: str = "", allow_tools: bool = True) -> ExecutionResult:
         """Handle persona-based chat with iterative tool execution."""
-        # 1. Build System Prompt
-        system_prompt = PersonaManager.build_system_prompt(source=source, security_context=security_context, allow_tools=allow_tools)
+        # 1. Build Persona System Prompt
+        persona_system_prompt = PersonaManager.build_system_prompt(source=source, security_context=security_context, allow_tools=allow_tools)
         
-        # 2. Get history from HistoryManager for the prompt
+        # Merge with injected system_prompt (Persistent Memory instructions)
+        final_system_prompt = persona_system_prompt
+        if system_prompt:
+            final_system_prompt = f"{system_prompt}\n\n{persona_system_prompt}"
+        
+        # 2. Get history from HistoryManager for the prompt context
         history_context = ""
         try:
             # We fetch last 10 messages for context
@@ -279,8 +284,8 @@ class MasterOrchestrator:
         except Exception as e:
             logger.warning(f"[{trace_id}] Failed to load history for persona: {e}")
 
-        # Combine for initial LLM call
-        full_prompt = f"{system_prompt}\n\n--- RECENT CONVERSATION history ---\n{history_context}User: {user_message}\nMisaka:"
+        # Build conversation context prompt
+        conv_context = f"--- RECENT CONVERSATION history ---\n{history_context}User: {user_message}\nMisaka:"
         
         current_response = ""
         actions_taken = ["persona_chat"]
@@ -289,7 +294,8 @@ class MasterOrchestrator:
         
         for i in range(3): # Max 3 tool iterations
             request = Request(
-                prompt=full_prompt if i == 0 else f"{full_prompt}\n\n{current_response}\n\n--- NEW TOOL RESULTS ---\n{tool_results_str}",
+                prompt=conv_context if i == 0 else f"{conv_context}\n\n{current_response}\n\n--- NEW TOOL RESULTS ---\n{tool_results_str}",
+                system_prompt=final_system_prompt,
                 request_type="generation",
                 trace_id=trace_id,
                 metadata={"source": source},
@@ -345,13 +351,13 @@ class MasterOrchestrator:
             
             # Update prompt for followup (we append the conversation so far)
             if i == 0:
-                full_prompt = f"{full_prompt}\n{cleaned_content}"
+                conv_context = f"{conv_context}\n{cleaned_content}"
             else:
-                full_prompt = f"{full_prompt}\n\n{current_response}\n\n--- NEW TOOL RESULTS ---\n{tool_results_str}"
+                conv_context = f"{conv_context}\n\n{current_response}\n\n--- NEW TOOL RESULTS ---\n{tool_results_str}"
 
         return ExecutionResult(trace_id, True, current_response, actions_taken, [], [], 0, 0, model_id=model_id, media_paths=media_paths)
 
-    def decide_action(self, intent: IntentAnalysis, trace_id: str, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None) -> ActionPlan:
+    def decide_action(self, intent: IntentAnalysis, trace_id: str, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, system_prompt: Optional[str] = None) -> ActionPlan:
         """
         Decide what actions to take based on intent.
         
@@ -359,6 +365,7 @@ class MasterOrchestrator:
             intent: Analyzed user intent
             trace_id: Trace ID for this execution
             model_id: Optional specific model to use
+            system_prompt: Optional model-level instructions
             
         Returns:
             ActionPlan with sequence of actions
@@ -374,7 +381,7 @@ class MasterOrchestrator:
         # Route based on intent type
         if intent.intent_type == IntentType.CHAT:
             actions.append("direct_response")
-            resp_obj = self._generate_chat_response(intent, model_id=model_id, trace_id=trace_id, images=images)
+            resp_obj = self._generate_chat_response(intent, system_prompt=system_prompt, model_id=model_id, trace_id=trace_id, images=images)
             plan.direct_response = resp_obj.content
             if resp_obj.metadata and 'model' in resp_obj.metadata:
                 plan.model_used = resp_obj.metadata['model']
@@ -410,11 +417,13 @@ class MasterOrchestrator:
             # For now, agents depend on factory/provider manager config which we split.
             # If model_id is specific, we might want to override it here.
             # But AgentSpec doesn't have a clean slot. We'll rely on global "Agent" priority for now.
+            # Note: system_prompt currently does not propagate to spawned agents, 
+            # they have their own internal context management.
         
         else:
             # Unknown intent - try to have a conversation
             actions.append("direct_response")
-            resp_obj = self._generate_chat_response(intent, model_id=model_id, trace_id=trace_id, images=images)
+            resp_obj = self._generate_chat_response(intent, system_prompt=system_prompt, model_id=model_id, trace_id=trace_id, images=images)
             plan.direct_response = resp_obj.content
             if resp_obj.metadata and 'model' in resp_obj.metadata:
                 plan.model_used = resp_obj.metadata['model']
@@ -724,10 +733,11 @@ class MasterOrchestrator:
             images=images
         )
     
-    def _generate_chat_response(self, intent: IntentAnalysis, model_id: Optional[str] = None, trace_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None) -> Response:
+    def _generate_chat_response(self, intent: IntentAnalysis, system_prompt: Optional[str] = None, model_id: Optional[str] = None, trace_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None) -> Response:
         """Generate direct chat response via Nexus Core."""
         request = Request(
             prompt=intent.prompt,
+            system_prompt=system_prompt,
             request_type="generation",
             temperature=0.7,
             model=model_id,

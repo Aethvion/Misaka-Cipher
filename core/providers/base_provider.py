@@ -71,6 +71,7 @@ class BaseProvider(ABC):
         self,
         prompt: str,
         trace_id: str,
+        system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
@@ -163,6 +164,7 @@ class BaseProvider(ABC):
         self,
         prompt: str,
         trace_id: str,
+        system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         **kwargs

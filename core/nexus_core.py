@@ -26,6 +26,7 @@ logger = get_logger(__name__)
 class Request:
     """Request object for Nexus Core."""
     prompt: str
+    system_prompt: Optional[str] = None
     request_type: str = "generation"  # generation, tool_execution, agent_call
     metadata: Optional[Dict[str, Any]] = None
     preferred_provider: Optional[str] = None
@@ -193,6 +194,7 @@ class NexusCore:
 
                 provider_response = self.provider_manager.call_with_failover(
                     prompt=request.prompt,
+                    system_prompt=request.system_prompt,
                     trace_id=trace_id,
                     temperature=request.temperature,
                     max_tokens=request.max_tokens,

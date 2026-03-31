@@ -32,6 +32,7 @@ class AnthropicProvider(BaseProvider):
         self,
         prompt: str,
         trace_id: str,
+        system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
@@ -43,7 +44,7 @@ class AnthropicProvider(BaseProvider):
             active_model = model if model else self.config.model
             logger.debug(f"[{trace_id}] Generating with Anthropic model {active_model}")
 
-            system_prompt = kwargs.pop('system_prompt', None)
+            final_system_prompt = system_prompt or kwargs.pop('system_prompt', None)
             kwargs.pop('model', None)
             kwargs.pop('json_mode', None)
 
@@ -117,6 +118,7 @@ class AnthropicProvider(BaseProvider):
         self,
         prompt: str,
         trace_id: str,
+        system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
@@ -128,7 +130,7 @@ class AnthropicProvider(BaseProvider):
             active_model = model if model else self.config.model
             logger.debug(f"[{trace_id}] Streaming with Anthropic model {active_model}")
 
-            system_prompt = kwargs.pop('system_prompt', None)
+            final_system_prompt = system_prompt or kwargs.pop('system_prompt', None)
 
             # Build content — include image blocks if provided
             if images:

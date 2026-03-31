@@ -205,6 +205,7 @@ class ChatResponse(BaseModel):
     success: bool
     model_id: Optional[str] = None
     usage: Optional[Dict[str, Any]] = None
+    memory_updates: Optional[List[Dict[str, Any]]] = None
 
 
 class MemorySearchRequest(BaseModel):
@@ -273,10 +274,12 @@ async def initialize_system_background():
         from .ollama_routes import router as ollama_router
         from .agent_workspace_routes import router as agent_workspace_router
         from .corp_routes import router as corp_router
+        from .persistent_memory_routes import router as persistent_memory_router
 
         # Immediate Router Inclusion (Sync but fast)
         app.include_router(task_router)
         app.include_router(memory_router)
+        app.include_router(persistent_memory_router)
         app.include_router(registry_router)
         app.include_router(usage_router)
         app.include_router(arena_router)
@@ -521,7 +524,8 @@ async def chat(message: ChatMessage):
                     execution_time=result_dict.get('execution_time', 0),
                     success=result_dict.get('success', True),
                     model_id=result_dict.get('model_id'),
-                    usage=result_dict.get('usage')
+                    usage=result_dict.get('usage'),
+                    memory_updates=result_dict.get('memory_updates')
                 )
             elif task and task.status == "failed":
                 raise HTTPException(status_code=500, detail=f"Task execution failed: {task.error}")

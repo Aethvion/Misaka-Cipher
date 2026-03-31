@@ -41,6 +41,7 @@ class OpenAIProvider(BaseProvider):
         self,
         prompt: str,
         trace_id: str,
+        system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
@@ -52,13 +53,14 @@ class OpenAIProvider(BaseProvider):
             # Use explicit model override or fall back to config
             active_model = model if model else self.config.model
             logger.debug(f"[{trace_id}] Generating with OpenAI model {active_model}")
-            # Extract system prompt if present
-            system_prompt = kwargs.pop('system_prompt', None)
+            
+            # Extract system prompt from kwargs for backwards compatibility if needed
+            final_system_prompt = system_prompt or kwargs.pop('system_prompt', None)
             
             # Build messages
             messages = []
-            if system_prompt:
-                messages.append({"role": "system", "content": system_prompt})
+            if final_system_prompt:
+                messages.append({"role": "system", "content": final_system_prompt})
                 
             if images:
                 import base64
@@ -135,6 +137,7 @@ class OpenAIProvider(BaseProvider):
         self,
         prompt: str,
         trace_id: str,
+        system_prompt: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         model: Optional[str] = None,
@@ -144,8 +147,15 @@ class OpenAIProvider(BaseProvider):
         try:
             logger.debug(f"[{trace_id}] Streaming with OpenAI model {self.config.model}")
             
+            # Combine system_prompt
+            final_system_prompt = system_prompt or kwargs.pop('system_prompt', None)
+            
             # Build messages
-            messages = [{"role": "user", "content": prompt}]
+            messages = []
+            if final_system_prompt:
+                messages.append({"role": "system", "content": final_system_prompt})
+            
+            messages.append({"role": "user", "content": prompt})
             
             # Stream response
             active_model = model if model else self.config.model
