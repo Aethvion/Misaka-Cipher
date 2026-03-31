@@ -22,9 +22,7 @@
 ## 🖼️ Showcase
 
 <div align="center">
-
 <img src="assets/showcase/AethvionSuite_HomeScreen.png" alt="Aethvion Suite Home Screen" width="100%">
-
 </div>
 
 <br>

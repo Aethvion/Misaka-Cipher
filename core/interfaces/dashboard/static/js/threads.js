@@ -657,14 +657,13 @@ function renderThreadList() {
         titleEl.textContent = thread.title;
         titleEl.title = thread.title;   // tooltip for truncated text
 
-        // Preview — last user message from in-memory store
+        // Preview — last message (prefer in-memory store, fallback to thread data from server)
         const msgs = threadMessages[thread.id] || [];
         const lastMsg = [...msgs].reverse().find(m => m.role === 'user' || m.role === 'assistant');
         const previewEl = clone.querySelector('.thread-preview');
         if (previewEl) {
-            const previewText = lastMsg
-                ? lastMsg.content.replace(/<[^>]+>/g, '').slice(0, 80)
-                : 'No messages yet';
+            const rawText = lastMsg ? lastMsg.content : (thread.last_message || 'No messages yet');
+            const previewText = rawText.replace(/<[^>]+>/g, '').slice(0, 80);
             previewEl.textContent = previewText;
             previewEl.title = previewText;   // tooltip for truncated preview
         }

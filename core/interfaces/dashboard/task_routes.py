@@ -159,7 +159,22 @@ async def list_threads():
                 thread_id = getattr(thread, 'id', '') or ''
                 if thread_id.startswith('agents-'):
                     continue
-                threads.append(thread.to_dict())
+                
+                thread_data = thread.to_dict()
+                
+                # Get last task for preview
+                last_msg = "No messages yet"
+                if thread.task_ids:
+                    last_task_id = thread.task_ids[-1]
+                    last_task = task_manager.get_task(last_task_id)
+                    if last_task:
+                        if last_task.result and last_task.result.get('response'):
+                            last_msg = last_task.result.get('response')
+                        else:
+                            last_msg = last_task.prompt
+                
+                thread_data['last_message'] = last_msg
+                threads.append(thread_data)
             except Exception as te:
                 logger.error(f"Failed to serialize thread {getattr(thread, 'id', 'unknown')}: {te}")
                 continue
