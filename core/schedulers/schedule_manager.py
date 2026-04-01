@@ -258,7 +258,7 @@ class ScheduleManager:
             try:
                 prompt = task.get('prompt') or f"[No prompt configured for task: {task.get('name')}]"
                 if self.nexus:
-                    result_text = self.nexus.provider_manager.call_with_failover(
+                    response = self.nexus.provider_manager.call_with_failover(
                         prompt=prompt,
                         trace_id=f"sched-{run_id}",
                         temperature=0.7,
@@ -266,6 +266,7 @@ class ScheduleManager:
                         request_type='generation',
                         source='schedule',
                     )
+                    result_text = response.content
                     status = 'success'
                 else:
                     result_text = '(System not yet initialised — try again after startup)'

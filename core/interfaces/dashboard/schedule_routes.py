@@ -173,7 +173,7 @@ async def chat(task_id: str, req: ChatRequest):
             ai_reply = "(Aethvion is still starting up — please wait a moment and try again.)"
         else:
             model = req.model_id or task.get('model_id')
-            ai_reply = _nexus.provider_manager.call_with_failover(
+            response = _nexus.provider_manager.call_with_failover(
                 prompt=prompt,
                 trace_id=f"sched-chat-{task_id[:8]}",
                 temperature=0.7,
@@ -181,6 +181,7 @@ async def chat(task_id: str, req: ChatRequest):
                 request_type='generation',
                 source='schedule',
             )
+            ai_reply = response.content
     except Exception as exc:
         logger.error("[schedule/chat] AI call failed: %s", exc)
         ai_reply = f"Error communicating with AI: {exc}"
