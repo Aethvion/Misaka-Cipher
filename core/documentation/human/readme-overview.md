@@ -1,6 +1,6 @@
 # Aethvion Suite - System Overview
 
-**Note: This documentation was updated on 2026-03-30 to reflect the current Aethvion Suite (v11) state.**
+**Note: This documentation was updated on 2026-04-01 to reflect the current Aethvion Suite (v12) state.**
 
 ---
 
@@ -14,7 +14,7 @@ Aethvion Suite (**M.I.S.A.K.A.** - Multitask Intelligence & Strategic Analysis K
 - The system doesn't just execute tasks—it solves them by iteratively generating and running code in specialized **Workspaces**.
 - Dynamic agents perform multi-step ReAct loops, learning and persisting knowledge as they go.
 - The AI can spawn specialized agents, refine its own scripts, and update its memory topics autonomously.
-- **Legacy Forging**: While the system can still "forge" permanent tools, modern operations favor transient, workspace-specific capabilities.
+- **Legacy Forging**: The old, manual tool-forging system has been removed in favor of fully autonomous, workspace-specific capability generation.
 
 **♾️ Infinite Session Architecture**
 - Designed for long-running, autonomous loops
@@ -57,11 +57,19 @@ Creates specialized worker agents on-demand that operate within dedicated filesy
 4. Agent executes a **ReAct Loop** (Reasoning + Acting: `read_file`, `write_file`, `run_command`, `done`)
 5. Results are streamed in real-time to the dashboard via SSE (Server-Sent Events)
 
-### 3. **The Memory Tier** - Knowledge Persistence & Retrieval
+### 3. **AI Scheduler & Notifications** - Automated Execution & Alerting
+Enables recurring AI tasks and real-time status updates across the entire suite.
+
+**Key Features:**
+- **Cron-based Scheduling**: Trigger AI tasks at specific times or intervals (e.g., daily research summaries).
+- **Notification Hub**: A centralized, persistent alert system with granular source filtering.
+- **Deep-Linking**: Navigate directly from an alert to the relevant task or dashboard tab.
+
+### 4. **The Memory Tier** - Knowledge Persistence & Retrieval
 A multi-layered cognitive architecture ensuring that what the system learns today, it remembers tomorrow.
 
 **Layered Architecture:**
-- **Persistent Memory (Knowledge Hub)**: Curated, long-term topics and facts managed in the dashboard. This is the top-tier "Ground Truth".
+- **Persistent Memory (Knowledge Hub)**: Curated, long-term topics and facts managed in the dashboard. This is the top-tier "Ground Truth", now integrated directly into the Chat sidebar.
 - **Core Insights**: Recursive summarization of interactions into high-level patterns and behavioral facts.
 - **Episodic Memory**: Raw interaction logs with semantic embeddings for vector-based search (ChromaDB).
 - **Knowledge Graph**: NetworkX-based mapping showing how domains, agents, and concepts are interlinked.
@@ -276,7 +284,7 @@ This is not just automation—it's **evolution**.
 
 ---
 
-**Last Updated:** 2026-03-31
+**Last Updated:** 2026-04-01
 
 **Need technical details?** → [AI Documentation](/documentation/ai/)
 
