@@ -465,23 +465,35 @@ async function scheduleSaveQueueMax() {
 // ── Model population ──────────────────────────────────────────
 async function _schedLoadModels() {
     try {
-        const resp = await fetch('/api/registry/models');
+        const resp = await fetch('/api/registry/models/chat');
         if (!resp.ok) return;
         const data = await resp.json();
-        const models = data.models || data;
+
         const sel = _sEl('sched-model-select');
         if (!sel) return;
-        sel.innerHTML = '<option value="auto">Auto</option>';
-        (Array.isArray(models) ? models : Object.values(models)).forEach(m => {
-            if (!m.id && !m.model_id) return;
-            const id  = m.id || m.model_id;
-            const lbl = m.name || m.display_name || id;
-            const opt = document.createElement('option');
-            opt.value = id; opt.textContent = lbl;
-            sel.appendChild(opt);
-        });
-        if (_schedCurrentTask?.model_id) sel.value = _schedCurrentTask.model_id;
-    } catch (_) {}
+
+        // Use the same grouped/categorized dropdown as Agents and other tabs
+        if (typeof generateCategorizedModelOptions === 'function') {
+            sel.innerHTML = generateCategorizedModelOptions(data, 'chat');
+        } else {
+            // Fallback: flat list
+            sel.innerHTML = '<option value="auto">Auto</option>';
+            for (const m of data.models || []) {
+                const opt = document.createElement('option');
+                opt.value = m.id; opt.textContent = m.name || m.id;
+                sel.appendChild(opt);
+            }
+        }
+
+        // Restore saved selection
+        const saved = localStorage.getItem('schedule_model_id');
+        if (saved) {
+            const opt = sel.querySelector(`option[value="${CSS.escape(saved)}"]`);
+            if (opt) sel.value = saved;
+        }
+    } catch (e) {
+        console.error('[Schedule] Failed to load models:', e);
+    }
 }
 
 // ── Overview (Knowledge tab) ──────────────────────────────────
@@ -572,6 +584,14 @@ function scheduleInit() {
         inp.addEventListener('input', () => {
             inp.style.height = 'auto';
             inp.style.height = Math.min(inp.scrollHeight, 160) + 'px';
+        });
+    }
+
+    // Persist model selection
+    const modelSel = _sEl('sched-model-select');
+    if (modelSel) {
+        modelSel.addEventListener('change', () => {
+            localStorage.setItem('schedule_model_id', modelSel.value);
         });
     }
 
