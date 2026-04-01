@@ -318,6 +318,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
         console.error("Error during initial data load:", e);
     }
+
+    // Global listener for deep-linking (e.g. from Notifications)
+    window.addEventListener('notif-navigate', (e) => {
+        const { tab, context } = e.detail;
+        if (!tab) return;
+        
+        // Handle AI mode switching if needed
+        const AI_TABS = ['chat', 'agents', 'agent-corp', 'schedule', 'photo', 'audio'];
+        if (AI_TABS.includes(tab)) {
+            if (typeof setDashboardMode === 'function') setDashboardMode('ai');
+        }
+        
+        // Switch tab if it exists and we're not already on it
+        if (typeof switchMainTab === 'function') {
+            switchMainTab(tab);
+        }
+    });
 });
 
 /**

@@ -263,18 +263,7 @@ class ScheduleManager:
             task_id   = task['id']
             nav_target = {"tab": "schedule", "context": task_id}
 
-            # ── Notify: task started ───────────────────────────────────
-            if _notify:
-                try:
-                    _notify(
-                        title=f"Running: {task_name}",
-                        message="Scheduled task is being executed…",
-                        source="schedule",
-                        level="info",
-                        target=nav_target,
-                    )
-                except Exception:
-                    pass
+            nav_target = {"tab": "schedule", "context": task_id}
 
             result_text = None
             status = 'failed'

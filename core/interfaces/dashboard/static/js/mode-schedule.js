@@ -625,4 +625,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mt === 'schedule')     setTimeout(window._scheduleOnActivate, 50);
         if (mt === 'sched-overview') setTimeout(window._scheduleOverviewOnActivate, 50);
     });
+
+    // Handle deep-linking from notifications
+    window.addEventListener('notif-navigate', e => {
+        const { tab, context } = e.detail;
+        if (tab === 'schedule' && context) {
+            // First, call our activation hook to ensure task list is fresh
+            if (typeof window._scheduleOnActivate === 'function') {
+                window._scheduleOnActivate();
+            }
+            // Then select the specific task
+            if (typeof scheduleSelectTask === 'function') {
+                // Small delay to ensure the UI has switched and list is rendering
+                setTimeout(() => scheduleSelectTask(context), 150);
+            }
+        }
+    });
 });
