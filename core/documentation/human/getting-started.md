@@ -1,6 +1,6 @@
 # Getting Started with Aethvion Suite
 
-**Note: This documentation was updated on 2026-03-30 to reflect the current Aethvion Suite (v11) state.**
+**Note: This documentation was updated on 2026-04-01 to reflect the current Aethvion Suite (v12) state.**
 
 ---
 
@@ -184,9 +184,11 @@ The dashboard includes 25+ tabs: Chat, Agent Workspaces, Image Studio, LLM Arena
 - Visual system status
 - LLM Arena (model comparison with enhanced leaderboard)
 - AI Image Studio
+- **AI Scheduler** — automated AI tasks with cron-based triggers and completion notifications
 - **Advanced AI Conversation lab** — human participant, pause/inject, shareable links, history persistence
 - **Local Audio Models** — Kokoro (TTS), XTTS-v2 (voice cloning), Whisper (STT)
 - **Tabbed Model Registry** — manage cloud and local models in one place
+- **Notification Center** — real-time system alerts with persistent history and deep-linking navigation
 - API usage analytics with Local/API filters
 - Package manager
 
@@ -281,7 +283,25 @@ Select option:
 - Stores findings in memory
 - Returns structured report
 
-### Use Case 4: Query System Memory
+### Use Case 4: Set up an Automated AI Task
+
+**Scenario:** Get a daily summary of a research topic every morning.
+
+**Steps (Web Dashboard):**
+1. Select the **Schedule** tab.
+2. Create a new Task: `Daily Research Summary`.
+3. Set the prompt: `Summarize the top AI news from the last 24 hours.`
+4. Configure the schedule: `Every day at 9:00 AM`.
+5. **Enable Notifications**: Ensure notifications are toggled ON in Settings.
+6. Every morning, you'll receive a notification on the dashboard when the task finishes, with a link straight to the results.
+
+**What Happens Behind the Scenes:**
+- Task is persisted in `data/scheduled_tasks/`.
+- Background scheduler polls for active tasks.
+- On trigger, a transient AI execution context is created.
+- Result is stored and a notification event is pushed to the UI.
+
+### Use Case 5: Query System Memory
 
 **Scenario:** Recall past interactions or insights
 
@@ -496,7 +516,7 @@ forge.forge_tool(
 
 ## The Vision: Where We're Going
 
-**Current State (v11):**
+**Current State (v12):**
 - ✅ Core orchestration (Nexus)
 - ✅ Agent spawning (Factory) + **Agent Workspaces** with ReAct runner and SSE streaming
 - ✅ Tool generation (Forge)
@@ -512,6 +532,8 @@ forge.forge_tool(
 - ✅ **Local Audio Models** — Kokoro, XTTS-v2, Whisper
 - ✅ Finance: AI market analysis and per-ticker detail panel
 - ✅ Tracking: revamped UI with HUD, telemetry, FPS counter
+- ✅ **AI Scheduler** — Automated cron-based AI tasks with real-time notifications
+- ✅ **Notification System** — Persistent history, granular source filtering, and deep-linking navigation
 - ✅ Self-update via dashboard Settings
 
 **Near-Term (Next 3 Months):**
@@ -541,13 +563,13 @@ No human intervention needed.
 
 ---
 
-**Ready to start?** Fire up the system and experience the power of v11! 🚀
+**Ready to start?** Fire up the system and experience the power of v12! 🚀
 
 ```bash
 python -m core.main --cli
 ```
 
-**Last Updated:** 2026-03-31
+**Last Updated:** 2026-04-01
 
 ---
 

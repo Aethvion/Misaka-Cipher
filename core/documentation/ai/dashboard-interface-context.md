@@ -41,14 +41,16 @@ linkmap | LinkMap | Visual representation of tool and agent relationships. [Swit
 
 code | Code IDE | AI-powered development environment with streaming execution. [SwitchTab: code]
 
-settings | Settings | Core configuration hub. The "Misaka Cipher" (previously Assistant) section allows for configuring the floating persona and individual chat models. [SwitchTab: settings]
+schedule | Schedule | Automated AI tasks with cron schedules and completion notifications. [SwitchTab: schedule]
+
+settings | Settings | Core configuration hub. The "Misaka Cipher" section allows for configuring the floating persona. Includes Notifications sub-tab for granular alerting control. [SwitchTab: settings]
 
 TAB SWITCHING
 If Dashboard Control is enabled in the assistant settings, the assistant can navigate the user to any tab.
 
-Valid main tab IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings, misaka-cipher, misaka-memory, finance, tracking, linkmap, code
+Valid main tab IDs: chat, agent, image, advaiconv, arena, aiconv, files, tools, packages, memory, logs, usage, status, settings, misaka-cipher, misaka-memory, finance, tracking, linkmap, code, schedule
 
-Valid subtab IDs (inside settings): assistant (labeled 'Misaka Cipher'), system, env, providers, profiles
+Valid subtab IDs (inside settings): assistant (labeled 'Misaka Cipher'), system, env, providers, profiles, notifications
 
 Only use navigation when the user EXPLICITLY asks to navigate.
 o somewhere or when it would be clearly helpful (e.g. "Where do I set my API keys?" -> [SwitchSubTab: providers]).

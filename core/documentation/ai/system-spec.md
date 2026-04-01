@@ -1,16 +1,16 @@
 AETHVION SUITE - SYSTEM SPECIFICATION
-Core architecture is consistent; tool implementations evolve during agentic sprints. Updated: 2026-03-30.
+Core architecture is consistent; tool implementations evolve during agentic sprints. Updated: 2026-04-01.
 
 SYSTEM IDENTITY
 Name: Aethvion Suite | Acronym: M.I.S.A.K.A. | Full Name: Multitask Intelligence & Strategic Analysis Kernel Architecture
-Version: v11 | Language: Python 3.10+ | Purpose: Self-evolving agentic research and execution engine with multi-tiered memory and integrated app ecosystem
+Version: v12 | Language: Python 3.10+ | Purpose: Self-evolving agentic research and execution engine with multi-tiered memory and integrated app ecosystem
 
 DIRECTORY STRUCTURE
 main.py - entry point (CLI/Web/Test modes)
 cli.py - interactive CLI interface
 nexus_core.py - central orchestration hub [SINGLE POINT OF ENTRY]
 core/ - core system modules
-  core/interfaces/dashboard/ - web dashboard (FastAPI server, static files, route handlers: assistant, arena, audio_models, image, advanced_aiconv, agent_workspace, discord, memory, package, registry, settings, task, tool, usage)
+  core/interfaces/dashboard/ - web dashboard (FastAPI server, static files, route handlers: assistant, arena, audio_models, image, advanced_aiconv, agent_workspace, discord, memory, package, registry, schedule, settings, task, tool, usage)
   core/interfaces/cli_modules/ - CLI module implementations (nexus, factory, forge, memory, system, arena, research, settings)
   core/system_retrieval.py - system data retrieval
 config/ - configuration files (committed, version-controlled)
@@ -40,13 +40,13 @@ factory/ - the Factory (agent spawning)
   factory/agent_registry.py - active agent tracking
   factory/agent_result.py - agent result models
   factory/agent_templates.py - pre-defined agent templates
-forge/ - Legacy Forge (static tool generation)
+schedulers/ - Job Scheduling [NEW]
+  schedulers/schedule_manager.py - main scheduler engine (cron-based AI tasks) [ENTRY]
+forge/ - Legacy Forge (static tool generation) [DEPRECATED]
   forge/tool_forge.py - tool generation engine (deprecated in favor of Agentic Skill execution)
   forge/code_generator.py - Python code generation
   forge/tool_validator.py - validation and security checking
   forge/tool_registry.py - tool registration system
-  forge/tool_spec.py - tool specification models
-  forge/validators/tool_validator.py - tool validation logic
 memory/ - the Memory Tier (knowledge persistence)
   memory/episodic_memory.py - vector-based interaction storage [ChromaDB]
   memory/file_vector_store.py - semantic indexing and search for workspace files [FastEmbed + ChromaDB]
@@ -184,6 +184,17 @@ Identity manager (identity_manager.py): persistent base identity at data/vault/p
 Social registry (social_registry.py): platform-ID-to-profile mapping (Discord user IDs -> internal names + memory context); persisted to data/vault/knowledge/social.json; enables cross-platform identity resolution
 File vector store (file_vector_store.py): semantic indexing of workspace files using FastEmbed for embeddings + ChromaDB for storage; enables natural language file search within the workspace
 
+SCHEDULE SYSTEM (dashboard Schedule tab)
+Manager: core/schedulers/schedule_manager.py - manages recurring AI tasks with cron-based scheduling; persists to data/scheduled_tasks/
+API: core/interfaces/dashboard/schedule_routes.py - REST endpoints for task CRUD (/api/schedule/tasks), manual runs (/run), and deep-linking navigation support
+State: draft (setup), active (scheduled), paused (suspended)
+Notifications: integrated with main system; notifies user on task completion (Success/Error) with result preview
+
+NOTIFICATION SYSTEM
+Infrastructure: web-based real-time notification hub with persistent history (data/history/notifications/); supports level-based alerting (info, success, warning, error)
+Visibility Filtering: granular category control via Settings -> Notifications; users can toggle visibility per source (Agents, Schedule, System, etc.) without losing history
+Deep-linking: notification "target" schema (tab-id, context-id) enables automatic dashboard navigation and task selection (e.g. go straight to the specific Agent workspace result)
+
 MISAKA PERSONA TRACE MANAGEMENT
 Format: MCTR-YYYYMMDDHHMMSS-UUID | Example: MCTR-20260218104223-a3f2c1b9
 Lifecycle: start_trace() -> generate ID -> request processing -> log to trace file -> end_trace(status) -> persist metadata to memory
@@ -253,12 +264,12 @@ MEMORY-001: ChromaDB connection failed | MEMORY-002: embedding generation failed
 SECURITY-001: PII detected | SECURITY-002: credential detected | SECURITY-003: request blocked
 
 VERSION
-CurrVersion: Current: v10 (March 2026) | History: Sprint 1-3 (Foundation), v3-v8 (Apps), v9 (Agent Workspaces, local models, Finance AI, Tracking HUD), v10 (Centralized Versioning, Financial Analyst Dashboard, Tracking Terminal Redesign)
-Breaking changes: v9 data paths migrated to data/ root (centralised via core/utils/paths.py); history moved from memory/storage/ to data/history/; vault data moved to data/vault/; localmodels paths changed from LocalModels/ to localmodels/gguf/ and localmodels/audio/; v11 rebranding to Aethvion Suite.
+CurrVersion: Current: v12 (April 2026) | History: Sprint 1-3 (Foundation), v3-v8 (Apps), v9 (Agent Workspaces, local models), v10 (Financial Analyst Dashboard), v11 (Rebranding to Aethvion Suite), v12 (Schedule & Notification Refactor, System Debloating)
+Breaking changes: v9 data paths migrated to data/ root (centralised via core/utils/paths.py); history moved from memory/storage/ to data/history/; vault data moved to data/vault/; localmodels paths changed from LocalModels/ to localmodels/gguf/ and localmodels/audio/; v11 rebranding.
 
 PERFORMANCE TARGETS
 Request latency: <2s (Flash), <5s (Pro) | Tool generation: <30s (simple), <120s (complex) | Agent spawn: <1s | Memory retrieval: <500ms (10 results) | Agent runner step: depends on action (file I/O <100ms, shell command variable)
 
-LAST UPDATED: 2026-03-31
+LAST UPDATED: 2026-04-01
 MAINTAINED BY: Agentic Sprint Cycles
 STABILITY: Core architecture stable, tool implementations evolve rapidly

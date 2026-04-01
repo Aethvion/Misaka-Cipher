@@ -13,7 +13,7 @@
 
 *Connect cloud providers or run local GGUF models. Control everything from a 25+ tab dashboard, an AI-powered code IDE, or a terminal CLI — your platform, your rules.*
 
-**Current version: v11**
+**Current version: v12**
 
 </div>
 
@@ -85,9 +85,10 @@ The AI core features **Misaka Cipher**, backed by four subsystems:
 | Component | Role | Status |
 |-----------|------|--------|
 | **Nexus Core** | Single entry point — routes all requests, manages trace IDs | ✅ Stable |
-| **The Factory** | Spawns transient worker agents for complex tasks | 🧪 Works for basic tasks |
-| **The Forge** | Generates Python tools autonomously | 🧪 Works for simple tools |
+| **The Factory** | Spawns transient worker agents for complex tasks | 🧪 Active Development |
+| **Schedule Manager** | Manages recurring AI tasks and automation | ✅ Stable |
 | **Memory Tier** | ChromaDB episodic memory + knowledge graph | ✅ Storage stable, retrieval improving |
+| **Notification Hub** | Real-time system-wide alerting and history | ✅ New |
 
 **Cloud Providers:** Google AI (Gemini) · OpenAI (GPT-4o) · xAI (Grok) · Anthropic (Claude)
 **Local Models:** GGUF via llama-cpp-python (Mistral, LLaMA, Phi, and others)
@@ -140,7 +141,8 @@ python apps/code/code_server.py    # Code IDE standalone
 - Local GGUF model inference via llama-cpp-python — no cloud required
 - Persistent conversation threads with configurable context modes (none / smart / full)
 - Per-message model selection or **auto-routing** (LLM picks the best model from your enabled pool)
-- Collapsible, flush-edge chat UI with persistent layout state memory
+- Persistent Memory in Chat — AI can remember long-term topics across conversations
+- Compact thread history with date dividers and improved visual hierarchy
 
 ### 🤖 Agent Workspaces
 - **Agent Workspaces tab**: Create named workspaces, each with their own thread history
@@ -240,8 +242,9 @@ python apps/code/code_server.py    # Code IDE standalone
 | Documentation | ✅ Working | In-dashboard documentation viewer |
 | Usage | ✅ Working | Token usage, cost tracking, Local/API filters, and granular queries |
 | Status | ✅ Working | System and provider health |
-| Port Manager | ✅ Working | View and manage active service ports |
-| Settings | ✅ Working | Tabbed Model Registry, routing profiles, Discord, assistant, environment config, self-update |
+| Ports | ✅ Working | View and manage active service ports |
+| Schedule | ✅ NEW | Automate AI tasks with cron schedules and notifications |
+| Settings | ✅ Working | Tabbed Model Registry, routing profiles, Notifications, environment config, self-update |
 
 ---
 

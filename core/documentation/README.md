@@ -1,6 +1,6 @@
 # Aethvion Suite Documentation
 
-**Note: This documentation was updated on 2026-03-30 to reflect the Aethvion Suite (v11) architecture.**
+**Note: This documentation was updated on 2026-04-01 to reflect the Aethvion Suite (v12) architecture.**
 
 ---
 
@@ -222,6 +222,8 @@ Machine-readable specifications for AI agents operating within the system.
 - **Agent Registry:** In-memory tracking of active agents
 - **Infinite Session:** Long-running autonomous execution mode for complex goals
 - **Self-Evolution:** System's ability to create tools and improve itself autonomously
+- **Schedule Manager:** Manages recurring AI tasks with cron-based scheduling
+- **Notification Hub:** Real-time system-wide alerting and history logic
 
 ---
 
@@ -243,7 +245,7 @@ This documentation follows a **dual-tier approach**:
 
 ---
 
-**Last Updated:** 2026-03-31
+**Last Updated:** 2026-04-01
 
 **Maintained By:** Agentic Sprint Cycles + Human Contributors
 
