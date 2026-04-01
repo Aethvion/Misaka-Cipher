@@ -1090,4 +1090,599 @@
     border: 1px solid rgba(249, 115, 22, 0.2);
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   SCHEDULE TAB
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Layout ─────────────────────────────────────────────────── */
+#schedule-panel {
+    height: 100%;
+    overflow: hidden;
+}
+
+.sched-layout {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.sched-sidebar {
+    width: 240px;
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    background: rgba(0,0,0,0.15);
+    flex-shrink: 0;
+}
+
+.sched-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 0.9rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.sched-sidebar-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+}
+
+.sched-new-btn {
+    background: rgba(var(--primary-rgb, 0,217,255), 0.12);
+    border: 1px solid rgba(var(--primary-rgb, 0,217,255), 0.25);
+    color: var(--primary);
+    border-radius: var(--radius-sm);
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: background 0.15s;
+}
+.sched-new-btn:hover { background: rgba(var(--primary-rgb, 0,217,255), 0.22); }
+
+.sched-task-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.4rem 0;
+}
+
+.sched-empty-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 2rem 1rem;
+    color: var(--text-tertiary);
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.sched-task-item {
+    padding: 0.55rem 0.8rem;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    margin: 0 0.3rem 0.2rem;
+    transition: background 0.12s;
+}
+.sched-task-item:hover    { background: rgba(255,255,255,0.05); }
+.sched-task-item.active   { background: rgba(var(--primary-rgb,0,217,255),0.1); border-left: 2px solid var(--primary); padding-left: calc(0.8rem - 2px); }
+
+.sched-task-item-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+}
+
+.sched-task-item-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.sched-task-item-name {
+    font-size: 0.84rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sched-task-item-meta {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sched-task-item-last {
+    font-size: 0.68rem;
+    color: var(--text-tertiary);
+    opacity: 0.7;
+}
+
+/* Status dots */
+.sched-task-dot, .sched-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 4px;
+}
+.dot-active { background: #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+.dot-paused { background: #f59e0b; }
+.dot-draft  { background: #6b7280; }
+
+/* ── Main area ────────────────────────────────────────────────── */
+.sched-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* No-task empty state */
+.sched-no-task {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.sched-no-task-icon  { font-size: 2.5rem; opacity: 0.5; }
+.sched-no-task-title { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+.sched-no-task-sub   { font-size: 0.85rem; color: var(--text-secondary); }
+
+.sched-no-task-btn {
+    margin-top: 0.5rem;
+    padding: 0.5rem 1.2rem;
+    background: rgba(var(--primary-rgb,0,217,255),0.12);
+    border: 1px solid rgba(var(--primary-rgb,0,217,255),0.3);
+    color: var(--primary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.15s;
+}
+.sched-no-task-btn:hover { background: rgba(var(--primary-rgb,0,217,255),0.22); }
+
+/* Task view */
+.sched-task-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* ── Info card ────────────────────────────────────────────────── */
+.sched-info-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.1);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.sched-info-left  { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.sched-info-right { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; flex-shrink: 0; }
+
+.sched-info-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sched-info-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sched-status-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+}
+.sched-status-active  { background: rgba(34,197,94,0.15);  color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+.sched-status-paused  { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); }
+.sched-status-draft   { background: rgba(107,114,128,0.15);color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+
+.sched-info-meta {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+}
+.sched-meta-sep { color: var(--text-tertiary); }
+
+.sched-model-select { max-width: 130px; font-size: 0.78rem; }
+
+.sched-queue-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+.sched-queue-label { white-space: nowrap; }
+.sched-queue-input {
+    width: 44px;
+    padding: 0.2rem 0.35rem;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.78rem;
+    text-align: center;
+}
+
+.sched-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+.sched-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.sched-run-btn {
+    background: rgba(34,197,94,0.12);
+    border-color: rgba(34,197,94,0.3);
+    color: #22c55e;
+}
+.sched-run-btn:hover:not(:disabled) { background: rgba(34,197,94,0.22); }
+
+.sched-pause-btn {
+    background: rgba(245,158,11,0.12);
+    border-color: rgba(245,158,11,0.3);
+    color: #f59e0b;
+}
+.sched-pause-btn:hover:not(:disabled) { background: rgba(245,158,11,0.22); }
+
+.sched-delete-btn {
+    background: rgba(239,68,68,0.1);
+    border-color: rgba(239,68,68,0.2);
+    color: #ef4444;
+}
+.sched-delete-btn:hover { background: rgba(239,68,68,0.2); }
+
+.sched-icon-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.72rem;
+    transition: background 0.15s;
+}
+.sched-icon-btn:hover { background: rgba(255,255,255,0.12); color: var(--text-primary); }
+
+/* ── Messages area ───────────────────────────────────────────── */
+.sched-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Intro / empty state */
+.sched-intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    margin: auto;
+    text-align: center;
+    max-width: 460px;
+}
+.sched-intro-icon  { font-size: 2.2rem; opacity: 0.6; }
+.sched-intro-title { font-size: 1rem; font-weight: 600; color: var(--text-primary); }
+.sched-intro-sub   { font-size: 0.83rem; color: var(--text-secondary); line-height: 1.55; }
+
+.sched-intro-examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    justify-content: center;
+    margin-top: 0.4rem;
+}
+
+.sched-example-chip {
+    padding: 0.35rem 0.75rem;
+    background: rgba(var(--primary-rgb,0,217,255),0.08);
+    border: 1px solid rgba(var(--primary-rgb,0,217,255),0.2);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+.sched-example-chip:hover {
+    background: rgba(var(--primary-rgb,0,217,255),0.18);
+    color: var(--primary);
+}
+
+/* Chat messages */
+.sched-msg { display: flex; }
+.sched-msg-user     { justify-content: flex-end; }
+.sched-msg-assistant { justify-content: flex-start; }
+
+.sched-msg-bubble {
+    max-width: 75%;
+    padding: 0.6rem 0.9rem;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    line-height: 1.55;
+}
+
+.sched-msg-user-bubble {
+    background: rgba(var(--primary-rgb,0,217,255),0.15);
+    border: 1px solid rgba(var(--primary-rgb,0,217,255),0.25);
+    color: var(--text-primary);
+    border-bottom-right-radius: 4px;
+}
+
+.sched-msg-ai-bubble {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    border-bottom-left-radius: 4px;
+}
+.sched-msg-ai-bubble p  { margin: 0 0 0.4em; }
+.sched-msg-ai-bubble p:last-child { margin-bottom: 0; }
+.sched-msg-ai-bubble code { font-size: 0.82em; background: rgba(0,0,0,0.3); padding: 0.1em 0.3em; border-radius: 3px; }
+
+.sched-msg-ts {
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+    margin-top: 0.3rem;
+    text-align: right;
+}
+
+/* Run history */
+.sched-runs-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-tertiary);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0.5rem 0;
+}
+.sched-runs-divider::before,
+.sched-runs-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+.sched-run-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.6rem 0.9rem;
+    font-size: 0.82rem;
+    background: rgba(0,0,0,0.12);
+}
+.sched-run-success { border-color: rgba(34,197,94,0.25); }
+.sched-run-failed  { border-color: rgba(239,68,68,0.25); }
+.sched-run-skipped { border-color: rgba(107,114,128,0.25); }
+
+.sched-run-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+}
+.sched-run-ts { font-size: 0.7rem; color: var(--text-tertiary); }
+
+.sched-run-result {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    max-height: 120px;
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+    padding-top: 0.4rem;
+    margin-top: 0.2rem;
+}
+.sched-run-result p { margin: 0 0 0.3em; }
+
+/* ── Input area ──────────────────────────────────────────────── */
+.sched-input-area {
+    border-top: 1px solid var(--border);
+    padding: 0.7rem 1rem;
+    background: rgba(0,0,0,0.1);
+    flex-shrink: 0;
+}
+
+.sched-typing {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 0 0.5rem;
+}
+.sched-typing-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: sched-bounce 1.2s infinite ease-in-out;
+}
+.sched-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.sched-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes sched-bounce {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40%            { transform: scale(1);   opacity: 1; }
+}
+
+.sched-input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.6rem;
+}
+
+.sched-textarea {
+    flex: 1;
+    resize: none;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    padding: 0.6rem 0.8rem;
+    line-height: 1.5;
+    min-height: 42px;
+    max-height: 160px;
+    font-family: inherit;
+    transition: border-color 0.15s;
+}
+.sched-textarea:focus {
+    outline: none;
+    border-color: rgba(var(--primary-rgb,0,217,255),0.5);
+}
+.sched-textarea::placeholder { color: var(--text-tertiary); }
+
+.sched-send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: rgba(var(--primary-rgb,0,217,255),0.15);
+    border: 1px solid rgba(var(--primary-rgb,0,217,255),0.3);
+    color: var(--primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.sched-send-btn:hover:not(:disabled) { background: rgba(var(--primary-rgb,0,217,255),0.28); }
+.sched-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════════════════════════
+   SCHEDULED TASKS OVERVIEW (Knowledge tab)
+   ═══════════════════════════════════════════════════════════════ */
+
+#sched-overview-panel {
+    height: 100%;
+    overflow-y: auto;
+    padding: 1.5rem 2rem;
+}
+
+.sched-overview-wrap {
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.sched-overview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.2rem;
+}
+
+.sched-overview-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.sched-ov-empty {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+}
+
+.sched-ov-table-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+}
+
+.sched-ov-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.sched-ov-table th {
+    text-align: left;
+    padding: 0.65rem 1rem;
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+}
+
+.sched-ov-table td {
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.sched-ov-table tr:last-child td { border-bottom: none; }
+.sched-ov-table tr:hover td { background: rgba(255,255,255,0.025); }
+
+.sched-ov-go-btn {
+    background: rgba(var(--primary-rgb,0,217,255),0.08);
+    border: 1px solid rgba(var(--primary-rgb,0,217,255),0.2);
+    color: var(--primary);
+    border-radius: var(--radius-sm);
+    padding: 0.25rem 0.65rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+.sched-ov-go-btn:hover { background: rgba(var(--primary-rgb,0,217,255),0.18); }
+
 

@@ -54,6 +54,9 @@ HISTORY_AI_CONV  = HISTORY / "ai_conversations" # AI Conversations feature saves
 HISTORY_ADVANCED = HISTORY / "advanced"         # Advanced AI Conversations
 HISTORY_AGENTS   = HISTORY / "agents"           # Agent Workspace threads
 
+# ── Scheduled Tasks ───────────────────────────────────────────────────────────
+SCHEDULED_TASKS  = DATA / "scheduled_tasks"     # Recurring AI task definitions
+
 # ── Logs ──────────────────────────────────────────────────────────────────────
 LOGS_USAGE  = LOGS / "usage"   # AI API usage — YYYY-MM/usage_YYYY-MM-DD.json
 LOGS_SYSTEM = LOGS / "system"  # System / launcher / app logs

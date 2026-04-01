@@ -275,6 +275,7 @@ async def initialize_system_background():
         from .agent_workspace_routes import router as agent_workspace_router
         from .corp_routes import router as corp_router
         from .persistent_memory_routes import router as persistent_memory_router
+        from .schedule_routes import router as schedule_router
 
         # Immediate Router Inclusion (Sync but fast)
         app.include_router(task_router)
@@ -297,6 +298,7 @@ async def initialize_system_background():
         app.include_router(ollama_router)
         app.include_router(agent_workspace_router)
         app.include_router(corp_router)
+        app.include_router(schedule_router)
 
         # Step 2: Offload Heavy Component Initialization to a Thread
         # This keeps the FastAPI event loop free to serve requests.
@@ -309,7 +311,15 @@ async def initialize_system_background():
         from core.orchestrator.task_queue import get_task_queue_manager
         task_manager = get_task_queue_manager(orchestrator, max_workers=4)
         await task_manager.start()
-        
+
+        # Start schedule manager (background thread) and hand it the nexus
+        try:
+            from core.schedulers.schedule_manager import get_schedule_manager
+            get_schedule_manager(nexus=nexus)
+            logger.info("[Server] ScheduleManager started")
+        except Exception as _sched_err:
+            logger.warning("[Server] ScheduleManager failed to start: %s", _sched_err)
+
         # Step 4: Bootstrap Persistent Discord Worker
         try:
             from core.workspace.preferences_manager import get_preferences_manager
