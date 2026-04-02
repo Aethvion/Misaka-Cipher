@@ -1,4 +1,4 @@
-name: Python & HTML Checks
+name: Checks
 
 on:
   push:
