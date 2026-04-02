@@ -205,7 +205,7 @@ class LocalProvider(BaseProvider):
         "nemotron": ["nemotron"],
         "phi3":     ["phi-3", "phi3", "phi_3", "phi-4", "phi4", "phi_4"],
         "qwen":     ["qwen2", "qwen-2", "qwen_2", "qwen3", "qwen-3", "qwen_3", "qwen"],
-        "gemma":    ["gemma-2", "gemma2", "gemma_2", "gemma-3", "gemma3", "gemma_3", "gemma"],
+        "gemma":    ["gemma-2", "gemma2", "gemma_2", "gemma-3", "gemma3", "gemma_3", "gemma-4", "gemma4", "gemma_4", "gemma"],
         "mistral":  ["mistral", "mixtral"],
         "deepseek": ["deepseek"],
         "llama2":   ["llama-2", "llama2", "llama_2"],

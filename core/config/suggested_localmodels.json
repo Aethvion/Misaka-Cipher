@@ -90,6 +90,46 @@
         "tags": ["Powerful", "Google", "Gemma 3", "High VRAM"]
     },
     {
+        "id": "gemma-4-e2b-it",
+        "name": "Gemma 4 E2B Instruct",
+        "repo": "unsloth/gemma-4-E2B-it-GGUF",
+        "filename": "gemma-4-E2B-it-Q4_K_M.gguf",
+        "size": "4.0 GB",
+        "capabilities": ["CHAT"],
+        "description": "Google's Gemma 4 E2B — ultra-lightweight edge model with multimodal support (text, vision, audio). Ideal for phones and low-end devices. 128K context.",
+        "tags": ["Fast", "Google", "Gemma 4", "Lightweight", "Multimodal"]
+    },
+    {
+        "id": "gemma-4-e4b-it",
+        "name": "Gemma 4 E4B Instruct",
+        "repo": "unsloth/gemma-4-E4B-it-GGUF",
+        "filename": "gemma-4-E4B-it-Q4_K_M.gguf",
+        "size": "6.0 GB",
+        "capabilities": ["CHAT"],
+        "description": "Google's Gemma 4 E4B — efficient on-device model with multimodal support (text, vision, audio). Great for laptops and fast local tasks. 128K context.",
+        "tags": ["Balanced", "Google", "Gemma 4", "Multimodal"]
+    },
+    {
+        "id": "gemma-4-26b-a4b-it",
+        "name": "Gemma 4 26B-A4B Instruct (MoE)",
+        "repo": "unsloth/gemma-4-26B-A4B-it-GGUF",
+        "filename": "gemma-4-26B-A4B-it-Q4_K_M.gguf",
+        "size": "17.0 GB",
+        "capabilities": ["CHAT"],
+        "description": "Google's Gemma 4 26B Mixture-of-Experts — only 4B parameters active at inference for high speed with excellent quality. Text and vision support. 256K context.",
+        "tags": ["Advanced", "Google", "Gemma 4", "MoE", "High VRAM"]
+    },
+    {
+        "id": "gemma-4-31b-it",
+        "name": "Gemma 4 31B Instruct",
+        "repo": "unsloth/gemma-4-31B-it-GGUF",
+        "filename": "gemma-4-31B-it-Q4_K_M.gguf",
+        "size": "19.0 GB",
+        "capabilities": ["CHAT"],
+        "description": "Google's Gemma 4 31B — the most powerful Gemma 4 model. Dense architecture with top-tier reasoning and instruction following. Text and vision support. 256K context. Requires 20 GB+ VRAM or high-RAM CPU.",
+        "tags": ["Powerful", "Google", "Gemma 4", "High VRAM"]
+    },
+    {
         "id": "deepseek-r1-distill-7b",
         "name": "DeepSeek R1 Distill 7B",
         "repo": "bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF",
