@@ -156,3 +156,36 @@
     opacity: 0.5;
     align-self: center;
 }
+
+/* --- Filtering & UI Utilities --- */
+.faded-in-row {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.faded-in-card {
+    animation: cardsIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardsIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.filter-group select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2371717a'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 14px;
+    padding-right: 32px !important;
+}
+
+.suggestion-card-v12 {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.suggestion-card-v12:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 0 15px rgba(var(--primary-rgb), 0.1);
+}
