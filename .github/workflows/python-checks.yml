@@ -15,10 +15,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
@@ -52,7 +52,7 @@ jobs:
     name: HTML Structure & Validity
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v4
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
@@ -62,10 +62,22 @@ jobs:
     - name: Install HTMLHint
       run: npm install -g htmlhint
 
-    - name: Validate HTML Files
-      # This checks for unclosed tags, duplicate IDs, and malformed attributes
+    - name: Validate full HTML pages
+      # Full documents: index.html, login.html, app viewer pages
       run: |
-        htmlhint "**/*.html" --rules "tag-pair=true,id-unique=true,attr-no-duplication=true,tagname-lowercase=true,attr-value-double-quotes=true,spec-char-escape=false"
+        find core apps -name "*.html" \
+          ! -path "*/partials/*" \
+          ! -path "*/.venv/*" \
+          ! -path "*/.claude/*" \
+          | xargs htmlhint \
+            --rules "tag-pair=true,id-unique=true,attr-no-duplication=true,tagname-lowercase=true,attr-value-double-quotes=true,doctype-first=true,spec-char-escape=false"
+
+    - name: Validate HTML partials (fragments — no doctype required)
+      # Partials are injected at runtime; they are valid fragments, not full documents
+      run: |
+        find core/interfaces/dashboard/static/partials -name "*.html" \
+          | xargs htmlhint \
+            --rules "tag-pair=true,id-unique=true,attr-no-duplication=true,tagname-lowercase=true,attr-value-double-quotes=true,spec-char-escape=false"
 
   test:
     name: Import & Structure Checks
@@ -73,10 +85,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
