@@ -510,8 +510,8 @@ class CheckersGame {
 if (typeof registerGame === 'function') {
     const chkGame = new CheckersGame();
     registerGame('checkers', {
-        onLoad: () => chkGame.init(),
+        onLoad: () => { chkGame.init(); chkGame.onLoad(); },
         onTabSwitch: () => chkGame.onTabSwitch()
     });
-    // Init is triggered via games-shared.js panelLoaded handler
+    // onLoad is triggered via games-shared.js panelLoaded handler — starts a game automatically
 }

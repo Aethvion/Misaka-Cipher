@@ -385,8 +385,8 @@ class SudokuGame {
 if (typeof registerGame === 'function') {
     const suGame = new SudokuGame();
     registerGame('sudoku', {
-        onLoad: () => suGame.init(),
+        onLoad: () => { suGame.init(); suGame.onLoad(); },
         onTabSwitch: () => suGame.onTabSwitch()
     });
-    // Init is triggered via games-shared.js panelLoaded handler
+    // onLoad is triggered via games-shared.js panelLoaded handler — starts a game automatically
 }

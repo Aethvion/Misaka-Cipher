@@ -419,8 +419,8 @@ class WordSearchGame {
 if (typeof registerGame === 'function') {
     const wsGame = new WordSearchGame();
     registerGame('word-search', {
-        onLoad:      () => wsGame.init(),
+        onLoad:      () => { wsGame.init(); wsGame.onLoad(); },
         onTabSwitch: () => wsGame.onTabSwitch()
     });
-    // Init is triggered via games-shared.js panelLoaded handler
+    // onLoad is triggered via games-shared.js panelLoaded handler — starts a game automatically
 }
