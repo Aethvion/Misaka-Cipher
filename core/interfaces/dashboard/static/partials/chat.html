@@ -15,8 +15,8 @@
                             <!-- Threads will be populated here -->
                         </div>
                     </div>
-                    <!-- ... existing content ... -->
 
+                    <!-- Thread item template -->
                     <template id="thread-item-template">
                         <div class="thread-item">
                             <div class="thread-line-1">
@@ -41,6 +41,7 @@
                             </div>
                         </div>
                     </template>
+
                     <!-- Folder group template -->
                     <template id="folder-group-template">
                         <div class="folder-group">
@@ -66,106 +67,6 @@
 
                     <!-- Resize handle: threads | chat -->
                     <div class="col-resize-handle" id="resize-threads-chat" title="Drag to resize"></div>
-
-                    <!-- Folder Settings Modal -->
-                    <div id="folder-settings-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="folder-modal-title">
-                        <div class="modal-content" style="width: 560px; max-width: 95vw;">
-                            <div class="modal-header">
-                                <h3 id="folder-modal-title" class="modal-title">
-                                    <i class="fas fa-folder-open" aria-hidden="true"></i>
-                                    Folder Settings
-                                </h3>
-                                <button id="folder-modal-close" class="modal-close-btn" aria-label="Close">
-                                    <i class="fas fa-times" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                            <div class="modal-body" style="display:flex; flex-direction:column; gap:1.2rem;">
-
-                                <!-- Name + Color -->
-                                <div style="display:flex; gap:0.8rem; align-items:flex-end;">
-                                    <div class="form-group" style="flex:1; margin:0;">
-                                        <label class="form-label">Folder Name</label>
-                                        <input type="text" id="folder-modal-name" class="form-input" placeholder="e.g. Project Alpha" maxlength="60">
-                                    </div>
-                                    <div class="form-group" style="margin:0;">
-                                        <label class="form-label">Color</label>
-                                        <div id="folder-color-swatches" class="folder-color-swatches">
-                                            <button class="color-swatch" data-color="#6366f1" style="background:#6366f1;" title="Indigo" aria-label="Indigo"></button>
-                                            <button class="color-swatch" data-color="#10b981" style="background:#10b981;" title="Emerald" aria-label="Emerald"></button>
-                                            <button class="color-swatch" data-color="#f59e0b" style="background:#f59e0b;" title="Amber" aria-label="Amber"></button>
-                                            <button class="color-swatch" data-color="#ef4444" style="background:#ef4444;" title="Red" aria-label="Red"></button>
-                                            <button class="color-swatch" data-color="#3b82f6" style="background:#3b82f6;" title="Blue" aria-label="Blue"></button>
-                                            <button class="color-swatch" data-color="#ec4899" style="background:#ec4899;" title="Pink" aria-label="Pink"></button>
-                                            <button class="color-swatch" data-color="#8b5cf6" style="background:#8b5cf6;" title="Violet" aria-label="Violet"></button>
-                                            <button class="color-swatch" data-color="#64748b" style="background:#64748b;" title="Slate" aria-label="Slate"></button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Extra Context -->
-                                <div class="form-group" style="margin:0;">
-                                    <label class="form-label">
-                                        <i class="fas fa-info-circle" aria-hidden="true"></i>
-                                        Folder Context
-                                    </label>
-                                    <p class="form-hint">Automatically prepended to every chat in this folder. Use it to describe the project, tech stack, coding conventions, etc.</p>
-                                    <textarea id="folder-modal-context" class="form-input" rows="4"
-                                        placeholder="e.g. This folder is for Project Alpha. Backend: Python/FastAPI. Frontend: React. Always follow PEP-8."></textarea>
-                                </div>
-
-                                <!-- Shared Memory -->
-                                <div class="form-group" style="margin:0;">
-                                    <label class="form-label">
-                                        <i class="fas fa-brain" aria-hidden="true"></i>
-                                        Shared Memory
-                                    </label>
-                                    <p class="form-hint">Key facts shared across all chats in this folder (server IPs, credentials format, team members, etc.).</p>
-                                    <textarea id="folder-modal-memory" class="form-input" rows="4"
-                                        placeholder="e.g. DB host: db.internal:5432&#10;Lead dev: Alice (alice@example.com)&#10;Staging URL: https://staging.example.com"></textarea>
-                                </div>
-
-                                <!-- Default Settings -->
-                                <div class="form-group" style="margin:0;">
-                                    <label class="form-label">
-                                        <i class="fas fa-sliders-h" aria-hidden="true"></i>
-                                        Default Settings <span style="font-weight:400; opacity:0.6;">(applied when thread has no override)</span>
-                                    </label>
-                                    <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:0.4rem;">
-                                        <div class="control-item" title="Default context mode for chats in this folder">
-                                            <label>CTX</label>
-                                            <select id="folder-modal-ctx" class="control-select">
-                                                <option value="">(inherit)</option>
-                                                <option value="none">None</option>
-                                                <option value="smart">Smart</option>
-                                                <option value="full">Full</option>
-                                            </select>
-                                        </div>
-                                        <div class="control-item" title="Default context window">
-                                            <label>WIN</label>
-                                            <input type="number" id="folder-modal-win" class="control-select" min="1" max="50"
-                                                placeholder="—" style="width:45px; text-align:center;">
-                                        </div>
-                                        <div class="control-item" title="Default memory mode">
-                                            <label>MEM</label>
-                                            <select id="folder-modal-mem" class="control-select">
-                                                <option value="">(inherit)</option>
-                                                <option value="enabled">On</option>
-                                                <option value="nomemory">Off</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-                            <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:0.8rem; padding-top:1rem;">
-                                <button id="folder-modal-cancel" class="btn btn-secondary">Cancel</button>
-                                <button id="folder-modal-save" class="btn btn-primary">
-                                    <i class="fas fa-save" aria-hidden="true"></i>
-                                    Save
-                                </button>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Center: Chat Interface -->
                     <div class="column chat-column">
@@ -206,22 +107,85 @@
                             </div>
                         </div>
 
+                        <!-- Normal chat messages -->
                         <div class="chat-messages" id="chat-messages">
                             <div class="message system-message">
                                 <div class="message-content">
                                     <strong>System:</strong> Chat initialized. Ask me anything.
                                 </div>
                             </div>
-                            <!-- Typing Indicator (Inside messages for flow) -->
-                            <div id="chat-typing-indicator" class="message ai-message typing-indicator"
-                                style="display: none;">
+                            <div id="chat-typing-indicator" class="message ai-message typing-indicator" style="display: none;">
                                 <div class="message-content">
                                     <span class="typing-text">Working...</span>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- Inline folder settings view (replaces chat-messages when editing a folder) -->
+                        <div id="folder-settings-view" class="folder-sv" style="display:none;" aria-label="Folder settings">
+                            <div class="folder-sv-inner">
 
+                                <!-- Name + Color row -->
+                                <div class="folder-sv-row folder-sv-row--split">
+                                    <div class="folder-sv-field" style="flex:1;">
+                                        <label class="folder-sv-label" for="folder-sv-name">
+                                            <i class="fas fa-folder-open" aria-hidden="true"></i>
+                                            Folder Name
+                                        </label>
+                                        <input type="text" id="folder-sv-name" class="folder-sv-input"
+                                            placeholder="e.g. Project Alpha" maxlength="60" autocomplete="off">
+                                    </div>
+                                    <div class="folder-sv-field">
+                                        <label class="folder-sv-label">Color</label>
+                                        <div id="folder-sv-colors" class="folder-sv-colors">
+                                            <button class="folder-sv-swatch" data-color="#6366f1" style="background:#6366f1;" title="Indigo" aria-label="Indigo"></button>
+                                            <button class="folder-sv-swatch" data-color="#10b981" style="background:#10b981;" title="Emerald" aria-label="Emerald"></button>
+                                            <button class="folder-sv-swatch" data-color="#f59e0b" style="background:#f59e0b;" title="Amber" aria-label="Amber"></button>
+                                            <button class="folder-sv-swatch" data-color="#ef4444" style="background:#ef4444;" title="Red" aria-label="Red"></button>
+                                            <button class="folder-sv-swatch" data-color="#3b82f6" style="background:#3b82f6;" title="Blue" aria-label="Blue"></button>
+                                            <button class="folder-sv-swatch" data-color="#ec4899" style="background:#ec4899;" title="Pink" aria-label="Pink"></button>
+                                            <button class="folder-sv-swatch" data-color="#8b5cf6" style="background:#8b5cf6;" title="Violet" aria-label="Violet"></button>
+                                            <button class="folder-sv-swatch" data-color="#64748b" style="background:#64748b;" title="Slate" aria-label="Slate"></button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Folder Context -->
+                                <div class="folder-sv-field">
+                                    <label class="folder-sv-label" for="folder-sv-context">
+                                        <i class="fas fa-align-left" aria-hidden="true"></i>
+                                        Folder Context
+                                    </label>
+                                    <p class="folder-sv-hint">Automatically prepended to every chat in this folder. Describe the project, tech stack, conventions, etc.</p>
+                                    <textarea id="folder-sv-context" class="folder-sv-textarea" rows="5"
+                                        placeholder="e.g. This folder is for Project Alpha. Backend: Python/FastAPI. Frontend: React. Always follow PEP-8."></textarea>
+                                </div>
+
+                                <!-- Shared Memory -->
+                                <div class="folder-sv-field">
+                                    <label class="folder-sv-label" for="folder-sv-memory">
+                                        <i class="fas fa-brain" aria-hidden="true"></i>
+                                        Shared Memory
+                                    </label>
+                                    <p class="folder-sv-hint">Key facts shared across all chats in this folder — server addresses, team contacts, recurring references, etc.</p>
+                                    <textarea id="folder-sv-memory" class="folder-sv-textarea" rows="5"
+                                        placeholder="e.g. DB host: db.internal:5432&#10;Lead dev: Alice (alice@example.com)&#10;Staging: https://staging.example.com"></textarea>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="folder-sv-actions">
+                                    <button id="folder-sv-cancel" class="folder-sv-btn folder-sv-btn--ghost">
+                                        <i class="fas fa-times" aria-hidden="true"></i>
+                                        Cancel
+                                    </button>
+                                    <button id="folder-sv-save" class="folder-sv-btn folder-sv-btn--primary">
+                                        <i class="fas fa-check" aria-hidden="true"></i>
+                                        Save Folder
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
 
                         <div class="chat-interface-wrapper">
                             <textarea id="chat-input" class="chat-input" rows="1"

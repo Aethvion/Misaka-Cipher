@@ -217,6 +217,11 @@ async function createNewThread() {
 function switchThread(threadId) {
     if (currentThreadId === threadId) return;
 
+    // If the inline folder settings view is open, close it first
+    if (document.getElementById('folder-settings-view')?.style.display !== 'none') {
+        _closeFolderView();
+    }
+
     currentThreadId = threadId;
     isSettingsPanelOpen = false; // Reset settings state for new thread
 
@@ -1331,7 +1336,7 @@ async function saveThreadSettings(threadId) {
 
 window.folders = {};  // { folderId: folderObject }
 let _folderCollapsed = {};  // { folderId: bool }  — persisted in localStorage
-let _folderModalEditId = null;  // null = create, string = edit existing
+let _folderViewEditId = null;  // null = create, string = edit existing
 let _folderPickerCleanup = null;  // teardown for open picker
 
 const FOLDER_COLLAPSED_KEY = 'ae_folder_collapsed';
@@ -1361,86 +1366,93 @@ async function loadFolders() {
     }
 }
 
-// ── Create a new folder ───────────────────────────────────────────────────
-async function createFolder() {
-    _folderModalEditId = null;
-    _openFolderModal(null);
-}
-
-// ── Open the folder settings modal ───────────────────────────────────────
-function _openFolderModal(folderId) {
-    const modal = document.getElementById('folder-settings-modal');
-    if (!modal) return;
+// ── Show / hide the inline folder settings view ───────────────────────────
+function _openFolderView(folderId) {
+    const view         = document.getElementById('folder-settings-view');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatWrapper  = document.querySelector('.chat-interface-wrapper');
+    if (!view) return;
 
     const folder = folderId ? folders[folderId] : null;
-    _folderModalEditId = folderId || null;
+    _folderViewEditId = folderId || null;
 
     // Populate fields
-    document.getElementById('folder-modal-name').value    = folder ? folder.title        : '';
-    document.getElementById('folder-modal-context').value = folder ? (folder.context_extra  || '') : '';
-    document.getElementById('folder-modal-memory').value  = folder ? (folder.shared_memory  || '') : '';
-
-    // Settings dropdowns
-    const settings = folder ? (folder.settings || {}) : {};
-    document.getElementById('folder-modal-ctx').value = settings.context_mode || '';
-    document.getElementById('folder-modal-win').value = settings.context_window || '';
-    document.getElementById('folder-modal-mem').value = settings.memory_mode  || '';
+    document.getElementById('folder-sv-name').value    = folder ? folder.title           : '';
+    document.getElementById('folder-sv-context').value = folder ? (folder.context_extra  || '') : '';
+    document.getElementById('folder-sv-memory').value  = folder ? (folder.shared_memory  || '') : '';
 
     // Color swatches
     const currentColor = (folder && folder.color) ? folder.color : '#6366f1';
-    document.querySelectorAll('#folder-settings-modal .color-swatch').forEach(sw => {
+    document.querySelectorAll('#folder-settings-view .folder-sv-swatch').forEach(sw => {
         sw.classList.toggle('selected', sw.dataset.color === currentColor);
     });
 
-    document.getElementById('folder-modal-title').innerHTML =
-        `<i class="fas fa-folder${folderId ? '-open' : '-plus'}" aria-hidden="true"></i> ` +
-        (folderId ? 'Edit Folder' : 'New Folder');
+    // Update header title
+    const titleEl = document.getElementById('active-thread-title');
+    if (titleEl) {
+        titleEl.dataset.prevTitle = titleEl.textContent;
+        titleEl.textContent = folderId ? `Folder: ${folder.title}` : 'New Folder';
+    }
 
-    modal.style.display = 'flex';
-    document.getElementById('folder-modal-name').focus();
+    // Swap chat area for settings view
+    if (chatMessages) chatMessages.style.display = 'none';
+    if (chatWrapper)  chatWrapper.style.display  = 'none';
+    view.style.display = 'flex';
+
+    document.getElementById('folder-sv-name').focus();
 }
 
-function _closeFolderModal() {
-    const modal = document.getElementById('folder-settings-modal');
-    if (modal) modal.style.display = 'none';
-    _folderModalEditId = null;
+function _closeFolderView() {
+    const view         = document.getElementById('folder-settings-view');
+    const chatMessages = document.getElementById('chat-messages');
+    const chatWrapper  = document.querySelector('.chat-interface-wrapper');
+
+    if (view)         view.style.display         = 'none';
+    if (chatMessages) chatMessages.style.display = '';
+    if (chatWrapper)  chatWrapper.style.display  = '';
+
+    // Restore header title
+    const titleEl = document.getElementById('active-thread-title');
+    if (titleEl && titleEl.dataset.prevTitle) {
+        titleEl.textContent = titleEl.dataset.prevTitle;
+        delete titleEl.dataset.prevTitle;
+    }
+
+    _folderViewEditId = null;
 }
 
-function _getSelectedFolderColor() {
-    const sel = document.querySelector('#folder-settings-modal .color-swatch.selected');
+function _getSelectedFolderViewColor() {
+    const sel = document.querySelector('#folder-settings-view .folder-sv-swatch.selected');
     return sel ? sel.dataset.color : '#6366f1';
 }
 
-// Save / update folder from modal
-async function _saveFolderModal() {
-    const name = document.getElementById('folder-modal-name').value.trim();
+// ── Create a new folder ───────────────────────────────────────────────────
+async function createFolder() {
+    _openFolderView(null);
+}
+
+// Save / update folder from the inline view
+async function _saveFolderView() {
+    const name = document.getElementById('folder-sv-name').value.trim();
     if (!name) { showToast('Folder name is required.', 'warn'); return; }
 
-    const contextExtra  = document.getElementById('folder-modal-context').value.trim();
-    const sharedMemory  = document.getElementById('folder-modal-memory').value.trim();
-    const color         = _getSelectedFolderColor();
-    const ctxMode       = document.getElementById('folder-modal-ctx').value;
-    const ctxWin        = document.getElementById('folder-modal-win').value;
-    const memMode       = document.getElementById('folder-modal-mem').value;
+    const contextExtra = document.getElementById('folder-sv-context').value.trim();
+    const sharedMemory = document.getElementById('folder-sv-memory').value.trim();
+    const color        = _getSelectedFolderViewColor();
 
-    const settings = {};
-    if (ctxMode) settings.context_mode   = ctxMode;
-    if (ctxWin)  settings.context_window = parseInt(ctxWin);
-    if (memMode) settings.memory_mode    = memMode;
-
-    if (_folderModalEditId) {
+    if (_folderViewEditId) {
         // Update existing
         try {
-            const res = await fetch(`/api/tasks/folders/${_folderModalEditId}`, {
+            const res = await fetch(`/api/tasks/folders/${_folderViewEditId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: name, color, context_extra: contextExtra, shared_memory: sharedMemory, settings })
+                body: JSON.stringify({ title: name, color, context_extra: contextExtra, shared_memory: sharedMemory })
             });
             if (!res.ok) throw new Error(await res.text());
             const data = await res.json();
-            folders[_folderModalEditId] = data.folder;
+            folders[_folderViewEditId] = data.folder;
             showToast(`Folder "${name}" updated.`, 'success');
-            _closeFolderModal();
+            _closeFolderView();
             renderThreadList();
         } catch(e) {
             console.error('Failed to update folder:', e);
@@ -1453,13 +1465,13 @@ async function _saveFolderModal() {
             const res = await fetch('/api/tasks/folders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ folder_id: folderId, title: name, color, context_extra: contextExtra, shared_memory: sharedMemory, settings })
+                body: JSON.stringify({ folder_id: folderId, title: name, color, context_extra: contextExtra, shared_memory: sharedMemory })
             });
             if (!res.ok) throw new Error(await res.text());
             const data = await res.json();
-            folders[folderId] = data.folder || { id: folderId, title: name, color, context_extra: contextExtra, shared_memory: sharedMemory, settings, thread_count: 0 };
+            folders[folderId] = data.folder || { id: folderId, title: name, color, context_extra: contextExtra, shared_memory: sharedMemory, thread_count: 0 };
             showToast(`Folder "${name}" created.`, 'success');
-            _closeFolderModal();
+            _closeFolderView();
             renderThreadList();
         } catch(e) {
             console.error('Failed to create folder:', e);
@@ -1580,30 +1592,22 @@ function _dismissFolderPicker() {
     if (_folderPickerCleanup) { _folderPickerCleanup(); _folderPickerCleanup = null; }
 }
 
-// ── Wire up folder modal buttons (called once from initThreadManagement) ──
-function _initFolderModal() {
+// ── Wire up inline folder settings view buttons ───────────────────────────
+function _initFolderView() {
     _loadFolderCollapseState();
 
-    // New folder button
+    // New folder button (sidebar header)
     const newFolderBtn = document.getElementById('new-folder-button');
     if (newFolderBtn) newFolderBtn.addEventListener('click', createFolder);
 
-    // Modal close / cancel
-    document.getElementById('folder-modal-close')?.addEventListener('click', _closeFolderModal);
-    document.getElementById('folder-modal-cancel')?.addEventListener('click', _closeFolderModal);
+    // Inline view: cancel / save
+    document.getElementById('folder-sv-cancel')?.addEventListener('click', _closeFolderView);
+    document.getElementById('folder-sv-save')?.addEventListener('click',   _saveFolderView);
 
-    // Close on backdrop click
-    document.getElementById('folder-settings-modal')?.addEventListener('click', (e) => {
-        if (e.target === document.getElementById('folder-settings-modal')) _closeFolderModal();
-    });
-
-    // Save
-    document.getElementById('folder-modal-save')?.addEventListener('click', _saveFolderModal);
-
-    // Color swatches
-    document.querySelectorAll('#folder-settings-modal .color-swatch').forEach(sw => {
+    // Color swatches inside the inline view
+    document.querySelectorAll('#folder-settings-view .folder-sv-swatch').forEach(sw => {
         sw.addEventListener('click', () => {
-            document.querySelectorAll('#folder-settings-modal .color-swatch').forEach(s => s.classList.remove('selected'));
+            document.querySelectorAll('#folder-settings-view .folder-sv-swatch').forEach(s => s.classList.remove('selected'));
             sw.classList.add('selected');
         });
     });
@@ -1666,7 +1670,7 @@ renderThreadList = function() {
             // Settings button
             clone.querySelector('.folder-settings-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
-                _openFolderModal(folder.id);
+                _openFolderView(folder.id);
             });
 
             // Delete button
@@ -1857,22 +1861,20 @@ function _buildThreadItem(template, thread, folder) {
 }
 
 // ── Hook into initThreadManagement ────────────────────────────────────────
-// Patch loadThreads to also fetch folders and init modal wiring.
+// Patch loadThreads to also fetch folders so both are ready before first render.
 const _origLoadThreads = loadThreads;
 loadThreads = async function() {
     await Promise.all([_origLoadThreads(), loadFolders()]);
-    // Re-render after both resolve (loadThreads already calls renderThreadList, but folders may not be ready)
     renderThreadList();
 };
 
-// Wire folder modal after panel loads
+// Wire inline folder view after chat panel loads
 document.addEventListener('panelLoaded', function(e) {
     if (e.detail && e.detail.panelId === 'chat-panel') {
-        _initFolderModal();
+        _initFolderView();
     }
 });
-// Also wire on DOMContentLoaded as fallback (in case panel is the default active panel)
+// Fallback: also wire on DOMContentLoaded (default active panel)
 window.addEventListener('DOMContentLoaded', function() {
-    // Delay slightly so the partial may already be injected
-    setTimeout(_initFolderModal, 200);
+    setTimeout(_initFolderView, 200);
 });
