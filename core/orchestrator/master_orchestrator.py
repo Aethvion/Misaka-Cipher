@@ -104,7 +104,7 @@ class MasterOrchestrator:
         """Set callback for real-time step monitoring."""
         self.step_callback = callback
     
-    def process_message(self, user_message: str, system_prompt: Optional[str] = None, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, source: str = "unknown", security_context: str = "", allow_tools: bool = True) -> ExecutionResult:
+    def process_message(self, user_message: str, system_prompt: Optional[str] = None, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, source: str = "unknown", security_context: str = "", allow_tools: bool = True, internet_search: bool = False) -> ExecutionResult:
         """
         Process user message end-to-end.
         
@@ -149,12 +149,12 @@ class MasterOrchestrator:
                 # When agents are disabled (chat_only mode), disable tool usage
                 effective_allow_tools = allow_tools and (mode != "chat_only")
                 try:
-                    result = asyncio.run(self._execute_persona_chat(user_message, trace_id, model_id, images, source, security_context, effective_allow_tools))
+                    result = asyncio.run(self._execute_persona_chat(user_message, trace_id, model_id, images, source, security_context, effective_allow_tools, internet_search=internet_search))
                 except RuntimeError:
                     # If called from a thread that already has an event loop, create a fresh one
                     new_loop = asyncio.new_event_loop()
                     try:
-                        result = new_loop.run_until_complete(self._execute_persona_chat(user_message, trace_id, model_id, images, source, security_context, effective_allow_tools))
+                        result = new_loop.run_until_complete(self._execute_persona_chat(user_message, trace_id, model_id, images, source, security_context, effective_allow_tools, internet_search=internet_search))
                     finally:
                         new_loop.close()
 
@@ -260,10 +260,10 @@ class MasterOrchestrator:
                 error=str(e)
             )
 
-    async def _execute_persona_chat(self, user_message: str, trace_id: str, model_id: Optional[str], images: Optional[List[Dict[str, Any]]], source: str, system_prompt: Optional[str] = None, security_context: str = "", allow_tools: bool = True) -> ExecutionResult:
+    async def _execute_persona_chat(self, user_message: str, trace_id: str, model_id: Optional[str], images: Optional[List[Dict[str, Any]]], source: str, system_prompt: Optional[str] = None, security_context: str = "", allow_tools: bool = True, internet_search: bool = False) -> ExecutionResult:
         """Handle persona-based chat with iterative tool execution."""
         # 1. Build Persona System Prompt
-        persona_system_prompt = PersonaManager.build_system_prompt(source=source, security_context=security_context, allow_tools=allow_tools)
+        persona_system_prompt = PersonaManager.build_system_prompt(source=source, security_context=security_context, allow_tools=allow_tools, internet_search=internet_search)
         
         # Merge with injected system_prompt (Persistent Memory instructions)
         final_system_prompt = persona_system_prompt

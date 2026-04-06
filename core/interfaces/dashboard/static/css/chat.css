@@ -14,6 +14,22 @@
     color: var(--bg-primary);
 }
 
+.icon-btn.search-btn {
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.icon-btn.search-btn:hover {
+    color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+}
+
+.icon-btn.search-btn.active {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+}
+
 /* Usage Chart Controls overlay */
 .chart-header-row {
     display: flex;

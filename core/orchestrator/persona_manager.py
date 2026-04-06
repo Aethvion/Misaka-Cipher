@@ -78,7 +78,7 @@ class PersonaManager:
         except Exception: return ""
 
     @staticmethod
-    def build_system_prompt(source: str = "dashboard", security_context: str = "", allow_tools: bool = True) -> str:
+    def build_system_prompt(source: str = "dashboard", security_context: str = "", allow_tools: bool = True, internet_search: bool = False) -> str:
         """Construct the full Misaka Persona system prompt with live context."""
         now = datetime.datetime.now()
         base_info = IdentityManager.get_base_info()
@@ -92,7 +92,8 @@ class PersonaManager:
 
         if allow_tools:
             nexus_caps = PersonaManager._build_nexus_capabilities()
-            nexus_block = f"\n{nexus_caps}\n" if nexus_caps else ""
+            search_cap = "  [tool:web_search query=\"<query>\"] — Search the internet for real-time information.\n" if internet_search else ""
+            nexus_block = f"\n{nexus_caps}\n{search_cap}\n" if (nexus_caps or search_cap) else ""
         else:
             nexus_block = ""
         
@@ -180,6 +181,23 @@ CRITICAL: Never output raw JSON or technical jargon unless requested. Do not bre
         """Synchronous tool execution (to be run in thread)."""
         workspaces = load_workspaces()
         try:
+            if tool_name == "web_search":
+                query = attrs.get("query", "")
+                if not query: return "[web_search ERROR] No query provided"
+                try:
+                    from duckduckgo_search import DDGS
+                    results = []
+                    with DDGS() as ddgs:
+                        for r in ddgs.text(query, max_results=6):
+                            title = r.get("title", "")
+                            href  = r.get("href", "")
+                            body  = r.get("body", "")
+                            results.append(f"[{title}]\n{href}\n{body}")
+                    if not results: return "[web_search] No results found."
+                    return "[web_search results]\n" + "\n\n---\n\n".join(results)
+                except Exception as e:
+                    return f"[web_search ERROR] {str(e)}"
+
             if tool_name == "read_file":
                 path = attrs.get("path", "")
                 allowed, reason = validate_path(path, workspaces, "read")

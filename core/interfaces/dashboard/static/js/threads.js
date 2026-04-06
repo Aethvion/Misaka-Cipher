@@ -71,6 +71,14 @@ function initThreadManagement() {
         if (el) el.addEventListener('change', () => saveGlobalChatSettings());
     });
 
+    const searchToggle = document.getElementById('search-toggle');
+    if (searchToggle) {
+        searchToggle.addEventListener('click', () => {
+            searchToggle.classList.toggle('active');
+            saveGlobalChatSettings();
+        });
+    }
+
     // Load persisted global settings
     loadGlobalChatSettings();
 
@@ -854,7 +862,8 @@ function saveGlobalChatSettings() {
     const settings = {
         context_mode: document.getElementById('global-ctx-mode').value,
         context_window: parseInt(document.getElementById('global-ctx-window').value) || 5,
-        memory_mode: document.getElementById('chat-memory-mode').value || 'enabled'
+        memory_mode: document.getElementById('chat-memory-mode').value || 'enabled',
+        internet_search: document.getElementById('search-toggle')?.classList.contains('active') || false
     };
     localStorage.setItem('global_chat_settings', JSON.stringify(settings));
 }
@@ -868,6 +877,11 @@ function loadGlobalChatSettings() {
             document.getElementById('global-ctx-window').value = settings.context_window || 5;
             if (document.getElementById('chat-memory-mode')) {
                 document.getElementById('chat-memory-mode').value = settings.memory_mode || 'enabled';
+            }
+            const searchToggle = document.getElementById('search-toggle');
+            if (searchToggle) {
+                if (settings.internet_search) searchToggle.classList.add('active');
+                else searchToggle.classList.remove('active');
             }
         }
     } catch (e) {
@@ -1034,6 +1048,7 @@ async function sendMessage() {
         const ctxMode = document.getElementById('global-ctx-mode')?.value || 'smart';
         const ctxWin = parseInt(document.getElementById('global-ctx-window')?.value) || 5;
         const memMode = document.getElementById('chat-memory-mode')?.value || 'enabled';
+        const internetSearch = document.getElementById('search-toggle')?.classList.contains('active') || false;
 
         const payload = {
             prompt: message || `Please review the attached file: ${attachedFileName || 'file'}`,
@@ -1044,7 +1059,8 @@ async function sendMessage() {
             settings: {
                 context_mode: ctxMode,
                 context_window: ctxWin,
-                memory_mode: memMode
+                memory_mode: memMode,
+                internet_search: internetSearch
             }
         };
 

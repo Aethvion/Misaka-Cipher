@@ -1512,11 +1512,56 @@
 }
 
 .agent-act--read {
-    opacity: 0.6;
+    opacity: 0.65;
 }
 
 .agent-act--dir {
     opacity: 0.55;
+}
+
+/* ── Action verb chips ───────────────────────────────────────── */
+.agent-act-verb {
+    flex-shrink: 0;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    align-self: center;
+}
+
+.agent-act-verb--read {
+    background: rgba(99, 102, 241, 0.1);
+    color: rgba(165, 180, 252, 0.85);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.agent-act-verb--write {
+    background: rgba(52, 211, 153, 0.1);
+    color: rgba(110, 231, 183, 0.85);
+    border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+/* ── Repeat-count badge (reads / also-read on write cards) ───── */
+.agent-act-rcount {
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: rgba(165, 180, 252, 0.65);
+    white-space: nowrap;
+    align-self: center;
+    margin-left: 0.1rem;
+}
+
+/* ── Flash animation on repeated access ─────────────────────── */
+@keyframes agActFlash {
+    0%   { background: rgba(99, 102, 241, 0.12); }
+    100% { background: transparent; }
+}
+.agent-act--flash {
+    animation: agActFlash 0.4s ease-out forwards;
 }
 
 .agent-act--done .agent-act-icon {

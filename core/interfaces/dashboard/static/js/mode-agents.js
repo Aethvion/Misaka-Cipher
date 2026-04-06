@@ -675,7 +675,8 @@ function _agInitRender(isReplay = false) {
         run, activity,
         phases: [],
         planItems: [],
-        fileCards: {},   // path → { row, expand, sizeEl, contentEl, writeCount }
+        fileCards: {},   // path → { row, expand, sizeEl, contentEl, writeCount, readCount }
+        readCards: {},   // path → { item, row, countEl, count } — dedup read rows
         fileCount: 0,
         cmdCount: 0,
         searchCount: 0,
@@ -1018,15 +1019,35 @@ function _agHandleWriteFile(event) {
         fc.writeCount++;
         if (fc.sizeEl)    fc.sizeEl.textContent    = sizeStr;
         if (fc.contentEl && detail) fc.contentEl.textContent = truncated;
-        const wc = fc.row.querySelector('.agent-act-wcount');
-        if (wc) wc.textContent = `×${fc.writeCount}`;
+        // Update verb to show modified count
+        const verbEl = fc.row.querySelector('.agent-act-verb');
+        if (verbEl) verbEl.textContent = `Modified ×${fc.writeCount}`;
         fc.row.classList.add('agent-act--flash');
         setTimeout(() => fc.row.classList.remove('agent-act--flash'), 600);
     } else {
+        // If a read card exists for this path, remove it — the write card absorbs it
+        if (s.readCards[path]) {
+            s.readCards[path].item.remove();
+            delete s.readCards[path];
+        }
+
         const item    = document.createElement('div');
         item.className = 'agent-act-item';
         const row     = document.createElement('div');
         row.className = 'agent-act-row agent-act--file';
+
+        row.innerHTML = `<span class="agent-act-icon">📄</span><span class="agent-act-name">${_htmlEscape(filename)}</span>`;
+
+        const verbEl = document.createElement('span');
+        verbEl.className = 'agent-act-verb agent-act-verb--write';
+        verbEl.textContent = 'Writing';
+        row.appendChild(verbEl);
+
+        const pathSpan = document.createElement('span');
+        pathSpan.className = 'agent-act-path';
+        pathSpan.textContent = path;
+        row.appendChild(pathSpan);
+
         const sizeEl  = document.createElement('span');
         sizeEl.className = 'agent-act-size';
         sizeEl.textContent = sizeStr;
@@ -1034,7 +1055,6 @@ function _agHandleWriteFile(event) {
         chevron.className = 'agent-act-chevron';
         chevron.textContent = '▸';
 
-        row.innerHTML = `<span class="agent-act-icon">📄</span><span class="agent-act-name">${_htmlEscape(filename)}</span><span class="agent-act-path">${_htmlEscape(path)}</span>`;
         row.appendChild(sizeEl);
         row.appendChild(chevron);
 
@@ -1103,20 +1123,65 @@ function _agHandleCommand(event) {
     s.activity.appendChild(item);
 }
 
-// ── Read / list (compact dimmed) ──────────────────────────────
+// ── Read / list (compact dimmed, deduplicated) ─────────────────
 function _agHandleReadFile(event) {
     const s = _agentsRenderState;
     if (!s) return;
     const path = event.path || event.title || '';
-    if (s.fileCards[path]) return;
+    const filename = path.replace(/\\/g, '/').split('/').pop() || path;
+
+    // File already has a write card — add a small "also read ×N" badge to it
+    if (s.fileCards[path]) {
+        const fc = s.fileCards[path];
+        let rcEl = fc.row.querySelector('.agent-act-rcount');
+        if (!rcEl) {
+            rcEl = document.createElement('span');
+            rcEl.className = 'agent-act-rcount';
+            const chevron = fc.row.querySelector('.agent-act-chevron');
+            fc.row.insertBefore(rcEl, chevron || null);
+        }
+        fc.readCount = (fc.readCount || 0) + 1;
+        rcEl.textContent = `📖 ×${fc.readCount}`;
+        return;
+    }
+
+    // Same file read again — update existing read row's count badge
+    if (s.readCards[path]) {
+        const rc = s.readCards[path];
+        rc.count++;
+        rc.countEl.textContent = `×${rc.count}`;
+        rc.countEl.style.display = '';
+        rc.item.classList.add('agent-act--flash');
+        setTimeout(() => rc.item.classList.remove('agent-act--flash'), 400);
+        return;
+    }
+
+    // First read — create compact row with action verb
     const item = document.createElement('div');
     item.className = 'agent-act-item';
     const row = document.createElement('div');
     row.className = 'agent-act-row agent-act--read';
-    const filename = path.replace(/\\/g, '/').split('/').pop() || path;
-    row.innerHTML = `<span class="agent-act-icon">📖</span><span class="agent-act-name">${_htmlEscape(filename)}</span><span class="agent-act-path">${_htmlEscape(path)}</span>`;
+
+    row.innerHTML = `<span class="agent-act-icon">📖</span><span class="agent-act-name">${_htmlEscape(filename)}</span>`;
+
+    const verbEl = document.createElement('span');
+    verbEl.className = 'agent-act-verb agent-act-verb--read';
+    verbEl.textContent = 'Reading';
+    row.appendChild(verbEl);
+
+    const countEl = document.createElement('span');
+    countEl.className = 'agent-act-rcount';
+    countEl.style.display = 'none';
+    row.appendChild(countEl);
+
+    const pathEl = document.createElement('span');
+    pathEl.className = 'agent-act-path';
+    pathEl.textContent = path;
+    row.appendChild(pathEl);
+
     item.appendChild(row);
     s.activity.appendChild(item);
+    s.readCards[path] = { item, row, countEl, count: 1 };
 }
 
 function _agHandleListDir(event) {

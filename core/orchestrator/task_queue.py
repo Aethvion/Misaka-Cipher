@@ -282,7 +282,8 @@ class TaskWorker:
                                 trace_id=task.id,
                                 model_id=model_id, 
                                 images=images, 
-                                source="chat"
+                                source="chat",
+                                internet_search=settings.get('internet_search', False)
                             )
                         )
                     
