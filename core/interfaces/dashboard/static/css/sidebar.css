@@ -146,19 +146,24 @@
 }
 
 .section-chevron {
-    font-size: 0.55rem;
-    opacity: 0.3;
+    font-size: 0.6rem;
+    color: var(--text-tertiary);
+    opacity: 0.45;
     flex-shrink: 0;
     margin-left: 0.3rem;
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s;
+    /* fa-chevron-right starts pointing right = collapsed state */
+    transform: rotate(90deg); /* default = expanded = pointing down */
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s, color 0.15s;
 }
 
 .sidebar-section-header:hover .section-chevron {
-    opacity: 0.65;
+    opacity: 0.75;
 }
 
+/* Collapsed: chevron points right */
 .section-is-collapsed .section-chevron {
-    transform: rotate(-90deg);
+    transform: rotate(0deg);
+    opacity: 0.3;
 }
 
 /* ── Collapsed sidebar: show only the number, centered ─────────── */
@@ -235,19 +240,31 @@
 
 /* Chevron arrow */
 .cat-chevron {
-    font-size: 0.7rem;
-    opacity: 0.5;
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s;
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+    opacity: 0.4;
     flex-shrink: 0;
     margin-left: 0.25rem;
+    /* default = expanded = pointing down */
+    transform: rotate(90deg);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s, color 0.15s;
+}
+
+/* Expanded: chevron gets a subtle primary tint */
+.sidebar-category:not(.cat-is-collapsed) .cat-chevron {
+    color: var(--primary);
+    opacity: 0.55;
 }
 
 .sidebar-category:hover .cat-chevron {
     opacity: 0.9;
 }
 
+/* Collapsed: chevron points right, goes muted */
 .sidebar-category.cat-is-collapsed .cat-chevron {
-    transform: rotate(-90deg);
+    transform: rotate(0deg);
+    color: var(--text-tertiary);
+    opacity: 0.35;
 }
 
 /* Category body — collapsible container */
@@ -255,14 +272,25 @@
     overflow: hidden;
     max-height: 600px;
     transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-        opacity 0.2s ease;
+                opacity 0.2s ease;
     opacity: 1;
+    /* Left accent track — shows which group is expanded */
+    margin-left: 1.05rem;
+    padding-left: 0.55rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .cat-body.cat-collapsed {
     max-height: 0;
     opacity: 0;
     pointer-events: none;
+}
+
+/* Remove left track in collapsed sidebar (icons only, no indentation) */
+.sidebar-nav.collapsed .cat-body {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
 }
 
 /* --- Hierarchical Indentation --- */
@@ -275,7 +303,7 @@
 
 /* Level 2: Tabs inside Category Bodies */
 .cat-body .main-tab {
-    padding-left: 1.5rem;
+    padding-left: 0.5rem;  /* cat-body already has 0.55rem padding-left + border */
     font-size: 0.78rem;
 }
 
@@ -286,7 +314,7 @@
 }
 
 .sidebar-subitem {
-    padding: 0.25rem 0.75rem 0.25rem 1.5rem;
+    padding: 0.25rem 0.5rem 0.25rem 0.5rem;
     margin-bottom: 0.05rem;
 }
 
