@@ -383,23 +383,16 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
             });
         }
 
-        // Add expandable task details only for complex tasks (tools used, agents spawned, or auto-routing happened)
-        const _isComplexTask = taskData && (
-            (taskData.result?.tools_forged  > 0) ||
-            (taskData.result?.agents_spawned > 0) ||
-            !!(taskData.result?.usage?.routing_reason  || taskData.metadata?.routing_reason)  ||
-            !!(taskData.result?.usage?.routed_model    || taskData.metadata?.routed_model)
-        );
-        if (_isComplexTask) {
+        // Add expandable task details foldout for every completed assistant response
+        if (taskData && taskData.result) {
             const usage = taskData.result?.usage;
             let usageHtml = '';
 
             if (usage) {
-                // Models breakdown
                 let modelsList = '';
                 if (usage.models_used) {
                     modelsList = Object.entries(usage.models_used).map(([m, data]) =>
-                        `<div>${m} (${data.calls} calls)</div>`
+                        `<div>${m} (${data.calls} call${data.calls !== 1 ? 's' : ''})</div>`
                     ).join('');
                 }
 
@@ -408,26 +401,27 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.8rem;">
                             <div>
                                 <strong>Models Used:</strong>
-                                <div style="margin-top: 0.2rem; margin-bottom: 0.5rem; color: var(--text);">
-                                    ${modelsList || 'None'}
+                                <div style="margin-top: 0.2rem; margin-bottom: 0.5rem; color: var(--text-secondary);">
+                                    ${modelsList || (taskData.result?.model_id || taskData.metadata?.actual_model || 'N/A')}
                                 </div>
                             </div>
                             <div>
                                 <strong>Tokens:</strong>
-                                <div style="color: var(--text);">Prompt: ${usage.total_prompt_tokens}</div>
-                                <div style="color: var(--text);">Output: ${usage.total_completion_tokens}</div>
-                                <div style="font-weight: 600; color: var(--text);">Total: ${usage.total_tokens}</div>
+                                <div>Prompt: ${usage.total_prompt_tokens ?? '—'}</div>
+                                <div>Output: ${usage.total_completion_tokens ?? '—'}</div>
+                                <div style="font-weight: 600;">Total: ${usage.total_tokens ?? '—'}</div>
                             </div>
                         </div>
+                        ${usage.total_cost != null ? `
                         <div style="margin-top: 0.5rem; font-size: 0.8rem; border-top: 1px dashed var(--border); padding-top: 0.4rem;">
                             <strong>Estimated Cost:</strong>
                             <span style="float: right; font-family: 'Fira Code', monospace; color: var(--primary);">
                                 $${usage.total_cost.toFixed(6)}
                             </span>
                             <div style="font-size: 0.75rem; color: var(--text-secondary);">
-                                (In: $${usage.total_input_cost.toFixed(6)} | Out: $${usage.total_output_cost.toFixed(6)})
+                                (In: $${usage.total_input_cost?.toFixed(6) ?? '0'} | Out: $${usage.total_output_cost?.toFixed(6) ?? '0'})
                             </div>
-                        </div>
+                        </div>` : ''}
                     </div>
                 `;
             }
@@ -435,26 +429,22 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
             messageContent += `
                 <div class="task-details" style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary);">
                     <details>
-                        <summary style="cursor: pointer;">Task Details</summary>
+                        <summary style="cursor: pointer; user-select: none;">Task Details</summary>
                         <div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-primary); border-radius: 4px;">
                             <div style="display: flex; justify-content: space-between;">
                                 <span><strong>ID:</strong> ${taskData.id}</span>
-                                <span><strong>Time:</strong> ${taskData.result?.execution_time?.toFixed(2) || '0.00'}s</span>
+                                <span><strong>Time:</strong> ${taskData.result?.execution_time?.toFixed(2) ?? '0.00'}s</span>
                             </div>
-                            <div style="margin-top: 0.3rem;"><strong>Worker:</strong> ${taskData.worker_id || 'N/A'}</div>
                             <div style="margin-top: 0.3rem;"><strong>Model:</strong> ${taskData.result?.model_id || taskData.metadata?.actual_model || 'N/A'}</div>
                             <div style="margin-top: 0.3rem;"><strong>Mode:</strong> ${taskData.metadata?.mode || 'N/A'}</div>
-                            <div style="margin-top: 0.3rem;"><strong>Model Selection:</strong> ${taskData.metadata?.selected_model === 'auto' ? '⚡ Auto Routing' : (taskData.metadata?.selected_model || 'Default')}</div>
+                            <div style="margin-top: 0.3rem;"><strong>Selection:</strong> ${taskData.metadata?.selected_model === 'auto' ? '⚡ Auto Routing' : (taskData.metadata?.selected_model || 'Default')}</div>
                             ${(taskData.result?.usage?.routing_model || taskData.metadata?.routing_model) ? `<div style="margin-top: 0.3rem;"><strong>Route Picker:</strong> ${taskData.result?.usage?.routing_model || taskData.metadata?.routing_model}</div>` : ''}
                             ${(taskData.result?.usage?.routed_model || taskData.metadata?.routed_model) ? `<div style="margin-top: 0.3rem;"><strong>Routed To:</strong> <span style="color: var(--primary);">${taskData.result?.usage?.routed_model || taskData.metadata?.routed_model}</span></div>` : ''}
                             ${(taskData.result?.usage?.routing_reason || taskData.metadata?.routing_reason) ? `<div style="margin-top: 0.5rem; padding: 0.4rem 0.6rem; background: rgba(0,212,255,0.06); border-left: 3px solid var(--primary); border-radius: 4px; font-style: italic; font-size: 0.78rem; color: var(--text-secondary);">🧠 ${taskData.result?.usage?.routing_reason || taskData.metadata?.routing_reason}</div>` : ''}
-                            
-                            <!-- Standard Actions Info -->
                             ${taskData.result?.actions_taken?.length > 0 ? `<div style="margin-top: 0.3rem;"><strong>Actions:</strong> ${taskData.result.actions_taken.join(', ')}</div>` : ''}
                             ${taskData.result?.tools_forged?.length > 0 ? `<div style="margin-top: 0.3rem;"><strong>Tools:</strong> ${taskData.result.tools_forged.join(', ')}</div>` : ''}
                             ${taskData.result?.agents_spawned?.length > 0 ? `<div style="margin-top: 0.3rem;"><strong>Agents:</strong> ${taskData.result.agents_spawned.join(', ')}</div>` : ''}
-                            
-                            <!-- Enhanced Usage Info -->
+                            ${taskData.metadata?.folder_id ? `<div style="margin-top: 0.3rem;"><strong>Folder:</strong> ${taskData.metadata?.folder_title || taskData.metadata?.folder_id}</div>` : ''}
                             ${usageHtml}
                         </div>
                     </details>
