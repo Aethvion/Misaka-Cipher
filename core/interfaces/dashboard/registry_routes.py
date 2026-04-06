@@ -592,8 +592,24 @@ async def get_local_models_status():
         local_dir = GGUF_DIR
         if not local_dir.exists():
             return {"models": {}}
-        
+
         status = {}
+        registry = _load_registry()
+        registry_changed = False
+
+        # Ensure "local" provider exists in the registry
+        if "local" not in registry:
+            registry["local"] = {
+                "name": "Local Models",
+                "active": True,
+                "chat_config": {"active": True, "priority": 2},
+                "agent_config": {"active": True, "priority": 2},
+                "models": {}
+            }
+            registry_changed = True
+
+        local_models = registry["local"].setdefault("models", {})
+
         # Get all .gguf files
         for f in local_dir.glob("*.gguf"):
             status[f.name] = {
@@ -601,6 +617,22 @@ async def get_local_models_status():
                 "size_mb": round(f.stat().st_size / (1024 * 1024), 2),
                 "path": str(f)
             }
+
+            # Auto-register if not already in the registry
+            if f.name not in local_models:
+                local_models[f.name] = {
+                    "input_cost_per_1m_tokens": 0,
+                    "output_cost_per_1m_tokens": 0,
+                    "capabilities": ["CHAT"],
+                    "description": f"Local model: {f.name}",
+                    "local_path": f.name
+                }
+                logger.info(f"Auto-registered local model: {f.name}")
+                registry_changed = True
+
+        if registry_changed:
+            _save_registry(registry)
+
         return {"models": status}
     except Exception as e:
         logger.error(f"Failed to get local models status: {e}")

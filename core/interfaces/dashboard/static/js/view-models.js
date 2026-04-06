@@ -6,6 +6,7 @@ const LocalModels = {
     _models: {},
     _suggestions: [],
     _registered: {},
+    _arenaData: {},
     _ollama: { models: [], registered: new Set(), running: false },
     _filters: { search: '', size: 'all', status: 'all', sort: 'name-asc', group: 'none' },
 
@@ -28,6 +29,19 @@ const LocalModels = {
         this.loadSuggestedModels();
         this.loadGPUStatus();
         this.loadOllamaStatus();
+        this.loadArenaData();
+    },
+
+    async loadArenaData() {
+        try {
+            const res = await fetch('/api/arena/leaderboard');
+            if (res.ok) {
+                const data = await res.json();
+                this._arenaData = data.models || {};
+            }
+        } catch (e) {
+            this._arenaData = {};
+        }
     },
 
     addEventListeners() {
@@ -153,6 +167,30 @@ const LocalModels = {
                 case 'size-desc':  res = b.size_mb - a.size_mb; break;
                 case 'params-asc': res = a.bsize - b.bsize; break;
                 case 'params-desc':res = b.bsize - a.bsize; break;
+                case 'arena-score-desc': {
+                    const sa = this._arenaData[a.filename];
+                    const sb = this._arenaData[b.filename];
+                    const scoreA = sa && sa.scores_count > 0 ? sa.scores_total / sa.scores_count : -1;
+                    const scoreB = sb && sb.scores_count > 0 ? sb.scores_total / sb.scores_count : -1;
+                    res = scoreB - scoreA;
+                    break;
+                }
+                case 'win-rate-desc': {
+                    const wa = this._arenaData[a.filename];
+                    const wb = this._arenaData[b.filename];
+                    const rateA = wa && wa.battles > 0 ? wa.wins / wa.battles : -1;
+                    const rateB = wb && wb.battles > 0 ? wb.wins / wb.battles : -1;
+                    res = rateB - rateA;
+                    break;
+                }
+                case 'speed-asc': {
+                    const qa = this._arenaData[a.filename];
+                    const qb = this._arenaData[b.filename];
+                    const timeA = qa && qa.battles > 0 ? qa.total_time_ms / qa.battles : Infinity;
+                    const timeB = qb && qb.battles > 0 ? qb.total_time_ms / qb.battles : Infinity;
+                    res = timeA - timeB;
+                    break;
+                }
             }
             return res;
         });
@@ -187,33 +225,39 @@ const LocalModels = {
         tbody.querySelectorAll('.delete-model-btn').forEach(btn => {
             btn.onclick = () => this.deleteModel(btn.dataset.filename);
         });
-        tbody.querySelectorAll('.register-model-btn').forEach(btn => {
-            btn.onclick = () => this.registerModel(btn.dataset.filename);
-        });
     },
 
     _buildModelRow(m) {
+        // Build arena stats line
+        const arena = this._arenaData[m.filename];
+        let arenaHtml = '';
+        if (arena && arena.battles > 0) {
+            const winRate = Math.round((arena.wins / arena.battles) * 100);
+            const avgScore = arena.scores_count > 0 ? (arena.scores_total / arena.scores_count).toFixed(1) : null;
+            const avgSpeed = (arena.total_time_ms / arena.battles / 1000).toFixed(1);
+            arenaHtml = `
+                <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.3rem;">
+                    <span style="font-size:0.65rem; color:var(--text-tertiary); background:rgba(255,255,255,0.04); border-radius:4px; padding:1px 6px;">${arena.battles} battles</span>
+                    <span style="font-size:0.65rem; color:var(--primary); opacity:0.8; background:rgba(99,102,241,0.08); border-radius:4px; padding:1px 6px;">${winRate}% wins</span>
+                    ${avgScore ? `<span style="font-size:0.65rem; color:#fdcb6e; opacity:0.85; background:rgba(253,203,110,0.08); border-radius:4px; padding:1px 6px;">⭐ ${avgScore}</span>` : ''}
+                    <span style="font-size:0.65rem; color:var(--text-tertiary); background:rgba(255,255,255,0.04); border-radius:4px; padding:1px 6px;">${avgSpeed}s avg</span>
+                </div>`;
+        }
+
         return `
             <tr class="faded-in-row">
                 <td style="font-weight: 600; color: #fff;">
                     <div style="display:flex; flex-direction:column;">
                         <span>${m.filename}</span>
                         <span style="font-size:0.7rem; font-weight:400; color:var(--text-tertiary);">${m.arch} ${m.bsize ? `• ${m.bsize}B` : ''}</span>
+                        ${arenaHtml}
                     </div>
                 </td>
                 <td style="color: var(--text-secondary);">${m.size_mb} MB</td>
                 <td>
-                    ${m.isRegistered ? 
-                        '<span class="status-badge success-v12"><i class="fas fa-check-circle"></i> Registered</span>' : 
-                        '<span class="status-badge warning-v12"><i class="fas fa-exclamation-circle"></i> Unregistered</span>'
-                    }
+                    <span class="status-badge success-v12"><i class="fas fa-check-circle"></i> Ready</span>
                 </td>
                 <td style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center;">
-                    ${!m.isRegistered ? `
-                        <button class="action-btn sm-btn register-model-btn" data-filename="${m.filename}" title="Register Model">
-                            <i class="fas fa-plus"></i> Register
-                        </button>
-                    ` : ''}
                     <button class="btn-icon sm-btn delete-model-btn" data-filename="${m.filename}" title="Delete Model" style="color: rgba(255, 118, 117, 0.8);">
                         <i class="fas fa-trash"></i>
                     </button>
