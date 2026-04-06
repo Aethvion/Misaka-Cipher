@@ -2,7 +2,7 @@
 
 First off, thank you for considering contributing to Aethvion Suite! It's people like you that make this self-evolving AI suite better for everyone.
 
-## 🌟 How Can I Contribute?
+## How Can I Contribute?
 
 ### Reporting Bugs
 
@@ -33,7 +33,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 * Write clear commit messages
 * Ensure all tests pass
 
-## 🏗️ Development Setup
+## Development Setup
 
 1. Fork the repository
 2. Clone your fork:
@@ -50,7 +50,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 
 4. Install dependencies:
    ```bash
-   pip install -r requirements.txt
+   pip install -e ".[memory]"
    ```
 
 5. Create a branch for your changes:
@@ -58,7 +58,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
    git checkout -b feature/your-feature-name
    ```
 
-## 📝 Code Style
+## Code Style
 
 * Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) Python style guide
 * Use meaningful variable and function names
@@ -80,38 +80,38 @@ Aethvion Suite follows the **Aethvion Naming Standard** for tools and agents:
 
 Please follow this convention when creating new tools or agents.
 
-## 🧪 Testing
+## Testing
 
 Before submitting a pull request:
 
 1. Test your changes locally:
    ```bash
-   python main.py --test
+   python -m core.main --test
    ```
 
 2. Test in CLI mode:
    ```bash
-   python main.py --cli
+   python -m core.main --cli
    ```
 
 3. Test in web mode:
    ```bash
-   python main.py
-   # Visit http://localhost:8000
+   python -m core.main
+   # Visit http://localhost:8080
    ```
 
-## 📚 Documentation
+## Documentation
 
 * Update relevant documentation in `/documentation/` if you change functionality
 * Update the README.md if you add new features
 * Keep documentation clear and concise
 * Include code examples where helpful
 
-## 🤝 Code of Conduct
+## Code of Conduct
 
 This project adheres to a Code of Conduct that all contributors are expected to follow. Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before contributing.
 
-## 📋 Pull Request Process
+## Pull Request Process
 
 1. Ensure your code follows the style guidelines
 2. Update documentation as needed
@@ -128,13 +128,13 @@ Use clear, descriptive titles:
 * `docs: Update installation instructions`
 * `refactor: Improve provider failover logic`
 
-## 🔍 Review Process
+## Review Process
 
 * Maintainers will review your PR as soon as possible
 * You may be asked to make changes
 * Once approved, a maintainer will merge your PR
 
-## 💡 Development Tips
+## Development Tips
 
 ### Working with The Forge (Tool Generation)
 
@@ -157,18 +157,18 @@ When contributing to Nexus Core:
 * Preserve trace_id throughout execution
 * Test provider failover logic
 
-## 📞 Getting Help
+## Getting Help
 
-* 💬 [Start a discussion](https://github.com/Aethvion/Aethvion-Suite/discussions)
-* 🐛 [Open an issue](https://github.com/Aethvion/Aethvion-Suite/issues)
-* 📖 Read the [documentation](/documentation/)
+* [Start a discussion](https://github.com/Aethvion/Aethvion-Suite/discussions)
+* [Open an issue](https://github.com/Aethvion/Aethvion-Suite/issues)
+* Read the [documentation](/documentation/)
 
-## 📜 License
+## License
 
 By contributing to Aethvion Suite, you agree that your contributions will be licensed under the MIT License.
 
 ---
 
-**Thank you for contributing to Aethvion Suite!** 🚀
+**Thank you for contributing to Aethvion Suite!**
 
 Every contribution, no matter how small, helps make this system better for everyone.

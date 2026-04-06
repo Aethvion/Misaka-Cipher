@@ -1,31 +1,31 @@
 # Pull Request
 
-## 📝 Description
+## Description
 Please include a summary of the changes and which issue is fixed. Include relevant motivation and context.
 
 Fixes # (issue)
 
-## 🔧 Type of Change
+## Type of Change
 Please delete options that are not relevant.
 
-- [ ] 🐛 Bug fix (non-breaking change which fixes an issue)
-- [ ] ✨ New feature (non-breaking change which adds functionality)
-- [ ] 💥 Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] 📚 Documentation update
-- [ ] 🎨 Code style update (formatting, renaming)
-- [ ] ♻️ Refactoring (no functional changes)
-- [ ] ⚡ Performance improvement
-- [ ] ✅ Test update
-- [ ] 🔧 Configuration change
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Documentation update
+- [ ] Code style update (formatting, renaming)
+- [ ] Refactoring (no functional changes)
+- [ ] Performance improvement
+- [ ] Test update
+- [ ] Configuration change
 
-## 🎯 Changes Made
+## Changes Made
 List the main changes made in this PR:
 
 - Change 1
 - Change 2
 - Change 3
 
-## 📋 Checklist
+## Checklist
 Please check all that apply:
 
 - [ ] My code follows the style guidelines of this project (PEP 8)
@@ -37,7 +37,7 @@ Please check all that apply:
 - [ ] New and existing unit tests pass locally with my changes
 - [ ] Any dependent changes have been merged and published
 
-## 🧪 Testing
+## Testing
 Describe the tests you ran to verify your changes:
 
 - [ ] Tested in CLI mode (`python main.py --cli`)
@@ -48,10 +48,10 @@ Describe the tests you ran to verify your changes:
 - [ ] Tested agent spawning (if applicable)
 - [ ] Tested memory system (if applicable)
 
-## 📸 Screenshots (if applicable)
+## Screenshots (if applicable)
 Add screenshots to demonstrate the changes (especially for UI changes).
 
-## 🔌 Affected Components
+## Affected Components
 Which parts of the system does this PR affect?
 
 - [ ] Nexus Core (orchestration)
@@ -65,14 +65,14 @@ Which parts of the system does this PR affect?
 - [ ] Documentation
 - [ ] Configuration
 
-## 🎯 Aethvion Naming Compliance
+## Aethvion Naming Compliance
 If this PR adds new tools or agents:
 
 - [ ] All new tools follow `[Domain]_[Action]_[Object]` naming convention
 - [ ] All new agents follow Aethvion naming standard
 - [ ] Tool/agent names are registered in appropriate registry
 
-## 🔒 Security Considerations
+## Security Considerations
 Does this PR introduce any security concerns?
 
 - [ ] This PR does not introduce security vulnerabilities
@@ -82,7 +82,7 @@ Does this PR introduce any security concerns?
 - [ ] User input is properly validated
 - [ ] Generated code is properly sandboxed (if applicable)
 
-## 📚 Documentation Updates
+## Documentation Updates
 What documentation has been updated?
 
 - [ ] README.md
@@ -92,7 +92,7 @@ What documentation has been updated?
 - [ ] Code comments
 - [ ] N/A - No documentation changes needed
 
-## 🤝 Additional Context
+## Additional Context
 Add any other context about the pull request here. For example:
 - Related issues or PRs
 - Implementation notes
@@ -100,9 +100,9 @@ Add any other context about the pull request here. For example:
 - Future improvements planned
 - Questions for reviewers
 
-## 👥 Reviewer Notes
+## Reviewer Notes
 Anything specific you want reviewers to focus on?
 
 ---
 
-**Thank you for contributing to Aethvion Suite!** 🚀
+**Thank you for contributing to Aethvion Suite.**

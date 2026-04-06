@@ -1,15 +1,15 @@
 # Security Policy
 
-## 🛡️ Security Philosophy
+## Security Philosophy
 
-Aethvion Suite takes security seriously. As a self-evolving AI system that can generate code and spawn agents, we implement multiple layers of security:
+Aethvion Suite takes security seriously. As a self-hosted AI platform that can generate code and spawn agents, we implement multiple layers of security:
 
 * **Intelligence Firewall**: Pre-flight scanning for PII and credentials
 * **Code Validation**: All generated tools are validated before execution
 * **Provider Isolation**: API keys are isolated and never exposed to generated code
 * **Audit Trail**: Complete traceability with Trace_ID for all operations
 
-## 🐛 Reporting a Vulnerability
+## Reporting a Vulnerability
 
 We appreciate your efforts to responsibly disclose your findings and will make every effort to acknowledge your contributions.
 
@@ -50,7 +50,7 @@ Please include the following information:
   * Medium: Within 2-4 weeks
   * Low: Next release cycle
 
-## 🔐 Security Features
+## Security Features
 
 ### Intelligence Firewall
 
@@ -80,7 +80,7 @@ The Factory (agent spawning system):
 * **Stateless design**: Agents cannot persist malicious state
 * **Isolated execution**: Each agent runs in isolated context
 
-## 🚨 Known Security Considerations
+## Known Security Considerations
 
 ### API Keys
 
@@ -103,7 +103,7 @@ The Factory (agent spawning system):
 * **Vector Database**: ChromaDB stores embeddings locally
 * **Graph Data**: Knowledge graph stored in JSON format locally
 
-## 🔧 Security Best Practices for Users
+## Security Best Practices for Users
 
 ### API Key Management
 
@@ -121,7 +121,7 @@ api_key = "sk-1234567890abcdef"  # ❌ NEVER DO THIS
 # Enable all security features
 features:
   enable_intelligence_firewall: true  # Always keep enabled
-  
+
 development:
   skip_security_scan: false  # Never skip in production
 ```
@@ -138,7 +138,7 @@ source venv/bin/activate
 # Production keys with monitoring
 ```
 
-## 📋 Security Checklist for Contributors
+## Security Checklist for Contributors
 
 Before submitting code:
 
@@ -151,7 +151,7 @@ Before submitting code:
 - [ ] Generated code is validated before execution
 - [ ] Tests include security test cases
 
-## 🔍 Security Audits
+## Security Audits
 
 We welcome security audits and reviews. If you're conducting a security audit:
 
@@ -161,13 +161,13 @@ We welcome security audits and reviews. If you're conducting a security audit:
 * Do not attempt to access other users' data
 * Report findings responsibly
 
-## 📚 Additional Resources
+## Additional Resources
 
 * [OWASP Top Ten](https://owasp.org/www-project-top-ten/)
 * [Python Security Best Practices](https://python.readthedocs.io/en/stable/library/security_warnings.html)
 * [API Security Best Practices](https://owasp.org/www-project-api-security/)
 
-## 🏆 Hall of Fame
+## Hall of Fame
 
 We will recognize security researchers who responsibly disclose vulnerabilities:
 
@@ -176,6 +176,6 @@ We will recognize security researchers who responsibly disclose vulnerabilities:
 
 ---
 
-**Thank you for helping keep Aethvion Suite and its users safe!** 🛡️
+**Thank you for helping keep Aethvion Suite and its users safe.**
 
-_Last updated: 2026-02-18_
+_Last updated: 2026-04-06_

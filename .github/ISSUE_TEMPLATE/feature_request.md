@@ -7,36 +7,36 @@ assignees: ''
 
 ---
 
-## 💡 Feature Description
+## Feature Description
 A clear and concise description of the feature you'd like to see.
 
-## 🎯 Problem Statement
+## Problem Statement
 Describe the problem or limitation you're facing. Ex. I'm always frustrated when [...]
 
-## ✨ Proposed Solution
+## Proposed Solution
 Describe how you'd like this feature to work. Be as specific as possible.
 
-## 🔄 Alternative Solutions
+## Alternative Solutions
 Describe any alternative solutions or features you've considered.
 
-## 🏗️ Implementation Ideas
+## Implementation Ideas
 If you have ideas on how this could be implemented, share them here:
 - Which module would this affect? (Nexus Core, Factory, Forge, Memory, etc.)
 - Would this require new dependencies?
 - Are there similar features in other projects?
 
-## 📊 Use Cases
+## Use Cases
 Describe specific use cases where this feature would be valuable:
 1. Use case 1: ...
 2. Use case 2: ...
 
-## 🎨 UI/UX Considerations
+## UI/UX Considerations
 If this affects the user interface (CLI or Web Dashboard):
 - Mockups or sketches (if applicable)
 - How should the user interact with this feature?
 - What feedback should the system provide?
 
-## 🔌 Integration Points
+## Integration Points
 Would this feature need to integrate with:
 - [ ] Nexus Core (orchestration)
 - [ ] The Factory (agent spawning)
@@ -47,18 +47,18 @@ Would this feature need to integrate with:
 - [ ] Web Dashboard
 - [ ] CLI Interface
 
-## 📈 Impact
+## Impact
 - **Priority**: [High/Medium/Low]
 - **Effort**: [Estimated complexity: Small/Medium/Large]
 - **Users Affected**: [How many users would benefit?]
 
-## 🔗 Related Issues/PRs
+## Related Issues/PRs
 Link to any related issues or pull requests.
 
-## 📚 Additional Context
+## Additional Context
 Add any other context, screenshots, or examples about the feature request here.
 
-## 🤝 Contribution
+## Contribution
 Would you be willing to contribute this feature?
 - [ ] Yes, I can submit a PR
 - [ ] Yes, with guidance

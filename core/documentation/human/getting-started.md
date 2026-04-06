@@ -142,7 +142,7 @@ python -m core.main --test
 You should see:
 ```
 ============================================================
-AETHVION SUITE - SPRINT 1 VERIFICATION TEST
+AETHVION SUITE - VERIFICATION TEST
 ============================================================
 
 SYSTEM STATUS
@@ -485,24 +485,24 @@ forge.forge_tool(
 ## Next Steps
 
 ### Beginner Track
-1. ✅ Complete installation
-2. ✅ Run verification tests
-3. → Try 5 different prompts in Nexus Core
-4. → Forge your first tool
-5. → Spawn your first agent
-6. → Query memory to see your history
+1. - Complete installation
+2. - Run verification tests
+3. - Try 5 different prompts in Nexus Core
+4. - Forge your first tool
+5. - Spawn your first agent
+6. - Query memory to see your history
 
 ### Intermediate Track
-1. → Build a tool pipeline (3+ tools working together)
-2. → Create a custom agent template
-3. → Explore knowledge graph relationships
-4. → Optimize routing strategy for your use case
+1. - Build a tool pipeline (3+ tools working together)
+2. - Create a custom agent template
+3. - Explore knowledge graph relationships
+4. - Optimize routing strategy for your use case
 
 ### Advanced Track
-1. → Design and execute a multi-day autonomous project
-2. → Integrate local model for cost reduction (when available)
-3. → Contribute custom agent types to the system
-4. → Build domain-specific tool libraries
+1. - Design and execute a multi-day autonomous project
+2. - Integrate local model for cost reduction (when available)
+3. - Contribute custom agent types to the system
+4. - Build domain-specific tool libraries
 
 ---
 
@@ -517,36 +517,36 @@ forge.forge_tool(
 ## The Vision: Where We're Going
 
 **Current State (v12):**
-- ✅ Core orchestration (Nexus)
-- ✅ Agent spawning (Factory) + **Agent Workspaces** with ReAct runner and SSE streaming
-- ✅ Tool generation (Forge)
-- ✅ Memory persistence
-- ✅ Multi-provider support + **Tabbed Model Registry**
-- ✅ Web dashboard (FastAPI) with 25+ tabs
-- ✅ Package manager with safety scoring
-- ✅ API usage analytics with Local/API filters
-- ✅ LLM Arena with enhanced leaderboard
-- ✅ AI Image Studio
-- ✅ **AI Conversations** — human participant, pause/inject, shareable links, history persistence
-- ✅ **Code IDE** — chat threads, streaming execution, Ctrl+P, status bar, Project Notes, python-exec, continuation loop
-- ✅ **Local Audio Models** — Kokoro, XTTS-v2, Whisper
-- ✅ Finance: AI market analysis and per-ticker detail panel
-- ✅ Tracking: revamped UI with HUD, telemetry, FPS counter
-- ✅ **AI Scheduler** — Automated cron-based AI tasks with real-time notifications
-- ✅ **Notification System** — Persistent history, granular source filtering, and deep-linking navigation
-- ✅ Self-update via dashboard Settings
+- [done] Core orchestration (Nexus)
+- [done] Agent spawning (Factory) + **Agent Workspaces** with ReAct runner and SSE streaming
+- [done] Tool generation (Forge)
+- [done] Memory persistence
+- [done] Multi-provider support + **Tabbed Model Registry**
+- [done] Web dashboard (FastAPI) with 25+ tabs
+- [done] Package manager with safety scoring
+- [done] API usage analytics with Local/API filters
+- [done] LLM Arena with enhanced leaderboard
+- [done] AI Image Studio
+- [done] **AI Conversations** — human participant, pause/inject, shareable links, history persistence
+- [done] **Code IDE** — chat threads, streaming execution, Ctrl+P, status bar, Project Notes, python-exec, continuation loop
+- [done] **Local Audio Models** — Kokoro, XTTS-v2, Whisper
+- [done] Finance: AI market analysis and per-ticker detail panel
+- [done] Tracking: revamped UI with HUD, telemetry, FPS counter
+- [done] **AI Scheduler** — Automated cron-based AI tasks with real-time notifications
+- [done] **Notification System** — Persistent history, granular source filtering, and deep-linking navigation
+- [done] Self-update via dashboard Settings
 
 **Near-Term (Next 3 Months):**
-- 🔄 Ollama integration for local model management UI
-- 🔄 Advanced multi-agent coordination and reliability
-- 🔄 Tool forge validation improvements
-- 🔄 Enhanced memory retrieval and deeper agent integration
+- [in progress] Ollama integration for local model management UI
+- [in progress] Advanced multi-agent coordination and reliability
+- [in progress] Tool forge validation improvements
+- [in progress] Enhanced memory retrieval and deeper agent integration
 
 **Long-Term Vision:**
-- 🌟 True infinite sessions (weeks-long autonomous work)
-- 🌟 Self-improving architecture (system refactors itself)
-- 🌟 Cross-domain expertise (single system handles diverse fields)
-- 🌟 Human-AI collaboration tools (pair programming at scale)
+- [planned] True infinite sessions (weeks-long autonomous work)
+- [planned] Self-improving architecture (system refactors itself)
+- [planned] Cross-domain expertise (single system handles diverse fields)
+- [planned] Human-AI collaboration tools (pair programming at scale)
 
 **The Ultimate Goal:**
 ```
@@ -563,7 +563,7 @@ No human intervention needed.
 
 ---
 
-**Ready to start?** Fire up the system and experience the power of v12! 🚀
+**Ready to start?** Fire up the system and get started with v12.
 
 ```bash
 python -m core.main --cli
@@ -574,5 +574,5 @@ python -m core.main --cli
 ---
 
 **Next Reading:**
-- [System Overview](./README_Overview.md) - Deeper dive into architecture
-- [AI Documentation](/documentation/ai/) - Technical specifications for advanced users
+- [System Overview](./readme-overview.md) - Deeper dive into architecture
+- [AI Documentation](/core/documentation/ai/) - Technical specifications for advanced users
