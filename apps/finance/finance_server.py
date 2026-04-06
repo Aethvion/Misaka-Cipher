@@ -198,7 +198,7 @@ class GoalUpdate(BaseModel):
 
 class HoldingIn(BaseModel):
     ticker: str
-    shares: float
+    shares: Optional[float] = 1.0
     name: Optional[str] = None
     asset_type: Optional[str] = "stock"
     buy_price: Optional[float] = 0.0
@@ -430,7 +430,7 @@ async def add_holding(holding: HoldingIn):
         "ticker": ticker,
         "name": name,
         "asset_type": asset_type,
-        "shares": holding.shares,
+        "shares": holding.shares if holding.shares is not None else 1.0,
         "buy_price": holding.buy_price or 0.0,
         "current_price": current_price or 0.0,
         "currency": holding.currency,

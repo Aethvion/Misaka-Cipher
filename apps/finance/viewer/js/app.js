@@ -1460,6 +1460,9 @@
     // Header: Load button
     document.getElementById('hdr-load-btn').addEventListener('click', openProjectManager);
 
+    // Header: Quick Add button
+    document.getElementById('hdr-quick-add-btn')?.addEventListener('click', openQuickAddHolding);
+
     // Add Transaction button
     document.getElementById('add-tx-btn').addEventListener('click', openAddTransaction);
 
@@ -1544,6 +1547,7 @@
     document.getElementById('add-goal-btn').addEventListener('click', openAddGoal);
 
     // Portfolio
+    document.getElementById('quick-add-holding-btn')?.addEventListener('click', openQuickAddHolding);
     document.getElementById('add-holding-btn').addEventListener('click', openAddHolding);
     document.getElementById('portfolio-search').addEventListener('input', renderPortfolio);
     document.getElementById('refresh-prices-btn').addEventListener('click', refreshPrices);
@@ -1906,9 +1910,11 @@
     `;
     openModal('Quick Add Asset', content, defaultFooter(false), async () => {
       const ticker = document.getElementById('qa-ticker').value.trim().toUpperCase();
-      const shares = parseFloat(document.getElementById('qa-shares').value);
-      if (!ticker || isNaN(shares)) {
-        notify('Please enter ticker and shares', 'error');
+      const sharesVal = document.getElementById('qa-shares').value;
+      const shares = sharesVal ? parseFloat(sharesVal) : 1.0;
+
+      if (!ticker) {
+        notify('Please enter a ticker symbol', 'error');
         return;
       }
       try {
