@@ -499,6 +499,34 @@ function initializeUI() {
         });
     }
 
+    // Sidebar collapsed tooltips — fixed-position div bypasses overflow clipping
+    const _sidebarTip = document.createElement('div');
+    _sidebarTip.id = 'sidebar-tooltip';
+    document.body.appendChild(_sidebarTip);
+
+    sidebarNav && sidebarNav.addEventListener('mouseover', (e) => {
+        if (!sidebarNav.classList.contains('collapsed')) return;
+        const btn = e.target.closest('.main-tab[data-tooltip]');
+        if (!btn) return;
+        const rect = btn.getBoundingClientRect();
+        _sidebarTip.textContent = btn.dataset.tooltip;
+        _sidebarTip.style.left = (rect.right + 10) + 'px';
+        _sidebarTip.style.top = Math.round(rect.top + rect.height / 2) + 'px';
+        _sidebarTip.style.transform = 'translateY(-50%)';
+        _sidebarTip.style.opacity = '1';
+    });
+
+    sidebarNav && sidebarNav.addEventListener('mouseleave', () => {
+        _sidebarTip.style.opacity = '0';
+    });
+
+    sidebarNav && sidebarNav.addEventListener('mouseout', (e) => {
+        const btn = e.target.closest('.main-tab');
+        if (btn && !btn.contains(e.relatedTarget)) {
+            _sidebarTip.style.opacity = '0';
+        }
+    });
+
     // Register mode toggle handlers
     document.querySelectorAll('#dashboard-mode-toggle .mode-btn').forEach(btn => {
         btn.addEventListener('click', function () {
