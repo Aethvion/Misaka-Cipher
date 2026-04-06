@@ -12,11 +12,19 @@ const AudioModels = (() => {
     let _cloneAudioB64 = null;
     let _defaultModel = null;
     let _defaultVoice = null;
+    let _search = '';
 
     // ── Init ──────────────────────────────────────────────────────────────────
     async function init() {
         await refresh();
         _setupCloneDropzone();
+        const searchEl = document.getElementById('audio-search-input');
+        if (searchEl) {
+            searchEl.oninput = (e) => {
+                _search = e.target.value.toLowerCase().trim();
+                _render();
+            };
+        }
     }
 
     async function refresh() {
@@ -59,13 +67,19 @@ const AudioModels = (() => {
     }
 
     // ── Rendering ─────────────────────────────────────────────────────────────
+    function _matchesSearch(m) {
+        if (!_search) return true;
+        const hay = `${m.name} ${(m.tags || []).join(' ')} ${m.description || ''}`.toLowerCase();
+        return hay.includes(_search);
+    }
+
     function _render() {
         const ttsEl = document.getElementById('am-tts-cards');
         const sttEl = document.getElementById('am-stt-cards');
         if (!ttsEl || !sttEl) return;
 
-        const tts = _suggested.filter(m => m.category === 'tts');
-        const stt = _suggested.filter(m => m.category === 'stt');
+        const tts = _suggested.filter(m => m.category === 'tts' && _matchesSearch(m));
+        const stt = _suggested.filter(m => m.category === 'stt' && _matchesSearch(m));
 
         ttsEl.innerHTML = tts.map(m => _modelCard(m)).join('') || '<p class="empty-state">No TTS models configured.</p>';
         sttEl.innerHTML = stt.map(m => _modelCard(m)).join('') || '<p class="empty-state">No STT models configured.</p>';

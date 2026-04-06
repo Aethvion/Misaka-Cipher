@@ -7,6 +7,16 @@
                     </div>
                 </div>
                 <div class="panel-content">
+                    <!-- Search Filter Bar -->
+                    <div class="models-filter-bar glass-panel" style="margin-bottom: 1rem;" id="audio-filter-bar">
+                        <div class="mfb-row">
+                            <div class="mfb-search">
+                                <i class="fas fa-search mfb-search-icon"></i>
+                                <input type="text" id="audio-search-input" class="mfb-search-input" placeholder="Search audio models by name or tag...">
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Section tabs -->
                     <div class="am-tab-bar">
                         <button class="am-tab-btn active" data-amtab="tts" onclick="AudioModels.switchTab('tts', this)">

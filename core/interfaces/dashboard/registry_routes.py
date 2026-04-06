@@ -980,6 +980,96 @@ async def get_gpu_status():
     return result
 
 
+DATA_DIR = PROJECT_ROOT / "data"
+SYSTEM_SPECS_PATH = DATA_DIR / "system_specs.json"
+
+
+@router.get("/local/system-specs")
+async def get_system_specs():
+    """Detect and cache system hardware specs (CPU, GPU, RAM) to data/system_specs.json."""
+    import datetime
+    import platform as _platform
+
+    specs: dict = {
+        "cpu_name": "Unknown",
+        "cpu_cores": 0,
+        "cpu_threads": 0,
+        "ram_total_gb": 0.0,
+        "ram_available_gb": 0.0,
+        "gpu_name": None,
+        "vram_gb": 0.0,
+        "cuda_available": False,
+        "last_updated": datetime.datetime.now().isoformat(),
+    }
+
+    # ── CPU & RAM via psutil ─────────────────────────────────────────────────
+    try:
+        import psutil
+        specs["cpu_cores"]   = psutil.cpu_count(logical=False) or 0
+        specs["cpu_threads"] = psutil.cpu_count(logical=True)  or 0
+        vm = psutil.virtual_memory()
+        specs["ram_total_gb"]     = round(vm.total     / (1024 ** 3), 1)
+        specs["ram_available_gb"] = round(vm.available / (1024 ** 3), 1)
+    except Exception:
+        pass
+
+    # ── CPU name ─────────────────────────────────────────────────────────────
+    try:
+        cpu_name = _platform.processor()
+        if not cpu_name and os.name == "nt":
+            proc = subprocess.run(
+                ["wmic", "cpu", "get", "name"],
+                capture_output=True, text=True, timeout=5,
+                creationflags=CREATE_NO_WINDOW,
+            )
+            lines = [
+                ln.strip() for ln in proc.stdout.strip().splitlines()
+                if ln.strip() and ln.strip().lower() != "name"
+            ]
+            if lines:
+                cpu_name = lines[0]
+        specs["cpu_name"] = cpu_name or "Unknown"
+    except Exception:
+        pass
+
+    # ── GPU via nvidia-smi ───────────────────────────────────────────────────
+    try:
+        proc = subprocess.run(
+            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=5,
+            creationflags=CREATE_NO_WINDOW,
+        )
+        if proc.returncode == 0 and proc.stdout.strip():
+            parts = [p.strip() for p in proc.stdout.strip().split(",")]
+            specs["cuda_available"] = True
+            specs["gpu_name"]       = parts[0]
+            specs["vram_gb"]        = round(int(parts[1]) / 1024, 1)
+    except Exception:
+        pass
+
+    # ── Torch fallback ───────────────────────────────────────────────────────
+    if not specs["cuda_available"]:
+        try:
+            import torch
+            specs["cuda_available"] = torch.cuda.is_available()
+            if specs["cuda_available"]:
+                specs["gpu_name"] = torch.cuda.get_device_name(0)
+                specs["vram_gb"]  = round(
+                    torch.cuda.get_device_properties(0).total_memory / 1e9, 1
+                )
+        except Exception:
+            pass
+
+    # ── Save to data/system_specs.json ───────────────────────────────────────
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        SYSTEM_SPECS_PATH.write_text(json.dumps(specs, indent=2))
+    except Exception as exc:
+        logger.warning(f"Could not save system specs: {exc}")
+
+    return specs
+
+
 @router.post("/local/install-cuda-llama")
 async def install_cuda_llama():
     """Reinstall llama-cpp-python with CUDA support, streaming pip output as SSE."""

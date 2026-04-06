@@ -8,7 +8,8 @@ const LocalModels = {
     _registered: {},
     _arenaData: {},
     _ollama: { models: [], registered: new Set(), running: false },
-    _filters: { search: '', size: 'all', status: 'all', sort: 'name-asc', group: 'none' },
+    _filters: { search: '', sort: 'name-asc', group: 'none' },
+    _systemSpecs: null,
 
     init() {
         console.log("[LocalModels] Initializing...");
@@ -30,6 +31,7 @@ const LocalModels = {
         this.loadGPUStatus();
         this.loadOllamaStatus();
         this.loadArenaData();
+        this.loadSystemSpecs(false);
     },
 
     async loadArenaData() {
@@ -60,10 +62,10 @@ const LocalModels = {
             };
         }
 
-        ['filter-size', 'filter-status', 'sort-models', 'group-models'].forEach(id => {
+        ['sort-models', 'group-models'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.onchange = (e) => {
-                const key = id.replace('filter-', '').replace('-models', '');
+                const key = id === 'sort-models' ? 'sort' : 'group';
                 this._filters[key] = e.target.value;
                 this.applyFilters();
             };
@@ -73,24 +75,18 @@ const LocalModels = {
         if (clearBtn) {
             clearBtn.onclick = () => {
                 if (searchInput) searchInput.value = '';
-                const sizeEl = document.getElementById('filter-size');
-                const statusEl = document.getElementById('filter-status');
-                const sortEl = document.getElementById('sort-models');
+                const sortEl  = document.getElementById('sort-models');
                 const groupEl = document.getElementById('group-models');
-                
-                if (sizeEl) sizeEl.value = 'all';
-                if (statusEl) statusEl.value = 'all';
-                if (sortEl) sortEl.value = 'name-asc';
+                if (sortEl)  sortEl.value  = 'name-asc';
                 if (groupEl) groupEl.value = 'none';
-                
-                this._filters = { search: '', size: 'all', status: 'all', sort: 'name-asc', group: 'none' };
+                this._filters = { search: '', sort: 'name-asc', group: 'none' };
                 this.applyFilters();
             };
         }
     },
 
     initFilters() {
-        this._filters = { search: '', size: 'all', status: 'all', sort: 'name-asc', group: 'none' };
+        this._filters = { search: '', sort: 'name-asc', group: 'none' };
     },
 
     applyFilters() {
@@ -142,18 +138,9 @@ const LocalModels = {
             };
         });
 
-        // Filter Search & Size & Status
+        // Filter by search
         entries = entries.filter(m => {
             if (this._filters.search && !m.filename.toLowerCase().includes(this._filters.search)) return false;
-            
-            const sizeGb = m.size_mb / 1024;
-            if (this._filters.size === 'small' && sizeGb >= 3) return false;
-            if (this._filters.size === 'medium' && (sizeGb < 3 || sizeGb > 10)) return false;
-            if (this._filters.size === 'large' && sizeGb <= 10) return false;
-
-            if (this._filters.status === 'registered' && !m.isRegistered) return false;
-            if (this._filters.status === 'unregistered' && m.isRegistered) return false;
-
             return true;
         });
 
@@ -299,7 +286,7 @@ const LocalModels = {
             };
         });
 
-        // Filter Search & Size & Status
+        // Filter by search
         filtered = filtered.filter(model => {
             if (this._filters.search) {
                 const inTitle = model.name.toLowerCase().includes(this._filters.search);
@@ -307,16 +294,6 @@ const LocalModels = {
                 const inDesc  = (model.description || '').toLowerCase().includes(this._filters.search);
                 if (!inTitle && !inRepo && !inDesc) return false;
             }
-
-            const sizeMatch = (model.size || '').match(/(\d+\.?\d*)\s*GB/i);
-            if (sizeMatch && this._filters.size !== 'all') {
-                const val = parseFloat(sizeMatch[1]);
-                if (this._filters.size === 'small' && val >= 3) return false;
-                if (this._filters.size === 'medium' && (val < 3 || val > 10)) return false;
-                if (this._filters.size === 'large' && val <= 10) return false;
-            }
-
-            if (this._filters.status === 'supported' && model.unsupported) return false;
             return true;
         });
 
@@ -378,7 +355,9 @@ const LocalModels = {
                         onclick="LocalModels.installSuggestedModel('${model.id}', '${model.repo}', '${model.filename}')">
                     <i class="fas fa-download"></i> Install
                 </button>`;
-        
+
+        const compatBadge = this._getCompatBadge(model);
+
         return `
         <div class="suggestion-card-v12 faded-in-card" id="suggested-${model.id}" style="${isUnsupported ? 'opacity: 0.6;' : ''}">
             <div style="display: flex; justify-content: space-between; align-items: start;">
@@ -393,9 +372,103 @@ const LocalModels = {
                 <span class="model-size-badge">
                     <i class="fas fa-microchip"></i> ${model.size}
                 </span>
+                ${compatBadge}
                 ${actionHtml}
             </div>
         </div>`;
+    },
+
+    _getCompatBadge(model) {
+        if (!this._systemSpecs) return '';
+        const vram = this._systemSpecs.vram_gb || 0;
+        const ram  = this._systemSpecs.ram_total_gb || 0;
+
+        // Parse model size in GB from size string like "4.1 GB" or "7B"
+        let sizeGb = 0;
+        const gbMatch = (model.size || '').match(/(\d+\.?\d*)\s*GB/i);
+        const bMatch  = (model.size || '').match(/(\d+\.?\d*)B/i);
+        if (gbMatch)     sizeGb = parseFloat(gbMatch[1]);
+        else if (bMatch) sizeGb = parseFloat(bMatch[1]) * 0.6; // rough Q4 estimate
+
+        if (sizeGb === 0) return '';
+
+        let cls, label, icon;
+        if (vram >= sizeGb * 1.1) {
+            cls = 'compat-great'; label = 'Runs on GPU'; icon = 'fa-bolt';
+        } else if (vram >= sizeGb * 0.6) {
+            cls = 'compat-good';  label = 'Partial GPU';  icon = 'fa-microchip';
+        } else if (ram >= sizeGb * 1.2) {
+            cls = 'compat-ok';    label = 'CPU Only';      icon = 'fa-server';
+        } else {
+            cls = 'compat-heavy'; label = 'Very Heavy';    icon = 'fa-triangle-exclamation';
+        }
+        return `<span class="compat-badge ${cls}" title="Based on your ${vram}GB VRAM / ${ram}GB RAM"><i class="fas ${icon}"></i> ${label}</span>`;
+    },
+
+    async loadSystemSpecs(forceRefresh = false) {
+        const row = document.getElementById('system-specs-row');
+
+        // Use cached specs if available and not forcing refresh
+        if (this._systemSpecs && !forceRefresh) {
+            this._renderSpecsRow(row, this._systemSpecs);
+            return;
+        }
+
+        if (row) row.innerHTML = '<span class="placeholder-text"><i class="fas fa-spinner fa-spin"></i> Detecting hardware…</span>';
+
+        try {
+            const res = await fetch('/api/registry/local/system-specs');
+            if (!res.ok) throw new Error('failed');
+            const specs = await res.json();
+            this._systemSpecs = specs;
+            this._renderSpecsRow(row, specs);
+            // Re-render suggested cards to show compat badges
+            this.renderSuggestedModels();
+        } catch (e) {
+            if (row) row.innerHTML = '<span class="placeholder-text">Could not detect hardware</span>';
+        }
+    },
+
+    _renderSpecsRow(row, specs) {
+        if (!row) return;
+        const chips = [];
+
+        if (specs.cpu_name && specs.cpu_name !== 'Unknown') {
+            chips.push(`<div class="spec-chip">
+                <i class="fas fa-microchip"></i>
+                <div><span class="spec-chip-label">CPU</span><span class="spec-chip-value">${specs.cpu_name}</span></div>
+            </div>`);
+        }
+        if (specs.cpu_cores) {
+            chips.push(`<div class="spec-chip">
+                <i class="fas fa-layer-group"></i>
+                <div><span class="spec-chip-label">Cores / Threads</span><span class="spec-chip-value">${specs.cpu_cores}C / ${specs.cpu_threads}T</span></div>
+            </div>`);
+        }
+        if (specs.ram_total_gb) {
+            chips.push(`<div class="spec-chip">
+                <i class="fas fa-memory"></i>
+                <div><span class="spec-chip-label">System RAM</span><span class="spec-chip-value">${specs.ram_total_gb} GB</span></div>
+            </div>`);
+        }
+        if (specs.gpu_name) {
+            chips.push(`<div class="spec-chip">
+                <i class="fas fa-bolt"></i>
+                <div><span class="spec-chip-label">GPU</span><span class="spec-chip-value">${specs.gpu_name}</span></div>
+            </div>`);
+            chips.push(`<div class="spec-chip">
+                <i class="fas fa-database"></i>
+                <div><span class="spec-chip-label">VRAM</span><span class="spec-chip-value">${specs.vram_gb} GB</span></div>
+            </div>`);
+        } else {
+            chips.push(`<div class="spec-chip">
+                <i class="fas fa-microchip" style="color:var(--text-tertiary)"></i>
+                <div><span class="spec-chip-label">GPU</span><span class="spec-chip-value" style="color:var(--text-tertiary)">No CUDA GPU</span></div>
+            </div>`);
+        }
+
+        const updated = specs.last_updated ? new Date(specs.last_updated).toLocaleString() : '';
+        row.innerHTML = chips.join('') + (updated ? `<div style="flex-basis:100%;font-size:0.7rem;color:var(--text-tertiary);margin-top:0.25rem;">Last updated: ${updated}</div>` : '');
     },
 
     updateSuggestedBadges(installedFiles) {
@@ -779,10 +852,6 @@ const LocalModels = {
 
         filtered = filtered.filter(m => {
             if (this._filters.search && !m.name.toLowerCase().includes(this._filters.search)) return false;
-            
-            if (this._filters.status === 'registered' && !m.isReg) return false;
-            if (this._filters.status === 'unregistered' && m.isReg) return false;
-
             return true;
         });
 
