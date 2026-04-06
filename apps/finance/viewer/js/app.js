@@ -1890,6 +1890,38 @@
   }
 
   // ---- Holding modals ----
+  function openQuickAddHolding() {
+    const content = `
+      <div class="form-group">
+        <label class="form-label">Ticker / Symbol</label>
+        <input id="qa-ticker" class="form-input" placeholder="e.g. AAPL or BTC" style="text-transform:uppercase" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Shares / Units</label>
+        <input id="qa-shares" type="number" step="any" min="0" class="form-input" placeholder="0.0" />
+      </div>
+      <p class="text-muted" style="font-size:0.85rem; margin-top:10px;">
+        <i class="fa-solid fa-circle-info"></i> Name, price, and type will be fetched automatically.
+      </p>
+    `;
+    openModal('Quick Add Asset', content, defaultFooter(false), async () => {
+      const ticker = document.getElementById('qa-ticker').value.trim().toUpperCase();
+      const shares = parseFloat(document.getElementById('qa-shares').value);
+      if (!ticker || isNaN(shares)) {
+        notify('Please enter ticker and shares', 'error');
+        return;
+      }
+      try {
+        await api('POST', '/api/holding', { ticker, shares });
+        closeModal();
+        await loadState();
+        notify(`Added ${ticker}`, 'success');
+      } catch (e) { 
+        notify('Error: ' + e.message, 'error');
+      }
+    });
+  }
+
   function openAddHolding() {
     openModal('Add Holding', holdingForm({}), defaultFooter(false), async () => {
       const data = collectHoldingForm();
@@ -1903,6 +1935,20 @@
         notify('Error: ' + e.message, 'error');
       }
     });
+    // Add auto-fetch listener to ticker field
+    const tickerInput = document.getElementById('hf-ticker');
+    if (tickerInput) {
+      tickerInput.addEventListener('blur', async () => {
+        const ticker = tickerInput.value.trim().toUpperCase();
+        if (ticker && !document.getElementById('hf-name').value) {
+          try {
+            const stats = await api('GET', `/api/holding/stats/${encodeURIComponent(ticker)}`);
+            if (stats.name) document.getElementById('hf-name').value = stats.name;
+            if (stats.current_price) document.getElementById('hf-current-price').value = stats.current_price;
+          } catch (e) { /* ignore */ }
+        }
+      });
+    }
   }
 
   function openEditHolding(id) {
@@ -1999,6 +2045,7 @@
   window.confirmDeleteBudget = confirmDeleteBudget;
   window.openEditHolding     = openEditHolding;
   window.confirmDeleteHolding = confirmDeleteHolding;
+  window.openQuickAddHolding = openQuickAddHolding;
 
   // ======================================================================
   // Boot

@@ -198,11 +198,11 @@ class GoalUpdate(BaseModel):
 
 class HoldingIn(BaseModel):
     ticker: str
-    name: str
-    asset_type: str   # stock / etf / crypto / bond / reit / fund / cash / other
     shares: float
-    buy_price: float
-    current_price: float
+    name: Optional[str] = None
+    asset_type: Optional[str] = "stock"
+    buy_price: Optional[float] = 0.0
+    current_price: Optional[float] = None
     currency: str = "€"
     note: str = ""
 
@@ -398,14 +398,41 @@ async def delete_goal(goal_id: str):
 # ---------------------------------------------------------------------------
 @app.post("/api/holding")
 async def add_holding(holding: HoldingIn):
+    ticker = holding.ticker.upper()
+    name = holding.name
+    asset_type = holding.asset_type or "stock"
+    current_price = holding.current_price
+
+    # Auto-fetch missing data if possible
+    if not name or current_price is None:
+        try:
+            import yfinance as yf
+            yf_ticker = ticker
+            if asset_type == "crypto" and "-" not in ticker:
+                yf_ticker = ticker + "-USD"
+            
+            t = yf.Ticker(yf_ticker)
+            if not name:
+                name = t.info.get("longName") or t.info.get("shortName") or ticker
+            if current_price is None:
+                current_price = t.fast_info.last_price
+                if current_price is None or current_price <= 0:
+                    hist = t.history(period="1d")
+                    if not hist.empty:
+                        current_price = float(hist["Close"].iloc[-1])
+        except Exception as e:
+            logger.warning(f"Auto-fetch failed for {ticker}: {e}")
+            if not name: name = ticker
+            if current_price is None: current_price = 0.0
+
     new_holding = {
         "id": str(uuid.uuid4()),
-        "ticker": holding.ticker.upper(),
-        "name": holding.name,
-        "asset_type": holding.asset_type,
+        "ticker": ticker,
+        "name": name,
+        "asset_type": asset_type,
         "shares": holding.shares,
-        "buy_price": holding.buy_price,
-        "current_price": holding.current_price,
+        "buy_price": holding.buy_price or 0.0,
+        "current_price": current_price or 0.0,
         "currency": holding.currency,
         "note": holding.note,
     }
@@ -619,6 +646,7 @@ def get_ticker_stats(ticker: str, period: str = "1y"):
         stats = {
             "symbol": ticker.upper(),
             "name": info.get("longName") or info.get("shortName") or ticker.upper(),
+            "current_price": info.get("currentPrice") or info.get("regularMarketPrice"),
             "sector": info.get("sector"),
             "industry": info.get("industry"),
             "market_cap": info.get("marketCap"),

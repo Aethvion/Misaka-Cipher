@@ -1156,7 +1156,6 @@
     /* Market Ticker */
     #market-ticker-container {
       flex: 1;
-      max-width: 600px;
       overflow: hidden;
       background: rgba(0,0,0,0.2);
       border-radius: 6px;
@@ -1165,6 +1164,7 @@
       align-items: center;
       padding: 0 12px;
       margin-left: 20px;
+      margin-right: 20px;
     }
     #market-ticker {
       display: flex;
@@ -1314,8 +1314,6 @@
       </div>
     </div>
 
-    <div class="spacer"></div>
-
     <!-- Save inline row -->
     <div id="save-inline">
       <input type="text" id="save-name-input" placeholder="Project name…" />
@@ -1324,6 +1322,9 @@
     </div>
 
     <div class="header-actions">
+      <button class="hdr-btn" id="hdr-quick-add-btn" style="background: var(--success); color: var(--bg-darker); border: none;">
+        <i class="fa-solid fa-plus"></i> Quick Add
+      </button>
       <button class="hdr-btn hdr-btn-save" id="hdr-save-btn">
         <i class="fa-solid fa-floppy-disk"></i> Save
       </button>
