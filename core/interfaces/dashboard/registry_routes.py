@@ -549,18 +549,16 @@ def _get_chat_model_ids(registry: Dict[str, Any]) -> Dict[str, Dict]:
 
 
 def _seed_auto_routing(registry: Dict[str, Any]) -> Dict[str, Any]:
-    """Ensure auto_routing contains all chat models. Missing entries are added (enabled=True).
-    Models that lose their 'chat' capability are NOT auto-removed (user may re-add it)."""
+    """Ensure auto_routing.chat contains all chat-capable models. Missing entries are added (enabled=True)."""
     chat_models = _get_chat_model_ids(registry)
     auto = registry.setdefault("auto_routing", {})
 
-    for profile_type in ("chat", "agent"):
-        profile = auto.setdefault(profile_type, {})
-        profile.setdefault("route_picker", next(iter(chat_models), ""))
-        pool = profile.setdefault("models", {})
-        for model_id in chat_models:
-            if model_id not in pool:
-                pool[model_id] = {"enabled": True}
+    profile = auto.setdefault("chat", {})
+    profile.setdefault("route_picker", next(iter(chat_models), ""))
+    pool = profile.setdefault("models", {})
+    for model_id in chat_models:
+        if model_id not in pool:
+            pool[model_id] = {"enabled": True}
 
     return registry
 
@@ -578,21 +576,22 @@ async def get_auto_routing():
         chat_models = _get_chat_model_ids(registry)
         auto = registry.get("auto_routing", {})
 
-        enriched = {}
-        for profile_type in ("chat", "agent"):
-            profile = auto.get(profile_type, {})
-            pool = profile.get("models", {})
-            enriched_pool = {}
-            for model_id, cfg in pool.items():
-                enriched_pool[model_id] = {
-                    **cfg,
-                    "description": chat_models.get(model_id, {}).get("description", ""),
-                    "provider": chat_models.get(model_id, {}).get("provider", ""),
-                }
-            enriched[profile_type] = {
-                "route_picker": profile.get("route_picker", ""),
+        chat_profile = auto.get("chat", {})
+        pool = chat_profile.get("models", {})
+        enriched_pool = {}
+        for model_id, cfg in pool.items():
+            enriched_pool[model_id] = {
+                **cfg,
+                "description": chat_models.get(model_id, {}).get("description", ""),
+                "provider": chat_models.get(model_id, {}).get("provider", ""),
+            }
+
+        enriched = {
+            "chat": {
+                "route_picker": chat_profile.get("route_picker", ""),
                 "models": enriched_pool,
             }
+        }
 
         return {"auto_routing": enriched, "all_chat_models": list(chat_models.keys())}
     except Exception as e:

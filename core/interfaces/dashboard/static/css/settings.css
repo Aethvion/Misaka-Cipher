@@ -465,8 +465,6 @@ input::-webkit-inner-spin-button {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
-    max-height: 320px;
-    overflow-y: auto;
     padding-right: 4px;
 }
 
