@@ -1981,6 +1981,10 @@ async function switchSettingsSubTab(subTab, save = true) {
         loadChatModels();
     }
 
+    if (subTab === 'extapi') {
+        loadExternalApiSettings();
+    }
+
     if (subTab === 'system') {
         loadDisplayTimezone();
     }
@@ -2671,5 +2675,138 @@ function loadNotificationSettings() {
         const row = createNotifRow(source.id, source.label, source.icon, !(hidden === true || hidden === 'true'));
         container.appendChild(row);
     });
+}
+
+// ===== External API Settings =====
+
+async function loadExternalApiSettings() {
+    try {
+        const [cfgRes, keysRes] = await Promise.all([
+            fetch('/api/external-api/config'),
+            fetch('/api/external-api/keys'),
+        ]);
+        if (!cfgRes.ok || !keysRes.ok) throw new Error('Failed to load external API settings');
+        const cfg  = await cfgRes.json();
+        const data = await keysRes.json();
+
+        const enabledEl     = document.getElementById('extapi-enabled');
+        const requireAuthEl = document.getElementById('extapi-require-auth');
+        if (enabledEl)     { enabledEl.checked = cfg.enabled !== false; enabledEl.onchange = () => extApiSaveConfig(); }
+        if (requireAuthEl) { requireAuthEl.checked = !!cfg.require_auth; requireAuthEl.onchange = () => extApiSaveConfig(); }
+
+        _renderExtApiKeys(data.keys || []);
+    } catch (e) {
+        console.error('[ExtAPI] Failed to load settings:', e);
+    }
+}
+
+async function extApiSaveConfig() {
+    const enabledEl     = document.getElementById('extapi-enabled');
+    const requireAuthEl = document.getElementById('extapi-require-auth');
+    try {
+        await fetch('/api/external-api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                enabled:      enabledEl     ? enabledEl.checked      : true,
+                require_auth: requireAuthEl ? requireAuthEl.checked  : false,
+            }),
+        });
+        showNotification('External API settings saved', 'success');
+    } catch (e) {
+        showNotification('Failed to save settings', 'error');
+    }
+}
+
+function _renderExtApiKeys(keys) {
+    const list = document.getElementById('extapi-keys-list');
+    if (!list) return;
+    if (!keys.length) {
+        list.innerHTML = '<p class="section-hint" style="padding: 0.5rem 0;">No API keys yet. Click <strong>New Key</strong> to create one.</p>';
+        return;
+    }
+    list.innerHTML = keys.map(k => `
+        <div class="extapi-key-row" id="extapi-key-row-${k.id}">
+            <div class="extapi-key-info">
+                <span class="extapi-key-name">${_escHtml(k.name)}</span>
+                <code class="extapi-key-preview">${_escHtml(k.key_preview)}</code>
+            </div>
+            <div class="extapi-key-meta">
+                <span class="extapi-key-stat">${k.request_count} requests</span>
+                <span class="extapi-key-stat">${k.last_used ? 'Last used ' + new Date(k.last_used).toLocaleDateString() : 'Never used'}</span>
+            </div>
+            <button class="action-btn secondary xs-btn" onclick="extApiDeleteKey('${k.id}', '${_escHtml(k.name)}')" title="Revoke key">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+async function extApiCreateKey() {
+    const name = prompt('Key name (e.g. "My App", "Home Server"):');
+    if (!name) return;
+    try {
+        const res = await fetch('/api/external-api/keys', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name }),
+        });
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+
+        // Show the key once
+        const revealBox  = document.getElementById('extapi-new-key-reveal');
+        const revealCode = document.getElementById('extapi-new-key-value');
+        if (revealBox && revealCode) {
+            revealCode.textContent = data.key;
+            revealBox.style.display = 'block';
+        }
+
+        showNotification(`Key "${name}" created`, 'success');
+        loadExternalApiSettings();
+    } catch (e) {
+        showNotification('Failed to create key', 'error');
+    }
+}
+
+async function extApiDeleteKey(keyId, name) {
+    if (!confirm(`Revoke key "${name}"? Any apps using it will stop working.`)) return;
+    try {
+        const res = await fetch(`/api/external-api/keys/${keyId}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed');
+        document.getElementById(`extapi-key-row-${keyId}`)?.remove();
+        showNotification(`Key "${name}" revoked`, 'success');
+        loadExternalApiSettings();
+    } catch (e) {
+        showNotification('Failed to delete key', 'error');
+    }
+}
+
+function extApiCopy(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    navigator.clipboard.writeText(el.textContent.trim())
+        .then(() => showNotification('Copied to clipboard', 'success'))
+        .catch(() => showNotification('Copy failed', 'error'));
+}
+
+function extApiCopyNewKey() {
+    const code = document.getElementById('extapi-new-key-value');
+    if (!code) return;
+    navigator.clipboard.writeText(code.textContent.trim())
+        .then(() => showNotification('Key copied!', 'success'))
+        .catch(() => showNotification('Copy failed', 'error'));
+}
+
+function extApiQsTab(tab, btn) {
+    ['python', 'node', 'curl'].forEach(t => {
+        const el = document.getElementById(`extapi-qs-${t}`);
+        if (el) el.style.display = t === tab ? 'block' : 'none';
+    });
+    document.querySelectorAll('.extapi-qs-tab').forEach(b => b.classList.toggle('active', b === btn));
+}
+
+function _escHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 

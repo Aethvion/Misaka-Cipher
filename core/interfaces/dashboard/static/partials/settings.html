@@ -31,6 +31,9 @@
                         <button class="settings-nav-item" data-settingsubtab="notifications">
                             <i class="fas fa-bell"></i> Notifications
                         </button>
+                        <button class="settings-nav-item" data-settingsubtab="extapi">
+                            <i class="fas fa-plug"></i> External API
+                        </button>
                     </div>
 
                     <!-- Settings Content Pane -->
@@ -651,6 +654,152 @@
                                     <div id="notif-visibility-list" class="iface-visibility-list"></div>
                                 </div>
                             </div>
+                        </div>
+
+                        <!-- Panel: External API -->
+                        <div class="settings-panel" id="settings-panel-extapi">
+
+                            <!-- Configuration Card -->
+                            <div class="setting-card">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-plug"></i>
+                                        <span>External API</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="section-hint" style="margin-bottom: 1rem;">
+                                        Expose an OpenAI-compatible API so external apps can use Aethvion's AI routing — no need to integrate every provider separately.
+                                    </p>
+                                    <div class="compact-item toggle-item" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
+                                        <div class="item-label">Enable External API</div>
+                                        <label class="switch small">
+                                            <input type="checkbox" id="extapi-enabled" checked>
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                    <div class="compact-item toggle-item">
+                                        <div class="item-label">
+                                            <span>Require API Key Auth</span>
+                                            <i class="fas fa-info-circle tooltip-trigger" title="When off, anyone with network access can call the API. Enable this if you expose Aethvion outside your local machine."></i>
+                                        </div>
+                                        <label class="switch small">
+                                            <input type="checkbox" id="extapi-require-auth">
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Endpoint Reference Card -->
+                            <div class="setting-card" style="margin-top: 1rem;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-network-wired"></i>
+                                        <span>Endpoints</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <div class="extapi-endpoint-list" id="extapi-endpoint-list">
+                                        <div class="extapi-ep-row">
+                                            <span class="extapi-method extapi-method--get">GET</span>
+                                            <code class="extapi-url" id="extapi-url-models">http://localhost:8080/v1/models</code>
+                                            <button class="extapi-copy-btn" onclick="extApiCopy('extapi-url-models')" title="Copy"><i class="fas fa-copy"></i></button>
+                                        </div>
+                                        <div class="extapi-ep-row">
+                                            <span class="extapi-method extapi-method--post">POST</span>
+                                            <code class="extapi-url" id="extapi-url-chat">http://localhost:8080/v1/chat/completions</code>
+                                            <button class="extapi-copy-btn" onclick="extApiCopy('extapi-url-chat')" title="Copy"><i class="fas fa-copy"></i></button>
+                                        </div>
+                                    </div>
+                                    <p class="section-hint" style="margin-top: 0.75rem; font-size: 0.75rem;">
+                                        Set <code>base_url="http://localhost:8080/v1"</code> in any OpenAI-compatible SDK.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- API Keys Card -->
+                            <div class="setting-card" style="margin-top: 1rem;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-key"></i>
+                                        <span>API Keys</span>
+                                    </div>
+                                    <button class="action-btn primary xs-btn" onclick="extApiCreateKey()">
+                                        <i class="fas fa-plus"></i> New Key
+                                    </button>
+                                </div>
+                                <div class="card-content">
+                                    <div id="extapi-keys-list">
+                                        <div class="loading-placeholder">Loading keys…</div>
+                                    </div>
+                                    <!-- New key reveal (shown once after creation) -->
+                                    <div id="extapi-new-key-reveal" style="display:none; margin-top: 1rem;">
+                                        <div class="extapi-key-reveal-box">
+                                            <i class="fas fa-triangle-exclamation" style="color:#fbbf24;"></i>
+                                            <span>Copy this key now — it won't be shown again.</span>
+                                            <code id="extapi-new-key-value"></code>
+                                            <button class="action-btn secondary xs-btn" onclick="extApiCopyNewKey()"><i class="fas fa-copy"></i> Copy</button>
+                                            <button class="action-btn secondary xs-btn" onclick="document.getElementById('extapi-new-key-reveal').style.display='none'"><i class="fas fa-times"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Start Card -->
+                            <div class="setting-card" style="margin-top: 1rem;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-rocket"></i>
+                                        <span>Quick Start</span>
+                                    </div>
+                                    <div class="extapi-qs-tabs">
+                                        <button class="extapi-qs-tab active" onclick="extApiQsTab('python', this)">Python</button>
+                                        <button class="extapi-qs-tab" onclick="extApiQsTab('node', this)">Node.js</button>
+                                        <button class="extapi-qs-tab" onclick="extApiQsTab('curl', this)">cURL</button>
+                                    </div>
+                                </div>
+                                <div class="card-content" style="padding-top: 0;">
+                                    <pre class="extapi-code-block" id="extapi-qs-python">from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8080/v1",
+    api_key="aeth-your-key"  # or any string if auth is off
+)
+
+response = client.chat.completions.create(
+    model="gemini-2.0-flash",  # any model from /v1/models
+    messages=[
+        {"role": "user", "content": "Hello from my app!"}
+    ]
+)
+
+print(response.choices[0].message.content)</pre>
+                                    <pre class="extapi-code-block" id="extapi-qs-node" style="display:none">import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "http://localhost:8080/v1",
+  apiKey: "aeth-your-key", // or any string if auth is off
+});
+
+const response = await client.chat.completions.create({
+  model: "gemini-2.0-flash",
+  messages: [{ role: "user", content: "Hello from my app!" }],
+});
+
+console.log(response.choices[0].message.content);</pre>
+                                    <pre class="extapi-code-block" id="extapi-qs-curl" style="display:none">curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer aeth-your-key" \
+  -d '{
+    "model": "gemini-2.0-flash",
+    "messages": [
+      {"role": "user", "content": "Hello from my app!"}
+    ]
+  }'</pre>
+                                </div>
+                            </div>
+
                         </div>
                     </div> <!-- closes settings-content-wrapper -->
                 </div> <!-- closes settings-dashboard -->
