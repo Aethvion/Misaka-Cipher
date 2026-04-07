@@ -34,6 +34,9 @@
                         <button class="settings-nav-item" data-settingsubtab="extapi">
                             <i class="fas fa-plug"></i> External API
                         </button>
+                        <button class="settings-nav-item" data-settingsubtab="overlay">
+                            <i class="fas fa-layer-group"></i> Desktop Overlay
+                        </button>
                     </div>
 
                     <!-- Settings Content Pane -->
@@ -801,5 +804,152 @@ console.log(response.choices[0].message.content);</pre>
                             </div>
 
                         </div>
+
+                        <!-- Panel: Desktop Overlay -->
+                        <div class="settings-panel" id="settings-panel-overlay">
+
+                            <!-- Status Card -->
+                            <div class="setting-card">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-layer-group"></i>
+                                        <span>Desktop Overlay</span>
+                                    </div>
+                                    <div id="overlay-status-badge" class="overlay-status-badge overlay-status--unknown">
+                                        <span class="overlay-status-dot"></span>
+                                        <span class="overlay-status-text">Checking…</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="section-hint" style="margin-bottom: 1rem;">
+                                        A lightweight system-tray companion that lets you ask questions about your screen without opening the dashboard.
+                                        Press the hotkey to capture your screen and ask anything — Aethvion answers using its vision model.
+                                    </p>
+
+                                    <div class="compact-item toggle-item" style="border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
+                                        <div class="item-label">
+                                            <span>Auto-start with Aethvion Suite</span>
+                                            <i class="fas fa-info-circle tooltip-trigger" title="When enabled the overlay launches automatically alongside the dashboard."></i>
+                                        </div>
+                                        <label class="switch small">
+                                            <input type="checkbox" id="overlay-autostart">
+                                            <span class="slider round"></span>
+                                        </label>
+                                    </div>
+
+                                    <div class="overlay-action-row">
+                                        <button class="action-btn primary" id="overlay-launch-btn" onclick="overlayLaunch()">
+                                            <i class="fas fa-play"></i> Launch Overlay
+                                        </button>
+                                        <button class="action-btn secondary" id="overlay-stop-btn" onclick="overlayStop()" style="display:none;">
+                                            <i class="fas fa-stop"></i> Stop Overlay
+                                        </button>
+                                        <button class="action-btn secondary" onclick="overlayRefreshStatus()" title="Refresh status">
+                                            <i class="fas fa-rotate-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Hotkey & Model Card -->
+                            <div class="setting-card" style="margin-top: 1rem;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-keyboard"></i>
+                                        <span>Hotkey &amp; Model</span>
+                                    </div>
+                                    <button class="action-btn primary xs-btn" onclick="overlaySaveConfig()">
+                                        <i class="fas fa-save"></i> Save
+                                    </button>
+                                </div>
+                                <div class="card-content">
+                                    <div class="compact-item" style="margin-bottom: 0.75rem;">
+                                        <div class="item-label">Global Hotkey</div>
+                                        <input type="text" id="overlay-hotkey" class="setting-input"
+                                               value="ctrl+shift+space"
+                                               placeholder="e.g. ctrl+shift+space"
+                                               style="max-width: 220px;">
+                                    </div>
+                                    <p class="section-hint" style="margin-bottom: 0.75rem; font-size: 0.75rem;">
+                                        Hotkey changes take effect the next time the overlay is launched.
+                                    </p>
+                                    <div class="compact-item">
+                                        <div class="item-label">
+                                            <span>Vision Model</span>
+                                            <i class="fas fa-info-circle tooltip-trigger" title="Leave blank to use the Info Assistant model from Global System settings."></i>
+                                        </div>
+                                        <select id="overlay-model" class="setting-select" style="max-width: 260px;">
+                                            <option value="">Use Info Assistant (default)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Dependencies Card -->
+                            <div class="setting-card" style="margin-top: 1rem;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-box-open"></i>
+                                        <span>Required Packages</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <p class="section-hint" style="margin-bottom: 0.75rem;">
+                                        The overlay sidecar needs these Python packages.
+                                        Install any missing ones, then click <strong>Launch Overlay</strong>.
+                                    </p>
+                                    <div id="overlay-deps-list" class="overlay-deps-grid">
+                                        <!-- populated by JS -->
+                                    </div>
+                                    <div id="overlay-pip-hint" style="display:none; margin-top: 0.75rem;">
+                                        <pre class="extapi-code-block" style="font-size:0.75rem;">pip install PyQt6 pystray Pillow mss keyboard</pre>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- How it works Card -->
+                            <div class="setting-card" style="margin-top: 1rem;">
+                                <div class="card-header">
+                                    <div class="header-title">
+                                        <i class="fas fa-circle-info"></i>
+                                        <span>How It Works</span>
+                                    </div>
+                                </div>
+                                <div class="card-content">
+                                    <div class="overlay-how-grid">
+                                        <div class="overlay-how-step">
+                                            <span class="overlay-step-num">1</span>
+                                            <div>
+                                                <strong>Launch</strong>
+                                                <p>Start the overlay from here or enable auto-start. A small icon appears in your system tray.</p>
+                                            </div>
+                                        </div>
+                                        <div class="overlay-how-step">
+                                            <span class="overlay-step-num">2</span>
+                                            <div>
+                                                <strong>Hotkey</strong>
+                                                <p>Press <kbd>Ctrl+Shift+Space</kbd> anywhere. Your screen is captured instantly before the window appears.</p>
+                                            </div>
+                                        </div>
+                                        <div class="overlay-how-step">
+                                            <span class="overlay-step-num">3</span>
+                                            <div>
+                                                <strong>Ask</strong>
+                                                <p>Type your question in the floating window — "What does this error mean?", "Summarise this article", anything.</p>
+                                            </div>
+                                        </div>
+                                        <div class="overlay-how-step">
+                                            <span class="overlay-step-num">4</span>
+                                            <div>
+                                                <strong>Answer</strong>
+                                                <p>Aethvion processes the screenshot with your chosen vision model and displays the response directly in the overlay.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div><!-- /settings-panel-overlay -->
+
                     </div> <!-- closes settings-content-wrapper -->
                 </div> <!-- closes settings-dashboard -->

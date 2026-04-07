@@ -1078,4 +1078,129 @@ input::-webkit-inner-spin-button {
     transition: all 0.15s;
 }
 .extapi-qs-tab:hover { color: var(--text-primary); border-color: var(--border); }
-.extapi-qs-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+.extapi-qs-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+/* ── Desktop Overlay Settings ────────────────────────────────────────────── */
+
+/* Status badge */
+.overlay-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.65rem;
+    border-radius: 99px;
+    border: 1px solid transparent;
+}
+.overlay-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Running state — green */
+.overlay-status--running {
+    background: rgba(52,211,153,0.12);
+    color: #34d399;
+    border-color: rgba(52,211,153,0.25);
+}
+.overlay-status--running .overlay-status-dot { background: #34d399; box-shadow: 0 0 5px #34d399; }
+
+/* Stopped state — muted */
+.overlay-status--stopped {
+    background: rgba(120,120,140,0.1);
+    color: rgba(160,160,180,0.85);
+    border-color: rgba(120,120,140,0.2);
+}
+.overlay-status--stopped .overlay-status-dot { background: rgba(140,140,160,0.6); }
+
+/* Unknown / checking */
+.overlay-status--unknown {
+    background: rgba(99,102,241,0.1);
+    color: rgba(165,180,252,0.8);
+    border-color: rgba(99,102,241,0.2);
+}
+.overlay-status--unknown .overlay-status-dot { background: rgba(99,102,241,0.6); }
+
+/* Action row (launch / stop buttons) */
+.overlay-action-row {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Dependency chips grid */
+.overlay-deps-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.overlay-dep-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 99px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+.overlay-dep-chip--ok {
+    background: rgba(52,211,153,0.12);
+    color: #34d399;
+    border-color: rgba(52,211,153,0.25);
+}
+.overlay-dep-chip--missing {
+    background: rgba(248,113,113,0.12);
+    color: #f87171;
+    border-color: rgba(248,113,113,0.25);
+}
+
+/* "How it works" grid */
+.overlay-how-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+}
+.overlay-how-step {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+.overlay-step-num {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(99,102,241,0.18);
+    color: #a5b4fc;
+    font-size: 0.8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(99,102,241,0.3);
+}
+.overlay-how-step strong {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+.overlay-how-step p {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+}
+.overlay-how-step kbd {
+    background: rgba(99,102,241,0.15);
+    color: #a5b4fc;
+    border: 1px solid rgba(99,102,241,0.3);
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.72rem;
+    font-family: monospace;
+}

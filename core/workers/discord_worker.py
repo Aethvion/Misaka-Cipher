@@ -156,15 +156,12 @@ class DiscordWorker(commands.Bot):
             
             full_prompt = f"SHARED CONVERSATION HISTORY:\n---\n{history_context}\n---\n\n{prompt}"
 
-            result = await loop.run_in_executor(
-                None,
-                lambda: self.orchestrator.process_message(
-                    full_prompt, 
-                    trace_id=trace_id,
-                    source="discord",
-                    security_context=security_context,
-                    allow_tools=allow_tools
-                )
+            result = await self.orchestrator.process_message(
+                full_prompt, 
+                trace_id=trace_id,
+                source="discord",
+                security_context=security_context,
+                allow_tools=allow_tools
             )
             
             if result.success and result.response:

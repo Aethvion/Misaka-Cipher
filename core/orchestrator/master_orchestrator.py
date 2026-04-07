@@ -104,9 +104,9 @@ class MasterOrchestrator:
         """Set callback for real-time step monitoring."""
         self.step_callback = callback
     
-    def process_message(self, user_message: str, system_prompt: Optional[str] = None, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, source: str = "unknown", security_context: str = "", allow_tools: bool = True, internet_search: bool = False) -> ExecutionResult:
+    async def process_message(self, user_message: str, system_prompt: Optional[str] = None, mode: str = "auto", trace_id: Optional[str] = None, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, source: str = "unknown", security_context: str = "", allow_tools: bool = True, internet_search: bool = False) -> ExecutionResult:
         """
-        Process user message end-to-end.
+        Process user message end-to-end (Asynchronous).
         
         Args:
             user_message: User's input message
@@ -114,9 +114,10 @@ class MasterOrchestrator:
             trace_id: Optional trace ID (if provided by caller)
             model_id: Optional specific model ID to force
             images: Optional list of attached images
-            source: Client source (dashboard, discord, etc)
+            source: Client source (dashboard, discord, chat, etc)
             security_context: Special security instructions appended to system prompt
             allow_tools: Whether to allow tool usage and provide tool syntax to the model
+            internet_search: Whether to enable the web_search tool
             
         Returns:
             ExecutionResult with complete execution details
@@ -126,7 +127,7 @@ class MasterOrchestrator:
             trace_id = generate_trace_id()
         self.current_trace_id = trace_id
         
-        logger.info(f"[{trace_id}] Processing message: {user_message[:50]}...")
+        logger.info(f"[{trace_id}] Processing message (async): {user_message[:50]}...")
         if model_id:
             logger.info(f"[{trace_id}] Force Model: {model_id}")
 
@@ -145,22 +146,35 @@ class MasterOrchestrator:
             
             if use_persona:
                 logger.info(f"[{trace_id}] Routing directly to PersonaManager (source={source})")
-                import asyncio
+                
                 # When agents are disabled (chat_only mode), disable tool usage
                 effective_allow_tools = allow_tools and (mode != "chat_only")
-                try:
-                    result = asyncio.run(self._execute_persona_chat(user_message, trace_id, model_id, images, source, security_context, effective_allow_tools, internet_search=internet_search))
-                except RuntimeError:
-                    # If called from a thread that already has an event loop, create a fresh one
-                    new_loop = asyncio.new_event_loop()
-                    try:
-                        result = new_loop.run_until_complete(self._execute_persona_chat(user_message, trace_id, model_id, images, source, security_context, effective_allow_tools, internet_search=internet_search))
-                    finally:
-                        new_loop.close()
-
+                
+                result = await self._execute_persona_chat(
+                    user_message, 
+                    trace_id, 
+                    model_id, 
+                    images, 
+                    source, 
+                    system_prompt, 
+                    security_context, 
+                    effective_allow_tools, 
+                    internet_search=internet_search
+                )
                 
                 # PersonaManager handles memory updates inside the loop or we do it here
                 result.response = IdentityManager.extract_and_update(result.response)
+            elif source == "chat" and internet_search:
+                logger.info(f"[{trace_id}] Routing to neutral tool-enabled chat (internet_search=True)")
+                result = await self._execute_neutral_tool_chat(
+                    user_message,
+                    trace_id,
+                    model_id,
+                    images,
+                    system_prompt,
+                    allow_tools=allow_tools,
+                    internet_search=True
+                )
             else:
                 # Step 1: Analyze intent
                 force_chat = (mode == "chat_only")
@@ -232,9 +246,18 @@ class MasterOrchestrator:
                 else:
                     logger.error(f"[{trace_id}] EpisodicMemoryStore.store returned False")
 
-                # --- Identity & Dynamic Memory ---
-                result.response = IdentityManager.extract_and_update(result.response)
-                
+                # Mirror to Unified History (Misaka's Memory)
+                if source in ["discord", "misakacipher"]:
+                    # Log Assistant message
+                    HistoryManager.log_message(
+                        role="assistant",
+                        content=result.response,
+                        platform=source,
+                        metadata={
+                            "trace_id": trace_id,
+                            "model_id": result.model_id or model_id
+                        }
+                    )
             except Exception as mem_err:
                 logger.error(f"[{trace_id}] Failed to store memory: {mem_err}")
                 import traceback
@@ -312,17 +335,27 @@ class MasterOrchestrator:
             
             # Execute tools only if allowed
             if allow_tools:
+                if "[tool:" in content:
+                    logger.info(f"[{trace_id}] Found tool calls in model response, executing...")
+                    if self.step_callback:
+                        self.step_callback({
+                            "type": "agent_step",
+                            "title": "Executing Tools",
+                            "content": f"Misaka is using tools to fulfill your request...",
+                            "trace_id": trace_id,
+                            "status": "running"
+                        })
+                
                 cleaned_content, tool_results = await PersonaManager.execute_tools(content)
                 
-                # Extract media paths from tool results (like screenshots)
-                for res in tool_results:
-                    if "Saved to: " in res:
-                        try:
-                            path_line = [line for line in res.splitlines() if "Saved to: " in line][0]
-                            media_path = path_line.replace("Saved to: ", "").strip()
-                            media_paths.append(media_path)
-                        except Exception as e:
-                            logger.error(f"Failed to extract media path: {e}")
+                if tool_results and self.step_callback:
+                    self.step_callback({
+                        "type": "agent_step",
+                        "title": "Tool Execution Complete",
+                        "content": f"Finished executing {len(tool_results)} tool(s).",
+                        "trace_id": trace_id,
+                        "status": "completed"
+                    })
             else:
                 # If tools are not allowed, strip any hallucinated tags but do not execute them
                 import re
@@ -356,6 +389,131 @@ class MasterOrchestrator:
                 conv_context = f"{conv_context}\n\n{current_response}\n\n--- NEW TOOL RESULTS ---\n{tool_results_str}"
 
         return ExecutionResult(trace_id, True, current_response, actions_taken, [], [], 0, 0, model_id=model_id, media_paths=media_paths)
+
+    async def _execute_neutral_tool_chat(self, user_message: str, trace_id: str, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, system_prompt: Optional[str] = None, allow_tools: bool = True, internet_search: bool = False) -> ExecutionResult:
+        """Handle neutral chat with iterative tool execution (no persona/identity)."""
+        # Build a robust system prompt for tool usage
+        tool_instructions = ""
+        if allow_tools:
+            nexus_caps = PersonaManager._build_nexus_capabilities()
+            search_cap = "  [tool:web_search query=\"<query>\"] — Search the internet for real-time information.\n" if internet_search else ""
+            nexus_block = f"\n{nexus_caps}\n{search_cap}\n" if (nexus_caps or search_cap) else ""
+            
+            tool_instructions = f"""
+CAPABILITIES:
+{nexus_block}
+INSTRUCTIONS:
+1. To obtain real-time data or verify facts (especially for links), use the tool tag: [tool:web_search query="..."]
+2. Provide direct, neutral answers. NEVER include persona tags like [Mood] or [Emotion].
+3. For multiple steps, output the tool call first, wait for RESULTS, and then summarize.
+"""
+        
+        # Inject current time for factual context
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        time_context = f"\nCURRENT TIME: {now_str}\n"
+
+        base_system = "You are Aethvion AI, a professional and fact-oriented digital assistant."
+        if system_prompt:
+            final_system_prompt = f"{system_prompt}\n\n{base_system}\n{time_context}\n{tool_instructions}"
+        else:
+            final_system_prompt = f"{base_system}\n{time_context}\n{tool_instructions}"
+
+        accumulated_text = ""
+        actions_taken = ["neutral_tool_chat"]
+        media_paths = []
+        
+        # Current conversation starts with the user message (which includes task history)
+        full_history = f"{user_message}\n\nAssistant:"
+        
+        for i in range(3): # Max 3 tool iterations
+            logger.info(f"[{trace_id}] Starting neutral chat iteration {i}")
+            
+            request = Request(
+                prompt=full_history,
+                system_prompt=final_system_prompt,
+                request_type="generation",
+                trace_id=trace_id,
+                metadata={"source": "chat"},
+                model=model_id,
+                images=images
+            )
+            
+            response = self.nexus.route_request(request)
+            if not response.success:
+                return ExecutionResult(trace_id, False, f"LLM Error: {response.error}", actions_taken, [], [], 0, 0)
+            
+            content = response.content.strip()
+            if not content:
+                break
+                
+            # Execute tools only if allowed
+            cleaned_content = content
+            tool_results = []
+            
+            if allow_tools and "[tool:" in content:
+                if self.step_callback:
+                    self.step_callback({
+                        "type": "agent_step",
+                        "title": "Internet Search" if "web_search" in content else "Executing Tools",
+                        "content": f"AI is retrieving real-time information...",
+                        "trace_id": trace_id,
+                        "status": "running"
+                    })
+                
+                cleaned_content, tool_results = await PersonaManager.execute_tools(content)
+                
+                if tool_results and self.step_callback:
+                    self.step_callback({
+                        "type": "agent_step",
+                        "title": "Step Complete",
+                        "content": f"Successfully executed {len(tool_results)} tool(s).",
+                        "trace_id": trace_id,
+                        "status": "completed"
+                    })
+                
+            # Accumulate text: only append if it's NOT a repeat of previous text
+            # Models sometimes repeat the full context when continuing.
+            if cleaned_content:
+                if not accumulated_text:
+                    accumulated_text = cleaned_content
+                elif cleaned_content not in accumulated_text:
+                    # Only append if this newest piece isn't already a subset of what we have
+                    # OR if what we have isn't a subset of this (if it is, replace it)
+                    if accumulated_text in cleaned_content:
+                        accumulated_text = cleaned_content
+                    else:
+                        accumulated_text += "\n" + cleaned_content
+            
+            if not tool_results:
+                break
+            
+            # Preparation for next iteration
+            tool_results_str = "\n".join(tool_results)
+            actions_taken.append(f"tools_executed_{len(tool_results)}")
+            
+            # Update history: we include the model's reply (with tags) + the results
+            full_history += f" {content}\n\n--- TOOL RESULTS ---\n{tool_results_str}\n\nAssistant:"
+
+        # Ensure we have at least SOMETHING to return
+        final_text = accumulated_text.strip()
+        if not final_text:
+            if actions_taken and len(actions_taken) > 1:
+                final_text = "Retrieved results but no final summary was provided."
+            else:
+                final_text = "The AI returned an empty response. This can happen if the prompt was flagged by a safety filter."
+
+        return ExecutionResult(
+            trace_id=trace_id,
+            success=True,
+            response=final_text,
+            actions_taken=actions_taken,
+            tools_forged=[],
+            agents_spawned=[],
+            memories_queried=0,
+            execution_time=0,
+            model_id=model_id,
+            media_paths=media_paths
+        )
 
     def decide_action(self, intent: IntentAnalysis, trace_id: str, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, system_prompt: Optional[str] = None) -> ActionPlan:
         """

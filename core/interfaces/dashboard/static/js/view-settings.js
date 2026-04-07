@@ -1985,6 +1985,10 @@ async function switchSettingsSubTab(subTab, save = true) {
         loadExternalApiSettings();
     }
 
+    if (subTab === 'overlay') {
+        loadOverlaySettings();
+    }
+
     if (subTab === 'system') {
         loadDisplayTimezone();
     }
@@ -2809,4 +2813,173 @@ function extApiQsTab(tab, btn) {
 function _escHtml(str) {
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// ── Desktop Overlay Settings ──────────────────────────────────────────────────
+
+async function loadOverlaySettings() {
+    try {
+        const [cfgRes, statusRes] = await Promise.all([
+            fetch('/api/overlay/config'),
+            fetch('/api/overlay/status'),
+        ]);
+        const cfg    = cfgRes.ok    ? await cfgRes.json()    : {};
+        const status = statusRes.ok ? await statusRes.json() : {};
+
+        // Populate form fields
+        const hotkeyEl    = document.getElementById('overlay-hotkey');
+        const autostartEl = document.getElementById('overlay-autostart');
+        const modelEl     = document.getElementById('overlay-model');
+
+        if (hotkeyEl)    hotkeyEl.value    = cfg.hotkey             ?? 'ctrl+shift+space';
+        if (autostartEl) autostartEl.checked = !!cfg.launch_with_suite;
+
+        // Populate model dropdown — reuse the chat models list
+        if (modelEl) {
+            try {
+                const mRes  = await fetch('/api/preferences/chat-models');
+                const mData = mRes.ok ? await mRes.json() : {};
+                const models = mData.models || [];
+                // Keep the default "Use Info Assistant" option, add models
+                while (modelEl.options.length > 1) modelEl.remove(1);
+                models.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.id || m.model_id || m.name || m;
+                    opt.textContent = m.display_name || m.name || m.id || m;
+                    if (opt.value === (cfg.model || '')) opt.selected = true;
+                    modelEl.appendChild(opt);
+                });
+                if (!cfg.model) modelEl.value = '';
+            } catch (_) {}
+        }
+
+        // Save autostart immediately on toggle
+        if (autostartEl) {
+            autostartEl.onchange = () => overlaySaveConfig();
+        }
+
+        _overlayApplyStatus(status);
+    } catch (e) {
+        console.error('loadOverlaySettings error', e);
+    }
+}
+
+function _overlayApplyStatus(status) {
+    const badge   = document.getElementById('overlay-status-badge');
+    const textEl  = badge?.querySelector('.overlay-status-text');
+    const launchBtn = document.getElementById('overlay-launch-btn');
+    const stopBtn   = document.getElementById('overlay-stop-btn');
+
+    const running = status?.running ?? false;
+
+    if (badge) {
+        badge.className = `overlay-status-badge overlay-status--${running ? 'running' : 'stopped'}`;
+    }
+    if (textEl) textEl.textContent = running ? 'Running' : 'Not running';
+
+    if (launchBtn) launchBtn.style.display = running ? 'none'  : '';
+    if (stopBtn)   stopBtn.style.display   = running ? ''      : 'none';
+
+    // Dependencies
+    const deps     = status?.deps ?? {};
+    const depsEl   = document.getElementById('overlay-deps-list');
+    const pipHint  = document.getElementById('overlay-pip-hint');
+    if (depsEl) {
+        const pkgs   = ['PyQt6', 'pystray', 'Pillow', 'mss', 'keyboard'];
+        const missing = pkgs.filter(p => deps[p] === false);
+        depsEl.innerHTML = pkgs.map(pkg => {
+            const ok = deps[pkg] !== false;
+            return `<div class="overlay-dep-chip overlay-dep-chip--${ok ? 'ok' : 'missing'}">
+                        <i class="fas fa-${ok ? 'check' : 'xmark'}"></i> ${_escHtml(pkg)}
+                    </div>`;
+        }).join('');
+        if (pipHint) pipHint.style.display = missing.length ? '' : 'none';
+    }
+
+    if (!status?.script_exists) {
+        if (launchBtn) {
+            launchBtn.disabled = true;
+            launchBtn.title = 'Overlay script not found (apps/overlay/main.py)';
+        }
+    }
+}
+
+async function overlayRefreshStatus() {
+    try {
+        const res    = await fetch('/api/overlay/status');
+        const status = res.ok ? await res.json() : {};
+        _overlayApplyStatus(status);
+    } catch (_) {}
+}
+
+async function overlaySaveConfig() {
+    const hotkeyEl    = document.getElementById('overlay-hotkey');
+    const autostartEl = document.getElementById('overlay-autostart');
+    const modelEl     = document.getElementById('overlay-model');
+
+    const body = {
+        hotkey:            hotkeyEl?.value?.trim()  || 'ctrl+shift+space',
+        launch_with_suite: autostartEl?.checked     ?? false,
+        model:             modelEl?.value           || null,
+    };
+
+    try {
+        const res = await fetch('/api/overlay/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        _overlayToast('Settings saved.');
+    } catch (e) {
+        _overlayToast(`Save failed: ${e.message}`, true);
+    }
+}
+
+async function overlayLaunch() {
+    const btn = document.getElementById('overlay-launch-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Launching…'; }
+    try {
+        const res  = await fetch('/api/overlay/launch', { method: 'POST' });
+        const data = res.ok ? await res.json() : {};
+        if (data.status === 'already_running') {
+            _overlayToast('Overlay is already running.');
+        } else {
+            _overlayToast('Overlay launched — check your system tray.');
+            // Wait a moment then refresh status
+            setTimeout(overlayRefreshStatus, 2000);
+        }
+    } catch (e) {
+        _overlayToast(`Launch failed: ${e.message}`, true);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> Launch Overlay'; }
+    }
+}
+
+async function overlayStop() {
+    const btn = document.getElementById('overlay-stop-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Stopping…'; }
+    try {
+        await fetch('/api/overlay/stop', { method: 'POST' });
+        _overlayToast('Overlay stopped.');
+        setTimeout(overlayRefreshStatus, 800);
+    } catch (e) {
+        _overlayToast(`Stop failed: ${e.message}`, true);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-stop"></i> Stop Overlay'; }
+    }
+}
+
+function _overlayToast(msg, isError = false) {
+    // Reuse existing toast/notify if available, otherwise console
+    if (typeof showNotification === 'function') {
+        showNotification(msg, isError ? 'error' : 'success');
+    } else {
+        console[isError ? 'error' : 'log']('[Overlay]', msg);
+    }
+}
+
+window.overlayLaunch         = overlayLaunch;
+window.overlayStop           = overlayStop;
+window.overlayRefreshStatus  = overlayRefreshStatus;
+window.overlaySaveConfig     = overlaySaveConfig;
 

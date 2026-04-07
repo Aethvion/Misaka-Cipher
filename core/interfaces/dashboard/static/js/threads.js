@@ -1192,6 +1192,12 @@ async function pollTaskStatus(taskId, threadId) {
                 return;
             }
 
+            // Update typing indicator with steps if available
+            if (data.steps && data.steps.length > 0) {
+                const lastStep = data.steps[data.steps.length - 1];
+                showTypingIndicator(lastStep.title);
+            }
+
             attempts++;
             setTimeout(poll, intervalFor(attempts));
 
@@ -1235,8 +1241,10 @@ function updateMessageInThread(threadId, taskId, content) {
 }
 
 // Typing Indicator Management
-function showTypingIndicator(internal = false) {
-    if (!internal) isTypingIndicatorVisible = true;
+let currentTypingStep = null;
+function showTypingIndicator(stepTitle = null) {
+    isTypingIndicatorVisible = true;
+    currentTypingStep = stepTitle;
     
     let indicator = document.getElementById('chat-typing-indicator');
     const messages = document.getElementById('chat-messages');
@@ -1268,7 +1276,8 @@ function showTypingIndicator(internal = false) {
         typingInterval = setInterval(() => {
             typingDotsCount = (typingDotsCount % 5) + 1;
             const dots = '.'.repeat(typingDotsCount);
-            if (textEl) textEl.textContent = `${randomMsg}${dots}`;
+            const baseText = currentTypingStep || randomMsg;
+            if (textEl) textEl.textContent = `${baseText}${dots}`;
         }, 400);
     }
 

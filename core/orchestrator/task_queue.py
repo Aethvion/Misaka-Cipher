@@ -273,18 +273,16 @@ class TaskWorker:
                         )
                     else:
                         # ── Regular chat task → orchestrator ───────────────────────
-                        result = await loop.run_in_executor(
-                            None,  # Use default executor
-                            lambda: self.orchestrator.process_message(
-                                context_prompt, 
-                                system_prompt=pm_system_prompt,
-                                mode=mode, 
-                                trace_id=task.id,
-                                model_id=model_id, 
-                                images=images, 
-                                source="chat",
-                                internet_search=settings.get('internet_search', False)
-                            )
+                        # 2. Process via Master Orchestrator
+                        result = await self.orchestrator.process_message(
+                            context_prompt, 
+                            system_prompt=pm_system_prompt,
+                            mode=mode, 
+                            trace_id=task.id,
+                            model_id=model_id, 
+                            images=images, 
+                            source="chat",
+                            internet_search=settings.get('internet_search', False)
                         )
                     
                     # Convert ExecutionResult to dict

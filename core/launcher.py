@@ -140,6 +140,12 @@ APP_REGISTRY: dict[str, dict] = {
         "title":    "Drive Info",
         "required": False,
     },
+    "overlay": {
+        "script":   "apps/overlay/main.py",
+        "port":     None,   # sidecar — no web server, lives in system tray
+        "title":    "Desktop Overlay",
+        "required": False,
+    },
 }
 
 # ── Windows Job Object (KillOnJobClose) ───────────────────────────────────────
@@ -236,9 +242,9 @@ def _is_running_aethvion(proc: psutil.Process) -> bool:
             return False
             
         # Check for core modules or specific app servers
-        targets = ["core.main", "vtuber_server.py", "tracking_server.py", "code_server.py", 
-                   "hardware_server.py", "audio_server.py", "photo_server.py", 
-                   "finance_server.py", "driveinfo_server.py"]
+        targets = ["core.main", "vtuber_server.py", "tracking_server.py", "code_server.py",
+                   "hardware_server.py", "audio_server.py", "photo_server.py",
+                   "finance_server.py", "driveinfo_server.py", "apps/overlay/main.py"]
         return any(t in cmdline_str for t in targets)
     except (psutil.NoSuchProcess, psutil.AccessDenied):
         return False
@@ -469,7 +475,10 @@ def _launch_process(name: str, cfg: dict, consumer: bool) -> subprocess.Popen | 
     try:
         proc = subprocess.Popen(cmd, **popen_kwargs)
         _register(proc)
-        print(f"[Launcher]  ✓  {cfg['title']:<20} PID {proc.pid:<6}  →  http://localhost:{cfg['port']}")
+        if cfg.get("port"):
+            print(f"[Launcher]  ✓  {cfg['title']:<20} PID {proc.pid:<6}  →  http://localhost:{cfg['port']}")
+        else:
+            print(f"[Launcher]  ✓  {cfg['title']:<20} PID {proc.pid:<6}  (tray sidecar)")
         return proc
     except FileNotFoundError:
         print(f"[Launcher]  ✗  {cfg['title']} — executable not found: {python}")
@@ -607,6 +616,17 @@ def main() -> None:
         if i > 0:
             time.sleep(0.5)          # 500 ms gap between launches
         _launch_process(app_name, APP_REGISTRY[app_name], consumer)
+
+    # ── Auto-start overlay sidecar if configured ──────────────────────────────
+    try:
+        import json as _json
+        _overlay_cfg_path = ROOT / "data" / "overlay" / "config.json"
+        if _overlay_cfg_path.exists():
+            _overlay_cfg = _json.loads(_overlay_cfg_path.read_text(encoding="utf-8"))
+            if _overlay_cfg.get("launch_with_suite"):
+                _launch_process("overlay", APP_REGISTRY["overlay"], consumer)
+    except Exception as _oe:
+        print(f"[Launcher] Could not check overlay auto-start config: {_oe}")
 
     print()
 
