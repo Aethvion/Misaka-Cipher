@@ -688,13 +688,22 @@ function renderMarkdown(text) {
 
 function cleanStreamingDisplay(rawText) {
     // Remove expression/mood/break tags (complete + partial at string end)
-    // [^\]]+ matches multi-word emotions like "warm smile", "happy closedeyes"
     let clean = rawText
         .replace(/\[Emotion:[^\]]*\]/gi, '')
         .replace(/\[Mood:[^\]]*\]/gi, '')
         .replace(/\[msg_break\]/gi, '')
         // Strip partial tag still being typed at end of string
         .replace(/\[(Emotion|Mood|msg_break)[^\]]*$/i, '');
+
+    // Strip [tool:...] tags that leaked through (safety net — backend should catch these)
+    clean = clean.replace(/\[tool:[^\]]*\]/gi, '');
+    // Strip partial [tool: tag at end of string
+    clean = clean.replace(/\[tool:[^\]]*$/i, '');
+
+    // Strip complete <memory_update>...</memory_update> blocks (safety net)
+    clean = clean.replace(/<memory_update>[\s\S]*?<\/memory_update>/gi, '');
+    // Strip open/partial <memory_update> block (rest of string is JSON body leaking through)
+    clean = clean.replace(/<memory_update[\s\S]*/gi, '');
 
     // Strip complete bare JSON memory blobs (model forgot <memory_update> wrapper)
     const memKeys = /"(?:user_info|recent_observations|base_info|synthesis_notes)"/;

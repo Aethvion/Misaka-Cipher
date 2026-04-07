@@ -68,9 +68,13 @@ async def assistant_chat(request: AssistantChatRequest):
     target_model = assistant_config.get('model', 'flash')
     include_web = assistant_config.get('include_web_context', False)
     allow_dash_control = assistant_config.get('allow_dashboard_control', False)
+
+    pm = ProviderManager()
+    trace_id = f"assistant-{uuid.uuid4().hex[:8]}"
+
     system_prompt = _build_assistant_context(include_web_context=include_web, allow_dashboard_control=allow_dash_control)
     validate_call_context(CallSource.COMPANION, system_prompt, trace_id)
-    
+
     # Simple manual tool routing for specific usage queries to save tokens/increase accuracy
     user_msg = request.messages[-1].content.lower() if request.messages else ""
     if any(k in user_msg for k in ["how many", "file count", "files are in", "project size", "how big"]):
@@ -82,9 +86,6 @@ async def assistant_chat(request: AssistantChatRequest):
     for msg in request.messages:
         formatted_prompt += f"{msg.role.capitalize()}: {msg.content}\n"
     formatted_prompt += "Misaka:"
-    
-    pm = ProviderManager()
-    trace_id = f"assistant-{uuid.uuid4().hex[:8]}"
     
     try:
         # 1. Initial Call with tool support

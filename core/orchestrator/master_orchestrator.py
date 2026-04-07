@@ -9,6 +9,7 @@ from datetime import datetime
 
 import re
 import json
+import asyncio
 from pathlib import Path
 from core.tools.standard.file_ops import WORKSPACE_ROOT
 
@@ -394,116 +395,191 @@ class MasterOrchestrator:
         return ExecutionResult(trace_id, True, current_response, actions_taken, [], [], 0, 0, model_id=model_id, media_paths=media_paths)
 
     async def _execute_neutral_tool_chat(self, user_message: str, trace_id: str, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, system_prompt: Optional[str] = None, allow_tools: bool = True, internet_search: bool = False) -> ExecutionResult:
-        """Handle neutral chat with iterative tool execution (no persona/identity)."""
-        # Build a robust system prompt for tool usage
-        tool_instructions = ""
-        if allow_tools:
-            nexus_caps = PersonaManager._build_nexus_capabilities()
-            search_cap = "  [tool:web_search query=\"<query>\"] — Search the internet for real-time information.\n" if internet_search else ""
-            nexus_block = f"\n{nexus_caps}\n{search_cap}\n" if (nexus_caps or search_cap) else ""
-            
-            tool_instructions = f"""
-CAPABILITIES:
-{nexus_block}
-INSTRUCTIONS:
-1. To obtain real-time data or verify facts (especially for links), use the tool tag: [tool:web_search query="..."]
-2. Provide direct, neutral answers. NEVER include persona tags like [Mood] or [Emotion].
-3. For multiple steps, output the tool call first, wait for RESULTS, and then summarize.
-"""
-        
-        # Inject current time for factual context
+        """Handle neutral chat — with optional pre-fetched web search context (no persona/identity).
+
+        Architecture:
+        ─────────────
+        When internet_search=True, web search is executed BEFORE the LLM call and
+        the results are injected directly into the prompt context.  This is more
+        reliable than asking the model to emit [tool:web_search ...] tags because
+        some models return an empty response when their sole output is a tool tag.
+
+        Nexus / custom [tool:...] tags are still supported for any other
+        capabilities registered in the Nexus module registry.
+        """
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        time_context = f"\nCURRENT TIME: {now_str}\n"
+        time_context = f"Current date/time: {now_str}"
+        neutral_base = (
+            "Answer the user's question directly and concisely. "
+            "Do not introduce yourself or mention any AI product name."
+        )
 
-        base_system = "You are Aethvion AI, a professional and fact-oriented digital assistant."
+        # ── Step 1: Pre-execute web search (if enabled) ───────────────────────
+        pre_search_context = ""
+        if internet_search and allow_tools:
+            try:
+                # Extract the actual user query from a potentially history-wrapped message
+                search_query = user_message
+                if "\nCurrent Message:\n" in user_message:
+                    search_query = user_message.split("\nCurrent Message:\n")[-1].strip()
+                # Clamp to a sensible search query length
+                search_query = search_query[:300]
+
+                logger.info(f"[{trace_id}] Pre-executing web search for: {search_query[:80]!r}")
+                if self.step_callback:
+                    self.step_callback({
+                        "type": "agent_step",
+                        "title": "Internet Search",
+                        "content": "Searching the web for real-time information...",
+                        "trace_id": trace_id,
+                        "status": "running",
+                    })
+
+                search_result = await asyncio.to_thread(
+                    PersonaManager.execute_tool_sync, "web_search", {"query": search_query}
+                )
+
+                if search_result and "[web_search ERROR]" not in search_result:
+                    pre_search_context = (
+                        f"\n\n[LIVE WEB SEARCH RESULTS — retrieved just now]\n"
+                        f"{search_result}\n"
+                        f"[END SEARCH RESULTS]\n"
+                    )
+                    logger.info(f"[{trace_id}] Web search complete ({len(search_result)} chars)")
+                    if self.step_callback:
+                        self.step_callback({
+                            "type": "agent_step",
+                            "title": "Search Complete",
+                            "content": "Retrieved real-time search results.",
+                            "trace_id": trace_id,
+                            "status": "completed",
+                        })
+                else:
+                    logger.warning(f"[{trace_id}] Web search returned no usable results: {str(search_result)[:120]}")
+            except Exception as _search_err:
+                logger.warning(f"[{trace_id}] Web search pre-execution failed: {_search_err}")
+
+        # ── Step 2: Build system prompt ────────────────────────────────────────
+        nexus_caps = PersonaManager._build_nexus_capabilities() if allow_tools else ""
+
+        prompt_parts = [neutral_base, time_context]
+
+        if nexus_caps:
+            prompt_parts.append(f"NEXUS CAPABILITIES (use [tool:nexus ...] syntax):\n{nexus_caps}")
+
+        if internet_search:
+            if pre_search_context:
+                prompt_parts.append(
+                    "SEARCH CONTEXT: Live web search results are included in the user message context. "
+                    "Use them to answer questions about current events, dates, or real-time facts. "
+                    "Cite sources where helpful."
+                )
+            else:
+                # Search failed — tell the model it can still try via tag syntax
+                prompt_parts.append(
+                    "SEARCH: If you need real-time information use: "
+                    "[tool:web_search query=\"<your query>\"]"
+                )
+
+        base_instructions = "\n".join(prompt_parts)
+
         if system_prompt:
-            final_system_prompt = f"{system_prompt}\n\n{base_system}\n{time_context}\n{tool_instructions}"
+            final_system_prompt = f"{system_prompt}\n\n{base_instructions}"
         else:
-            final_system_prompt = f"{base_system}\n{time_context}\n{tool_instructions}"
+            final_system_prompt = base_instructions
 
+        # ── Step 3: Build conversation prompt (search results injected inline) ─
+        full_history = f"{user_message}{pre_search_context}\n\nAssistant:"
+
+        # ── Step 4: LLM call loop (handles any remaining [tool:...] tags) ─────
         accumulated_text = ""
         actions_taken = ["neutral_tool_chat"]
+        if pre_search_context:
+            actions_taken.append("web_search_pre_executed")
         media_paths = []
-        
-        # Current conversation starts with the user message (which includes task history)
-        full_history = f"{user_message}\n\nAssistant:"
-        
-        for i in range(3): # Max 3 tool iterations
-            logger.info(f"[{trace_id}] Starting neutral chat iteration {i}")
-            
+
+        for i in range(3):  # Max 3 iterations for any follow-up nexus tool calls
+            logger.info(f"[{trace_id}] Neutral chat LLM iteration {i}")
+
             request = Request(
                 prompt=full_history,
                 system_prompt=final_system_prompt,
                 request_type="generation",
                 trace_id=trace_id,
-                metadata={"source": "chat"},
+                metadata={"source": CallSource.CHAT},
                 model=model_id,
-                images=images
+                images=images,
             )
-            
+
             response = self.nexus.route_request(request)
             if not response.success:
                 return ExecutionResult(trace_id, False, f"LLM Error: {response.error}", actions_taken, [], [], 0, 0)
-            
+
             content = response.content.strip()
+
             if not content:
+                finish_reason = (response.metadata or {}).get("finish_reason", "unknown")
+                logger.warning(
+                    f"[{trace_id}] Empty response from model on iteration {i} "
+                    f"(finish_reason={finish_reason!r}). "
+                    f"Provider: {getattr(response, 'provider', 'unknown')}"
+                )
                 break
-                
-            # Execute tools only if allowed
+
+            # Execute any [tool:...] tags the model may have emitted
             cleaned_content = content
             tool_results = []
-            
+
             if allow_tools and "[tool:" in content:
                 if self.step_callback:
                     self.step_callback({
                         "type": "agent_step",
-                        "title": "Internet Search" if "web_search" in content else "Executing Tools",
-                        "content": f"AI is retrieving real-time information...",
+                        "title": "Executing Tools",
+                        "content": "AI is using tools to fulfil your request...",
                         "trace_id": trace_id,
-                        "status": "running"
+                        "status": "running",
                     })
-                
+
                 cleaned_content, tool_results = await PersonaManager.execute_tools(content)
-                
+
                 if tool_results and self.step_callback:
                     self.step_callback({
                         "type": "agent_step",
-                        "title": "Step Complete",
-                        "content": f"Successfully executed {len(tool_results)} tool(s).",
+                        "title": "Tools Complete",
+                        "content": f"Executed {len(tool_results)} tool(s).",
                         "trace_id": trace_id,
-                        "status": "completed"
+                        "status": "completed",
                     })
-                
-            # Accumulate text: only append if it's NOT a repeat of previous text
-            # Models sometimes repeat the full context when continuing.
+
+            # Accumulate — avoid re-adding text that is already present
             if cleaned_content:
                 if not accumulated_text:
                     accumulated_text = cleaned_content
                 elif cleaned_content not in accumulated_text:
-                    # Only append if this newest piece isn't already a subset of what we have
-                    # OR if what we have isn't a subset of this (if it is, replace it)
-                    if accumulated_text in cleaned_content:
-                        accumulated_text = cleaned_content
-                    else:
-                        accumulated_text += "\n" + cleaned_content
-            
+                    accumulated_text = (
+                        cleaned_content
+                        if accumulated_text in cleaned_content
+                        else accumulated_text + "\n" + cleaned_content
+                    )
+
             if not tool_results:
                 break
-            
-            # Preparation for next iteration
+
+            # Prepare next iteration with tool results
             tool_results_str = "\n".join(tool_results)
             actions_taken.append(f"tools_executed_{len(tool_results)}")
-            
-            # Update history: we include the model's reply (with tags) + the results
             full_history += f" {content}\n\n--- TOOL RESULTS ---\n{tool_results_str}\n\nAssistant:"
 
-        # Ensure we have at least SOMETHING to return
+        # ── Step 5: Return ─────────────────────────────────────────────────────
         final_text = accumulated_text.strip()
         if not final_text:
-            if actions_taken and len(actions_taken) > 1:
-                final_text = "Retrieved results but no final summary was provided."
+            if len(actions_taken) > 1:
+                final_text = "Retrieved results but the model did not produce a summary. Please try again."
             else:
-                final_text = "The AI returned an empty response. This can happen if the prompt was flagged by a safety filter."
+                final_text = (
+                    "The AI returned an empty response. "
+                    "This can happen if the prompt was flagged by a safety filter."
+                )
 
         return ExecutionResult(
             trace_id=trace_id,
@@ -515,7 +591,7 @@ INSTRUCTIONS:
             memories_queried=0,
             execution_time=0,
             model_id=model_id,
-            media_paths=media_paths
+            media_paths=media_paths,
         )
 
     def decide_action(self, intent: IntentAnalysis, trace_id: str, model_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None, system_prompt: Optional[str] = None) -> ActionPlan:

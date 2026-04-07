@@ -137,8 +137,21 @@ class GoogleAIProvider(BaseProvider):
                 'total_tokens': response.usage_metadata.total_token_count if response.usage_metadata else None
             } if hasattr(response, 'usage_metadata') and response.usage_metadata else {}
 
+            response_text = response.text if response.text else ""
+
+            # Log a warning when the model returns no text — this is usually a
+            # safety filter or a finish_reason other than STOP.  Helps diagnose
+            # "empty response" issues without breaking the call.
+            if not response_text:
+                finish_reason = response.candidates[0].finish_reason if response.candidates else "NO_CANDIDATES"
+                logger.warning(
+                    f"[{trace_id}] Google AI returned empty text. "
+                    f"finish_reason={finish_reason!r}  model={active_model!r}. "
+                    f"Candidates: {len(response.candidates) if response.candidates else 0}."
+                )
+
             return ProviderResponse(
-                content=response.text if response.text else "",
+                content=response_text,
                 model=active_model,
                 provider="google_ai",
                 trace_id=trace_id,

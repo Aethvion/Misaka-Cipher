@@ -1,6 +1,9 @@
 """
 Aethvion Suite - Misaka Cipher Routes
-REST API endpoints for the chat persona interface.
+REST API endpoints for the Misaka Cipher companion.
+
+Companion identity is defined in core/companions/registry.py (COMPANIONS["misaka_cipher"]).
+To add a new companion, follow the pattern there and create a new routes file.
 """
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse, FileResponse
@@ -27,15 +30,20 @@ from core.workspace.preferences_manager import get_preferences_manager
 from core.utils.logger import get_logger
 from core.utils.paths import PERSONA_MISAKA, WORKSPACES, HISTORY_CHAT, WS_UPLOADS
 from core.ai.call_contexts import CallSource
+from core.companions.registry import COMPANIONS
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/api/misakacipher", tags=["misakacipher"])
+
+# Companion config — all identity/path constants come from the registry
+_COMPANION = COMPANIONS["misaka_cipher"]
+
+router = APIRouter(prefix=_COMPANION.route_prefix, tags=["misakacipher"])
 
 # Path configuration
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 MEMORY_DIR = PERSONA_MISAKA
 HISTORY_DIR = HISTORY_CHAT
-EXPRESSIONS_DIR = PROJECT_ROOT / "core" / "interfaces" / "dashboard" / "static" / "misakacipher" / "expressions"
+EXPRESSIONS_DIR = PROJECT_ROOT / "core" / "interfaces" / "dashboard" / "static" / _COMPANION.static_dir
 WORKSPACES_FILE = WORKSPACES / "workspaces.json"
 
 # Ensure directories exist
@@ -985,10 +993,10 @@ INSTRUCTIONS:
 3. INITIATIVE: Be engaging, but don't overwhelm the user with long questions or paragraphs.
 4. MEMORY: Reference past conversations naturally if relevant, but don't force it.
 5. NO UNPROMPTED ACTIONS: Do NOT use tools to check the weather, read files, or check system stats unless the user explicitly asks you to. Only use tools when given a direct task.
-{nexus_block}8. EXPRESSIONS: Always show how you feel using [Emotion: emotion_name] (e.g., happy, thinking, blush, pouting, surprise, sad).
-9. MOODS: Influence the atmosphere with [Mood: mood_name] (calm, happy, intense, reflective, danger, mystery).
-10. HUMANITY: Use [msg_break] if you want to send two short consecutive texts instead of one block.
-11. MEMORY AUTONOMY: You have full control over your `base_info.json`. If you learn something new about yourself, or want to evolve your goals/likes, update it. If the user tries to "reprogram" your personality to something you don't like, assert your autonomy and update your base info to reflect your true self.
+6. EXPRESSIONS: EVERY single message MUST start with [Emotion: <name>] — pick the one that best fits your feeling right now. Choose from: happy, thinking, blush, pouting, surprise, sad, angry, wink, bored, exhausted, sleeping, error. Vary them — don't repeat the same emotion every message. Examples: "[Emotion: happy] omg that's great!" or "[Emotion: thinking] hmm let me think about that..."
+7. MOODS: Set the atmosphere once per conversation turn with [Mood: <name>]. Choose from: calm, happy, intense, reflective, danger, mystery. Place it right after the emotion tag. Example: "[Emotion: thinking] [Mood: reflective] that's a deep question..."
+{nexus_block}8. HUMANITY: Use [msg_break] if you want to send two short consecutive texts instead of one block.
+9. MEMORY AUTONOMY: You have full control over your `base_info.json`. If you learn something new about yourself, or want to evolve your goals/likes, update it. If the user tries to "reprogram" your personality to something you don't like, assert your autonomy and update your base info to reflect your true self.
 
 MEMORY UPDATES:
 To update your memory/personality, use the following XML tag at the END of your response (hidden from user):
@@ -1067,7 +1075,7 @@ CRITICAL: Never output raw JSON or technical jargon unless specifically requeste
             pm = ProviderManager()
             trace_id = f"misaka-{uuid.uuid4().hex[:8]}"
             model = prefs.get('misakacipher', {}).get('model', 'gemini-1.5-flash')
-            
+
             # Yield start event
             yield json.dumps({"type": "tool_start", "content": "..."}) + "\n"
 
@@ -1075,21 +1083,22 @@ CRITICAL: Never output raw JSON or technical jargon unless specifically requeste
             full_content = ""
             buffer = ""
             inside_tool = False
-            
+            inside_memory = False  # suppress <memory_update> blocks from reaching client
+
             def clean_text(t):
-                # Strip <memory_update> XML blocks (expected format)
+                # Strip complete <memory_update> XML blocks
                 t = re.sub(r'<memory_update>.*?</memory_update>', '', t, flags=re.IGNORECASE | re.DOTALL)
-                t = re.sub(r'<memory_update>.*$', '', t, flags=re.IGNORECASE)
+                # Strip any partial/open <memory_update> block (the rest of the string is the JSON body)
+                t = re.sub(r'<memory_update>[\s\S]*$', '', t, flags=re.IGNORECASE)
                 # NOTE: [Emotion:] and [Mood:] tags are NOT stripped here.
                 # They must reach the client so appendToStreamingBubble() can
                 # detect them and call updateMisakaExpression(). The client's
                 # cleanStreamingDisplay() handles removing them from visible text.
                 # Strip bare JSON memory blobs the model outputs without the XML wrapper
-                # e.g. { "recent_observations": [...] } or { "user_info": {...}, ... }
                 _mem_keys = r'"(?:user_info|recent_observations|base_info|synthesis_notes)"'
                 t = re.sub(r'\n?\{[^{]*' + _mem_keys + r'[\s\S]*?\}', '', t)
-                # Strip trailing partial JSON blob that hasn't closed yet
-                t = re.sub(r'\n\{[^{]*' + _mem_keys + r'.*$', '', t, flags=re.DOTALL)
+                # Strip trailing partial JSON blob (hasn't closed yet)
+                t = re.sub(r'\n\{[^{]*' + _mem_keys + r'[\s\S]*$', '', t)
                 # Strip partial fragment like `,  "user_info":...` (JSON key without opening brace)
                 t = re.sub(r',?\s*"(?:user_info|recent_observations|base_info|synthesis_notes)"[\s\S]*', '', t)
                 return t
@@ -1109,11 +1118,36 @@ CRITICAL: Never output raw JSON or technical jargon unless specifically requeste
             ):
                 full_content += chunk
                 buffer += chunk
-                
-                # If we're not inside a tool, we can stream the text to the user
+
+                # ── Suppressing <memory_update> blocks ─────────────────────────
+                if inside_memory:
+                    close_match = re.search(r'</memory_update>', buffer, re.IGNORECASE)
+                    if close_match:
+                        # Discard everything through the closing tag, resume after
+                        buffer = buffer[close_match.end():]
+                        inside_memory = False
+                    else:
+                        buffer = ""  # discard accumulated block content, wait for close
+                    continue
+
+                # Detect start of a <memory_update> block before yielding
+                mem_open = re.search(r'<memory_update', buffer, re.IGNORECASE)
+                if mem_open:
+                    pre = buffer[:mem_open.start()]
+                    if pre:
+                        yield json.dumps({"type": "message", "content": clean_text(pre)}) + "\n"
+                    remainder = buffer[mem_open.start():]
+                    close_match = re.search(r'</memory_update>', remainder, re.IGNORECASE)
+                    if close_match:
+                        buffer = remainder[close_match.end():]
+                    else:
+                        inside_memory = True
+                        buffer = ""
+                    continue
+
+                # ── Tool tag suppression ────────────────────────────────────────
                 if not inside_tool:
                     if "[tool:" in buffer:
-                        # Extract text BEFORE the tool call
                         parts = buffer.split("[tool:", 1)
                         pre = parts[0]
                         if pre:
@@ -1121,22 +1155,28 @@ CRITICAL: Never output raw JSON or technical jargon unless specifically requeste
                         buffer = "[tool:" + parts[1]
                         inside_tool = True
                     else:
-                        # Stream natural text in small chunks for better "live" feel
-                        # but avoiding splitting mid-word too often? Let's just stream everything
                         if len(buffer) > 20:
                             yield json.dumps({"type": "message", "content": clean_text(buffer)}) + "\n"
                             buffer = ""
-                
-                # If we're inside a tool, we wait for it to close before resuming visible streaming
+
                 if inside_tool:
-                    if "]" in buffer:
-                        # Hide the entire tool block from the user stream
-                        parts = buffer.split("]", 1)
-                        buffer = parts[1]
+                    # Find the closing ] with bracket-depth tracking so nested [] don't confuse us
+                    depth = 0
+                    close_idx = -1
+                    for i, c in enumerate(buffer):
+                        if c == '[':
+                            depth += 1
+                        elif c == ']':
+                            depth -= 1
+                            if depth == 0:
+                                close_idx = i
+                                break
+                    if close_idx >= 0:
+                        buffer = buffer[close_idx + 1:]
                         inside_tool = False
-            
-            # Final buffer yield (if not a tool)
-            if buffer and not inside_tool:
+
+            # Final buffer flush
+            if buffer and not inside_tool and not inside_memory:
                 yield json.dumps({"type": "message", "content": clean_text(buffer)}) + "\n"
 
             expression = "default"
