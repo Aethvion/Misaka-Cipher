@@ -1076,7 +1076,8 @@ async function loadChatModels() {
         document.getElementById('aiconv-model-add'),
         document.getElementById('advaiconv-person-add'),
         document.getElementById('setting-misakacipher-model'),
-        document.getElementById('setting-info-model')
+        document.getElementById('setting-info-model'),
+        document.getElementById('overlay-model')
     ].filter(Boolean);
 
     if (selects.length === 0) return;
@@ -1118,6 +1119,12 @@ async function loadChatModels() {
                 const prefModel = prefs.get('system.info_model', 'flash');
                 if (sel.querySelector(`option[value="${prefModel}"]`)) {
                     sel.value = prefModel;
+                }
+            } else if (sel.id === 'overlay-model') {
+                // Restored separately by loadOverlaySettings() after config is fetched
+                // Keep current selection if still valid, otherwise leave at default
+                if (currentVal && sel.querySelector(`option[value="${currentVal}"]`)) {
+                    sel.value = currentVal;
                 }
             } else if (currentVal && sel.querySelector(`option[value="${currentVal}"]`)) {
                 sel.value = currentVal;
@@ -2825,31 +2832,25 @@ async function loadOverlaySettings() {
         const cfg    = cfgRes.ok    ? await cfgRes.json()    : {};
         const status = statusRes.ok ? await statusRes.json() : {};
 
-        // Populate form fields
+        // Populate basic fields
         const hotkeyEl    = document.getElementById('overlay-hotkey');
         const autostartEl = document.getElementById('overlay-autostart');
         const modelEl     = document.getElementById('overlay-model');
 
-        if (hotkeyEl)    hotkeyEl.value    = cfg.hotkey             ?? 'ctrl+shift+space';
+        if (hotkeyEl)    hotkeyEl.value      = cfg.hotkey           ?? 'ctrl+shift+space';
         if (autostartEl) autostartEl.checked = !!cfg.launch_with_suite;
 
-        // Populate model dropdown — reuse the chat models list
+        // Load model dropdown via the shared helper (same source as all other dropdowns)
+        await loadChatModels();
+
+        // After loadChatModels populates the options, restore the saved value
         if (modelEl) {
-            try {
-                const mRes  = await fetch('/api/preferences/chat-models');
-                const mData = mRes.ok ? await mRes.json() : {};
-                const models = mData.models || [];
-                // Keep the default "Use Info Assistant" option, add models
-                while (modelEl.options.length > 1) modelEl.remove(1);
-                models.forEach(m => {
-                    const opt = document.createElement('option');
-                    opt.value = m.id || m.model_id || m.name || m;
-                    opt.textContent = m.display_name || m.name || m.id || m;
-                    if (opt.value === (cfg.model || '')) opt.selected = true;
-                    modelEl.appendChild(opt);
-                });
-                if (!cfg.model) modelEl.value = '';
-            } catch (_) {}
+            const savedModel = cfg.model || '';
+            if (savedModel && modelEl.querySelector(`option[value="${savedModel}"]`)) {
+                modelEl.value = savedModel;
+            } else {
+                modelEl.value = '';   // "Use Info Assistant (default)"
+            }
         }
 
         // Save autostart immediately on toggle

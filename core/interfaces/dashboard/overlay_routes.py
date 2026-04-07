@@ -88,10 +88,9 @@ async def overlay_ask(req: AskRequest):
     """Answer a question, optionally using a screenshot for visual context."""
     try:
         from core.providers.provider_manager import ProviderManager
-        from core.config.settings_manager import get_settings_manager
+        from core.workspace.preferences_manager import get_preferences_manager
 
-        sm    = get_settings_manager()
-        prefs = sm.get_all_preferences()
+        prefs = get_preferences_manager()
         cfg   = _load_config()
 
         model_id = (
@@ -102,19 +101,37 @@ async def overlay_ask(req: AskRequest):
             or "flash"
         )
 
-        pm     = ProviderManager()
-        kwargs: dict = {"prompt": req.question, "model": model_id, "max_tokens": 1024}
+        logger.info(f"Overlay ask — model: {model_id!r}, has_screenshot: {bool(req.screenshot_b64)}")
+
+        import asyncio, uuid
+        pm         = ProviderManager()
+        trace_id   = f"overlay-{uuid.uuid4().hex[:12]}"
+        extra_kwargs: dict = {}
 
         if req.screenshot_b64:
-            img_data = base64.b64decode(req.screenshot_b64)
-            kwargs["images"] = [{"data": img_data, "mime_type": "image/png"}]
+            try:
+                img_data = base64.b64decode(req.screenshot_b64)
+                extra_kwargs["images"] = [{"data": img_data, "mime_type": "image/png"}]
+            except Exception as decode_err:
+                raise ValueError(f"Could not decode screenshot: {decode_err}") from decode_err
 
-        response = await pm.call_with_failover(**kwargs)
-        return {"answer": response.content}
+        # call_with_failover is synchronous — run in a thread to avoid blocking the event loop
+        response = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: pm.call_with_failover(
+                prompt=req.question,
+                trace_id=trace_id,
+                model=model_id,
+                max_tokens=1024,
+                source="overlay",
+                **extra_kwargs,
+            ),
+        )
+        return {"answer": response.content, "model_used": model_id}
 
     except Exception as e:
         logger.error(f"Overlay ask error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"[model: {model_id if 'model_id' in dir() else 'unknown'}] {e}")
 
 
 @router.get("/config")

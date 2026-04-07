@@ -99,24 +99,36 @@ class AskWorker(QObject):
         self.dashboard_url  = dashboard_url
 
     def run(self) -> None:
+        import urllib.request
+        import urllib.error
+
+        payload = json.dumps({
+            "question":       self.question,
+            "screenshot_b64": self.screenshot_b64,
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            f"{self.dashboard_url}/api/overlay/ask",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         try:
-            import urllib.request
-
-            payload = json.dumps({
-                "question":       self.question,
-                "screenshot_b64": self.screenshot_b64,
-            }).encode("utf-8")
-
-            req = urllib.request.Request(
-                f"{self.dashboard_url}/api/overlay/ask",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-                method="POST",
-            )
             with urllib.request.urlopen(req, timeout=90) as resp:
-                data    = json.loads(resp.read().decode("utf-8"))
-                answer  = data.get("answer", "(no response)")
-            self.finished.emit(answer)
+                data   = json.loads(resp.read().decode("utf-8"))
+                answer = data.get("answer", "(no response)")
+                model  = data.get("model_used", "")
+                self.finished.emit(f"{answer}\n\n— model: {model}" if model else answer)
+        except urllib.error.HTTPError as e:
+            # Extract the FastAPI detail message from the JSON body
+            try:
+                body   = json.loads(e.read().decode("utf-8"))
+                detail = body.get("detail", str(e))
+            except Exception:
+                detail = str(e)
+            self.error.emit(f"Server error {e.code}: {detail}")
+        except urllib.error.URLError as e:
+            self.error.emit(f"Could not reach dashboard ({self.dashboard_url}): {e.reason}")
         except Exception as e:
             self.error.emit(str(e))
 
