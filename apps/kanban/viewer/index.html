@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aethvion Kanban</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<header class="kb-header">
+    <div class="kb-logo">
+        <i class="fas fa-chalkboard"></i>
+        <span>AETHVION KANBAN</span>
+    </div>
+    <div class="kb-actions">
+        <button id="btn-add-column" class="kb-btn">
+            <i class="fas fa-plus-square"></i> Add Column
+        </button>
+        <button id="btn-save" class="kb-btn kb-btn-primary">
+            <i class="fas fa-save"></i> Save Board
+        </button>
+    </div>
+</header>
+
+<main class="kb-board" id="kb-board">
+    <!-- Columns will be injected here -->
+</main>
+
+<!-- Task Modal -->
+<div id="task-modal" class="kb-modal hidden">
+    <div class="kb-modal-content">
+        <div class="kb-modal-header">
+            <h2 id="modal-title">Edit Task</h2>
+            <button id="btn-close-modal" class="kb-close-btn">&times;</button>
+        </div>
+        <div class="kb-modal-body">
+            <div class="kb-form-group">
+                <label for="task-name">Task Name</label>
+                <input type="text" id="task-name" placeholder="What needs to be done?">
+            </div>
+            <div class="kb-form-group">
+                <label for="task-desc">Description</label>
+                <textarea id="task-desc" rows="4" placeholder="Add more details..."></textarea>
+            </div>
+            <div class="kb-form-group">
+                <label for="task-priority">Priority</label>
+                <select id="task-priority">
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </div>
+        </div>
+        <div class="kb-modal-footer">
+            <button id="btn-delete-task" class="kb-btn kb-btn-danger">Delete Task</button>
+            <button id="btn-save-task" class="kb-btn kb-btn-primary">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
