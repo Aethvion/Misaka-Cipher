@@ -53,6 +53,7 @@ try:
     from PyQt6.QtWidgets import (
         QApplication, QWidget, QVBoxLayout, QHBoxLayout,
         QTextEdit, QLineEdit, QPushButton, QLabel, QFrame, QComboBox,
+        QTextBrowser,
     )
     from PyQt6.QtCore import Qt, QThread, pyqtSignal, QObject, QPoint
     from PyQt6.QtGui import QFont
@@ -145,7 +146,7 @@ class AskWorker(QObject):
                 data   = json.loads(resp.read().decode("utf-8"))
                 answer = data.get("answer", "(no response)")
                 model  = data.get("model_used", "")
-                self.finished.emit(f"{answer}\n\n— model: {model}" if model else answer)
+                self.finished.emit(f"{answer}\n\n*— model: {model}*" if model else answer)
         except urllib.error.HTTPError as e:
             # Extract the FastAPI detail message from the JSON body
             try:
@@ -316,13 +317,14 @@ class OverlayWindow(QWidget):
         layout.addWidget(sep)
 
         # ── Response area ─────────────────────────────────────────────────────
-        self._response = QTextEdit()
+        self._response = QTextBrowser()
+        self._response.setOpenExternalLinks(True)
         self._response.setReadOnly(True)
         self._response.setMinimumHeight(150)
         self._response.setPlaceholderText("Response will appear here…")
         self._response.setFont(QFont("Segoe UI", 12))
         self._response.setStyleSheet("""
-            QTextEdit {
+            QTextBrowser {
                 background: rgba(8, 8, 18, 190);
                 color: rgba(210,210,235,245);
                 border: 1px solid rgba(99,102,241,55);
@@ -337,6 +339,34 @@ class OverlayWindow(QWidget):
             QScrollBar::handle:vertical {
                 background: rgba(99,102,241,150);
                 border-radius: 3px;
+            }
+        """)
+
+        # Better markdown styling via default document stylesheet
+        self._response.document().setDefaultStyleSheet("""
+            h1, h2, h3, h4 { color: #818cf8; margin-top: 10px; margin-bottom: 5px; font-weight: bold; }
+            code { 
+                background-color: rgba(99, 102, 241, 40); 
+                color: #e2e8f0; 
+                font-family: 'Consolas', 'Cascadia Code', 'Courier New', monospace;
+                padding: 2px 4px;
+                border-radius: 4px;
+            }
+            pre { 
+                background-color: rgba(0, 0, 0, 100); 
+                border: 1px solid rgba(99, 102, 241, 60);
+                padding: 12px; 
+                border-radius: 8px;
+                margin: 8px 0px;
+                font-family: 'Consolas', 'Cascadia Code', 'Courier New', monospace;
+            }
+            a { color: #818cf8; text-decoration: none; }
+            li { margin-bottom: 4px; }
+            blockquote { 
+                border-left: 3px solid rgba(99, 102, 241, 150);
+                padding-left: 10px;
+                color: rgba(210, 210, 235, 180);
+                font-style: italic;
             }
         """)
         layout.addWidget(self._response)
@@ -483,12 +513,12 @@ class OverlayWindow(QWidget):
         self._worker_thread.start()
 
     def _on_response(self, text: str) -> None:
-        self._response.setPlainText(text)
+        self._response.setMarkdown(text)
         self._status.setText("Done.")
         self._send_btn.setEnabled(True)
 
     def _on_error(self, err: str) -> None:
-        self._response.setPlainText(f"Error: {err}")
+        self._response.setMarkdown(f"### ⚠ Error\n\n{err}")
         self._status.setText("Request failed.")
         self._send_btn.setEnabled(True)
 
