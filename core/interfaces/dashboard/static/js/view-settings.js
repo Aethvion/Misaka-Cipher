@@ -697,6 +697,9 @@ async function loadProviderSettings() {
 
         const pSaveBtn = document.getElementById('save-provider-settings');
         if (pSaveBtn) pSaveBtn.onclick = saveProviderSettings;
+
+        // Privacy Mode toggle (lives on the System sub-panel)
+        if (typeof initPrivacyToggle === 'function') initPrivacyToggle();
     } catch (error) {
         console.error('Failed to load registry:', error);
         showNotification('Failed to load provider settings.', 'error');
@@ -3034,4 +3037,47 @@ window.overlayRefreshStatus     = overlayRefreshStatus;
 window.overlaySaveConfig        = overlaySaveConfig;
 window.overlayInstallDeps       = overlayInstallDeps;
 window.overlayInstallLogCopy    = overlayInstallLogCopy;
+
+// ── Privacy Mode Toggle ────────────────────────────────────────────────────────
+async function initPrivacyToggle() {
+    const toggle = document.getElementById('privacy-mode-toggle');
+    const badge  = document.getElementById('privacy-mode-badge');
+    if (!toggle) return;
+
+    try {
+        const res  = await fetch('/api/settings/privacy-mode');
+        const data = await res.json();
+        toggle.checked = !!data.enabled;
+        _updatePrivacyBadge(badge, toggle.checked);
+    } catch (e) {
+        console.warn('[Privacy] Could not load privacy mode state:', e);
+    }
+
+    toggle.addEventListener('change', async () => {
+        const enabled = toggle.checked;
+        try {
+            const res  = await fetch('/api/settings/privacy-mode', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ enabled }),
+            });
+            const data = await res.json();
+            _updatePrivacyBadge(badge, enabled);
+            if (typeof showToast === 'function') {
+                showToast(data.message, enabled ? 'warn' : 'success');
+            }
+        } catch (e) {
+            toggle.checked = !enabled;   // revert on failure
+            if (typeof showToast === 'function') showToast('Failed to update privacy mode.', 'error');
+        }
+    });
+}
+
+function _updatePrivacyBadge(badge, enabled) {
+    if (!badge) return;
+    badge.textContent = enabled ? '🔒 Privacy Mode ON' : '🌐 Cloud OK';
+    badge.className   = `privacy-badge ${enabled ? 'privacy-badge-on' : 'privacy-badge-off'}`;
+}
+
+window.initPrivacyToggle = initPrivacyToggle;
 

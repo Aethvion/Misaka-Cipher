@@ -1,0 +1,528 @@
+/* ============================================================
+   Axiom Companion — Teal/Cyan Analytical Theme
+   CSS-based avatar with expression states
+   ============================================================ */
+
+:root {
+    --axiom-primary:     #00bcd4;
+    --axiom-secondary:   #00838f;
+    --axiom-dark:        #006064;
+    --axiom-dim:         #004d54;
+    --axiom-bg:          #050d0e;
+    --axiom-bg-mid:      #071214;
+    --axiom-surface:     #0a1a1c;
+    --axiom-border:      rgba(0, 188, 212, 0.25);
+    --axiom-glow:        rgba(0, 188, 212, 0.35);
+    --axiom-glow-strong: rgba(0, 188, 212, 0.6);
+    --axiom-text:        #b2ebf2;
+    --axiom-text-dim:    #4dd0e1;
+    --axiom-bubble-bg:   rgba(0, 131, 143, 0.18);
+    --axiom-user-bg:     rgba(0, 96, 100, 0.35);
+}
+
+/* ── Layout ──────────────────────────────────────────────── */
+
+.axiom-layout {
+    display: flex;
+    height: 100%;
+    background: linear-gradient(135deg, var(--axiom-bg) 0%, var(--axiom-bg-mid) 60%, #050e10 100%);
+    overflow: hidden;
+    position: relative;
+}
+
+.axiom-layout::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 188, 212, 0.015) 2px,
+        rgba(0, 188, 212, 0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ── Mood environments ───────────────────────────────────── */
+
+.axiom-layout.mood-precise {
+    --axiom-glow: rgba(0, 188, 212, 0.3);
+    --axiom-border: rgba(0, 188, 212, 0.25);
+}
+.axiom-layout.mood-analytical {
+    --axiom-glow: rgba(0, 150, 200, 0.35);
+    --axiom-border: rgba(0, 150, 200, 0.3);
+    background: linear-gradient(135deg, #050c0f 0%, #071218 60%, #050d12 100%);
+}
+.axiom-layout.mood-processing {
+    --axiom-glow: rgba(0, 230, 180, 0.3);
+    --axiom-border: rgba(0, 230, 180, 0.25);
+    background: linear-gradient(135deg, #040e0a 0%, #061410 60%, #040e0a 100%);
+}
+.axiom-layout.mood-critical {
+    --axiom-glow: rgba(255, 200, 0, 0.35);
+    --axiom-border: rgba(255, 200, 0, 0.3);
+    background: linear-gradient(135deg, #0e0d04 0%, #141204 60%, #0e0d04 100%);
+}
+.axiom-layout.mood-deep_focus {
+    --axiom-glow: rgba(100, 200, 255, 0.4);
+    --axiom-border: rgba(100, 200, 255, 0.35);
+    background: linear-gradient(135deg, #050a10 0%, #07101a 60%, #050a10 100%);
+}
+.axiom-layout.mood-warning {
+    --axiom-glow: rgba(255, 100, 30, 0.4);
+    --axiom-border: rgba(255, 100, 30, 0.35);
+    background: linear-gradient(135deg, #0f0604 0%, #140804 60%, #0f0604 100%);
+}
+
+/* ── Avatar container ────────────────────────────────────── */
+
+.axiom-avatar-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 2rem 0 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Hexagon avatar base ─────────────────────────────────── */
+
+.axiom-avatar {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.axiom-hex-outer {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    background: linear-gradient(135deg, var(--axiom-secondary), var(--axiom-dark));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.4s ease;
+    box-shadow: 0 0 30px var(--axiom-glow), 0 0 60px rgba(0, 188, 212, 0.1);
+}
+
+.axiom-hex-inner {
+    position: relative;
+    width: 138px;
+    height: 138px;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    background: linear-gradient(135deg, #071214, #09191b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* ── Lambda symbol ───────────────────────────────────────── */
+
+.axiom-symbol {
+    font-family: 'Courier New', monospace;
+    font-size: 3.2rem;
+    font-weight: 700;
+    color: var(--axiom-primary);
+    text-shadow: 0 0 20px var(--axiom-glow-strong), 0 0 40px var(--axiom-glow);
+    position: relative;
+    z-index: 3;
+    transition: all 0.4s ease;
+    letter-spacing: -0.05em;
+    user-select: none;
+}
+
+/* ── Scan line ───────────────────────────────────────────── */
+
+.axiom-scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--axiom-primary), transparent);
+    opacity: 0.6;
+    animation: axiomScan 3s linear infinite;
+    z-index: 4;
+}
+
+@keyframes axiomScan {
+    0%   { top: 10%; opacity: 0; }
+    10%  { opacity: 0.6; }
+    90%  { opacity: 0.6; }
+    100% { top: 90%; opacity: 0; }
+}
+
+/* ── Concentric rings ────────────────────────────────────── */
+
+.axiom-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid var(--axiom-primary);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 2;
+}
+.axiom-ring-1 { width: 60px;  height: 60px;  animation: axiomRingPulse 4s ease-in-out infinite 0s; }
+.axiom-ring-2 { width: 90px;  height: 90px;  animation: axiomRingPulse 4s ease-in-out infinite 0.8s; }
+.axiom-ring-3 { width: 120px; height: 120px; animation: axiomRingPulse 4s ease-in-out infinite 1.6s; }
+
+@keyframes axiomRingPulse {
+    0%, 100% { opacity: 0.08; transform: scale(1); }
+    50%       { opacity: 0.22; transform: scale(1.04); }
+}
+
+/* ── Data dots ───────────────────────────────────────────── */
+
+.axiom-data-dots {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.axiom-data-dots span {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--axiom-primary);
+    opacity: 0;
+    animation: axiomDotBlink 4s ease-in-out infinite;
+}
+
+.axiom-data-dots span:nth-child(1) { top: 15%; left: 20%; animation-delay: 0.0s; }
+.axiom-data-dots span:nth-child(2) { top: 15%; left: 75%; animation-delay: 0.5s; }
+.axiom-data-dots span:nth-child(3) { top: 50%; left: 10%; animation-delay: 1.0s; }
+.axiom-data-dots span:nth-child(4) { top: 50%; left: 85%; animation-delay: 1.5s; }
+.axiom-data-dots span:nth-child(5) { top: 75%; left: 20%; animation-delay: 2.0s; }
+.axiom-data-dots span:nth-child(6) { top: 75%; left: 75%; animation-delay: 2.5s; }
+.axiom-data-dots span:nth-child(7) { top: 30%; left: 45%; animation-delay: 3.0s; }
+.axiom-data-dots span:nth-child(8) { top: 65%; left: 50%; animation-delay: 3.5s; }
+
+@keyframes axiomDotBlink {
+    0%, 100% { opacity: 0; }
+    20%, 80%  { opacity: 0.7; }
+    50%       { opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   EXPRESSION STATES
+   ══════════════════════════════════════════════════════════ */
+
+/* neutral — default, steady blue glow */
+.axiom-expr-neutral .axiom-hex-outer {
+    box-shadow: 0 0 30px var(--axiom-glow), 0 0 60px rgba(0,188,212,0.1);
+}
+.axiom-expr-neutral .axiom-symbol { color: var(--axiom-primary); }
+
+/* analyzing — brighter glow, faster scan */
+.axiom-expr-analyzing .axiom-hex-outer {
+    box-shadow: 0 0 50px rgba(0,188,212,0.55), 0 0 90px rgba(0,188,212,0.2);
+}
+.axiom-expr-analyzing .axiom-symbol {
+    color: #4dd0e1;
+    text-shadow: 0 0 30px rgba(77,208,225,0.9);
+}
+.axiom-expr-analyzing .axiom-scan-line {
+    animation-duration: 1.2s;
+    opacity: 0.9;
+    height: 3px;
+}
+.axiom-expr-analyzing .axiom-ring { animation-duration: 1.5s; opacity: 0.3; }
+
+/* processing — pulsing, rings accelerated */
+.axiom-expr-processing .axiom-hex-outer {
+    animation: axiomHexPulse 1.8s ease-in-out infinite;
+}
+.axiom-expr-processing .axiom-ring { animation-duration: 1.2s; opacity: 0.25; }
+.axiom-expr-processing .axiom-symbol { color: #80deea; }
+
+@keyframes axiomHexPulse {
+    0%, 100% { box-shadow: 0 0 30px var(--axiom-glow); }
+    50%       { box-shadow: 0 0 60px rgba(0,188,212,0.7), 0 0 100px rgba(0,188,212,0.25); }
+}
+
+/* skeptical — dimmed, cooler tone */
+.axiom-expr-skeptical .axiom-hex-outer {
+    background: linear-gradient(135deg, #004a4f, #003840);
+    box-shadow: 0 0 20px rgba(0,150,170,0.25);
+}
+.axiom-expr-skeptical .axiom-symbol {
+    color: #80cbc4;
+    text-shadow: 0 0 10px rgba(128,203,196,0.5);
+}
+.axiom-expr-skeptical .axiom-scan-line { opacity: 0.2; animation-duration: 5s; }
+.axiom-expr-skeptical .axiom-ring { opacity: 0.06; }
+
+/* focused — deep teal, rings frozen, bright symbol */
+.axiom-expr-focused .axiom-hex-outer {
+    background: linear-gradient(135deg, #00838f, #005f66);
+    box-shadow: 0 0 40px rgba(0,131,143,0.6), 0 0 80px rgba(0,131,143,0.2);
+}
+.axiom-expr-focused .axiom-symbol {
+    font-size: 3.8rem;
+    color: #e0f7fa;
+    text-shadow: 0 0 25px rgba(224,247,250,0.9);
+}
+.axiom-expr-focused .axiom-ring { animation-play-state: paused; opacity: 0.18; }
+
+/* error — red-orange tint, warning flash */
+.axiom-expr-error .axiom-hex-outer {
+    background: linear-gradient(135deg, #5f1a1a, #3d0e0e);
+    box-shadow: 0 0 40px rgba(255,60,30,0.5), 0 0 80px rgba(255,60,30,0.15);
+    animation: axiomErrorFlash 0.8s ease-in-out infinite;
+}
+.axiom-expr-error .axiom-symbol {
+    color: #ff7043;
+    text-shadow: 0 0 20px rgba(255,112,67,0.9);
+    content: '!';
+}
+.axiom-expr-error .axiom-scan-line {
+    background: linear-gradient(90deg, transparent, #ff5722, transparent);
+    animation-duration: 0.6s;
+}
+
+@keyframes axiomErrorFlash {
+    0%, 100% { box-shadow: 0 0 40px rgba(255,60,30,0.5); }
+    50%       { box-shadow: 0 0 70px rgba(255,60,30,0.8), 0 0 100px rgba(255,60,30,0.3); }
+}
+
+/* curious — brighter warm-cyan, rings rotate faster */
+.axiom-expr-curious .axiom-hex-outer {
+    box-shadow: 0 0 45px rgba(0,220,200,0.5), 0 0 80px rgba(0,220,200,0.15);
+}
+.axiom-expr-curious .axiom-symbol {
+    color: #00e5cc;
+    text-shadow: 0 0 25px rgba(0,229,204,0.8);
+    animation: axiomSymbolBounce 2s ease-in-out infinite;
+}
+.axiom-expr-curious .axiom-ring { animation-duration: 2s; opacity: 0.22; }
+
+@keyframes axiomSymbolBounce {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-4px); }
+}
+
+/* calculating — rapid dots, scan at medium speed */
+.axiom-expr-calculating .axiom-hex-outer {
+    box-shadow: 0 0 35px rgba(0,188,212,0.4), 0 0 70px rgba(0,188,212,0.12);
+}
+.axiom-expr-calculating .axiom-symbol {
+    color: var(--axiom-primary);
+    animation: axiomCalcFlicker 1.5s step-end infinite;
+}
+.axiom-expr-calculating .axiom-scan-line { animation-duration: 1.6s; }
+.axiom-expr-calculating .axiom-data-dots span { animation-duration: 0.8s; opacity: 0.9; }
+
+@keyframes axiomCalcFlicker {
+    0%, 85%, 100% { opacity: 1; }
+    90%           { opacity: 0.4; }
+}
+
+/* alert — amber/yellow tint */
+.axiom-expr-alert .axiom-hex-outer {
+    background: linear-gradient(135deg, #5f4800, #3d2f00);
+    box-shadow: 0 0 45px rgba(255,195,0,0.5), 0 0 90px rgba(255,195,0,0.15);
+    animation: axiomAlertPulse 1s ease-in-out infinite;
+}
+.axiom-expr-alert .axiom-symbol {
+    color: #ffd54f;
+    text-shadow: 0 0 20px rgba(255,213,79,0.9);
+}
+.axiom-expr-alert .axiom-scan-line {
+    background: linear-gradient(90deg, transparent, #ffd54f, transparent);
+    animation-duration: 0.8s;
+    opacity: 0.8;
+}
+
+@keyframes axiomAlertPulse {
+    0%, 100% { box-shadow: 0 0 45px rgba(255,195,0,0.4); }
+    50%       { box-shadow: 0 0 70px rgba(255,195,0,0.7), 0 0 110px rgba(255,195,0,0.2); }
+}
+
+/* ── Status line ─────────────────────────────────────────── */
+
+.axiom-status-line {
+    font-family: 'Courier New', monospace;
+    font-size: 0.72rem;
+    color: var(--axiom-text-dim);
+    text-align: center;
+    padding: 0.5rem 1.2rem 0;
+    letter-spacing: 0.08em;
+    opacity: 0.75;
+    transition: all 0.4s ease;
+    text-transform: uppercase;
+}
+
+/* ── Mood badge ──────────────────────────────────────────── */
+
+.axiom-mood-badge {
+    font-family: 'Courier New', monospace;
+    font-size: 0.65rem;
+    color: var(--axiom-primary);
+    background: rgba(0,188,212,0.1);
+    border: 1px solid rgba(0,188,212,0.2);
+    border-radius: 3px;
+    padding: 0.15rem 0.5rem;
+    margin: 0.4rem auto 0;
+    display: block;
+    width: fit-content;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.axiom-mood-badge.visible { opacity: 1; }
+
+/* ── Chat header ─────────────────────────────────────────── */
+
+.axiom-chat-header {
+    border-bottom: 1px solid var(--axiom-border) !important;
+    background: rgba(0,188,212,0.04) francosforever !important;
+}
+
+.axiom-chat-header h2 {
+    color: var(--axiom-primary) !important;
+    font-family: 'Courier New', monospace !important;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+
+.axiom-header-tag {
+    font-family: 'Courier New', monospace;
+    font-size: 0.65rem;
+    color: var(--axiom-text-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    border: 1px solid var(--axiom-border);
+    border-radius: 3px;
+    padding: 0.1rem 0.45rem;
+}
+
+/* ── Chat bubbles ────────────────────────────────────────── */
+
+.axiom-layout .chat-message.assistant .message-bubble {
+    background: var(--axiom-bubble-bg);
+    border: 1px solid var(--axiom-border);
+    color: var(--axiom-text);
+    font-family: 'Courier New', monospace;
+    font-size: 0.88rem;
+    border-radius: 0 8px 8px 8px;
+    box-shadow: 0 0 12px rgba(0,188,212,0.08);
+}
+
+.axiom-layout .chat-message.user .message-bubble {
+    background: var(--axiom-user-bg);
+    border: 1px solid rgba(0,131,143,0.3);
+    color: #e0f7fa;
+    font-family: 'Courier New', monospace;
+    font-size: 0.88rem;
+    border-radius: 8px 0 8px 8px;
+}
+
+/* ── Input area ──────────────────────────────────────────── */
+
+.axiom-input-area {
+    border-top: 1px solid var(--axiom-border) !important;
+    background: rgba(0,188,212,0.03) !important;
+}
+
+.axiom-input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    padding: 0.6rem;
+}
+
+#axiom-chat-input {
+    flex: 1;
+    background: rgba(0,188,212,0.06);
+    border: 1px solid var(--axiom-border);
+    color: var(--axiom-text);
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    padding: 0.55rem 0.8rem;
+    resize: none;
+    min-height: 40px;
+    max-height: 120px;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#axiom-chat-input:focus {
+    border-color: var(--axiom-primary);
+    box-shadow: 0 0 10px rgba(0,188,212,0.2);
+}
+
+#axiom-chat-input::placeholder {
+    color: rgba(0,188,212,0.35);
+    font-style: italic;
+}
+
+.axiom-send-btn {
+    background: linear-gradient(135deg, var(--axiom-secondary), var(--axiom-dark));
+    border: 1px solid var(--axiom-primary);
+    color: #e0f7fa;
+    border-radius: 6px;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.axiom-send-btn:hover {
+    background: linear-gradient(135deg, var(--axiom-primary), var(--axiom-secondary));
+    box-shadow: 0 0 15px rgba(0,188,212,0.4);
+}
+
+/* ── Tool status / typing indicator ─────────────────────── */
+
+.axiom-layout .typing-dots span {
+    background: var(--axiom-primary);
+}
+
+.axiom-layout .tool-status-bubble {
+    border-color: var(--axiom-border);
+    color: var(--axiom-text-dim);
+    font-family: 'Courier New', monospace;
+    font-size: 0.75rem;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+
+.axiom-layout .chat-messages::-webkit-scrollbar-thumb {
+    background: var(--axiom-dim);
+}
+.axiom-layout .chat-messages::-webkit-scrollbar-thumb:hover {
+    background: var(--axiom-secondary);
+}
+
+/* ── Load more button ────────────────────────────────────── */
+
+.axiom-layout .load-more-btn {
+    background: rgba(0,188,212,0.08);
+    border: 1px solid var(--axiom-border);
+    color: var(--axiom-text-dim);
+    font-family: 'Courier New', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+}
+
+.axiom-layout .load-more-btn:hover {
+    background: rgba(0,188,212,0.14);
+    border-color: var(--axiom-primary);
+}
