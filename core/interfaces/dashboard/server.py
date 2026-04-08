@@ -673,6 +673,7 @@ async def run_module_script(request: dict):
         "code":      "apps/code/Start_Code.bat",
         "hardwareinfo": "apps/hardwareinfo/Start_HardwareInfo.bat",
         "linkmap":      "apps/linkmap/Start_LinkMap.bat",
+        "kanban":       "apps/kanban/Start_Kanban.bat",
     }
     
     if module_name not in module_map:

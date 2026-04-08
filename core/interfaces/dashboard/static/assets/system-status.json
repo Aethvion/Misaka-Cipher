@@ -11,6 +11,7 @@
                 "version": "12",
                 "date": "2026-04-01",
                 "added": [
+                    "Aethvion Kanban: Professional Kanban board with drag-and-drop columns, task persistence, and standalone execution support",
                     "AI Scheduler: Cron-based automated AI tasks — create recurring prompts with specific schedules (e.g. 'Every day at 9 AM'); tasks run in background and send notifications on completion",
                     "AI Scheduler: Task persistence — scheduled tasks saved to data/scheduled_tasks/ with full configuration, results, and state tracking",
                     "Notification Hub: Real-time system-wide alerts — persistent notification history accessible from the header bell icon",
