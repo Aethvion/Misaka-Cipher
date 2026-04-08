@@ -161,6 +161,43 @@ class AskWorker(QObject):
             self.error.emit(str(e))
 
 
+# ── Custom Input Widget ───────────────────────────────────────────────────
+
+class ChatInput(QTextEdit):
+    """
+    Custom QTextEdit that sends on Enter and adds new line on Shift+Enter.
+    """
+    send_requested = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setPlaceholderText("What do you want to know about this screen?")
+        self.setFont(QFont("Segoe UI", 12))
+        self.setAcceptRichText(False)
+        self.setFixedHeight(50)
+        self.setStyleSheet("""
+            QTextEdit {
+                background: rgba(18,18,32,210);
+                color: rgba(220,220,245,255);
+                border: 1px solid rgba(99,102,241,100);
+                border-radius: 9px;
+                padding: 4px 8px;
+            }
+            QTextEdit:focus {
+                border-color: rgba(99,102,241,210);
+            }
+        """)
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                super().keyPressEvent(event)
+            else:
+                self.send_requested.emit()
+        else:
+            super().keyPressEvent(event)
+
+
 # ── Floating overlay window ───────────────────────────────────────────────────
 
 class OverlayWindow(QWidget):
@@ -375,22 +412,8 @@ class OverlayWindow(QWidget):
         input_row = QHBoxLayout()
         input_row.setSpacing(8)
 
-        self._input = QLineEdit()
-        self._input.setPlaceholderText("What do you want to know about this screen?")
-        self._input.setFont(QFont("Segoe UI", 12))
-        self._input.setStyleSheet("""
-            QLineEdit {
-                background: rgba(18,18,32,210);
-                color: rgba(220,220,245,255);
-                border: 1px solid rgba(99,102,241,100);
-                border-radius: 9px;
-                padding: 8px 12px;
-            }
-            QLineEdit:focus {
-                border-color: rgba(99,102,241,210);
-            }
-        """)
-        self._input.returnPressed.connect(self._send)
+        self._input = ChatInput()
+        self._input.send_requested.connect(self._send)
 
         self._send_btn = QPushButton("Ask")
         self._send_btn.setFixedSize(64, 38)
@@ -483,17 +506,28 @@ class OverlayWindow(QWidget):
         self.raise_()
         self.activateWindow()
         self._input.setFocus()
+        self._input.selectAll()
 
     # ── Send question ─────────────────────────────────────────────────────────
 
     def _send(self) -> None:
-        question = self._input.text().strip()
+        question = self._input.toPlainText().strip()
         if not question:
             return
 
+        # Clear input and disable UI
+        self._input.clear()
         self._send_btn.setEnabled(False)
         self._status.setText("Thinking…")
-        self._response.clear()
+
+        # Append user message and thinking indicator
+        separator = "\n\n---\n\n" if self._response.toPlainText().strip() else ""
+        self._response.appendHtml(
+            f"{separator}<div style='color: #818cf8; font-weight: bold;'>Me:</div> {question}<br>"
+            f"<div style='color: #6366f1; font-style: italic;' id='thinking_marker'>Thinking...</div>"
+        )
+        # Auto-scroll to bottom
+        self._response.verticalScrollBar().setValue(self._response.verticalScrollBar().maximum())
 
         # Clean up any previous thread
         if self._worker_thread and self._worker_thread.isRunning():
@@ -512,13 +546,27 @@ class OverlayWindow(QWidget):
 
         self._worker_thread.start()
 
+    def _replace_thinking(self, content_markdown: str) -> None:
+        """Replace the 'Thinking...' marker with actual content."""
+        html = self._response.toHtml()
+        # Simple string replacement for our specific marker div
+        old_tag = "<div style='color: #6366f1; font-style: italic;' id='thinking_marker'>Thinking...</div>"
+        
+        # We handle markdown conversion here briefly or just use append
+        # To keep it simple and clean, we'll remove the marker and then append markdown
+        new_html = html.replace(old_tag, "")
+        self._response.setHtml(new_html)
+        self._response.appendMarkdown(content_markdown)
+        
+        self._response.verticalScrollBar().setValue(self._response.verticalScrollBar().maximum())
+
     def _on_response(self, text: str) -> None:
-        self._response.setMarkdown(text)
+        self._replace_thinking(text)
         self._status.setText("Done.")
         self._send_btn.setEnabled(True)
 
     def _on_error(self, err: str) -> None:
-        self._response.setMarkdown(f"### ⚠ Error\n\n{err}")
+        self._replace_thinking(f"### ⚠ Error\n\n{err}")
         self._status.setText("Request failed.")
         self._send_btn.setEnabled(True)
 
