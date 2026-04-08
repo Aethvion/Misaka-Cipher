@@ -43,6 +43,9 @@
     <link rel="stylesheet" href="/static/css/status.css">
     <link rel="stylesheet" href="/static/css/misaka_cipher.css">
     <link rel="stylesheet" href="/static/css/misaka_timestamps.css">
+    <link rel="stylesheet" href="/static/css/axiom.css">
+    <link rel="stylesheet" href="/static/css/lyra.css">
+    <link rel="stylesheet" href="/static/css/companion-creator.css">
     <link rel="stylesheet" href="/static/css/adv_aiconv.css">
     <link rel="stylesheet" href="/static/css/mode-photo.css?v=__VNUM__">
     <link rel="stylesheet" href="/static/css/research-board.css?v=__VNUM__">
@@ -327,6 +330,15 @@
 
     <div class="content-wrapper">
         <aside class="sidebar-nav" id="sidebar-nav">
+            <!-- Sidebar search -->
+            <div class="sidebar-search-wrap mode-ai">
+                <div class="sidebar-search-inner">
+                    <i class="fas fa-search sidebar-search-icon"></i>
+                    <input type="text" id="sidebar-search-input" class="sidebar-search-input"
+                        placeholder="Search…" autocomplete="off" spellcheck="false">
+                    <button id="sidebar-search-clear" class="sidebar-search-clear" title="Clear">✕</button>
+                </div>
+            </div>
             <div class="main-tabs">
                 <!-- ── HOME mode ─────────────────────────────────── -->
                 <button class="main-tab mode-home" data-maintab="suite-home" data-tooltip="Home">
@@ -385,6 +397,12 @@
                     <div class="cat-body mode-ai" data-cat-body="companions">
                         <button class="main-tab mode-ai" data-maintab="misaka-cipher" data-tooltip="Misaka Cipher Companion">
                             <span class="tab-icon"><i class="fas fa-wand-magic-sparkles"></i></span><span class="tab-label">Misaka Cipher</span></button>
+                        <button class="main-tab mode-ai" data-maintab="axiom" data-tooltip="Axiom — Analytical Companion">
+                            <span class="tab-icon"><i class="fas fa-atom"></i></span><span class="tab-label">Axiom</span></button>
+                        <button class="main-tab mode-ai" data-maintab="lyra" data-tooltip="Lyra — Creative Companion">
+                            <span class="tab-icon"><i class="fas fa-music"></i></span><span class="tab-label">Lyra</span></button>
+                        <button class="main-tab mode-ai" data-maintab="companion-creator" data-tooltip="Create a Custom Companion">
+                            <span class="tab-icon"><i class="fas fa-plus-circle"></i></span><span class="tab-label">Create Companion</span></button>
                     </div>
 
                     <!-- Entertainment -->
@@ -550,6 +568,21 @@
             <div class="main-tab-panel" id="misaka-cipher-panel" data-partial="misaka-cipher">
       <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
     </div>
+
+            <!-- Axiom (Companion) Tab -->
+            <div class="main-tab-panel" id="axiom-panel" data-partial="axiom">
+      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+    </div>
+
+            <!-- Lyra (Companion) Tab -->
+            <div class="main-tab-panel" id="lyra-panel" data-partial="lyra">
+      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+    </div>
+
+            <!-- Companion Creator Tab -->
+            <div class="main-tab-panel" id="companion-creator-panel">
+              <div id="companion-creator-root"></div>
+            </div>
 
             <!-- Files Tab -->
             <div class="main-tab-panel" id="files-panel"
@@ -746,6 +779,9 @@
             <script src="/static/js/mode-schedule.js?v=1"></script>
             <script src="/static/js/particle-sphere.js?v=5"></script>
             <script src="/static/js/mode-misakacipher.js?v=5"></script>
+            <script src="/static/js/mode-axiom.js?v=1"></script>
+            <script src="/static/js/mode-lyra.js?v=1"></script>
+            <script src="/static/js/companion-creator.js?v=1"></script>
             <script src="/static/js/mode-research-board.js?v=6"></script>
             <script src="/static/js/assistant.js?v=5"></script>
             <!-- Notification System -->
