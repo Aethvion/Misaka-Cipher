@@ -1045,8 +1045,8 @@ function switchMainTab(tabName, save = true) {
     else if (actualTabName === 'companion-creator' && typeof initializeCompanionCreator === 'function') {
         initializeCompanionCreator();
     }
-    else if (actualTabName === 'misaka-memory' && typeof refreshMisakaMemory === 'function') {
-        refreshMisakaMemory();
+    else if (actualTabName === 'companion-memory' && typeof refreshCompanionMemory === 'function') {
+        refreshCompanionMemory();
     }
     else if (actualTabName.startsWith('game-') && typeof handleGameTabSwitch === 'function') {
         const gameType = actualTabName.replace('game-', '');

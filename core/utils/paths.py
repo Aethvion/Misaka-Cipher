@@ -68,6 +68,10 @@ LAUNCHER_LOG = SYSTEM / "launcher.log"
 PORTS_JSON   = SYSTEM / "ports.json"
 PORTS_LOCK   = SYSTEM / "ports.lock"
 
+# ── Companions ────────────────────────────────────────────────────────────────
+COMPANIONS          = DATA / "companions"
+COMPANIONS_MISAKA   = COMPANIONS / "misaka_cipher"
+
 # ── Vault (persistent brain) ──────────────────────────────────────────────────
 VAULT_PERSONAS  = VAULT / "personas"
 VAULT_KNOWLEDGE = VAULT / "knowledge"
@@ -115,6 +119,7 @@ def ensure_all() -> None:
         HISTORY, HISTORY_CHAT, HISTORY_AI_CONV, HISTORY_ADVANCED, HISTORY_AGENTS,
         LOGS, LOGS_USAGE, LOGS_SYSTEM, LOGS_NOTIFICATIONS,
         SYSTEM,
+        COMPANIONS, COMPANIONS_MISAKA, COMPANIONS_MISAKA / "history",
         VAULT, VAULT_PERSONAS, VAULT_KNOWLEDGE, VAULT_SEARCH, VAULT_EPISODIC,
         PERSONA_MISAKA, PERSONA_MISAKA_THREADS,
         WORKSPACES, WS_OUTPUTS, WS_TOOLS, WS_MEDIA, WS_UPLOADS, WS_PROJECTS,

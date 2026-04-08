@@ -6,7 +6,7 @@
 // ── Global State ──────────────────────────────────────────────────────────────
 let lyraChatHistory = [];
 let lyraMaxHistory = 20;
-let lyraTypingSpeed = 80;
+let lyraTypingSpeed = 20;  // fallback; overridden by global companions speed
 let isLyraTyping = false;
 let lyraHistoryOffsetDays = 0;
 const LYRA_HISTORY_LIMIT_DAYS = 3;
@@ -14,9 +14,19 @@ let hasInitializedLyra = false;
 let currentLyraMood = 'warm';
 let currentLyraExpression = 'joyful';
 
-if (typeof window.prefs !== 'undefined') {
-    lyraTypingSpeed = window.prefs.get('lyra.typing_speed', 80);
+function _lyraLoadTypingSpeed() {
+    if (typeof window.prefs !== 'undefined') {
+        lyraTypingSpeed = window.prefs.get('companions.global.typing_speed', 20);
+    }
 }
+_lyraLoadTypingSpeed();
+
+// Update speed when global companion setting changes
+window.addEventListener('companionSettingsUpdated', (e) => {
+    if (e.detail && e.detail.typing_speed !== undefined) {
+        lyraTypingSpeed = parseInt(e.detail.typing_speed, 10);
+    }
+});
 
 // ── Expression map ────────────────────────────────────────────────────────────
 
@@ -149,6 +159,16 @@ async function initializeLyra() {
         chatInput.style.height = 'auto';
         chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
     });
+
+    // Wire settings button → Companions settings subtab
+    const lyraSettingsBtn = document.getElementById('lyra-settings-btn');
+    if (lyraSettingsBtn) {
+        lyraSettingsBtn.addEventListener('click', () => {
+            if (typeof ensureTabAndSubTab === 'function') {
+                ensureTabAndSubTab('settings', 'companions');
+            }
+        });
+    }
 
     hasInitializedLyra = true;
     console.log('[Lyra] Initialization complete.');
@@ -316,7 +336,12 @@ function lyraCreateMessageElement(role, text, timestamp = null) {
     if (timestamp) {
         const ts = document.createElement('div');
         ts.className = 'message-timestamp';
-        ts.textContent = timestamp.includes(' ') ? timestamp.split(' ')[1].slice(0, 5) : timestamp;
+        try {
+            const d = new Date(timestamp);
+            ts.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        } catch (e) {
+            ts.textContent = timestamp;
+        }
         div.appendChild(ts);
     }
 

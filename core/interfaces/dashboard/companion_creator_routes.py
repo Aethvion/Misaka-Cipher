@@ -81,6 +81,29 @@ async def list_companions():
     return {"companions": _list_custom_companions()}
 
 
+@router.get("/{companion_id}/memory")
+async def get_companion_memory(companion_id: str):
+    """Return the base_info.json and memory.json for a custom companion."""
+    companion_dir = _CUSTOM_DIR / companion_id
+    if not companion_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Custom companion '{companion_id}' not found.")
+
+    base_info_path = companion_dir / "base_info.json"
+    memory_path    = companion_dir / "memory.json"
+
+    base_info = {}
+    if base_info_path.exists():
+        with open(base_info_path, "r", encoding="utf-8") as f:
+            base_info = json.load(f)
+
+    memory = {}
+    if memory_path.exists():
+        with open(memory_path, "r", encoding="utf-8") as f:
+            memory = json.load(f)
+
+    return {"base_info": base_info, "memory": memory}
+
+
 @router.get("/{companion_id}")
 async def get_companion(companion_id: str):
     """Return a single companion config."""

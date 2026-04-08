@@ -132,7 +132,7 @@ async function initializeMisakaCipher() {
     if (settingsBtn) {
         settingsBtn.addEventListener('click', () => {
             if (typeof ensureTabAndSubTab === 'function') {
-                ensureTabAndSubTab('settings', 'misakacipher');
+                ensureTabAndSubTab('settings', 'companions');
             }
         });
     }

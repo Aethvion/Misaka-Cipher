@@ -221,11 +221,116 @@ async function loadPreferences() {
         });
     }
 
+    // ── Global Companion Settings ────────────────────────────────────────────
+    _bindRangeWithDisplay(
+        'setting-companions-global-typing-speed',
+        'setting-companions-global-typing-speed-val',
+        'companions.global.typing_speed',
+        75,
+        (val) => window.dispatchEvent(new CustomEvent('companionSettingsUpdated', { detail: { typing_speed: val } }))
+    );
+
+    _bindToggle('setting-companions-global-typing-indicator', 'companions.global.typing_indicator', true);
+    _bindToggle('setting-companions-global-sounds',           'companions.global.sounds',           false);
+    _bindToggle('setting-companions-global-popups',           'companions.global.popups',           true);
+
+    // ── Axiom Settings ────────────────────────────────────────────────────────
+    _bindRangeWithDisplay(
+        'setting-axiom-context-limit',
+        'setting-axiom-context-limit-val',
+        'axiom.context_limit',
+        8,
+        (val) => window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { context_limit: val } }))
+    );
+    _bindRangeWithDisplay(
+        'setting-axiom-typing-speed',
+        'setting-axiom-typing-speed-val',
+        'axiom.typing_speed',
+        75,
+        (val) => window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { typing_speed: val } }))
+    );
+    _bindToggle('setting-axiom-proactive-enabled', 'axiom.proactive_enabled', false,
+        (val) => window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { proactive_enabled: val } }))
+    );
+
+    const axiomModelEl = document.getElementById('setting-axiom-model');
+    if (axiomModelEl) {
+        axiomModelEl.onchange = async (e) => {
+            await savePreference('axiom.model', e.target.value);
+            window.dispatchEvent(new CustomEvent('axiomSettingsUpdated', { detail: { model: e.target.value } }));
+        };
+    }
+
+    // ── Lyra Settings ─────────────────────────────────────────────────────────
+    _bindRangeWithDisplay(
+        'setting-lyra-context-limit',
+        'setting-lyra-context-limit-val',
+        'lyra.context_limit',
+        8,
+        (val) => window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { context_limit: val } }))
+    );
+    _bindRangeWithDisplay(
+        'setting-lyra-typing-speed',
+        'setting-lyra-typing-speed-val',
+        'lyra.typing_speed',
+        75,
+        (val) => window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { typing_speed: val } }))
+    );
+    _bindToggle('setting-lyra-proactive-enabled', 'lyra.proactive_enabled', false,
+        (val) => window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { proactive_enabled: val } }))
+    );
+
+    const lyraModelEl = document.getElementById('setting-lyra-model');
+    if (lyraModelEl) {
+        lyraModelEl.onchange = async (e) => {
+            await savePreference('lyra.model', e.target.value);
+            window.dispatchEvent(new CustomEvent('lyraSettingsUpdated', { detail: { model: e.target.value } }));
+        };
+    }
+
     // Initialize Other Sections
     loadGlobalSettings();
     initDevMode();
     loadMisakaWorkspaces();
     loadNexusModules();
+}
+
+// ── Companion Accordion toggle ────────────────────────────────────────────────
+
+function toggleCompanionAccordion(id) {
+    const body    = document.getElementById(`accordion-body-${id}`);
+    const chevron = document.getElementById(`chevron-${id}`);
+    if (!body) return;
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : '';
+    if (chevron) chevron.classList.toggle('open', !isOpen);
+}
+
+// ── Reusable binding helpers ──────────────────────────────────────────────────
+
+function _bindRangeWithDisplay(rangeId, displayId, prefKey, defaultVal, onChange) {
+    const rangeEl   = document.getElementById(rangeId);
+    const displayEl = document.getElementById(displayId);
+    if (!rangeEl) return;
+    const current = prefs.get(prefKey, defaultVal);
+    rangeEl.value = current;
+    if (displayEl) displayEl.textContent = current;
+    rangeEl.oninput = (e) => { if (displayEl) displayEl.textContent = e.target.value; };
+    rangeEl.onchange = async (e) => {
+        const val = parseFloat(e.target.value);
+        await savePreference(prefKey, val);
+        if (onChange) onChange(val);
+    };
+}
+
+function _bindToggle(checkboxId, prefKey, defaultVal, onChange) {
+    const el = document.getElementById(checkboxId);
+    if (!el) return;
+    el.checked = prefs.get(prefKey, defaultVal);
+    el.onchange = async (e) => {
+        await savePreference(prefKey, e.target.checked);
+        if (onChange) onChange(e.target.checked);
+    };
 }
 
 async function savePreference(key, value) {
@@ -1079,6 +1184,8 @@ async function loadChatModels() {
         document.getElementById('aiconv-model-add'),
         document.getElementById('advaiconv-person-add'),
         document.getElementById('setting-misakacipher-model'),
+        document.getElementById('setting-axiom-model'),
+        document.getElementById('setting-lyra-model'),
         document.getElementById('setting-info-model'),
         document.getElementById('overlay-model')
     ].filter(Boolean);
@@ -1115,6 +1222,16 @@ async function loadChatModels() {
                 }
             } else if (sel.id === 'setting-misakacipher-model') {
                 const prefModel = prefs.get('misakacipher.model', 'gemini-1.5-flash');
+                if (sel.querySelector(`option[value="${prefModel}"]`)) {
+                    sel.value = prefModel;
+                }
+            } else if (sel.id === 'setting-axiom-model') {
+                const prefModel = prefs.get('axiom.model', 'gemini-1.5-flash');
+                if (sel.querySelector(`option[value="${prefModel}"]`)) {
+                    sel.value = prefModel;
+                }
+            } else if (sel.id === 'setting-lyra-model') {
+                const prefModel = prefs.get('lyra.model', 'gemini-1.5-flash');
                 if (sel.querySelector(`option[value="${prefModel}"]`)) {
                     sel.value = prefModel;
                 }
@@ -1916,6 +2033,7 @@ async function moveProfile(element, direction) {
 // Global initialization
 // Expose so other views can trigger a fresh reload of registry data + re-render
 window.loadProviderSettings = loadProviderSettings;
+window.toggleCompanionAccordion = toggleCompanionAccordion;
 
 // ── Settings panel init (deferred until partial is injected) ─────────────────
 let _settingsInitDone = false;

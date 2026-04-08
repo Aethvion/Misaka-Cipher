@@ -6,7 +6,7 @@
 // ── Global State ──────────────────────────────────────────────────────────────
 let axiomChatHistory = [];
 let axiomMaxHistory = 20;
-let axiomTypingSpeed = 55;
+let axiomTypingSpeed = 20;  // fallback; overridden by global companions speed
 let isAxiomTyping = false;
 let axiomHistoryOffsetDays = 0;
 const AXIOM_HISTORY_LIMIT_DAYS = 3;
@@ -14,9 +14,19 @@ let hasInitializedAxiom = false;
 let currentAxiomMood = 'precise';
 let currentAxiomExpression = 'neutral';
 
-if (typeof window.prefs !== 'undefined') {
-    axiomTypingSpeed = window.prefs.get('axiom.typing_speed', 55);
+function _axiomLoadTypingSpeed() {
+    if (typeof window.prefs !== 'undefined') {
+        axiomTypingSpeed = window.prefs.get('companions.global.typing_speed', 20);
+    }
 }
+_axiomLoadTypingSpeed();
+
+// Update speed when global companion setting changes
+window.addEventListener('companionSettingsUpdated', (e) => {
+    if (e.detail && e.detail.typing_speed !== undefined) {
+        axiomTypingSpeed = parseInt(e.detail.typing_speed, 10);
+    }
+});
 
 // ── Expression map ────────────────────────────────────────────────────────────
 // Maps LLM emotion tag values → CSS class suffixes on #axiom-avatar
@@ -118,6 +128,16 @@ async function initializeAxiom() {
         chatInput.style.height = 'auto';
         chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
     });
+
+    // Wire settings button → Companions settings subtab
+    const axiomSettingsBtn = document.getElementById('axiom-settings-btn');
+    if (axiomSettingsBtn) {
+        axiomSettingsBtn.addEventListener('click', () => {
+            if (typeof ensureTabAndSubTab === 'function') {
+                ensureTabAndSubTab('settings', 'companions');
+            }
+        });
+    }
 
     hasInitializedAxiom = true;
     console.log('[Axiom] Initialization complete.');
@@ -296,7 +316,12 @@ function axiomCreateMessageElement(role, text, timestamp = null) {
     if (timestamp) {
         const ts = document.createElement('div');
         ts.className = 'message-timestamp';
-        ts.textContent = timestamp.includes(' ') ? timestamp.split(' ')[1].slice(0, 5) : timestamp;
+        try {
+            const d = new Date(timestamp);
+            ts.textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        } catch (e) {
+            ts.textContent = timestamp;
+        }
         div.appendChild(ts);
     }
 

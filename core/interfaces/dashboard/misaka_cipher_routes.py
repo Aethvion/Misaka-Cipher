@@ -39,16 +39,53 @@ _COMPANION = COMPANIONS["misaka_cipher"]
 
 router = APIRouter(prefix=_COMPANION.route_prefix, tags=["misakacipher"])
 
-# Path configuration
+# Path configuration — now uses registry data_dir / history_dir
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
-MEMORY_DIR = PERSONA_MISAKA
-HISTORY_DIR = HISTORY_CHAT
+MEMORY_DIR = _COMPANION.data_dir
+HISTORY_DIR = _COMPANION.history_dir
 EXPRESSIONS_DIR = PROJECT_ROOT / "core" / "interfaces" / "dashboard" / "static" / _COMPANION.static_dir
 WORKSPACES_FILE = WORKSPACES / "workspaces.json"
 
 # Ensure directories exist
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _migrate_misaka_data():
+    """Migrate Misaka data from legacy paths to the companions directory (one-time, non-destructive)."""
+    import shutil as _shutil
+
+    # Migrate memory files: base_info.json, memory.json
+    _old_mem = PERSONA_MISAKA
+    for fname in ("base_info.json", "memory.json"):
+        old_f = _old_mem / fname
+        new_f = MEMORY_DIR / fname
+        if old_f.exists() and not new_f.exists():
+            try:
+                _shutil.copy2(old_f, new_f)
+                logger.info(f"Misaka: Migrated {fname} from legacy path")
+            except Exception as _e:
+                logger.warning(f"Misaka: Could not migrate {fname}: {_e}")
+
+    # Migrate chat history from data/history/chat → data/companions/misaka_cipher/history
+    _old_hist = HISTORY_CHAT
+    if _old_hist.exists():
+        for month_dir in sorted(_old_hist.glob("*-*")):
+            if not month_dir.is_dir():
+                continue
+            new_month = HISTORY_DIR / month_dir.name
+            new_month.mkdir(parents=True, exist_ok=True)
+            for day_f in month_dir.glob("chat_*.json"):
+                new_f = new_month / day_f.name
+                if not new_f.exists():
+                    try:
+                        _shutil.copy2(day_f, new_f)
+                        logger.info(f"Misaka: Migrated history {day_f.name}")
+                    except Exception as _e:
+                        logger.warning(f"Misaka: Could not migrate {day_f.name}: {_e}")
+
+
+_migrate_misaka_data()
 
 def _initialize_memory():
     """Ensure base_info.json and memory.json exist with defaults."""
