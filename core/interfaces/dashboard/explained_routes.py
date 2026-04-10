@@ -68,6 +68,17 @@ async def get_thread_result(thread_id: str):
     html = index_path.read_text(encoding="utf-8")
     return {"html": html, "thread_id": thread_id}
 
+@router.get("/thread/{thread_id}/raw")
+async def get_thread_raw_html(thread_id: str):
+    from fastapi.responses import HTMLResponse
+    thread_dir = EXPLANATIONS / thread_id
+    index_path = thread_dir / "index.html"
+    if not index_path.exists():
+        return HTMLResponse("<html><body><p>Preparing immersion...</p></body></html>")
+    
+    html = index_path.read_text(encoding="utf-8")
+    return HTMLResponse(content=html)
+
 async def run_explained_agent(task_id: str, thread_id: str, req: ExplainedRequest, nexus):
     thread_dir = EXPLANATIONS / thread_id
     

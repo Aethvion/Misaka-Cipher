@@ -50,6 +50,7 @@
         exPrompt.value = '';
         exPlaceholder.classList.remove('hidden');
         exFrame.classList.add('hidden');
+        exFrame.src = 'about:blank';
         exGenerateBtn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Build Page';
         if (exSidebar.classList.contains('collapsed')) toggleSidebar();
         if (window.showToast) window.showToast('Ready for a new topic.', 'info');
@@ -98,7 +99,7 @@
         const modelId = exModel.value;
 
         setLoading(true);
-        if (exLogs) exLogs.innerHTML = ''; // Clear logs
+        if (exLogs) exLogs.innerHTML = ''; 
         updateStatus('Initializing...', 5);
 
         try {
@@ -128,6 +129,7 @@
             console.error(e);
             if (window.showToast) window.showToast('Error: ' + e.message, 'error');
             updateStatus('Failed.', 0);
+            setLoading(false);
         }
     }
 
@@ -139,7 +141,6 @@
                 if (!res.ok) return;
                 const data = await res.json();
                 
-                // Update Logs
                 if (data.logs && data.logs.length > lastLogCount) {
                     for (let i = lastLogCount; i < data.logs.length; i++) {
                         appendLog(data.logs[i]);
@@ -147,16 +148,16 @@
                     lastLogCount = data.logs.length;
                 }
 
-                // Intermediate Content Update (Real-time)
-                if (data.html && data.html !== exLastHtml) {
-                    displayResult(data.html, false); // display but don't auto-collapse yet
+                // Intermediate Content Update: check if HTML content changed
+                if (data.html && (data.html !== exLastHtml)) {
+                    refreshIframe();
                     exLastHtml = data.html;
                 }
 
                 if (data.status === 'completed') {
                     clearInterval(interval);
                     updateStatus('Completed!', 100);
-                    displayResult(data.html, true); // final display + auto-collapse
+                    refreshIframe(true); // final display + auto-collapse
                     setLoading(false);
                     addToHistory(data.topic, data.thread_id);
                 } else if (data.status === 'failed') {
@@ -164,7 +165,6 @@
                     setLoading(false);
                     if (window.showToast) window.showToast('Generation failed: ' + data.error, 'error');
                 } else {
-                    // Estimate progress if not provided
                     updateStatus(data.step || 'Building immersion...', null);
                 }
             } catch (e) {
@@ -182,15 +182,15 @@
         exLogs.scrollTop = exLogs.scrollHeight;
     }
 
-    function displayResult(html, final = true) {
+    function refreshIframe(final = false) {
+        if (!exCurrentThreadId) return;
+        
         exPlaceholder.classList.add('hidden');
         exFrame.classList.remove('hidden');
         exGenerateBtn.innerHTML = '<i class="fas fa-sync"></i> Update Page';
         
-        const doc = exFrame.contentWindow.document;
-        doc.open();
-        doc.write(html);
-        doc.close();
+        // Refresh by updating src with cache buster
+        exFrame.src = `/api/explained/thread/${exCurrentThreadId}/raw?t=${Date.now()}`;
         
         if (final && !exSidebar.classList.contains('collapsed')) {
             toggleSidebar();
@@ -245,13 +245,15 @@
         setLoading(true);
         updateStatus('Loading...', 50);
         try {
+            // Check existence first
             const res = await fetch(`/api/explained/thread/${threadId}`);
             if (!res.ok) throw new Error('Failed to load thread');
             const data = await res.json();
+            
             exCurrentThreadId = threadId;
             exLastHtml = data.html;
             exPrompt.value = topic || '';
-            displayResult(data.html, true);
+            refreshIframe(true);
         } catch (e) {
             if (window.showToast) window.showToast('Error loading: ' + e.message, 'error');
         } finally {
