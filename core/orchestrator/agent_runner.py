@@ -194,6 +194,7 @@ ACTION: {{"type": "fetch_url", "url": "https://api.github.com/repos/owner/repo"}
 ACTION: {{"type": "set_plan", "steps": ["step 1", "step 2", "step 3"]}}
 ACTION: {{"type": "mark_done", "step": "exact step text"}}  ← call this AFTER the real action succeeds, never instead of it
 ACTION: {{"type": "add_note", "note": "important context to remember"}}
+ACTION: {{"type": "evict_file", "path": "relative/file.txt"}}          ← drop a file from active context the moment you no longer need its raw content
 ACTION: {{"type": "observe", "content": "I see a screenshot showing X, Y, Z. The error is on line N."}}  ← describe images or key findings
 ACTION: {{"type": "done", "summary": "brief summary of what was accomplished"}}
 
@@ -217,7 +218,7 @@ EFFICIENCY RULES:
 15. KNOWLEDGE BLOCK: The Context section contains a "Knowledge" block listing every file you have ever read or modified, with function names and their exact line numbers (e.g. handleMouseMove@L145). Use this to jump directly to the right section: read_file with offset=145 to see that function. Check the Knowledge block before deciding to read a file at all — you may already know what you need.
 16. FILE READING: read_file returns up to 50,000 chars per call — enough for most files in one shot. If a result ends with [TRUNCATED], use the exact offset shown to continue. If you see a [NOTE] about reading a section multiple times, check the Knowledge block — it has the function locations. Use offset-based reads to jump directly to the function you need.
 17. PATCH FAILURES: If patch_file returns "FAILED: exact 'old' string not found", the file was likely changed since you last read it. Re-read the file (or the relevant section using offset) to get the current exact content, then retry. If you see a [NOTE] about repeated attempts, switch to append_file for new functions or write_file for a full replacement.
-18. Be strategic: prefer targeted offset reads and append_file over full-file reads. Read only the section you need.
+18. SMART CONTEXT EVICTION: When you finish exploring a reference or template file (reading another app to understand a pattern, inspecting a config, etc.) call evict_file on it immediately after extracting what you need — one pass is enough, never carry those files into the execution phase. For large files like core.js: read → note the function names and line numbers you need → evict, then use offset reads to jump back if required. Only carry files you are actively writing to. When you call set_plan to begin execution after an exploration phase, all read-only files are automatically evicted. Be strategic: prefer targeted offset reads and append_file over full-file reads.
 19. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without data, switch to fetch_url or proceed with what you have.
 20. For fetching a specific URL or API use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
 21. Write ALL deliverable files BEFORE writing or running verification/test scripts.
@@ -299,14 +300,44 @@ class AgentState:
     def is_cached(self, path: str) -> bool:
         return path in self.file_cache
 
-    def cache_file(self, path: str, size: int, turn: int = 0) -> None:
+    def cache_file(self, path: str, size: int, turn: int = 0, modified: bool = False) -> None:
+        existing = self.file_cache.get(path, {})
         self.file_cache[path] = {
             "size": size,
             "cached_at": utcnow_iso(),
             "turn": turn,
+            # Once a file is marked modified, never downgrade it back to read-only.
+            "modified": modified or existing.get("modified", False),
         }
         if path not in self.workspace_map:
             self.workspace_map.append(path)
+
+    def evict_file(self, path: str) -> bool:
+        """Manually evict a single file from file_cache.
+
+        The agent calls this immediately after finishing with a reference or
+        template file — one pass to learn the pattern is enough.  The file
+        stays in workspace_map and file_digests so the agent still knows it
+        exists and has its structure.
+        """
+        if path in self.file_cache:
+            del self.file_cache[path]
+            return True
+        return False
+
+    def evict_read_only_files(self) -> List[str]:
+        """Evict all files that were only read, never written/patched/appended.
+
+        Called automatically on phase transitions (when set_plan is called after
+        an exploration phase) to clear out reference files the agent learned from
+        but is no longer actively modifying.
+        """
+        evicted = []
+        for path in list(self.file_cache.keys()):
+            if not self.file_cache[path].get("modified", False):
+                del self.file_cache[path]
+                evicted.append(path)
+        return evicted
 
     def evict_stale_cache(self, current_turn: int, max_idle_turns: int = 2) -> List[str]:
         """Remove files from file_cache that haven't been accessed in max_idle_turns.
@@ -803,6 +834,16 @@ class AgentRunner:
 
         if t == "set_plan":
             steps = action.get("steps", [])
+            # Phase transition: if a plan already exists this is a re-plan (e.g.
+            # exploration → execution).  Evict all read-only files immediately so
+            # template/reference files don't snowball into the execution phase.
+            if self.state.plan:
+                phase_evicted = self.state.evict_read_only_files()
+                if phase_evicted:
+                    logger.info(
+                        f"[AgentRunner iter={iteration}] Phase transition (new plan) → "
+                        f"evicted {len(phase_evicted)} read-only file(s): {phase_evicted}"
+                    )
             self.state.set_plan(steps)
             return None  # state-only, not sent to LLM
 
@@ -810,6 +851,19 @@ class AgentRunner:
             step = action.get("step", "")
             self.state.mark_done(step)
             return None  # state-only
+
+        if t == "evict_file":
+            path = action.get("path", "")
+            if not path:
+                return "[evict_file] 'path' is required."
+            success = self.state.evict_file(path)
+            self.state.log_action(iteration, "evict_file", path)
+            self._emit({"type": "thinking", "title": f"Evicted {path}", "detail": "Dropped from active context."})
+            return (
+                f"Evicted {path} from active context."
+                if success
+                else f"{path} was not in active context (already absent or never read)."
+            )
 
         if t == "add_note":
             note = action.get("note", "")
@@ -838,6 +892,9 @@ class AgentRunner:
                 # Successful patch — reset the repeat counter and clear read dedup
                 self._action_repeats.pop(repeat_key, None)
                 self._invalidate_read_cache(path)
+                # Mark as modified so phase-eviction doesn't drop it
+                existing_size = self.state.file_cache.get(path, {}).get("size", 0)
+                self.state.cache_file(path, existing_size, turn=iteration, modified=True)
                 # Update digest to reflect the change
                 try:
                     fp = self.workspace / path
@@ -865,6 +922,9 @@ class AgentRunner:
             self._emit({"type": "write_file", "path": path, "detail": f"append: {len(content)} chars"})
             self._invalidate_read_cache(path)
             if not result.startswith("Error:"):
+                # Mark as modified so phase-eviction doesn't drop it
+                existing_size = self.state.file_cache.get(path, {}).get("size", 0)
+                self.state.cache_file(path, existing_size, turn=iteration, modified=True)
                 try:
                     fp = self.workspace / path
                     full = fp.read_text(encoding="utf-8", errors="replace")
@@ -878,7 +938,7 @@ class AgentRunner:
             path = action.get("path", "")
             content = action.get("content", "")
             result = self._write_file(path, content)
-            self.state.cache_file(path, len(content.encode()), turn=iteration)
+            self.state.cache_file(path, len(content.encode()), turn=iteration, modified=True)
             self.state.log_action(iteration, "write_file", path)
             # File was written — clear its read-dedup entries.
             self._invalidate_read_cache(path)
