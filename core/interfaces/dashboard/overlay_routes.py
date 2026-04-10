@@ -72,10 +72,15 @@ def _overlay_running() -> bool:
 
 # ── Models ────────────────────────────────────────────────────────────────────
 
+class HistoryPair(BaseModel):
+    q: str
+    a: str
+
 class AskRequest(BaseModel):
     question:       str
-    screenshot_b64: Optional[str] = None   # base64-encoded PNG
-    model:          Optional[str] = None   # optional model override
+    screenshot_b64: Optional[str]        = None   # base64-encoded PNG (current screenshot)
+    model:          Optional[str]        = None   # optional model override
+    history:        Optional[list[HistoryPair]] = None  # prior Q/A pairs (same-thread mode)
 
 
 class OverlayConfigIn(BaseModel):
@@ -122,6 +127,20 @@ async def overlay_ask(req: AskRequest):
             except Exception as decode_err:
                 raise ValueError(f"Could not decode screenshot: {decode_err}") from decode_err
 
+        # Build the prompt — prepend conversation history when in same-thread mode
+        question = req.question
+        if req.history:
+            history_lines = []
+            for pair in req.history:
+                history_lines.append(f"User: {pair.q}")
+                history_lines.append(f"Assistant: {pair.a}")
+            history_block = "\n\n".join(history_lines)
+            question = (
+                f"[Previous conversation in this session — a new screenshot has been taken:]\n"
+                f"{history_block}\n\n"
+                f"[Current question about the new screenshot:]\n{req.question}"
+            )
+
         system_prompt = build_overlay_prompt()
         validate_call_context(CallSource.OVERLAY, system_prompt, trace_id)
 
@@ -129,7 +148,7 @@ async def overlay_ask(req: AskRequest):
         response = await asyncio.get_event_loop().run_in_executor(
             None,
             lambda: pm.call_with_failover(
-                prompt=req.question,
+                prompt=question,
                 trace_id=trace_id,
                 system_prompt=system_prompt,
                 model=model_id,
