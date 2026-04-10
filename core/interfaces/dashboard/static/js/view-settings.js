@@ -3061,6 +3061,13 @@ async function loadOverlaySettings() {
             }
         }
 
+        // Populate appearance sliders
+        const opacityEl  = document.getElementById('overlay-opacity');
+        const fontSizeEl = document.getElementById('overlay-font-size');
+        if (opacityEl)  opacityEl.value  = Math.round((cfg.opacity   ?? 0.9) * 100);
+        if (fontSizeEl) fontSizeEl.value = cfg.font_size ?? 11;
+        overlayUpdatePreview();
+
         // Save autostart immediately on toggle
         if (autostartEl) {
             autostartEl.onchange = () => overlaySaveConfig();
@@ -3123,15 +3130,38 @@ async function overlayRefreshStatus() {
     } catch (_) {}
 }
 
+function overlayUpdatePreview() {
+    const opacityEl      = document.getElementById('overlay-opacity');
+    const fontSizeEl     = document.getElementById('overlay-font-size');
+    const preview        = document.getElementById('overlay-preview');
+    const previewBody    = document.getElementById('overlay-preview-body');
+    const opacityValEl   = document.getElementById('overlay-opacity-val');
+    const fontSizeValEl  = document.getElementById('overlay-font-size-val');
+
+    if (!opacityEl || !fontSizeEl) return;
+
+    const opacity  = parseInt(opacityEl.value) / 100;
+    const fontSize = parseInt(fontSizeEl.value);
+
+    if (opacityValEl)  opacityValEl.textContent  = `${opacityEl.value}%`;
+    if (fontSizeValEl) fontSizeValEl.textContent = `${fontSize}px`;
+    if (preview)       preview.style.opacity     = opacity;
+    if (previewBody)   previewBody.style.fontSize = `${fontSize}px`;
+}
+
 async function overlaySaveConfig() {
     const hotkeyEl    = document.getElementById('overlay-hotkey');
     const autostartEl = document.getElementById('overlay-autostart');
     const modelEl     = document.getElementById('overlay-model');
+    const opacityEl   = document.getElementById('overlay-opacity');
+    const fontSizeEl  = document.getElementById('overlay-font-size');
 
     const body = {
-        hotkey:            hotkeyEl?.value?.trim()  || 'ctrl+shift+space',
-        launch_with_suite: autostartEl?.checked     ?? false,
-        model:             modelEl?.value           || null,
+        hotkey:            hotkeyEl?.value?.trim()                      || 'ctrl+shift+space',
+        launch_with_suite: autostartEl?.checked                         ?? false,
+        model:             modelEl?.value                               || null,
+        opacity:           opacityEl  ? parseInt(opacityEl.value) / 100 : 0.9,
+        font_size:         fontSizeEl ? parseInt(fontSizeEl.value)       : 11,
     };
 
     try {
@@ -3240,6 +3270,7 @@ window.overlayLaunch            = overlayLaunch;
 window.overlayStop              = overlayStop;
 window.overlayRefreshStatus     = overlayRefreshStatus;
 window.overlaySaveConfig        = overlaySaveConfig;
+window.overlayUpdatePreview     = overlayUpdatePreview;
 window.overlayInstallDeps       = overlayInstallDeps;
 window.overlayInstallLogCopy    = overlayInstallLogCopy;
 

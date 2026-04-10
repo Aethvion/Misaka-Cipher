@@ -38,6 +38,8 @@ _DEFAULT_CONFIG = {
     "hotkey":  "ctrl+shift+space",
     "model":   None,        # None = use system.info_model
     "launch_with_suite": False,
+    "opacity":   0.9,       # window opacity (0.3 – 1.0)
+    "font_size": 11,        # response/input font size in pt
 }
 
 
@@ -76,10 +78,12 @@ class AskRequest(BaseModel):
 
 
 class OverlayConfigIn(BaseModel):
-    enabled:            Optional[bool] = None
-    hotkey:             Optional[str]  = None
-    model:              Optional[str]  = None
-    launch_with_suite:  Optional[bool] = None
+    enabled:            Optional[bool]  = None
+    hotkey:             Optional[str]   = None
+    model:              Optional[str]   = None
+    launch_with_suite:  Optional[bool]  = None
+    opacity:            Optional[float] = None   # 0.3 – 1.0
+    font_size:          Optional[int]   = None   # 8 – 18
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -153,6 +157,8 @@ async def overlay_save_config(body: OverlayConfigIn):
     if body.hotkey             is not None: cfg["hotkey"]             = body.hotkey.strip()
     if body.model              is not None: cfg["model"]              = body.model or None
     if body.launch_with_suite  is not None: cfg["launch_with_suite"]  = body.launch_with_suite
+    if body.opacity            is not None: cfg["opacity"]            = max(0.2, min(1.0, body.opacity))
+    if body.font_size          is not None: cfg["font_size"]          = max(8, min(18, body.font_size))
     _save_config(cfg)
     return cfg
 

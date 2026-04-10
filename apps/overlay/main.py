@@ -9,6 +9,12 @@ screen without opening the dashboard browser tab.
 Hotkey : Ctrl+Shift+Space  (captures screen → opens floating input window)
 Tray   : right-click icon for quick actions
 
+Features:
+  • Resizable window (drag bottom-right corner)
+  • Session history — last 10 screenshot sessions persist while open
+  • Clear Q → A separator within each session
+  • Opacity and font-size driven by dashboard settings
+
 Dependencies (pip install ...):
     PyQt6   pystray   Pillow   mss   keyboard
 
@@ -18,18 +24,35 @@ Usage:
 from __future__ import annotations
 
 import base64
+import html as _html_mod
 import io
 import json
 import os
 import sys
 import threading
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 # ── Project root on sys.path ──────────────────────────────────────────────────
 ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(ROOT))
+
+# ── Config helpers ────────────────────────────────────────────────────────────
+_CONFIG_PATH = ROOT / "data" / "overlay" / "config.json"
+
+def _load_overlay_config() -> dict:
+    """Read data/overlay/config.json, returning defaults for missing keys."""
+    defaults = {"opacity": 0.9, "font_size": 11, "hotkey": "ctrl+shift+space"}
+    try:
+        if _CONFIG_PATH.exists():
+            data = json.loads(_CONFIG_PATH.read_text("utf-8"))
+            return {**defaults, **data}
+    except Exception:
+        pass
+    return defaults
+
 
 # ── Discover dashboard port ───────────────────────────────────────────────────
 def _find_dashboard_port() -> int:
@@ -52,10 +75,10 @@ DASHBOARD_URL = f"http://localhost:{_find_dashboard_port()}"
 try:
     from PyQt6.QtWidgets import (
         QApplication, QWidget, QVBoxLayout, QHBoxLayout,
-        QTextEdit, QLineEdit, QPushButton, QLabel, QFrame, QComboBox,
-        QTextBrowser,
+        QTextEdit, QPushButton, QLabel, QFrame, QComboBox,
+        QTextBrowser, QSizeGrip,
     )
-    from PyQt6.QtCore import Qt, QThread, pyqtSignal, QObject, QPoint
+    from PyQt6.QtCore import Qt, QThread, pyqtSignal, QObject, QPoint, QSize
     from PyQt6.QtGui import QFont, QTextCursor
 
     HAS_QT = True
@@ -70,7 +93,6 @@ def list_monitors() -> list[dict]:
         import mss
         with mss.mss() as sct:
             result = []
-            # monitors[0] = virtual combined screen, monitors[1..n] = real displays
             for i, m in enumerate(sct.monitors):
                 if i == 0:
                     label = "All Screens Combined"
@@ -83,18 +105,11 @@ def list_monitors() -> list[dict]:
 
 
 def take_screenshot_b64(monitor_index: int = 1) -> Optional[str]:
-    """
-    Capture the specified monitor and return a base64-encoded PNG string.
-
-    Args:
-        monitor_index: Index into mss.monitors list.
-                       0 = all screens combined, 1 = primary (default), 2+ = secondary.
-    """
+    """Capture the specified monitor and return a base64-encoded PNG string."""
     try:
         import mss
         with mss.mss() as sct:
             monitors = sct.monitors
-            # Clamp index to valid range
             idx = max(0, min(monitor_index, len(monitors) - 1))
             if not monitors:
                 return None
@@ -147,7 +162,6 @@ class AskWorker(QObject):
                 answer = data.get("answer", "(no response)")
                 self.finished.emit(answer)
         except urllib.error.HTTPError as e:
-            # Extract the FastAPI detail message from the JSON body
             try:
                 body   = json.loads(e.read().decode("utf-8"))
                 detail = body.get("detail", str(e))
@@ -160,18 +174,16 @@ class AskWorker(QObject):
             self.error.emit(str(e))
 
 
-# ── Custom Input Widget ───────────────────────────────────────────────────
+# ── Custom Input Widget ───────────────────────────────────────────────────────
 
 class ChatInput(QTextEdit):
-    """
-    Custom QTextEdit that sends on Enter and adds new line on Shift+Enter.
-    """
+    """QTextEdit that sends on Enter and inserts newline on Shift+Enter."""
     send_requested = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, font_size: int = 11, parent=None):
         super().__init__(parent)
         self.setPlaceholderText("What do you want to know about this screen?")
-        self.setFont(QFont("Segoe UI", 11))
+        self.setFont(QFont("Segoe UI", font_size))
         self.setAcceptRichText(False)
         self.setFixedHeight(50)
         self.setStyleSheet("""
@@ -199,27 +211,42 @@ class ChatInput(QTextEdit):
 
 # ── Floating overlay window ───────────────────────────────────────────────────
 
+_RESIZE_GRIP = 18   # px from bottom-right corner that triggers resize
+_MAX_HISTORY = 10   # screenshot sessions to keep
+
+
 class OverlayWindow(QWidget):
     """
     Borderless, always-on-top floating window with an indigo dark theme.
-    Can be dragged by clicking anywhere in the title bar area.
+    Drag by clicking the title-bar area.  Resize by dragging the bottom-right corner.
     """
 
-    # Signal emitted from hotkey/tray threads to trigger show
     show_overlay = pyqtSignal(str)   # base64 screenshot (may be "")
 
     def __init__(self, dashboard_url: str):
         super().__init__()
         self._dashboard_url  = dashboard_url
-        self._screenshot_b64: Optional[str] = None
-        self._drag_pos: Optional[QPoint]    = None
-        self._worker_thread: Optional[QThread] = None
-        self._worker: Optional[AskWorker]       = None
-        self._selected_monitor: int = 1  # default = primary
+        self._screenshot_b64: Optional[str]  = None
+        self._drag_pos: Optional[QPoint]     = None
+        self._resizing: bool                 = False
+        self._resize_start_global: Optional[QPoint] = None
+        self._resize_start_size: Optional[QSize]    = None
+        self._worker_thread: Optional[QThread]      = None
+        self._worker: Optional[AskWorker]           = None
+        self._selected_monitor: int = 1
+
+        # Session history — list of dicts:
+        #   {"time": "HH:MM", "pairs": [{"q": str, "a": str|None}]}
+        # One entry per screenshot capture, capped at _MAX_HISTORY.
+        self._history: list[dict]         = []
+        self._current_entry: Optional[dict] = None
+
+        # Appearance (loaded from config on each open)
+        cfg = _load_overlay_config()
+        self._opacity   = float(cfg.get("opacity",   0.9))
+        self._font_size = int(cfg.get("font_size",  11))
 
         self._build_ui()
-
-        # Cross-thread signal → main-thread slot
         self.show_overlay.connect(self._on_show_overlay)
 
     # ── UI construction ───────────────────────────────────────────────────────
@@ -228,13 +255,13 @@ class OverlayWindow(QWidget):
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.Tool          # omit from taskbar
+            | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setMinimumSize(480, 320)
-        self.resize(540, 400)
+        self.setMinimumSize(420, 280)
+        self.resize(540, 420)
+        self.setWindowOpacity(self._opacity)
 
-        # Outer layout (transparent gap around container for shadow illusion)
         outer = QVBoxLayout(self)
         outer.setContentsMargins(8, 8, 8, 8)
 
@@ -244,14 +271,14 @@ class OverlayWindow(QWidget):
 
         container.setStyleSheet("""
             QFrame#aovContainer {
-                background-color: rgba(12, 12, 22, 230);
+                background-color: rgba(12, 12, 22, 235);
                 border: 1px solid rgba(99, 102, 241, 130);
                 border-radius: 14px;
             }
         """)
 
         layout = QVBoxLayout(container)
-        layout.setContentsMargins(16, 14, 16, 16)
+        layout.setContentsMargins(16, 14, 16, 12)
         layout.setSpacing(10)
 
         # ── Title bar ─────────────────────────────────────────────────────────
@@ -352,13 +379,13 @@ class OverlayWindow(QWidget):
         sep.setStyleSheet("background: rgba(99,102,241,55);")
         layout.addWidget(sep)
 
-        # ── Response area ─────────────────────────────────────────────────────
+        # ── Response / history area ───────────────────────────────────────────
         self._response = QTextBrowser()
         self._response.setOpenExternalLinks(True)
         self._response.setReadOnly(True)
-        self._response.setMinimumHeight(150)
+        self._response.setMinimumHeight(120)
         self._response.setPlaceholderText("Response will appear here…")
-        self._response.setFont(QFont("Segoe UI", 11))
+        self._response.setFont(QFont("Segoe UI", self._font_size))
         self._response.setStyleSheet("""
             QTextBrowser {
                 background: rgba(8, 8, 18, 190);
@@ -377,41 +404,39 @@ class OverlayWindow(QWidget):
                 border-radius: 3px;
             }
         """)
-
-        # Better markdown styling via default document stylesheet
         self._response.document().setDefaultStyleSheet("""
             h1, h2, h3, h4 { color: #818cf8; margin-top: 6px; margin-bottom: 2px; font-weight: bold; }
-            code { 
-                background-color: rgba(99, 102, 241, 40); 
-                color: #e2e8f0; 
+            code {
+                background-color: rgba(99, 102, 241, 40);
+                color: #e2e8f0;
                 font-family: 'Consolas', 'Cascadia Code', 'Courier New', monospace;
                 padding: 2px 4px;
                 border-radius: 4px;
             }
-            pre { 
-                background-color: rgba(0, 0, 0, 100); 
+            pre {
+                background-color: rgba(0, 0, 0, 100);
                 border: 1px solid rgba(99, 102, 241, 60);
-                padding: 12px; 
+                padding: 12px;
                 border-radius: 8px;
-                margin: 8px 0px;
+                margin: 8px 0;
                 font-family: 'Consolas', 'Cascadia Code', 'Courier New', monospace;
             }
             a { color: #818cf8; text-decoration: none; }
             li { margin-bottom: 4px; }
-            blockquote { 
+            blockquote {
                 border-left: 3px solid rgba(99, 102, 241, 150);
                 padding-left: 10px;
                 color: rgba(210, 210, 235, 180);
                 font-style: italic;
             }
         """)
-        layout.addWidget(self._response)
+        layout.addWidget(self._response, 1)
 
         # ── Input row ─────────────────────────────────────────────────────────
         input_row = QHBoxLayout()
         input_row.setSpacing(8)
 
-        self._input = ChatInput()
+        self._input = ChatInput(font_size=self._font_size)
         self._input.send_requested.connect(self._send)
 
         self._send_btn = QPushButton("Ask")
@@ -437,10 +462,21 @@ class OverlayWindow(QWidget):
         input_row.addWidget(self._send_btn)
         layout.addLayout(input_row)
 
-        # Status label
+        # Bottom row: status + resize grip
+        bottom_row = QHBoxLayout()
+        bottom_row.setContentsMargins(0, 0, 0, 0)
+        bottom_row.setSpacing(0)
+
         self._status = QLabel("")
         self._status.setStyleSheet("color: rgba(130,130,158,200); font-size: 11px;")
-        layout.addWidget(self._status)
+        bottom_row.addWidget(self._status, 1)
+
+        grip = QSizeGrip(self)
+        grip.setFixedSize(16, 16)
+        grip.setStyleSheet("QSizeGrip { background: transparent; }")
+        bottom_row.addWidget(grip, 0, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight)
+
+        layout.addLayout(bottom_row)
 
         # Centre on primary screen
         screen = QApplication.primaryScreen()
@@ -454,13 +490,11 @@ class OverlayWindow(QWidget):
     # ── Screen selector helpers ───────────────────────────────────────────────
 
     def _populate_screen_combo(self) -> None:
-        """Fill the screen combo with available monitors."""
         self._screen_combo.blockSignals(True)
         self._screen_combo.clear()
         monitors = list_monitors()
         for m in monitors:
             self._screen_combo.addItem(m["label"], userData=m["index"])
-        # Default to primary (index 1 if available, else 0)
         default_pos = 1 if len(monitors) > 1 else 0
         self._screen_combo.setCurrentIndex(default_pos)
         self._selected_monitor = monitors[default_pos]["index"]
@@ -472,40 +506,115 @@ class OverlayWindow(QWidget):
             self._selected_monitor = monitor_index
 
     def _take_new_screenshot(self) -> None:
-        """Grab a fresh screenshot of the selected screen."""
         self._new_scr_btn.setEnabled(False)
         self._new_scr_btn.setText("Capturing…")
-        self.hide()   # hide overlay so it doesn't appear in the screenshot
-
-        import threading
+        self.hide()
 
         def _grab() -> None:
-            import time
-            time.sleep(0.15)   # short delay so window fully hides first
+            time.sleep(0.15)
             scr = take_screenshot_b64(self._selected_monitor)
-            # Re-show on main thread via signal
             self.show_overlay.emit(scr or "")
 
         threading.Thread(target=_grab, daemon=True).start()
 
-    # ── Slot: activated by hotkey / tray ─────────────────────────────────────
+    # ── Show / session management ─────────────────────────────────────────────
 
     def _on_show_overlay(self, screenshot_b64: str) -> None:
+        # Reload appearance settings so dashboard changes take effect immediately
+        cfg = _load_overlay_config()
+        new_opacity   = float(cfg.get("opacity",   0.9))
+        new_font_size = int(cfg.get("font_size",  11))
+        if new_opacity != self._opacity:
+            self._opacity = new_opacity
+            self.setWindowOpacity(self._opacity)
+        if new_font_size != self._font_size:
+            self._font_size = new_font_size
+            self._response.setFont(QFont("Segoe UI", self._font_size))
+            self._input.setFont(QFont("Segoe UI", self._font_size))
+
         self._screenshot_b64 = screenshot_b64 or None
-        self._response.clear()
-        self._input.clear()
+
+        # Start a new history session for this screenshot
+        new_entry = {
+            "time":  datetime.now().strftime("%H:%M"),
+            "pairs": [],
+        }
+        self._history.append(new_entry)
+        if len(self._history) > _MAX_HISTORY:
+            self._history = self._history[-_MAX_HISTORY:]
+        self._current_entry = new_entry
+
         self._send_btn.setEnabled(True)
         self._new_scr_btn.setEnabled(True)
         self._new_scr_btn.setText("📷 New Screenshot")
-        # Refresh monitor list each time the overlay opens (monitors may have changed)
         self._populate_screen_combo()
-        hint = "Screenshot captured." if screenshot_b64 else "No screenshot available."
+
+        hint = "Screenshot captured." if screenshot_b64 else "No screenshot."
         self._status.setText(f"{hint}  Type your question and press Enter.")
+
+        self._render_history()
         self.show()
         self.raise_()
         self.activateWindow()
         self._input.setFocus()
         self._input.selectAll()
+
+    # ── History rendering ─────────────────────────────────────────────────────
+
+    def _render_history(self) -> None:
+        """Rebuild the response area from all history entries."""
+        self._response.clear()
+
+        for i, entry in enumerate(self._history):
+            if i > 0:
+                # Session divider
+                self._response.append(
+                    "<div style='text-align:center; margin: 10px 0 6px;'>"
+                    f"<span style='color:rgba(99,102,241,110);font-size:10px;'>"
+                    f"── Session {entry['time']} ──</span></div>"
+                )
+
+            for j, pair in enumerate(entry["pairs"]):
+                if j > 0:
+                    # Separator between consecutive Q/As in the same session
+                    self._response.append(
+                        "<div style='border-top:1px solid rgba(99,102,241,30);"
+                        "margin:8px 0 6px;'></div>"
+                    )
+
+                # Question header
+                q_esc = _html_mod.escape(pair["q"])
+                self._response.append(
+                    f"<div style='color:rgba(99,102,241,210);font-weight:600;"
+                    f"font-size:{self._font_size - 1}px;margin-bottom:2px;'>◈ Me</div>"
+                    f"<div style='color:rgba(220,220,245,210);margin-bottom:5px;'>{q_esc}</div>"
+                )
+
+                # Q → A separator
+                self._response.append(
+                    "<div style='display:flex;align-items:center;gap:6px;"
+                    "margin:4px 0 6px;'>"
+                    "<div style='flex:1;border-top:1px solid rgba(99,102,241,55);'></div>"
+                    "<span style='color:rgba(99,102,241,130);font-size:10px;'>▸ Response</span>"
+                    "<div style='flex:1;border-top:1px solid rgba(99,102,241,55);'></div>"
+                    "</div>"
+                )
+
+                # Answer
+                if pair["a"] is None:
+                    self._response.append(
+                        "<div style='color:rgba(99,102,241,200);"
+                        "font-style:italic;'>Thinking…</div>"
+                    )
+                else:
+                    # insertMarkdown renders markdown; move cursor to end first
+                    cursor = QTextCursor(self._response.document())
+                    cursor.movePosition(QTextCursor.MoveOperation.End)
+                    cursor.insertMarkdown(pair["a"])
+
+        self._response.verticalScrollBar().setValue(
+            self._response.verticalScrollBar().maximum()
+        )
 
     # ── Send question ─────────────────────────────────────────────────────────
 
@@ -514,25 +623,23 @@ class OverlayWindow(QWidget):
         if not question:
             return
 
-        # Clear input and disable UI
         self._input.clear()
         self._send_btn.setEnabled(False)
         self._status.setText("Thinking…")
 
-        # Add separator if history exists
-        if self._response.toPlainText().strip():
-            self._response.append("<hr style='border: 1px solid rgba(99, 102, 241, 40);'>")
+        # Create a history entry if none exists yet (e.g. overlay opened without screenshot)
+        if self._current_entry is None:
+            entry = {"time": datetime.now().strftime("%H:%M"), "pairs": []}
+            self._history.append(entry)
+            if len(self._history) > _MAX_HISTORY:
+                self._history = self._history[-_MAX_HISTORY:]
+            self._current_entry = entry
 
-        # Append user message
-        self._response.append(f"<div style='color: #818cf8; font-weight: bold;'>Me:</div> {question}")
-        
-        # Append thinking indicator as a new block we can find later
-        self._response.append("<div style='color: #6366f1; font-style: italic;'>Thinking...</div>")
-        
-        # Auto-scroll to bottom
-        self._response.verticalScrollBar().setValue(self._response.verticalScrollBar().maximum())
+        # Add new Q/A pair (answer=None until response arrives)
+        self._current_entry["pairs"].append({"q": question, "a": None})
+        self._render_history()
 
-        # Clean up any previous thread
+        # Clean up previous thread
         if self._worker_thread and self._worker_thread.isRunning():
             self._worker_thread.quit()
             self._worker_thread.wait(2000)
@@ -549,82 +656,90 @@ class OverlayWindow(QWidget):
 
         self._worker_thread.start()
 
-    def _replace_thinking(self, content_markdown: str) -> None:
-        """Replace the last block (our 'Thinking...' indicator) with actual content."""
-        cursor = QTextCursor(self._response.document())
-        cursor.movePosition(QTextCursor.MoveOperation.End)
-        
-        # Move to the start of the current block (the indicator) and select it
-        cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock, QTextCursor.MoveMode.KeepAnchor)
-        cursor.removeSelectedText()
-        
-        # Insert the response
-        cursor.insertMarkdown(content_markdown)
-        
-        # Ensure scroll follows
-        self._response.verticalScrollBar().setValue(self._response.verticalScrollBar().maximum())
-
     def _on_response(self, text: str) -> None:
-        self._replace_thinking(text)
+        if self._current_entry and self._current_entry["pairs"]:
+            self._current_entry["pairs"][-1]["a"] = text
+        self._render_history()
         self._status.setText("Done.")
         self._send_btn.setEnabled(True)
 
     def _on_error(self, err: str) -> None:
-        self._replace_thinking(f"### ⚠ Error\n\n{err}")
+        error_md = f"### ⚠ Error\n\n{err}"
+        if self._current_entry and self._current_entry["pairs"]:
+            self._current_entry["pairs"][-1]["a"] = error_md
+        self._render_history()
         self._status.setText("Request failed.")
         self._send_btn.setEnabled(True)
 
-    # ── Drag the frameless window by clicking anywhere ────────────────────────
+    # ── Drag & resize (frameless window) ─────────────────────────────────────
+
+    def _in_title_area(self, pos: QPoint) -> bool:
+        """True if the click is in the top drag region (above the screen selector)."""
+        return pos.y() < 52
 
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
-            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            local = event.position().toPoint()
+            gpos  = event.globalPosition().toPoint()
+            # Resize zone: bottom-right corner
+            in_resize = (
+                local.x() > self.width()  - _RESIZE_GRIP and
+                local.y() > self.height() - _RESIZE_GRIP
+            )
+            if in_resize:
+                self._resizing           = True
+                self._resize_start_global = gpos
+                self._resize_start_size  = self.size()
+            elif self._in_title_area(local):
+                self._drag_pos = gpos - self.frameGeometry().topLeft()
 
     def mouseMoveEvent(self, event) -> None:
-        if self._drag_pos is not None and (event.buttons() & Qt.MouseButton.LeftButton):
-            self.move(event.globalPosition().toPoint() - self._drag_pos)
+        gpos = event.globalPosition().toPoint()
+        if self._resizing and self._resize_start_global and self._resize_start_size:
+            delta_x = gpos.x() - self._resize_start_global.x()
+            delta_y = gpos.y() - self._resize_start_global.y()
+            new_w = max(self.minimumWidth(),  self._resize_start_size.width()  + delta_x)
+            new_h = max(self.minimumHeight(), self._resize_start_size.height() + delta_y)
+            self.resize(new_w, new_h)
+        elif self._drag_pos is not None and (event.buttons() & Qt.MouseButton.LeftButton):
+            self.move(gpos - self._drag_pos)
 
     def mouseReleaseEvent(self, event) -> None:
-        self._drag_pos = None
+        self._drag_pos           = None
+        self._resizing           = False
+        self._resize_start_global = None
+        self._resize_start_size  = None
 
 
 # ── Hotkey listener (daemon thread) ──────────────────────────────────────────
 
 def start_hotkey_listener(window: OverlayWindow) -> None:
-    """Register Ctrl+Shift+Space as a global hotkey in a background thread."""
-
     def _run() -> None:
         try:
             import keyboard as kb
 
             def _trigger() -> None:
-                # Capture the selected screen BEFORE the overlay appears
                 scr = take_screenshot_b64(window._selected_monitor)
                 window.show_overlay.emit(scr or "")
 
             kb.add_hotkey("ctrl+shift+space", _trigger, suppress=False)
             print("[Overlay] Hotkey registered: Ctrl+Shift+Space")
-            kb.wait()          # blocks thread until keyboard exits
+            kb.wait()
         except ImportError:
             print("[Overlay] 'keyboard' not installed — hotkey disabled. Run: pip install keyboard")
         except Exception as e:
             print(f"[Overlay] Hotkey listener error: {e}")
 
-    t = threading.Thread(target=_run, daemon=True, name="overlay-hotkey")
-    t.start()
+    threading.Thread(target=_run, daemon=True, name="overlay-hotkey").start()
 
 
 # ── Tray icon (daemon thread) ─────────────────────────────────────────────────
 
 def _make_tray_image():
-    """Return a 32×32 RGBA Pillow image for the tray icon."""
-    from PIL import Image, ImageDraw, ImageFont
-
+    from PIL import Image, ImageDraw
     img  = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
-    # Indigo filled circle
     draw.ellipse([1, 1, 30, 30], fill=(99, 102, 241, 255))
-    # Simple "A" letter
     try:
         draw.text((9, 6), "A", fill=(255, 255, 255, 255))
     except Exception:
@@ -633,8 +748,6 @@ def _make_tray_image():
 
 
 def start_tray(window: OverlayWindow, qt_app: QApplication) -> None:
-    """Create a system tray icon in a background thread."""
-
     def _run() -> None:
         try:
             import pystray
@@ -654,11 +767,7 @@ def start_tray(window: OverlayWindow, qt_app: QApplication) -> None:
                 qt_app.quit()
 
             menu = pystray.Menu(
-                pystray.MenuItem(
-                    "Ask about screen  (Ctrl+Shift+Space)",
-                    _on_ask,
-                    default=True,
-                ),
+                pystray.MenuItem("Ask about screen  (Ctrl+Shift+Space)", _on_ask, default=True),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Open Dashboard", _on_dashboard),
                 pystray.Menu.SEPARATOR,
@@ -679,8 +788,7 @@ def start_tray(window: OverlayWindow, qt_app: QApplication) -> None:
         except Exception as e:
             print(f"[Overlay] Tray error: {e}")
 
-    t = threading.Thread(target=_run, daemon=True, name="overlay-tray")
-    t.start()
+    threading.Thread(target=_run, daemon=True, name="overlay-tray").start()
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -694,7 +802,6 @@ def main() -> None:
         )
         sys.exit(1)
 
-    # Windows: DPI awareness so text/scaling is crisp
     if sys.platform == "win32":
         try:
             import ctypes
@@ -702,12 +809,11 @@ def main() -> None:
         except Exception:
             pass
 
-    # Re-detect port now (may have changed if dashboard restarted)
     url = f"http://localhost:{_find_dashboard_port()}"
 
     qt_app = QApplication(sys.argv)
     qt_app.setApplicationName("Aethvion Overlay")
-    qt_app.setQuitOnLastWindowClosed(False)   # keep alive when overlay hides
+    qt_app.setQuitOnLastWindowClosed(False)
 
     window = OverlayWindow(dashboard_url=url)
 
