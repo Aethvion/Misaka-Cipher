@@ -193,9 +193,47 @@
     font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.es-item-main {
+    flex: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.es-item-id {
+    font-family: 'Consolas', monospace;
+    font-size: 0.7rem;
+    color: var(--primary);
+    opacity: 0.6;
+    background: rgba(0, 217, 255, 0.1);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+.es-item-delete {
+    opacity: 0.2;
+    color: var(--text-tertiary);
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.es-item:hover .es-item-delete {
+    opacity: 1;
+}
+
+.es-item-delete:hover {
+    color: #ff4757;
+    background: rgba(255, 71, 87, 0.1);
 }
 
 .es-item:hover {

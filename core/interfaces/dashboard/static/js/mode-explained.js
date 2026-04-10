@@ -92,7 +92,7 @@
         
         const topic = exPrompt.value.trim();
         if (!topic) {
-            if (window.showToast) window.showToast('Please enter a topic to explain.', 'warn');
+            if (window.showToast) window.showToast('Please enter a topic.', 'warn');
             return;
         }
 
@@ -148,7 +148,6 @@
                     lastLogCount = data.logs.length;
                 }
 
-                // Intermediate Content Update: check if HTML content changed
                 if (data.html && (data.html !== exLastHtml)) {
                     refreshIframe();
                     exLastHtml = data.html;
@@ -157,9 +156,10 @@
                 if (data.status === 'completed') {
                     clearInterval(interval);
                     updateStatus('Completed!', 100);
-                    refreshIframe(true); // final display + auto-collapse
+                    refreshIframe(true); 
                     setLoading(false);
-                    addToHistory(data.topic, data.thread_id);
+                    // Add to history with the generated title
+                    addToHistory(data.display_title || data.topic, data.thread_id);
                 } else if (data.status === 'failed') {
                     clearInterval(interval);
                     setLoading(false);
@@ -189,12 +189,7 @@
         exFrame.classList.remove('hidden');
         exGenerateBtn.innerHTML = '<i class="fas fa-sync"></i> Update Page';
         
-        // Refresh by updating src with cache buster
         exFrame.src = `/api/explained/thread/${exCurrentThreadId}/raw?t=${Date.now()}`;
-        
-        if (final && !exSidebar.classList.contains('collapsed')) {
-            toggleSidebar();
-        }
     }
 
     function setLoading(loading) {
@@ -214,50 +209,94 @@
         }
     }
 
-    function addToHistory(topic, threadId) {
-        let history = JSON.parse(localStorage.getItem('explained_history') || '[]');
+    function addToHistory(title, threadId) {
+        let history = JSON.parse(localStorage.getItem('explained_history_v2') || '[]');
         history = history.filter(h => h.threadId !== threadId);
-        history.unshift({ topic, threadId, timestamp: Date.now() });
-        if (history.length > 20) history = history.slice(0, 20);
-        localStorage.setItem('explained_history', JSON.stringify(history));
+        
+        // Find existing or next number
+        let displayId = 0;
+        if (history.length > 0) {
+            displayId = Math.max(...history.map(h => h.displayId || 0)) + 1;
+        }
+
+        history.unshift({ title, threadId, displayId, timestamp: Date.now() });
+        if (history.length > 30) history = history.slice(0, 30);
+        localStorage.setItem('explained_history_v2', JSON.stringify(history));
         loadHistory();
     }
 
     function loadHistory() {
         if (!exHistoryList) return;
-        const history = JSON.parse(localStorage.getItem('explained_history') || '[]');
+        const history = JSON.parse(localStorage.getItem('explained_history_v2') || '[]');
         
         if (history.length === 0) {
-            exHistoryList.innerHTML = '<div class="es-empty">No history yet</div>';
+            exHistoryList.innerHTML = '<div class="es-empty">No creations yet</div>';
             return;
         }
 
         let html = '';
         for (const item of history) {
-            html += `<div class="es-item" title="${item.topic}" onclick="loadExplanation('${item.threadId}', '${item.topic}')">
-                <i class="fas fa-history"></i> ${item.topic}
-            </div>`;
+            const displayTitle = item.title || 'Untitled';
+            const displayId = item.displayId !== undefined ? `#${item.displayId}` : '';
+            
+            html += `
+                <div class="es-item" data-id="${item.threadId}">
+                    <div class="es-item-main" onclick="loadExplanation('${item.threadId}')">
+                        <span class="es-item-id">${displayId}</span>
+                        <span class="es-item-text" title="${displayTitle}">${displayTitle}</span>
+                    </div>
+                    <button class="es-item-delete" onclick="deleteExplanation('${item.threadId}', event)" title="Delete Creation">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            `;
         }
         exHistoryList.innerHTML = html;
     }
 
-    window.loadExplanation = async function(threadId, topic) {
+    window.loadExplanation = async function(threadId) {
         setLoading(true);
         updateStatus('Loading...', 50);
         try {
-            // Check existence first
             const res = await fetch(`/api/explained/thread/${threadId}`);
             if (!res.ok) throw new Error('Failed to load thread');
             const data = await res.json();
             
             exCurrentThreadId = threadId;
             exLastHtml = data.html;
-            exPrompt.value = topic || '';
+            exPrompt.value = data.topic || '';
             refreshIframe(true);
         } catch (e) {
             if (window.showToast) window.showToast('Error loading: ' + e.message, 'error');
         } finally {
             setLoading(false);
+        }
+    }
+
+    window.deleteExplanation = async function(threadId, event) {
+        if (event) event.stopPropagation();
+        
+        if (!confirm('Are you sure you want to delete this creation?')) return;
+
+        try {
+            const res = await fetch(`/api/explained/thread/${threadId}`, { method: 'DELETE' });
+            if (res.ok) {
+                // Remove from local storage
+                let history = JSON.parse(localStorage.getItem('explained_history_v2') || '[]');
+                history = history.filter(h => h.threadId !== threadId);
+                localStorage.setItem('explained_history_v2', JSON.stringify(history));
+                
+                if (exCurrentThreadId === threadId) {
+                    resetSession();
+                }
+                
+                loadHistory();
+                if (window.showToast) window.showToast('Creation deleted.', 'success');
+            } else {
+                throw new Error('Failed to delete on server');
+            }
+        } catch (e) {
+            if (window.showToast) window.showToast('Delete error: ' + e.message, 'error');
         }
     }
 

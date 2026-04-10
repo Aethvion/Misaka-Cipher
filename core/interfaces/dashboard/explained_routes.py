@@ -17,7 +17,7 @@ logger = get_logger("web.explained_routes")
 router = APIRouter(prefix="/api/explained", tags=["explained"])
 
 # In-memory task tracking for status polling
-ACTIVE_TASKS = {} # task_id -> {status, thread_id, html, error, topic, step, logs: []}
+ACTIVE_TASKS = {} # task_id -> {status, thread_id, html, error, topic, display_title, step, logs: []}
 
 class ExplainedRequest(BaseModel):
     topic: str
@@ -41,6 +41,7 @@ async def generate_explanation(req: ExplainedRequest, request: Request, backgrou
         "status": "running",
         "thread_id": thread_id,
         "topic": req.topic,
+        "display_title": req.topic[:30] + "..." if len(req.topic) > 30 else req.topic,
         "step": "Analyzing Topic...",
         "logs": [],
         "html": None,
@@ -62,11 +63,33 @@ async def get_task_status(task_id: str):
 async def get_thread_result(thread_id: str):
     thread_dir = EXPLANATIONS / thread_id
     index_path = thread_dir / "index.html"
+    meta_path = thread_dir / "meta.json"
     if not index_path.exists():
-        raise HTTPException(404, "Result not found")
+        raise HTTPException(404, f"Result not found for {thread_id}")
     
     html = index_path.read_text(encoding="utf-8")
-    return {"html": html, "thread_id": thread_id}
+    meta = {}
+    if meta_path.exists():
+        try: meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except: pass
+
+    return {
+        "html": html, 
+        "thread_id": thread_id, 
+        "display_title": meta.get("display_title", thread_id),
+        "topic": meta.get("topic", "")
+    }
+
+@router.delete("/thread/{thread_id}")
+async def delete_thread(thread_id: str):
+    thread_dir = EXPLANATIONS / thread_id
+    if thread_dir.exists():
+        try:
+            shutil.rmtree(thread_dir)
+            return {"status": "success"}
+        except Exception as e:
+            raise HTTPException(500, f"Delete failed: {str(e)}")
+    raise HTTPException(404, "Not found")
 
 @router.get("/thread/{thread_id}/raw")
 async def get_thread_raw_html(thread_id: str):
@@ -89,13 +112,26 @@ async def run_explained_agent(task_id: str, thread_id: str, req: ExplainedReques
         "updated_at": utcnow_iso(),
         "model_id": req.model_id
     }
-    if not meta_path.exists():
+    
+    # Try to generate a short display title if it's new
+    if not req.thread_id:
+        # Simplistic "Title Case" slug for now, but we'll let Agent do it
+        meta["display_title"] = req.topic[:25] + ("..." if len(req.topic) > 25 else "")
         meta["created_at"] = meta["updated_at"]
+        # Increment ID logic - count existing folders
+        try:
+            total = len([d for d in EXPLANATIONS.iterdir() if d.is_dir()])
+            meta["display_id"] = total
+        except: meta["display_id"] = 0
     else:
         try:
             old_meta = json.loads(meta_path.read_text(encoding="utf-8"))
             meta["created_at"] = old_meta.get("created_at", meta["updated_at"])
-        except: meta["created_at"] = meta["updated_at"]
+            meta["display_title"] = old_meta.get("display_title", req.topic[:25])
+            meta["display_id"] = old_meta.get("display_id", 0)
+        except: 
+            meta["created_at"] = meta["updated_at"]
+            meta["display_id"] = 0
 
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=4)
@@ -104,27 +140,16 @@ async def run_explained_agent(task_id: str, thread_id: str, req: ExplainedReques
     if req.thread_id:
         task_prompt += f" (Existing instruction update: {req.topic})"
 
-    system_prompt_override = f"""You are a master of visual communication and thematic web design.
-Your goal is to build a STUNNING, FULLY INTERACTIVE single-file HTML website explaining: {req.topic}
+    system_prompt_override = f"""You are a master of visual communication.
+Your goal is to build a STUNNING, THEMATIC single-file HTML website explaining: {req.topic}
 
-THEMATIC STYLE:
-- Analyze the topic and choose a visual style (e.g., Elden Ring theme, Minecraft theme).
-- Use matching Google Fonts, custom color palettes, and thematic motifs.
+IMPORTANT:
+1. Always choose a matching theme (Minecraft, Elden Ring, Sci-Fi, etc).
+2. Content ONLY: No footers, no social links, no 'Built by' credits.
+3. Interactive: Include JS for dynamic elements.
+4. Single File: All assets (CSS/JS) embedded in index.html.
 
-CLEAN CONTENT POLICY (CRITICAL):
-- DO NOT include footer credits like 'Built with...', 'Developed by...', or copyright notices.
-- DO NOT include social media links or placeholder icons for social platforms.
-- DO NOT include meta-text about the Aethvion system or current date/time.
-- Focus ONLY on the explanation content and its thematic presentation.
-
-REQUIREMENTS:
-1. Research: Use search_web for deep information.
-2. Design: Solid backgrounds, glassmorphism, smooth animations.
-3. Architecture: Hero, Key Concepts, Deep Dive, Summary.
-4. Interactivity: JS-driven dynamic elements.
-5. Single File: All code (HTML, CSS, JS) must be in index.html.
-
-Call 'done' with a summary after writing index.html."""
+At the very end of your response (after the file writing), provide a short, punchy TITLE for this explanation (max 4 words) in a separate line starting with 'TITLE: '."""
 
     class ExplainedRunner(AgentRunner):
         def _get_system_prompt(self):
@@ -134,7 +159,6 @@ Call 'done' with a summary after writing index.html."""
         task_data = ACTIVE_TASKS[task_id]
         event_type = event.get("type")
         
-        # Log management
         detail = event.get("title") or event.get("detail", "")
         if event_type == "thinking":
             task_data["step"] = event.get("content", "Processing...")
@@ -142,7 +166,6 @@ Call 'done' with a summary after writing index.html."""
         elif event_type == "write_file":
             path = event.get("path")
             task_data["logs"].append({"type": "action", "msg": f"Writing {path}..."})
-            # Real-time HTML capture
             if path == "index.html":
                 try:
                     p = thread_dir / "index.html"
@@ -152,11 +175,7 @@ Call 'done' with a summary after writing index.html."""
         elif event_type == "search_web":
             task_data["logs"].append({"type": "action", "msg": f"Searching: {event.get('query')}..."})
         elif event_type == "done":
-            task_data["logs"].append({"type": "step", "msg": "Generation Complete!"})
-
-        # Cap logs
-        if len(task_data["logs"]) > 50:
-            task_data["logs"] = task_data["logs"][-50:]
+            task_data["logs"].append({"type": "step", "msg": "Complete!"})
 
     try:
         runner = ExplainedRunner(
@@ -168,8 +187,21 @@ Call 'done' with a summary after writing index.html."""
             trace_id=task_id
         )
         
-        await asyncio.to_thread(runner.run)
+        full_result = await asyncio.to_thread(runner.run)
         
+        # Extract title from agent result if found
+        for line in full_result.splitlines():
+            if line.strip().startswith("TITLE:"):
+                stitle = line.replace("TITLE:", "").strip()
+                if stitle:
+                    meta["display_title"] = stitle
+                    ACTIVE_TASKS[task_id]["display_title"] = stitle
+                    break
+        
+        # Update meta again with the new title
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=4)
+
         index_path = thread_dir / "index.html"
         if index_path.exists():
             html = index_path.read_text(encoding="utf-8")
