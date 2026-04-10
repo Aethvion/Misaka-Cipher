@@ -3,29 +3,31 @@
  */
 
 (function() {
-    let exSidebar, exCollapseBtn, exExpandBtn;
-    let exPrompt, exStyle, exModel, exGenerateBtn;
-    let exStatusArea, exStatusText, exProgressFill;
+    let exSidebar, exCollapseBtn, exExpandBtn, exNewBtn;
+    let exPrompt, exModel, exGenerateBtn;
+    let exStatusArea, exStatusText, exProgressFill, exLogs;
     let exPlaceholder, exFrame;
     let exHistoryList;
 
     let exIsGenerating = false;
     let exCurrentThreadId = null;
+    let exLastHtml = null;
 
     async function initExplained() {
         // Capture Elements
         exSidebar = document.getElementById('explained-sidebar');
         exCollapseBtn = document.getElementById('explained-collapse-btn');
         exExpandBtn = document.getElementById('explained-expand-btn');
+        exNewBtn = document.getElementById('explained-new-btn');
         
         exPrompt = document.getElementById('explained-prompt');
-        exStyle = document.getElementById('explained-style');
         exModel = document.getElementById('explained-model-select');
         exGenerateBtn = document.getElementById('explained-generate-btn');
         
         exStatusArea = document.getElementById('explained-status-area');
         exStatusText = document.getElementById('explained-status-text');
         exProgressFill = document.getElementById('explained-progress-fill');
+        exLogs = document.getElementById('explained-logs');
         
         exPlaceholder = document.getElementById('explained-placeholder');
         exFrame = document.getElementById('explained-frame');
@@ -34,11 +36,23 @@
         // Event Listeners
         if (exCollapseBtn) exCollapseBtn.addEventListener('click', toggleSidebar);
         if (exExpandBtn) exExpandBtn.addEventListener('click', toggleSidebar);
+        if (exNewBtn) exNewBtn.addEventListener('click', resetSession);
         if (exGenerateBtn) exGenerateBtn.addEventListener('click', startGeneration);
 
         // Load Initial Data
         fetchModels();
         loadHistory();
+    }
+
+    function resetSession() {
+        exCurrentThreadId = null;
+        exLastHtml = null;
+        exPrompt.value = '';
+        exPlaceholder.classList.remove('hidden');
+        exFrame.classList.add('hidden');
+        exGenerateBtn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Build Page';
+        if (exSidebar.classList.contains('collapsed')) toggleSidebar();
+        if (window.showToast) window.showToast('Ready for a new topic.', 'info');
     }
 
     function toggleSidebar() {
@@ -57,11 +71,9 @@
             const data = await res.json();
             
             if (exModel) {
-                // Reuse global generateCategorizedModelOptions if available
                 if (window.generateCategorizedModelOptions) {
                     exModel.innerHTML = window.generateCategorizedModelOptions(data, 'chat', 'auto');
                 } else {
-                    // Fallback
                     let html = '<option value="auto">Auto Select</option>';
                     for (const m of data.models || []) {
                         html += `<option value="${m.id}">${m.name || m.id}</option>`;
@@ -84,10 +96,10 @@
         }
 
         const modelId = exModel.value;
-        const style = exStyle.value;
 
         setLoading(true);
-        updateStatus('Initializing Agent...', 10);
+        if (exLogs) exLogs.innerHTML = ''; // Clear logs
+        updateStatus('Initializing...', 5);
 
         try {
             const res = await fetch('/api/explained/generate', {
@@ -95,8 +107,8 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     topic: topic,
-                    style: style,
-                    model_id: modelId
+                    model_id: modelId,
+                    thread_id: exCurrentThreadId
                 })
             });
 
@@ -108,43 +120,43 @@
             const data = await res.json();
             exCurrentThreadId = data.thread_id;
             
-            // Start polling for status or wait for direct response
-            // For now assume the backend takes some time and we might need to poll
-            // but the user wants results "right away" (streaming or fast).
-            // Let's assume the endpoint returns the final HTML once done for MVP.
-            
-            updateStatus('Building visual components...', 60);
-            
-            if (data.html) {
-                displayResult(data.html);
-                addToHistory(topic, data.thread_id);
-            } else if (data.task_id) {
-                // If it's a background task, we'd poll here. 
-                // Given the instructions, we'll implement the backend to be as responsive as possible.
+            if (data.task_id) {
                 pollTask(data.task_id);
             }
 
         } catch (e) {
             console.error(e);
             if (window.showToast) window.showToast('Error: ' + e.message, 'error');
-            updateStatus('Failed to generate.', 0);
-        } finally {
-            if (!exIsGenerating) setLoading(false);
+            updateStatus('Failed.', 0);
         }
     }
 
     async function pollTask(taskId) {
-        let progress = 60;
+        let lastLogCount = 0;
         const interval = setInterval(async () => {
             try {
                 const res = await fetch(`/api/explained/status/${taskId}`);
                 if (!res.ok) return;
                 const data = await res.json();
                 
+                // Update Logs
+                if (data.logs && data.logs.length > lastLogCount) {
+                    for (let i = lastLogCount; i < data.logs.length; i++) {
+                        appendLog(data.logs[i]);
+                    }
+                    lastLogCount = data.logs.length;
+                }
+
+                // Intermediate Content Update (Real-time)
+                if (data.html && data.html !== exLastHtml) {
+                    displayResult(data.html, false); // display but don't auto-collapse yet
+                    exLastHtml = data.html;
+                }
+
                 if (data.status === 'completed') {
                     clearInterval(interval);
                     updateStatus('Completed!', 100);
-                    displayResult(data.html);
+                    displayResult(data.html, true); // final display + auto-collapse
                     setLoading(false);
                     addToHistory(data.topic, data.thread_id);
                 } else if (data.status === 'failed') {
@@ -152,26 +164,35 @@
                     setLoading(false);
                     if (window.showToast) window.showToast('Generation failed: ' + data.error, 'error');
                 } else {
-                    progress = Math.min(95, progress + 2);
-                    updateStatus(data.step || 'Assembling page...', progress);
+                    // Estimate progress if not provided
+                    updateStatus(data.step || 'Building immersion...', null);
                 }
             } catch (e) {
                 console.error("Poll error", e);
             }
-        }, 2000);
+        }, 1500);
     }
 
-    function displayResult(html) {
+    function appendLog(log) {
+        if (!exLogs) return;
+        const div = document.createElement('div');
+        div.className = `es-log-entry ${log.type}`;
+        div.innerText = `> ${log.msg}`;
+        exLogs.appendChild(div);
+        exLogs.scrollTop = exLogs.scrollHeight;
+    }
+
+    function displayResult(html, final = true) {
         exPlaceholder.classList.add('hidden');
         exFrame.classList.remove('hidden');
+        exGenerateBtn.innerHTML = '<i class="fas fa-sync"></i> Update Page';
         
         const doc = exFrame.contentWindow.document;
         doc.open();
         doc.write(html);
         doc.close();
         
-        // Auto-collapse sidebar after successful generation to show full page
-        if (!exSidebar.classList.contains('collapsed')) {
+        if (final && !exSidebar.classList.contains('collapsed')) {
             toggleSidebar();
         }
     }
@@ -179,9 +200,6 @@
     function setLoading(loading) {
         exIsGenerating = loading;
         exGenerateBtn.disabled = loading;
-        exGenerateBtn.innerHTML = loading ? 
-            '<i class="fas fa-spinner fa-spin"></i> Building...' : 
-            '<i class="fas fa-wand-sparkles"></i> Build Page';
         
         exStatusArea.style.display = loading ? 'flex' : 'none';
         if (!loading) {
@@ -191,15 +209,15 @@
 
     function updateStatus(text, progress) {
         if (exStatusText) exStatusText.innerText = text;
-        if (exProgressFill) exProgressFill.style.width = progress + '%';
+        if (progress !== null && exProgressFill) {
+            exProgressFill.style.width = progress + '%';
+        }
     }
 
     function addToHistory(topic, threadId) {
         let history = JSON.parse(localStorage.getItem('explained_history') || '[]');
-        // Remove existing with same threadId if any
         history = history.filter(h => h.threadId !== threadId);
         history.unshift({ topic, threadId, timestamp: Date.now() });
-        // Cap at 20
         if (history.length > 20) history = history.slice(0, 20);
         localStorage.setItem('explained_history', JSON.stringify(history));
         loadHistory();
@@ -216,21 +234,24 @@
 
         let html = '';
         for (const item of history) {
-            html += `<div class="es-item" title="${item.topic}" onclick="loadExplanation('${item.threadId}')">
+            html += `<div class="es-item" title="${item.topic}" onclick="loadExplanation('${item.threadId}', '${item.topic}')">
                 <i class="fas fa-history"></i> ${item.topic}
             </div>`;
         }
         exHistoryList.innerHTML = html;
     }
 
-    window.loadExplanation = async function(threadId) {
+    window.loadExplanation = async function(threadId, topic) {
         setLoading(true);
-        updateStatus('Loading past explanation...', 50);
+        updateStatus('Loading...', 50);
         try {
             const res = await fetch(`/api/explained/thread/${threadId}`);
             if (!res.ok) throw new Error('Failed to load thread');
             const data = await res.json();
-            displayResult(data.html);
+            exCurrentThreadId = threadId;
+            exLastHtml = data.html;
+            exPrompt.value = topic || '';
+            displayResult(data.html, true);
         } catch (e) {
             if (window.showToast) window.showToast('Error loading: ' + e.message, 'error');
         } finally {
@@ -238,7 +259,6 @@
         }
     }
 
-    // Initialization hook from custom event (partial-loader.js)
     document.addEventListener('panelLoaded', (e) => {
         if (e.detail.tabName === 'explained') {
             initExplained();

@@ -39,6 +39,11 @@
     letter-spacing: 1px;
 }
 
+.es-header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
 .es-content {
     padding: 1.5rem;
     flex: 1;
@@ -132,6 +137,38 @@
     background: var(--primary);
     box-shadow: 0 0 10px var(--primary);
     transition: width 0.4s ease;
+}
+
+/* Logs Area */
+.es-logs {
+    margin-top: 0.5rem;
+    height: 120px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    padding: 0.5rem;
+    overflow-y: auto;
+    font-family: 'Consolas', monospace;
+    font-size: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    scrollbar-width: thin;
+}
+
+.es-log-entry {
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.4;
+    word-break: break-all;
+}
+
+.es-log-entry.step {
+    color: var(--primary);
+    font-weight: bold;
+}
+
+.es-log-entry.action {
+    color: #ffd700;
 }
 
 /* History */
