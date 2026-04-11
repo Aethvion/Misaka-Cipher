@@ -39,6 +39,12 @@
         if (exNewBtn) exNewBtn.addEventListener('click', resetSession);
         if (exGenerateBtn) exGenerateBtn.addEventListener('click', startGeneration);
 
+        if (exModel) {
+            exModel.addEventListener('change', () => {
+                localStorage.setItem('explained_last_model', exModel.value);
+            });
+        }
+
         // Load Initial Data
         fetchModels();
         loadHistory();
@@ -72,12 +78,14 @@
             const data = await res.json();
             
             if (exModel) {
+                const lastModel = localStorage.getItem('explained_last_model') || 'auto';
                 if (window.generateCategorizedModelOptions) {
-                    exModel.innerHTML = window.generateCategorizedModelOptions(data, 'chat', 'auto');
+                    exModel.innerHTML = window.generateCategorizedModelOptions(data, 'chat', lastModel);
                 } else {
-                    let html = '<option value="auto">Auto Select</option>';
+                    let html = `<option value="auto" ${lastModel === 'auto' ? 'selected' : ''}>Auto Select</option>`;
                     for (const m of data.models || []) {
-                        html += `<option value="${m.id}">${m.name || m.id}</option>`;
+                        const s = m.id === lastModel ? 'selected' : '';
+                        html += `<option value="${m.id}" ${s}>${m.name || m.id}</option>`;
                     }
                     exModel.innerHTML = html;
                 }

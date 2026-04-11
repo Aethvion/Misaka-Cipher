@@ -90,6 +90,19 @@
     padding: 0.6rem;
     color: var(--text-primary);
     font-family: inherit;
+    cursor: pointer;
+}
+
+.es-field select option {
+    background: #14141b;
+    color: var(--text-primary);
+    padding: 10px;
+}
+
+.es-field select optgroup {
+    background: #0d0d12;
+    color: var(--text-secondary);
+    font-weight: 600;
 }
 
 /* Status Area */
