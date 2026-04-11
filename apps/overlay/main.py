@@ -651,20 +651,28 @@ class OverlayWindow(QWidget):
         self._input.setFocus(); self._input.selectAll()
 
     def _on_replace_shot(self, screenshot_b64: str) -> None:
-        """Same thread: replace screenshot without changing session."""
+        """Same thread: add screenshot to history instead of clearing it."""
         self._screenshot_b64 = screenshot_b64 or None
         self._pending_thumb  = make_thumb(screenshot_b64) if screenshot_b64 else None
 
-        # Update thumbnail in current entry so it reflects the new screenshot
         if self._current_entry:
+            # Update root thumb so history list shows the latest shot
             self._current_entry["thumb_b64"] = self._pending_thumb
+            
+            # Append a screenshot marker to the chat flow
+            now = datetime.now()
+            self._current_entry["pairs"].append({
+                "type": "screenshot",
+                "thumb_b64": self._pending_thumb,
+                "date": now.strftime("%Y-%m-%d"),
+                "time": now.strftime("%H:%M")
+            })
 
         self._reset_capture_buttons()
-        self._status.setText("New screenshot captured. Continue your conversation below.")
+        self._status.setText("Captured. New context added to conversation.")
         self.show(); self.raise_(); self.activateWindow()
         self._input.setFocus()
 
-        # Re-render so the updated thumbnail appears at the top
         if self._current_entry:
             self._render_session(self._current_entry)
         else:
@@ -795,9 +803,15 @@ class OverlayWindow(QWidget):
         dim_a = self._ta(0.6)
         acc_a = self._ta(0.8)
 
-        # Screenshot thumbnail
+        # Initial screenshot (only if it's the very first part of the session)
+        # To avoid redundancy, we only show root thumb if the first pair isn't already a screenshot
+        pairs = session.get("pairs", [])
+        show_root_thumb = True
+        if pairs and pairs[0].get("type") == "screenshot":
+            show_root_thumb = False
+
         thumb = session.get("thumb_b64") or self._pending_thumb
-        if thumb:
+        if thumb and show_root_thumb:
             self._response.append(
                 f"<div style='margin-bottom:8px;'>"
                 f"<img src='data:image/jpeg;base64,{thumb}' width='200' "
@@ -807,12 +821,28 @@ class OverlayWindow(QWidget):
                 f"</div>"
             )
 
-        for j, pair in enumerate(session.get("pairs", [])):
-            if j > 0:
+        for j, item in enumerate(pairs):
+            if j > 0 or (j == 0 and not show_root_thumb):
                 self._response.append(
-                    "<div style='border-top:1px solid rgba(99,102,241,0.18);margin:8px 0 6px;'></div>"
+                    "<div style='border-top:1px solid rgba(99,102,241,0.18);margin:10px 0 8px;'></div>"
                 )
-            q_esc = _html_mod.escape(pair["q"])
+
+            if item.get("type") == "screenshot":
+                # Display inline screenshot
+                it_thumb = item.get("thumb_b64")
+                if it_thumb:
+                    self._response.append(
+                        f"<div style='margin-bottom:6px;'>"
+                        f"<div style='color:rgba(120,120,150,{dim_a});font-size:9px;margin-bottom:4px;'>"
+                        f"── New screenshot captured at {item.get('time','')} ──</div>"
+                        f"<img src='data:image/jpeg;base64,{it_thumb}' width='180' "
+                        f"style='border-radius:6px;border:1px solid rgba(99,102,241,0.2);display:block;'>"
+                        f"</div>"
+                    )
+                continue
+
+            # Regular Q/A
+            q_esc = _html_mod.escape(item.get("q", ""))
             self._response.append(
                 f"<div style='color:rgba(99,102,241,{acc_a});font-weight:600;"
                 f"font-size:{self._font_size - 1}px;margin-bottom:2px;'>◈ Me</div>"
@@ -826,14 +856,14 @@ class OverlayWindow(QWidget):
                 "<div style='flex:1;border-top:1px solid rgba(99,102,241,0.25);'></div>"
                 "</div>"
             )
-            if pair["a"] is None:
+            if item.get("a") is None:
                 self._response.append(
                     f"<div style='color:rgba(99,102,241,{acc_a});font-style:italic;'>Thinking…</div>"
                 )
             else:
                 cursor = QTextCursor(self._response.document())
                 cursor.movePosition(QTextCursor.MoveOperation.End)
-                cursor.insertMarkdown(pair["a"])
+                cursor.insertMarkdown(item["a"])
 
         self._response.verticalScrollBar().setValue(
             self._response.verticalScrollBar().maximum()
