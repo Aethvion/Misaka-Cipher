@@ -1,0 +1,387 @@
+
+/* ══════════════════════════════════════════════════════════════════
+   SIDEBAR MANAGER — Tab list container
+   ══════════════════════════════════════════════════════════════════ */
+
+.sidebar-nav .main-tabs {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    align-items: stretch;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+
+/* ── Tab Buttons ──────────────────────────────────────────────────── */
+.sidebar-nav .main-tab {
+    display: flex;
+    align-items: center;
+    padding: 0.42rem 0.65rem 0.42rem 0.7rem;
+    margin: 0.05rem 0.3rem;
+    width: calc(100% - 0.6rem);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md, 8px);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 450;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* Left-rail active indicator */
+.sidebar-nav .main-tab::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 22%; bottom: 22%;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--primary, #6366f1);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.sidebar-nav .main-tab:hover {
+    background: rgba(255,255,255,0.04);
+    color: var(--text-primary);
+}
+.sidebar-nav .main-tab.active {
+    background: rgba(99,102,241,0.08);
+    color: var(--primary, #6366f1);
+    border-color: rgba(99,102,241,0.12);
+}
+.sidebar-nav .main-tab.active::before { opacity: 1; }
+
+.sidebar-nav .tab-icon {
+    font-size: 0.85rem;
+    min-width: 1.1rem;
+    text-align: center;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+    opacity: 0.62;
+    transition: opacity 0.15s;
+}
+.sidebar-nav .main-tab:hover .tab-icon,
+.sidebar-nav .main-tab.active .tab-icon { opacity: 1; }
+
+.sidebar-nav .tab-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Tabs inside a folder body are slightly smaller */
+.folder-body .main-tab {
+    font-size: 0.77rem;
+    padding-left: 0.5rem;
+}
+
+/* Collapsed sidebar — icon only */
+.sidebar-nav.collapsed .main-tab {
+    padding: 0.5rem;
+    justify-content: center;
+    border-radius: var(--radius-full, 999px);
+    margin: 0.08rem auto;
+    width: 36px;
+}
+.sidebar-nav.collapsed .main-tab::before { display: none; }
+.sidebar-nav.collapsed .tab-label,
+.sidebar-nav.collapsed .main-tab span:not(.tab-icon) { display: none; }
+.sidebar-nav.collapsed .tab-icon { margin-right: 0; }
+
+/* ── Sidebar bottom ──────────────────────────────────────────────── */
+.sidebar-bottom {
+    margin-top: auto;
+    padding-top: 0.4rem;
+    border-top: 1px solid var(--border, rgba(255,255,255,0.07));
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    flex-shrink: 0;
+    gap: 0.05rem;
+}
+.sidebar-nav.collapsed .sidebar-bottom { align-items: center; }
+
+/* ══════════════════════════════════════════════════════════════════
+   SIDEBAR MANAGER — Folder System
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Folder wrapper ─────────────────────────────────────────────── */
+.sidebar-folder {
+    display: flex;
+    flex-direction: column;
+    margin: 0.15rem 0;
+    flex-shrink: 0;
+}
+
+.sidebar-folder.is-dragging { opacity: 0.3; }
+
+/* ── Folder header ──────────────────────────────────────────────── */
+.folder-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.7rem 0.28rem 0.6rem;
+    margin: 0 0.3rem;
+    border-radius: var(--radius-sm, 6px);
+    border: 1px solid transparent;
+    color: var(--text-tertiary);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.folder-header:hover {
+    color: var(--text-secondary);
+    background: rgba(255,255,255,0.04);
+}
+
+/* Drop target highlight */
+.folder-header.drop-target-folder,
+.folder-body.drop-target-folder {
+    background: rgba(99,102,241,0.08);
+    border-color: rgba(99,102,241,0.28);
+    border-radius: var(--radius-sm, 6px);
+}
+
+/* ── Folder chevron ─────────────────────────────────────────────── */
+.folder-chevron {
+    font-size: 0.6rem;
+    opacity: 0.4;
+    flex-shrink: 0;
+    transform: rotate(0deg);
+    transition: transform 0.2s cubic-bezier(0.4,0,0.2,1), opacity 0.15s;
+}
+.folder-chevron.expanded { transform: rotate(90deg); opacity: 0.65; }
+.folder-header:hover .folder-chevron { opacity: 0.7; }
+
+/* ── Folder name ────────────────────────────────────────────────── */
+.folder-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Folder action buttons (edit mode only, appear on hover) ──── */
+.folder-actions {
+    display: none;
+    align-items: center;
+    gap: 0.15rem;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+.sidebar-nav.sidebar-edit-mode .folder-header:hover .folder-actions { display: flex; }
+
+.folder-rename-btn,
+.folder-delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 0.18rem 0.3rem;
+    border-radius: 4px;
+    font-size: 0.64rem;
+    line-height: 1;
+    transition: background 0.12s, color 0.12s;
+}
+.folder-rename-btn:hover { background: rgba(99,102,241,0.15); color: var(--primary, #6366f1); }
+.folder-delete-btn:hover { background: rgba(255,80,80,0.12); color: #f87070; }
+
+/* ── Folder rename input ─────────────────────────────────────────── */
+.folder-rename-input {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(99,102,241,0.4);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.1rem 0.35rem;
+    outline: none;
+    font-family: inherit;
+}
+
+/* ── Folder body (collapsed by default) ─────────────────────────── */
+.folder-body {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: max-height 0.22s cubic-bezier(0.4,0,0.2,1), opacity 0.18s ease;
+    margin-left: 0.85rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid rgba(255,255,255,0.05);
+}
+.folder-body.expanded {
+    max-height: 1200px;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Collapsed sidebar — show all folder contents inline */
+.sidebar-nav.collapsed .folder-header { display: none; }
+.sidebar-nav.collapsed .folder-body {
+    margin-left: 0; padding-left: 0; border-left: none;
+    max-height: 1200px !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* ── Add folder button ──────────────────────────────────────────── */
+.sidebar-add-folder-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.38rem 0.7rem;
+    margin: 0.3rem 0.3rem 0.1rem;
+    width: calc(100% - 0.6rem);
+    background: transparent;
+    border: 1px dashed rgba(255,255,255,0.1);
+    border-radius: var(--radius-md, 8px);
+    color: var(--text-tertiary);
+    font-size: 0.76rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    text-align: left;
+}
+.sidebar-add-folder-btn:hover {
+    background: rgba(99,102,241,0.07);
+    border-color: rgba(99,102,241,0.3);
+    color: var(--primary, #6366f1);
+}
+.sidebar-add-folder-btn i { font-size: 0.8rem; opacity: 0.7; }
+
+/* ══════════════════════════════════════════════════════════════════
+   SIDEBAR MANAGER — Edit Mode Controls
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Hidden tabs: truly invisible in normal mode */
+.tab-hidden { display: none !important; }
+
+/* Mode-hidden: tabs that don't belong to current dashboard mode */
+.sidebar-nav .main-tab.mode-hidden { display: none !important; }
+
+/* Edit mode: hidden tabs visible but dimmed */
+.sidebar-nav.sidebar-edit-mode .edit-hidden { opacity: 0.35; }
+.sidebar-nav.sidebar-edit-mode .edit-hidden .tab-label {
+    text-decoration: line-through;
+    text-decoration-color: rgba(255,255,255,0.2);
+}
+.sidebar-nav.sidebar-edit-mode .edit-hidden .vis-toggle {
+    border-color: rgba(255,90,90,0.25);
+    color: rgba(255,130,130,0.8);
+}
+
+/* ── Drag grip ──────────────────────────────────────────────────── */
+.drag-grip {
+    display: none;
+    color: rgba(255,255,255,0.2);
+    font-size: 0.68rem;
+    cursor: grab;
+    flex-shrink: 0;
+    padding: 0 0.32rem 0 0;
+    line-height: 1;
+    transition: color 0.12s;
+}
+.drag-grip:active { cursor: grabbing; }
+.sidebar-nav.sidebar-edit-mode .drag-grip { display: flex; align-items: center; }
+.sidebar-nav.sidebar-edit-mode .main-tab:hover .drag-grip,
+.sidebar-nav.sidebar-edit-mode .folder-header:hover .drag-grip { color: rgba(255,255,255,0.45); }
+.folder-drag-grip { padding: 0 0.28rem 0 0; }
+
+/* ── Visibility toggle ──────────────────────────────────────────── */
+.vis-toggle {
+    display: none;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 4px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 0.13rem 0.3rem;
+    font-size: 0.66rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-left: auto;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.sidebar-nav.sidebar-edit-mode .vis-toggle { display: flex; align-items: center; }
+.vis-toggle:hover {
+    background: rgba(99,102,241,0.14);
+    border-color: rgba(99,102,241,0.35);
+    color: var(--primary, #6366f1);
+}
+
+/* Edit mode: tab appearance */
+.sidebar-nav.sidebar-edit-mode .main-tab {
+    border-color: rgba(255,255,255,0.03);
+    cursor: default;
+}
+.sidebar-nav.sidebar-edit-mode .main-tab.is-dragging { opacity: 0.25; }
+
+/* ── Customize / Done button ────────────────────────────────────── */
+.cust-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.42rem 0.75rem;
+    margin: 0.05rem 0.3rem;
+    width: calc(100% - 0.6rem);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md, 8px);
+    color: var(--text-tertiary);
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-align: left;
+}
+.cust-toggle-btn i { font-size: 0.78rem; flex-shrink: 0; opacity: 0.7; transition: opacity 0.15s; }
+.cust-toggle-btn span { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.cust-toggle-btn:hover {
+    background: rgba(255,255,255,0.04);
+    color: var(--text-secondary);
+    border-color: rgba(255,255,255,0.07);
+}
+.cust-toggle-btn:hover i { opacity: 1; }
+.cust-toggle-btn.edit-active {
+    background: rgba(99,102,241,0.09);
+    border-color: rgba(99,102,241,0.2);
+    color: var(--primary, #6366f1);
+}
+.cust-toggle-btn.edit-active i { opacity: 1; }
+.sidebar-nav.collapsed .cust-toggle-btn span { display: none; }
+.sidebar-nav.collapsed .cust-toggle-btn {
+    justify-content: center;
+    width: 36px; margin: 0.08rem auto;
+    padding: 0.5rem;
+    border-radius: var(--radius-full, 999px);
+}
+
+/* ── Drop indicator (floating 2px line) ─────────────────────────── */
+.drop-indicator {
+    height: 2px;
+    background: var(--primary, #6366f1);
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 9999;
+    box-shadow: 0 0 6px rgba(99,102,241,0.5);
+}
