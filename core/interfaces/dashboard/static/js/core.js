@@ -194,6 +194,62 @@ let currentMainTab = 'chat';
 let dashboardMode = 'home'; // 'home' or 'ai'
 let devModeActive = false;
 
+// ─── Preferences API ─────────────────────────────────────────────────────────
+window.prefs = {
+    data: {},
+    async load() {
+        try {
+            const response = await fetch('/api/preferences');
+            this.data = await response.json();
+            if (!window._hasCheckedUpdates) {
+                window._hasCheckedUpdates = true;
+                setTimeout(() => { if (typeof runStartupUpdateCheck === 'function') runStartupUpdateCheck(); }, 2500);
+            }
+            return this.data;
+        } catch (error) {
+            console.error('Failed to load preferences:', error);
+            return {};
+        }
+    },
+    get(key, defaultValue) {
+        if (key.includes('.')) {
+            const parts = key.split('.');
+            let current = this.data;
+            for (const part of parts) {
+                if (current === undefined || current === null) return defaultValue;
+                current = current[part];
+            }
+            return current !== undefined ? current : defaultValue;
+        }
+        return this.data[key] !== undefined ? this.data[key] : defaultValue;
+    },
+    async set(key, value) {
+        if (key.includes('.')) {
+            const parts = key.split('.');
+            if (!this.data[parts[0]]) this.data[parts[0]] = {};
+            this.data[parts[0]][parts[1]] = value;
+        } else {
+            this.data[key] = value;
+        }
+        try {
+            await fetch(`/api/preferences/${key}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key, value })
+            });
+        } catch (error) {
+            console.error(`Failed to save preference ${key}:`, error);
+        }
+    }
+};
+
+async function savePreference(key, value) {
+    if (window.prefs && typeof window.prefs.set === 'function') {
+        await window.prefs.set(key, value);
+    }
+}
+window.savePreference = savePreference;
+
 function initDevMode() {
     const btn = document.getElementById('btn-toggle-dev-mode');
     if (!btn || btn.dataset.initialized) return;
@@ -242,8 +298,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeUI();
     updateSystemInfo();
 
-    // Apply default mode immediately so nothing looks broken on load
-    setDashboardMode('home', false);
+    // Apply default mode immediately so nothing looks broken on load (use hint for faster restore)
+    const modeHint = localStorage.getItem('dashboard_mode_hint') || 'home';
+    await setDashboardMode(modeHint, false);
 
     try {
         // Load preferences safely before heavy data initialization
@@ -252,7 +309,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Restore dashboard mode
             const mode = prefs.get('dashboard_mode', 'home');
-            setDashboardMode(mode, false);
+            await setDashboardMode(mode, false);
 
             // Restore sidebar state
             const sidebarCollapsed = prefs.get('sidebar_collapsed', false);
@@ -705,12 +762,15 @@ async function updateSystemInfo() {
 // ------------------------------------------------------------------
 // Main Navigation Logic
 // ------------------------------------------------------------------
-function setDashboardMode(mode, save = true) {
+async function setDashboardMode(mode, save = true) {
     if (mode !== 'home' && mode !== 'ai') return;
     dashboardMode = mode;
 
-    if (save && typeof savePreference === 'function') {
-        savePreference('dashboard_mode', dashboardMode);
+    if (save) {
+        localStorage.setItem('dashboard_mode_hint', mode);
+        if (typeof savePreference === 'function') {
+            savePreference('dashboard_mode', dashboardMode);
+        }
     }
 
     // Update toggle buttons UI visually
@@ -747,7 +807,7 @@ function setDashboardMode(mode, save = true) {
         targetTab = dashboardMode === 'home' ? 'suite-home' : 'chat';
     }
 
-    switchMainTab(targetTab, false);
+    await switchMainTab(targetTab, false);
 }
 
 // ─── Sidebar Category Collapse ───────────────────────────────────
@@ -919,7 +979,7 @@ setInterval(() => {
 }, 30000);
 window.markPanelUpdated = markPanelUpdated;
 
-function switchMainTab(tabName, save = true) {
+async function switchMainTab(tabName, save = true) {
     if (!tabName) return;
 
     // Save scroll of the tab we're leaving
@@ -942,10 +1002,9 @@ function switchMainTab(tabName, save = true) {
         );
         if (_eagerPanel) _eagerPanel.classList.add('active');
 
-        window._partialLoader.ensure(actualTabName).then(function () {
-            switchMainTab(tabName, save);   // re-enter once HTML is ready
+        return window._partialLoader.ensure(actualTabName).then(function () {
+            return switchMainTab(tabName, save);   // re-enter once HTML is ready
         });
-        return;
     }
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -1677,57 +1736,6 @@ function initColumnResizeHandles() {
 }
 
 // ── Preferences (defined here so all scripts can use `prefs` on load) ─────────
-window.prefs = {
-    data: {},
-
-    async load() {
-        try {
-            const response = await fetch('/api/preferences');
-            this.data = await response.json();
-            if (!window._hasCheckedUpdates) {
-                window._hasCheckedUpdates = true;
-                setTimeout(() => { if (typeof runStartupUpdateCheck === 'function') runStartupUpdateCheck(); }, 2500);
-            }
-            return this.data;
-        } catch (error) {
-            console.error('Failed to load preferences:', error);
-            return {};
-        }
-    },
-
-    get(key, defaultValue) {
-        if (key.includes('.')) {
-            const parts = key.split('.');
-            let current = this.data;
-            for (const part of parts) {
-                if (current === undefined || current === null) return defaultValue;
-                current = current[part];
-            }
-            return current !== undefined ? current : defaultValue;
-        }
-        return this.data[key] !== undefined ? this.data[key] : defaultValue;
-    },
-
-    async set(key, value) {
-        if (key.includes('.')) {
-            const parts = key.split('.');
-            if (!this.data[parts[0]]) this.data[parts[0]] = {};
-            this.data[parts[0]][parts[1]] = value;
-        } else {
-            this.data[key] = value;
-        }
-        try {
-            await fetch(`/api/preferences/${key}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key, value })
-            });
-        } catch (error) {
-            console.error(`Failed to save preference ${key}:`, error);
-        }
-    }
-};
-
 // ─── Sidebar Search ───────────────────────────────────────────────────────────
 (function initSidebarSearch() {
     function run() {

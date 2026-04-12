@@ -399,12 +399,6 @@ function _bindToggle(checkboxId, prefKey, defaultVal, onChange) {
     };
 }
 
-async function savePreference(key, value) {
-    await prefs.set(key, value);
-}
-// Expose globally for dynamic companion loader
-window.savePreference = savePreference;
-
 // Populate a <select> with chat model options and restore a saved value
 window._populateModelSelect = function(sel, prefModel) {
     if (!sel) return;
@@ -1332,6 +1326,11 @@ async function loadChatModels() {
                 // Keep current selection if still valid, otherwise leave at default
                 if (currentVal && sel.querySelector(`option[value="${currentVal}"]`)) {
                     sel.value = currentVal;
+                }
+            } else if (sel.id === 'model-select') {
+                const saved = localStorage.getItem('chat_model');
+                if (saved && sel.querySelector(`option[value="${saved}"]`)) {
+                    sel.value = saved;
                 }
             } else if (currentVal && sel.querySelector(`option[value="${currentVal}"]`)) {
                 sel.value = currentVal;
@@ -3331,4 +3330,11 @@ function _updatePrivacyBadge(badge, enabled) {
 }
 
 window.initPrivacyToggle = initPrivacyToggle;
+
+// Re-run model population when switching tabs to ensure selects in dynamic panels are filled
+document.addEventListener('tabChanged', (e) => {
+    if (e.detail && e.detail.tab === 'chat') {
+        loadChatModels();
+    }
+});
 

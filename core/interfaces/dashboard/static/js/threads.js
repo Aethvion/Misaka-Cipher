@@ -931,22 +931,33 @@ async function refreshThreadStatus() {
 }
 
 // Draft persistence — save typed text so it survives accidental navigation / failed sends
-const DRAFT_KEY = 'ae_chat_draft';
+const DRAFT_KEY = 'chat_draft';
 function saveDraft(text) { try { localStorage.setItem(DRAFT_KEY, text); } catch(e){} }
 function loadDraft()     { try { return localStorage.getItem(DRAFT_KEY) || ''; } catch(e){ return ''; } }
 function clearDraft()    { try { localStorage.removeItem(DRAFT_KEY); } catch(e){} }
 
-// Restore draft on init
-(function restoreDraftOnLoad() {
-    document.addEventListener('DOMContentLoaded', () => {
+// Persistent model and draft selection — using delegation since these elements are in a partial
+document.addEventListener('input', (e) => {
+    if (e.target.id === 'chat-input') saveDraft(e.target.value);
+});
+
+document.addEventListener('change', (e) => {
+    if (e.target.id === 'model-select') {
+        localStorage.setItem('chat_model', e.target.value);
+    }
+});
+
+// Since delegation handles the saving, we just need to handle the initial restoration
+// we'll do this once when the chat panel is actually injected/ready
+document.addEventListener('tabChanged', (e) => {
+    if (e.detail && e.detail.tab === 'chat') {
         const input = document.getElementById('chat-input');
         if (input) {
             const d = loadDraft();
             if (d) input.value = d;
-            input.addEventListener('input', () => saveDraft(input.value));
         }
-    });
-})();
+    }
+});
 
 // Send button loading state helpers
 function setSendLoading(loading) {
@@ -1354,7 +1365,7 @@ let _folderCollapsed = {};  // { folderId: bool }  — persisted in localStorage
 let _folderViewEditId = null;  // null = create, string = edit existing
 let _folderPickerCleanup = null;  // teardown for open picker
 
-const FOLDER_COLLAPSED_KEY = 'ae_folder_collapsed';
+const FOLDER_COLLAPSED_KEY = 'folder_collapsed';
 
 function _saveFolderCollapseState() {
     try { localStorage.setItem(FOLDER_COLLAPSED_KEY, JSON.stringify(_folderCollapsed)); } catch(e) {}
