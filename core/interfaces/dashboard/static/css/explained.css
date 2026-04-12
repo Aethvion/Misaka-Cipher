@@ -364,6 +364,35 @@
     color: #000;
 }
 
+/* ── Open Folder Button ─────────────────────────────────────────────────────── */
+.es-folder-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.es-folder-btn:hover {
+    background: rgba(0, 217, 255, 0.08);
+    border-color: rgba(0, 217, 255, 0.25);
+    color: var(--primary);
+}
+
+.es-folder-btn i {
+    font-size: 0.85rem;
+}
+
 /* ── Deep Dive Toggle ───────────────────────────────────────────────────────── */
 .es-toggle-row {
     display: flex;

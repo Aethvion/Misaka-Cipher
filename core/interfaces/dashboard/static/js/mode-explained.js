@@ -4,7 +4,7 @@
 
 (function() {
     let exSidebar, exCollapseBtn, exExpandBtn, exNewBtn;
-    let exPrompt, exModel, exGenerateBtn, exDeepDiveToggle;
+    let exPrompt, exModel, exGenerateBtn, exDeepDiveToggle, exFolderBtn;
     let exStatusArea, exStatusText, exProgressFill, exLogs;
     let exPlaceholder, exFrame;
     let exHistoryList;
@@ -27,6 +27,7 @@
         exModel      = document.getElementById('explained-model-select');
         exGenerateBtn = document.getElementById('explained-generate-btn');
         exDeepDiveToggle = document.getElementById('explained-deep-dive-toggle');
+        exFolderBtn     = document.getElementById('explained-folder-btn');
         
         exStatusArea = document.getElementById('explained-status-area');
         exStatusText = document.getElementById('explained-status-text');
@@ -44,6 +45,7 @@
         if (exExpandBtn)   exExpandBtn.addEventListener('click', toggleSidebar);
         if (exNewBtn)      exNewBtn.addEventListener('click', resetSession);
         if (exGenerateBtn) exGenerateBtn.addEventListener('click', startGeneration);
+        if (exFolderBtn)   exFolderBtn.addEventListener('click', openCurrentFolder);
 
         if (exModel) {
             exModel.addEventListener('change', () => {
@@ -75,6 +77,7 @@
         exFrame.classList.add('hidden');
         exFrame.src = 'about:blank';
         exGenerateBtn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Build Page';
+        if (exFolderBtn) exFolderBtn.classList.add('hidden');
         hidePageNav();
         if (exSidebar.classList.contains('collapsed')) toggleSidebar();
         if (window.showToast) window.showToast('Ready for a new topic.', 'info');
@@ -217,12 +220,34 @@
         exLogs.scrollTop = exLogs.scrollHeight;
     }
 
+    async function openCurrentFolder() {
+        if (!exCurrentThreadId) return;
+        try {
+            const res = await fetch(`/api/explained/thread/${exCurrentThreadId}/folder-path`);
+            if (!res.ok) throw new Error('Could not get folder path');
+            const data = await res.json();
+            if (window.openModuleFolder) {
+                window.openModuleFolder(data.path);
+            } else {
+                // Fallback: call the endpoint directly
+                await fetch('/api/system/modules/open-folder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: data.path })
+                });
+            }
+        } catch (e) {
+            if (window.showToast) window.showToast('Could not open folder: ' + e.message, 'error');
+        }
+    }
+
     function refreshIframe() {
         if (!exCurrentThreadId) return;
         
         exPlaceholder.classList.add('hidden');
         exFrame.classList.remove('hidden');
         exGenerateBtn.innerHTML = '<i class="fas fa-sync"></i> Update Page';
+        if (exFolderBtn) exFolderBtn.classList.remove('hidden');
 
         if (exCurrentDeepDive) {
             exFrame.src = `/api/explained/thread/${exCurrentThreadId}/page/${exCurrentPage}?t=${Date.now()}`;
@@ -371,6 +396,7 @@
             if (exDeepDiveToggle) exDeepDiveToggle.checked = exCurrentDeepDive;
 
             refreshIframe(true);
+            if (exFolderBtn) exFolderBtn.classList.remove('hidden');
 
             if (exCurrentDeepDive) {
                 await refreshPageNav();

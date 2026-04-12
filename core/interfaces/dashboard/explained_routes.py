@@ -347,6 +347,36 @@ async def get_thread_result(thread_id: str):
     }
 
 
+@router.get("/thread/{thread_id}/folder-path")
+async def get_thread_folder_path(thread_id: str):
+    """Return the absolute workspace folder path for the given explanation thread."""
+    expl_dir = EXPLANATIONS / thread_id
+    meta_path = expl_dir / "meta.json"
+
+    if not expl_dir.exists():
+        raise HTTPException(404, "Explanation not found")
+
+    meta = {}
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    ws_id = meta.get("ws_id")
+    folder_path = None
+    if ws_id:
+        ws_info = _aws_mgr.get_workspace(ws_id)
+        if ws_info:
+            folder_path = ws_info.get("path")
+
+    if not folder_path:
+        # Fall back to the explanation meta directory
+        folder_path = str(expl_dir)
+
+    return {"path": folder_path}
+
+
 @router.get("/thread/{thread_id}/pages")
 async def get_thread_pages(thread_id: str):
     """
