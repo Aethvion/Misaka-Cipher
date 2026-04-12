@@ -348,22 +348,19 @@
 
                 <!-- ── AI mode ───────────────────────────────────── -->
                 
-                <!-- SECTION 1: WORKSPACE -->
-                <div class="sidebar-section-header mode-ai" data-section="workspace">
-                    <span class="section-label"><span class="section-num">1</span><span class="section-text">Workspace</span></span><i class="fas fa-chevron-right section-chevron"></i>
+                <!-- SECTION 1: MAIN -->
+                <div class="sidebar-section-header mode-ai" data-section="main">
+                    <span class="section-label"><span class="section-num">1</span><span class="section-text">Main</span></span><i class="fas fa-chevron-right section-chevron"></i>
                 </div>
 
-                <div class="section-body mode-ai active" data-section-body="workspace">
-                    <!-- Chat (Outside categories) -->
-                    <button class="main-tab mode-ai active" data-maintab="chat" data-tooltip="Chat Hub">
-                        <span class="tab-icon"><i class="fas fa-comments"></i></span><span class="tab-label">Chat</span>
-                    </button>
-
-                    <!-- Workflow -->
-                    <div class="sidebar-category mode-ai" data-cat="workflow">
-                        <span class="cat-label">Workflow</span><i class="fas fa-chevron-right cat-chevron"></i>
+                <div class="section-body mode-ai active" data-section-body="main">
+                    <!-- Workspace -->
+                    <div class="sidebar-category mode-ai" data-cat="workspace">
+                        <span class="cat-label">Workspace</span><i class="fas fa-chevron-right cat-chevron"></i>
                     </div>
-                    <div class="cat-body mode-ai" data-cat-body="workflow">
+                    <div class="cat-body mode-ai" data-cat-body="workspace">
+                        <button class="main-tab mode-ai active" data-maintab="chat" data-tooltip="Chat Hub">
+                            <span class="tab-icon"><i class="fas fa-comments"></i></span><span class="tab-label">Chat</span></button>
                         <button class="main-tab mode-ai" data-maintab="agents" data-tooltip="Agent Workspaces">
                             <span class="tab-icon"><i class="fas fa-robot"></i></span><span class="tab-label">Agents</span></button>
                         <button class="main-tab mode-ai" data-maintab="agent-corp" data-tooltip="Agent Corp">
@@ -378,7 +375,7 @@
 
                     <!-- Research & Sandbox -->
                     <div class="sidebar-category mode-ai" data-cat="research-sandbox">
-                        <span class="cat-label">Research & Sandbox</span><i class="fas fa-chevron-right cat-chevron"></i>
+                        <span class="cat-label">Research &amp; Sandbox</span><i class="fas fa-chevron-right cat-chevron"></i>
                     </div>
                     <div class="cat-body mode-ai" data-cat-body="research-sandbox">
                         <button class="main-tab mode-ai" data-maintab="advaiconv" data-tooltip="Advanced AI Conversation">

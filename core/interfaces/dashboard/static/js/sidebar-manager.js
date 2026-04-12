@@ -1,113 +1,108 @@
 /**
  * Aethvion Suite — Sidebar Manager
- * Overlays a non-destructive customization layer on the existing static sidebar.
  *
- * Customize mode: toggled by a button in .sidebar-bottom.
- *   ON  → sidebar adds .ae-edit-mode; every .main-tab gets inline grip + eye controls.
- *   OFF → controls are removed; config is saved to localStorage.
+ * Behaviour:
+ *   Normal mode  → hidden tabs are invisible (display:none via .tab-hidden)
+ *   Edit mode    → ALL tabs are visible; hidden ones are visually dimmed with an indicator
+ *                  so the user can always see what's available and toggle it back on
  *
- * Tab visibility: hidden tabs get .ae-tab-hidden (display:none).
- * Reorder:        drag-and-drop in edit mode moves the actual .main-tab DOM nodes,
- *                 preserving section/category wrapping.
+ * Persistence: localStorage key 'sidebar_v2'
+ * No overlay, no fullscreen panel — everything is inline within the existing sidebar.
  */
 
 (function () {
     'use strict';
 
-    const STORAGE_KEY = 'ae_sidebar_v2';
+    const STORAGE_KEY = 'sidebar_v2';
 
-    // ── Storage helpers ───────────────────────────────────────────
-    const cfg = {
-        load() {
-            try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-            catch (_) { return {}; }
-        },
-        save(data) {
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
-        }
-    };
+    // ── Storage ───────────────────────────────────────────────────
+    function cfgLoad() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+        catch (_) { return {}; }
+    }
+    function cfgSave(data) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (_) {}
+    }
 
     // ── State ─────────────────────────────────────────────────────
     let editMode = false;
-    let config   = cfg.load();
+    let config   = cfgLoad();
     let dragSrc  = null;
 
-    // ── Apply saved visibility to all tabs ────────────────────────
+    // ── Visibility helpers ────────────────────────────────────────
+
+    /**
+     * Normal mode: truly hide tabs the user has disabled.
+     * Edit mode:   show ALL tabs; mark disabled ones with .edit-hidden for styling.
+     */
     function applyVisibility() {
         document.querySelectorAll('.sidebar-nav .main-tabs .main-tab').forEach(btn => {
             const id = btn.dataset.maintab;
             if (!id) return;
-            btn.classList.toggle('ae-tab-hidden', config[id]?.hidden === true);
+            const isHidden = config[id]?.hidden === true;
+
+            if (editMode) {
+                // Always visible in edit mode — just mark for visual treatment
+                btn.classList.remove('tab-hidden');
+                btn.classList.toggle('edit-hidden', isHidden);
+            } else {
+                // Truly hide disabled tabs outside edit mode
+                btn.classList.toggle('tab-hidden', isHidden);
+                btn.classList.remove('edit-hidden');
+            }
         });
     }
 
-    // ── Inject edit controls into every .main-tab ─────────────────
+    // ── Edit controls ─────────────────────────────────────────────
+
+    /** Inject grip + eye button into every .main-tab */
     function injectControls() {
         document.querySelectorAll('.sidebar-nav .main-tabs .main-tab').forEach(btn => {
             const id = btn.dataset.maintab;
-            if (!id || btn.querySelector('.ae-grip')) return; // already injected
+            if (!id || btn.querySelector('.drag-grip')) return;
 
-            const hidden = config[id]?.hidden === true;
+            const isHidden = config[id]?.hidden === true;
 
-            // Grip
+            // Drag grip — prepended before icon
             const grip = document.createElement('span');
-            grip.className = 'ae-grip';
+            grip.className = 'drag-grip';
             grip.title = 'Drag to reorder';
             grip.innerHTML = '<i class="fas fa-grip-vertical"></i>';
             btn.prepend(grip);
 
-            // Eye toggle
+            // Eye toggle — appended after label
             const eye = document.createElement('button');
-            eye.className = 'ae-eye';
+            eye.className = 'vis-toggle';
             eye.dataset.tabid = id;
-            eye.title = hidden ? 'Show' : 'Hide';
-            eye.innerHTML = `<i class="fas ${hidden ? 'fa-eye-slash' : 'fa-eye'}"></i>`;
+            eye.title = isHidden ? 'Enable' : 'Disable';
+            eye.innerHTML = `<i class="fas ${isHidden ? 'fa-eye-slash' : 'fa-eye'}"></i>`;
             btn.appendChild(eye);
 
-            // Draggable
             btn.draggable = true;
         });
     }
 
-    // ── Remove edit controls ──────────────────────────────────────
+    /** Remove all injected controls */
     function removeControls() {
-        document.querySelectorAll('.sidebar-nav .ae-grip').forEach(el => el.remove());
-        document.querySelectorAll('.sidebar-nav .ae-eye').forEach(el => el.remove());
+        document.querySelectorAll('.sidebar-nav .drag-grip').forEach(el => el.remove());
+        document.querySelectorAll('.sidebar-nav .vis-toggle').forEach(el => el.remove());
         document.querySelectorAll('.sidebar-nav .main-tabs .main-tab').forEach(btn => {
             btn.draggable = false;
         });
     }
 
-    // ── Drag-and-drop: moves the actual DOM tab button ─────────────
-    function setupDrag() {
-        const mainTabs = document.querySelector('.sidebar-nav .main-tabs');
-        if (!mainTabs) return;
-
-        mainTabs.addEventListener('dragstart', onDragStart, true);
-        mainTabs.addEventListener('dragend',   onDragEnd,   true);
-        mainTabs.addEventListener('dragover',  onDragOver,  true);
-        mainTabs.addEventListener('drop',      onDrop,      true);
-    }
-
-    function teardownDrag() {
-        const mainTabs = document.querySelector('.sidebar-nav .main-tabs');
-        if (!mainTabs) return;
-        mainTabs.removeEventListener('dragstart', onDragStart, true);
-        mainTabs.removeEventListener('dragend',   onDragEnd,   true);
-        mainTabs.removeEventListener('dragover',  onDragOver,  true);
-        mainTabs.removeEventListener('drop',      onDrop,      true);
-    }
+    // ── Drag and drop ─────────────────────────────────────────────
 
     function onDragStart(e) {
         dragSrc = e.target.closest('.main-tab');
         if (!dragSrc) return;
-        dragSrc.classList.add('ae-dragging');
+        dragSrc.classList.add('is-dragging');
         e.dataTransfer.effectAllowed = 'move';
     }
 
     function onDragEnd() {
-        dragSrc?.classList.remove('ae-dragging');
-        document.querySelectorAll('.ae-drop-target').forEach(el => el.classList.remove('ae-drop-target'));
+        dragSrc?.classList.remove('is-dragging');
+        document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
         dragSrc = null;
     }
 
@@ -116,17 +111,16 @@
         e.dataTransfer.dropEffect = 'move';
         const target = e.target.closest('.main-tab');
         if (!target || target === dragSrc) return;
-        document.querySelectorAll('.ae-drop-target').forEach(el => el.classList.remove('ae-drop-target'));
-        target.classList.add('ae-drop-target');
+        document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+        target.classList.add('drop-target');
     }
 
     function onDrop(e) {
         e.preventDefault();
         const target = e.target.closest('.main-tab');
         if (!target || !dragSrc || target === dragSrc) return;
-        target.classList.remove('ae-drop-target');
+        target.classList.remove('drop-target');
 
-        // Insert dragSrc before or after target depending on vertical position
         const rect = target.getBoundingClientRect();
         const after = e.clientY > rect.top + rect.height / 2;
         if (after) target.after(dragSrc);
@@ -136,14 +130,33 @@
         const order = [...document.querySelectorAll('.sidebar-nav .main-tabs .main-tab')]
             .map(b => b.dataset.maintab).filter(Boolean);
         config._order = order;
-        cfg.save(config);
+        cfgSave(config);
     }
 
-    // ── Eye toggle handler (delegated from .main-tabs) ─────────────
+    function setupDrag() {
+        const mt = document.querySelector('.sidebar-nav .main-tabs');
+        if (!mt) return;
+        mt.addEventListener('dragstart', onDragStart, true);
+        mt.addEventListener('dragend',   onDragEnd,   true);
+        mt.addEventListener('dragover',  onDragOver,  true);
+        mt.addEventListener('drop',      onDrop,      true);
+    }
+
+    function teardownDrag() {
+        const mt = document.querySelector('.sidebar-nav .main-tabs');
+        if (!mt) return;
+        mt.removeEventListener('dragstart', onDragStart, true);
+        mt.removeEventListener('dragend',   onDragEnd,   true);
+        mt.removeEventListener('dragover',  onDragOver,  true);
+        mt.removeEventListener('drop',      onDrop,      true);
+    }
+
+    // ── Eye toggle handler (delegated) ────────────────────────────
+
     function onEyeClick(e) {
-        const eye = e.target.closest('.ae-eye');
+        const eye = e.target.closest('.vis-toggle');
         if (!eye) return;
-        e.stopPropagation(); // don't trigger tab navigation
+        e.stopPropagation();
 
         const id  = eye.dataset.tabid;
         const btn = document.querySelector(`.sidebar-nav .main-tab[data-maintab="${id}"]`);
@@ -152,106 +165,81 @@
         const nowHidden = !(config[id]?.hidden === true);
         if (!config[id]) config[id] = {};
         config[id].hidden = nowHidden;
-        cfg.save(config);
+        cfgSave(config);
 
-        // Update eye icon immediately (visibility applies when edit mode ends)
-        eye.title = nowHidden ? 'Show' : 'Hide';
+        // Update the eye icon immediately
+        eye.title = nowHidden ? 'Enable' : 'Disable';
         eye.querySelector('i').className = `fas ${nowHidden ? 'fa-eye-slash' : 'fa-eye'}`;
-        btn.classList.toggle('ae-will-hide', nowHidden);
+
+        // Update visual state (still visible in edit mode, just marked)
+        btn.classList.toggle('edit-hidden', nowHidden);
     }
 
-    // ── Toggle edit mode ──────────────────────────────────────────
+    // ── Edit mode toggle ──────────────────────────────────────────
+
     function enterEditMode() {
         editMode = true;
-        const sidebar = document.querySelector('.sidebar-nav');
-        sidebar?.classList.add('ae-edit-mode');
+        document.querySelector('.sidebar-nav')?.classList.add('sidebar-edit-mode');
+        applyVisibility();   // show all, mark disabled ones
         injectControls();
         setupDrag();
 
-        // Delegate eye clicks on the main-tabs container
-        const mainTabs = document.querySelector('.sidebar-nav .main-tabs');
-        mainTabs?.addEventListener('click', onEyeClick, true);
+        const mt = document.querySelector('.sidebar-nav .main-tabs');
+        mt?.addEventListener('click', onEyeClick, true);
 
         updateToggleBtn();
     }
 
     function exitEditMode() {
         editMode = false;
-        const sidebar = document.querySelector('.sidebar-nav');
-        sidebar?.classList.remove('ae-edit-mode');
+        document.querySelector('.sidebar-nav')?.classList.remove('sidebar-edit-mode');
 
         teardownDrag();
         removeControls();
 
-        // Remove will-hide preview class
-        document.querySelectorAll('.ae-will-hide').forEach(el => el.classList.remove('ae-will-hide'));
+        const mt = document.querySelector('.sidebar-nav .main-tabs');
+        mt?.removeEventListener('click', onEyeClick, true);
 
-        const mainTabs = document.querySelector('.sidebar-nav .main-tabs');
-        mainTabs?.removeEventListener('click', onEyeClick, true);
-
-        // Apply final visibility
-        applyVisibility();
+        applyVisibility();   // re-hide disabled tabs
         updateToggleBtn();
     }
 
-    // ── Build / update the Customize button ───────────────────────
-    function buildToggleBtn() {
-        const existing = document.getElementById('ae-cust-toggle');
-        if (existing) return existing;
+    // ── Customize button ──────────────────────────────────────────
 
+    function buildToggleBtn() {
         const btn = document.createElement('button');
-        btn.id        = 'ae-cust-toggle';
-        btn.className = 'ae-cust-toggle-btn';
+        btn.id        = 'cust-toggle';
+        btn.className = 'cust-toggle-btn';
         btn.title     = 'Customize sidebar tabs';
-        updateToggleBtnHTML(btn);
+        renderToggleBtn(btn);
         return btn;
     }
 
-    function updateToggleBtnHTML(btn) {
-        if (!btn) return;
+    function renderToggleBtn(btn) {
         if (editMode) {
             btn.innerHTML = '<i class="fas fa-check"></i><span>Done</span>';
-            btn.classList.add('ae-edit-active');
+            btn.classList.add('edit-active');
         } else {
             btn.innerHTML = '<i class="fas fa-sliders"></i><span>Customize</span>';
-            btn.classList.remove('ae-edit-active');
+            btn.classList.remove('edit-active');
         }
     }
 
     function updateToggleBtn() {
-        updateToggleBtnHTML(document.getElementById('ae-cust-toggle'));
-    }
-
-    // ── Reset ─────────────────────────────────────────────────────
-    function buildResetBtn() {
-        const existing = document.getElementById('ae-reset-btn');
-        if (existing) return existing;
-
-        const btn = document.createElement('button');
-        btn.id        = 'ae-reset-btn';
-        btn.className = 'ae-reset-btn';
-        btn.title     = 'Reset to defaults';
-        btn.innerHTML = '<i class="fas fa-rotate-left"></i><span>Reset</span>';
-        btn.addEventListener('click', () => {
-            localStorage.removeItem(STORAGE_KEY);
-            location.reload();
-        });
-        return btn;
+        const btn = document.getElementById('cust-toggle');
+        if (btn) renderToggleBtn(btn);
     }
 
     // ── Init ──────────────────────────────────────────────────────
+
     function init() {
         const sidebarBottom = document.querySelector('.sidebar-nav .sidebar-bottom');
         if (!sidebarBottom) return;
 
-        config = cfg.load();
+        config = cfgLoad();
         applyVisibility();
 
         const toggleBtn = buildToggleBtn();
-        const resetBtn  = buildResetBtn();
-
-        // Insert into sidebar-bottom, above the version tab
-        sidebarBottom.prepend(resetBtn);
         sidebarBottom.prepend(toggleBtn);
 
         toggleBtn.addEventListener('click', () => {

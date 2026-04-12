@@ -806,15 +806,25 @@
    SIDEBAR MANAGER — Inline Edit Mode
    ══════════════════════════════════════════════════════════════════ */
 
-/* Hidden tabs */
-.ae-tab-hidden { display: none !important; }
+/* Hidden tabs — truly hidden in normal mode */
+.tab-hidden { display: none !important; }
 
-/* Will-be-hidden preview in edit mode */
-.sidebar-nav.ae-edit-mode .ae-will-hide { opacity: 0.35; }
-.sidebar-nav.ae-edit-mode .ae-will-hide .tab-label { text-decoration: line-through; text-decoration-color: rgba(255,255,255,0.25); }
+/* In edit mode: disabled tabs are visible but clearly dimmed */
+.sidebar-nav.sidebar-edit-mode .edit-hidden {
+    opacity: 0.38;
+}
+.sidebar-nav.sidebar-edit-mode .edit-hidden .tab-label {
+    text-decoration: line-through;
+    text-decoration-color: rgba(255, 255, 255, 0.2);
+}
+/* Eye button on a disabled tab uses the slash icon colour */
+.sidebar-nav.sidebar-edit-mode .edit-hidden .vis-toggle {
+    border-color: rgba(255, 100, 100, 0.25);
+    color: rgba(255, 140, 140, 0.75);
+}
 
 /* ── Customize / Done toggle button ── */
-.ae-cust-toggle-btn {
+.cust-toggle-btn {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -834,58 +844,26 @@
     text-align: left;
 }
 
-.ae-cust-toggle-btn i { font-size: 0.8rem; flex-shrink: 0; opacity: 0.7; transition: opacity 0.15s; }
-.ae-cust-toggle-btn span { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.cust-toggle-btn i { font-size: 0.8rem; flex-shrink: 0; opacity: 0.7; transition: opacity 0.15s; }
+.cust-toggle-btn span { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 
-.ae-cust-toggle-btn:hover {
+.cust-toggle-btn:hover {
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-secondary);
     border-color: rgba(255, 255, 255, 0.08);
 }
-.ae-cust-toggle-btn:hover i { opacity: 1; }
+.cust-toggle-btn:hover i { opacity: 1; }
 
-.ae-cust-toggle-btn.ae-edit-active {
+.cust-toggle-btn.edit-active {
     background: rgba(99, 102, 241, 0.1);
     border-color: rgba(99, 102, 241, 0.22);
     color: var(--primary, #6366f1);
 }
-.ae-cust-toggle-btn.ae-edit-active i { opacity: 1; }
+.cust-toggle-btn.edit-active i { opacity: 1; }
 
-/* ── Reset button ── */
-.ae-reset-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.38rem 0.75rem;
-    margin: 0.06rem 0.3rem;
-    width: calc(100% - 0.6rem);
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: var(--radius-md, 8px);
-    color: var(--text-tertiary);
-    font-size: 0.76rem;
-    font-weight: 450;
-    cursor: pointer;
-    transition: background 0.18s, color 0.18s, border-color 0.18s;
-    white-space: nowrap;
-    overflow: hidden;
-    text-align: left;
-}
-.ae-reset-btn i { font-size: 0.75rem; flex-shrink: 0; opacity: 0.5; transition: opacity 0.15s; }
-.ae-reset-btn span { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-
-.ae-reset-btn:hover {
-    background: rgba(255, 100, 100, 0.07);
-    border-color: rgba(255, 100, 100, 0.18);
-    color: rgba(255, 150, 150, 0.9);
-}
-.ae-reset-btn:hover i { opacity: 1; }
-
-/* Hide buttons when sidebar is collapsed */
-.sidebar-nav.collapsed .ae-cust-toggle-btn span,
-.sidebar-nav.collapsed .ae-reset-btn span { display: none; }
-.sidebar-nav.collapsed .ae-cust-toggle-btn,
-.sidebar-nav.collapsed .ae-reset-btn {
+/* Collapsed sidebar — icon only */
+.sidebar-nav.collapsed .cust-toggle-btn span { display: none; }
+.sidebar-nav.collapsed .cust-toggle-btn {
     justify-content: center;
     width: 38px;
     margin: 0.1rem auto;
@@ -893,10 +871,11 @@
     border-radius: var(--radius-full, 999px);
 }
 
+
 /* ── Edit mode: inline tab controls ── */
 
 /* Grip handle (prepended to tab) */
-.ae-grip {
+.drag-grip {
     display: none;
     color: var(--text-muted, rgba(255,255,255,0.22));
     font-size: 0.7rem;
@@ -907,13 +886,13 @@
     line-height: 1;
 }
 
-.ae-grip:active { cursor: grabbing; }
+.drag-grip:active { cursor: grabbing; }
 
-.sidebar-nav.ae-edit-mode .ae-grip { display: flex; align-items: center; }
-.sidebar-nav.ae-edit-mode .main-tab:hover .ae-grip { color: var(--text-tertiary); }
+.sidebar-nav.sidebar-edit-mode .drag-grip { display: flex; align-items: center; }
+.sidebar-nav.sidebar-edit-mode .main-tab:hover .drag-grip { color: var(--text-tertiary); }
 
 /* Eye toggle (appended to tab) */
-.ae-eye {
+.vis-toggle {
     display: none;
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.07);
@@ -928,25 +907,25 @@
     transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.sidebar-nav.ae-edit-mode .ae-eye { display: flex; align-items: center; }
-.ae-eye:hover {
+.sidebar-nav.sidebar-edit-mode .vis-toggle { display: flex; align-items: center; }
+.vis-toggle:hover {
     background: rgba(99, 102, 241, 0.14);
     border-color: rgba(99, 102, 241, 0.35);
     color: var(--primary, #6366f1);
 }
 
 /* Edit mode: highlight movable tabs */
-.sidebar-nav.ae-edit-mode .main-tab {
+.sidebar-nav.sidebar-edit-mode .main-tab {
     border-color: rgba(255, 255, 255, 0.04);
     cursor: grab;
 }
 
-.sidebar-nav.ae-edit-mode .main-tab.ae-dragging {
+.sidebar-nav.sidebar-edit-mode .main-tab.is-dragging {
     opacity: 0.35;
     cursor: grabbing;
 }
 
-.sidebar-nav.ae-edit-mode .main-tab.ae-drop-target {
+.sidebar-nav.sidebar-edit-mode .main-tab.drop-target {
     border-color: var(--primary, #6366f1);
     background: rgba(99, 102, 241, 0.07);
 }
@@ -957,286 +936,7 @@
    ══════════════════════════════════════════════════════════════ */
 
 /* Hidden tabs (set by sidebar-manager.js) */
-.ae-tab-hidden {
+.tab-hidden {
     display: none !important;
 }
 
-/* ── Customize Toggle Button ──────────────────────────────────── */
-.ae-sidebar-cust-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    width: calc(100% - 0.5rem);
-    margin: 0.25rem 0.25rem 0.1rem;
-    padding: 0.45rem 0.75rem;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: var(--radius-md, 8px);
-    color: var(--text-tertiary);
-    font-size: 0.78rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.18s, color 0.18s, border-color 0.18s;
-    white-space: nowrap;
-    overflow: hidden;
-}
-
-.ae-sidebar-cust-btn i {
-    font-size: 0.85rem;
-    flex-shrink: 0;
-    opacity: 0.6;
-    transition: opacity 0.18s;
-}
-
-.ae-sidebar-cust-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-secondary);
-    border-color: rgba(255, 255, 255, 0.08);
-}
-
-.ae-sidebar-cust-btn:hover i {
-    opacity: 1;
-}
-
-.ae-sidebar-cust-btn.ae-cust-btn-active {
-    background: rgba(99, 102, 241, 0.1);
-    border-color: rgba(99, 102, 241, 0.25);
-    color: var(--primary, #6366f1);
-}
-
-.ae-sidebar-cust-btn.ae-cust-btn-active i {
-    opacity: 1;
-}
-
-/* Collapsed sidebar — icon-only */
-.sidebar-nav.collapsed .ae-sidebar-cust-btn span {
-    display: none;
-}
-
-.sidebar-nav.collapsed .ae-sidebar-cust-btn {
-    justify-content: center;
-    width: auto;
-    padding: 0.5rem;
-    border-radius: var(--radius-full, 999px);
-}
-
-/* ── Customize Panel (slide-in overlay inside sidebar) ─────────── */
-.ae-customize-panel {
-    position: absolute;
-    inset: 0;
-    z-index: 200;
-    background: var(--bg-secondary, rgba(14, 14, 22, 0.98));
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-right: 1px solid var(--border, rgba(255,255,255,0.08));
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-
-    /* Slide in from left */
-    transform: translateX(-100%);
-    opacity: 0;
-    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 0.22s ease;
-}
-
-.ae-customize-panel.ae-cust-visible {
-    transform: translateX(0);
-    opacity: 1;
-}
-
-/* Header */
-.ae-cust-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem 1rem 0.6rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    flex-shrink: 0;
-}
-
-.ae-cust-title {
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    letter-spacing: 0.02em;
-}
-
-.ae-cust-title i {
-    color: var(--primary, #6366f1);
-    font-size: 0.85rem;
-}
-
-.ae-cust-close {
-    background: transparent;
-    border: none;
-    color: var(--text-tertiary);
-    cursor: pointer;
-    padding: 0.3rem 0.4rem;
-    border-radius: var(--radius-sm, 6px);
-    font-size: 0.95rem;
-    transition: background 0.15s, color 0.15s;
-    line-height: 1;
-}
-
-.ae-cust-close:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text-primary);
-}
-
-/* Hint text */
-.ae-cust-hint {
-    font-size: 0.72rem;
-    color: var(--text-muted, rgba(255,255,255,0.35));
-    padding: 0.55rem 1rem 0.3rem;
-    margin: 0;
-    flex-shrink: 0;
-}
-
-.ae-cust-hint i {
-    opacity: 0.6;
-}
-
-/* List */
-.ae-cust-list {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    list-style: none;
-    margin: 0;
-    padding: 0.4rem 0.5rem;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.1) transparent;
-}
-
-/* List item */
-.ae-cust-item {
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    padding: 0.55rem 0.65rem;
-    margin-bottom: 0.2rem;
-    border-radius: var(--radius-md, 8px);
-    border: 1px solid transparent;
-    background: rgba(255, 255, 255, 0.02);
-    transition: background 0.15s, border-color 0.15s, opacity 0.2s;
-    cursor: default;
-    user-select: none;
-}
-
-.ae-cust-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.07);
-}
-
-/* Off (hidden) state */
-.ae-cust-item.ae-item-off {
-    opacity: 0.4;
-}
-
-.ae-cust-item.ae-item-off .ae-cust-label {
-    text-decoration: line-through;
-    text-decoration-color: rgba(255,255,255,0.3);
-}
-
-/* Drag source */
-.ae-cust-item.ae-drag-src {
-    opacity: 0.35;
-    border: 1px dashed rgba(99, 102, 241, 0.5);
-}
-
-/* Drag-over target */
-.ae-cust-item.ae-drag-over {
-    border-color: var(--primary, #6366f1);
-    background: rgba(99, 102, 241, 0.08);
-}
-
-/* Grip handle */
-.ae-cust-grip {
-    color: var(--text-muted, rgba(255,255,255,0.25));
-    font-size: 0.75rem;
-    cursor: grab;
-    flex-shrink: 0;
-    padding: 0 2px;
-    transition: color 0.15s;
-}
-
-.ae-cust-item:hover .ae-cust-grip {
-    color: var(--text-tertiary);
-}
-
-.ae-cust-grip:active {
-    cursor: grabbing;
-}
-
-/* Tab icon inside list */
-.ae-cust-icon {
-    font-size: 0.78rem;
-    color: var(--text-tertiary);
-    width: 1rem;
-    text-align: center;
-    flex-shrink: 0;
-}
-
-/* Tab label inside list */
-.ae-cust-label {
-    flex: 1;
-    font-size: 0.8rem;
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    transition: color 0.15s;
-}
-
-/* Toggle eye button */
-.ae-cust-toggle {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: var(--radius-sm, 6px);
-    color: var(--text-tertiary);
-    cursor: pointer;
-    padding: 0.25rem 0.4rem;
-    font-size: 0.72rem;
-    line-height: 1;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
-    flex-shrink: 0;
-}
-
-.ae-cust-toggle:hover {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.4);
-    color: var(--primary, #6366f1);
-}
-
-/* Footer */
-.ae-cust-footer {
-    padding: 0.65rem 0.75rem 0.75rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    flex-shrink: 0;
-}
-
-.ae-cust-reset {
-    width: 100%;
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: var(--radius-md, 8px);
-    color: var(--text-tertiary);
-    font-size: 0.76rem;
-    padding: 0.45rem 0.75rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.ae-cust-reset:hover {
-    background: rgba(255, 100, 100, 0.08);
-    border-color: rgba(255, 100, 100, 0.3);
-    color: #ff8080;
-}
