@@ -39,16 +39,17 @@ class ExplainedRequest(BaseModel):
 # --------------------------------------------------------------------------- #
 
 _NORMAL_NEW_PROMPT = """\
-Create a stunning, thematic, single-file HTML visual explanation for: {topic}
+Create a rich, visually appealing, self-contained single-file HTML explanation about: {topic}
 
-Design Guidelines:
-- Choose a visual theme that perfectly matches the topic (e.g. dark fantasy for Elden Ring, blocky for Minecraft, sci-fi for quantum computing).
-- Use Google Fonts, glassmorphism, smooth CSS animations, and FontAwesome icons.
-- Organize content: Hero section, Key Concepts, Deep Dive, Summary.
-- Make it LONG and DETAILED with deep researched content (use search_web).
-- Embed ALL CSS and JS inside the single HTML file — no external files.
+MODE: Standard — Single self-contained file
+- Everything must be in ONE file called index.html
+- Embed all CSS and JavaScript inside the file.
+- Make it beautiful, well-structured, and detailed with sections, cards, and visuals.
+- Focus on clarity, engagement, and shareability.
+- Use search_web to research the topic thoroughly.
 - NO footers, NO copyright notices, NO social links, NO 'built by' credits.
-- The file MUST be saved as 'index.html'.
+
+Goal: A beautiful standalone HTML file that can be shared easily.
 
 Provide a short punchy TITLE (max 4 words) at the very end prefixed with 'TITLE: '.\
 """
@@ -57,33 +58,27 @@ _NORMAL_UPDATE_PROMPT = """\
 Project: {topic}
 New instruction: {instruction}
 
-Apply this instruction surgically to the existing index.html.
+This is a Standard (single-file) explanation. Apply this instruction surgically to the existing index.html.
 Read the file first if needed, then patch only what was asked.
-Do NOT rewrite the entire file unless explicitly told to.\
+Do NOT rewrite the entire file unless explicitly told to.
+Keep all CSS and JS embedded inside the single HTML file.\
 """
 
 _DEEP_DIVE_NEW_PROMPT = """\
-Create an immersive, multi-page deep-dive visual explanation for: {topic}
+Create an EXTREMELY DETAILED and deeply researched visual explanation about: {topic}
 
-You MUST produce the following files in the workspace — no more, no fewer:
-
-1. index.html       — The hub/home page. Hero section, topic overview (≈300 words), and navigation cards linking to each section page.
-2. overview.html    — Background, history and context. In-depth (~600 words).
-3. core.html        — Core concepts, mechanics or principles. Richly detailed (~700 words) with diagrams or tables where appropriate.
-4. deepdive.html    — Advanced nuances, edge cases, controversies or deep analysis (~700 words).
-5. summary.html     — Key takeaways, timeline if applicable, further reading list.
-6. style.css        — Shared stylesheet used by all pages. No inline styles in the HTML files.
-7. script.js        — Shared JS used by all pages (smooth scroll, animations, active nav, etc.).
-
-Design Rules (apply to every page):
-- Visual theme must perfectly match the topic.
-- All pages share style.css and script.js via <link> / <script src="...">.
-- Each page has a consistent top nav bar with links to all other pages.
-- Use Google Fonts, glassmorphism cards, smooth CSS animations, FontAwesome icons.
-- Make content LONG and DETAILED — use search_web to research thoroughly.
-- NO footers, NO copyright, NO social links, NO 'built by' credits.
+MODE: DEEP DIVE ENABLED — Use multi-file structure
+- Create a main index.html as the hub / table of contents with clear navigation.
+- Split major sections into separate HTML files (for example: main-lore.html, characters.html, timeline.html, etc. — choose names that fit the topic).
+- Use one shared style.css and one shared script.js where possible.
+- Make navigation clean (sidebar or top nav with links between the pages).
+- Go extremely deep on every section — maximum length and research depth (use search_web).
+- Use rich visuals, SVGs, timelines, tables, and interactive elements.
 - Reference style.css as: <link rel="stylesheet" href="style.css">
 - Reference script.js as: <script src="script.js"></script>
+- NO footers, NO copyright, NO social links, NO 'built by' credits.
+
+Goal: Build a comprehensive, well-organized knowledge base.
 
 Provide a short punchy TITLE (max 4 words) at the very end prefixed with 'TITLE: '.\
 """
@@ -92,7 +87,8 @@ _DEEP_DIVE_UPDATE_PROMPT = """\
 Project: {topic} (Deep Dive multi-page)
 New instruction: {instruction}
 
-The workspace contains: index.html, overview.html, core.html, deepdive.html, summary.html, style.css, script.js.
+This is a Deep Dive (multi-file) explanation.
+The workspace contains index.html (hub), separate section HTML files, style.css, and script.js.
 Apply this instruction surgically — read the relevant files first, patch only what was asked.
 Maintain the shared style.css / script.js pattern. Do NOT collapse files into one.\
 """
