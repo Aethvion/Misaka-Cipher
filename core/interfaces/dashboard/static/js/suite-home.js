@@ -103,10 +103,10 @@
     };
 
     const DEFAULT_INFO = {
-        subtitle: 'Your neural workspace is ready — launch any tool to get started.',
+        subtitle: 'Welcome to your advanced AI operations center. Aethvion Suite is designed to orchestrate complex tasks, manage local models, and provide a unified interface for all your AI needs.',
         ctas: [
-            { label: 'Open Workspace', icon: 'fas fa-comments', tab: 'chat',   mode: 'ai' },
-            { label: 'Launch Agents',  icon: 'fas fa-robot',    tab: 'agents', mode: 'ai' },
+            { label: 'Quick Start Chat', icon: 'fas fa-rocket',       tab: 'chat',          mode: 'ai' },
+            { label: 'Read Overview',    icon: 'fas fa-book-open',    tab: 'documentation', mode: null },
         ],
     };
 
@@ -131,7 +131,6 @@
         updateCTAs(info.ctas);
         updateBadge(profile.name);
         updateSnapshot(profile);
-        renderLayoutOverview(profile);
         renderRecentActivity();
     }
 
@@ -224,89 +223,6 @@
             }
             if (++tries > 20) clearInterval(ticker); // give up after ~4s
         }, 200);
-    }
-
-    // ── Layout Overview ───────────────────────────────────────────────────────
-    function renderLayoutOverview(profile) {
-        const container = document.getElementById('sh-layout-overview');
-        if (!container) return;
-        container.innerHTML = '';
-
-        const order = profile.order || [];
-
-        let hasContent = false;
-
-        for (const entry of order) {
-            if (entry.type === 'tab') {
-                if (entry.id === 'suite-home') continue;
-                if (profile.hidden?.[entry.id]) continue;
-                const info = TAB_INFO[entry.id];
-                if (!info) continue;
-                // Render as a standalone mini-card
-                container.appendChild(makeStandaloneTab(entry.id, info));
-                hasContent = true;
-
-            } else if (entry.type === 'folder') {
-                const folder = profile.folders?.[entry.id];
-                if (!folder) continue;
-                const visible = (entry.children || []).filter(id => !profile.hidden?.[id] && TAB_INFO[id]);
-                if (!visible.length) continue;
-                container.appendChild(makeFolderCard(folder.name, visible));
-                hasContent = true;
-            }
-        }
-
-        if (!hasContent) {
-            container.innerHTML = `
-                <div class="sh-overview-empty">
-                    <i class="fas fa-layer-group"></i>
-                    <p>No tabs enabled in this layout.</p>
-                    <button onclick="document.getElementById('cust-toggle')?.click()">
-                        <i class="fas fa-sliders"></i> Open Customize
-                    </button>
-                </div>`;
-        }
-    }
-
-    function makeFolderCard(folderName, tabIds) {
-        const card = document.createElement('div');
-        card.className = 'sh-folder-card';
-
-        card.innerHTML = `
-            <div class="sh-fc-header">
-                <span class="sh-fc-icon"><i class="fas fa-folder"></i></span>
-                <span class="sh-fc-name">${esc(folderName)}</span>
-                <span class="sh-fc-count">${tabIds.length}</span>
-            </div>
-            <div class="sh-fc-tabs"></div>
-        `;
-
-        const tabsEl = card.querySelector('.sh-fc-tabs');
-        for (const id of tabIds) {
-            tabsEl.appendChild(makeTabChip(id));
-        }
-
-        return card;
-    }
-
-    function makeStandaloneTab(id, info) {
-        const chip = makeTabChip(id);
-        chip.classList.add('sh-standalone-tab');
-        return chip;
-    }
-
-    function makeTabChip(id) {
-        const info = TAB_INFO[id];
-        if (!info) return document.createTextNode('');
-        const btn = document.createElement('button');
-        btn.className = 'sh-tab-chip';
-        btn.title = `Open ${info.label}`;
-        btn.innerHTML = `<i class="${info.icon}"></i><span>${esc(info.label)}</span>`;
-        btn.addEventListener('click', () => {
-            window.setDashboardMode?.('ai');
-            window.switchMainTab?.(id);
-        });
-        return btn;
     }
 
     function esc(s) {

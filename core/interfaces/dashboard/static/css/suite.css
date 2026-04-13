@@ -235,10 +235,17 @@
 /* Subtle radial accent in the corner */
 .sh-hero-bg-accent {
     position: absolute;
-    top: -60px; right: -80px;
-    width: 360px; height: 280px;
-    background: radial-gradient(ellipse at center, rgba(99,102,241,0.09) 0%, transparent 70%);
+    top: -100px; right: -100px;
+    width: 500px; height: 400px;
+    background: radial-gradient(circle at center, rgba(0, 217, 255, 0.15) 0%, rgba(255, 0, 234, 0.05) 40%, transparent 75%);
+    filter: blur(40px);
     pointer-events: none;
+    z-index: 0;
+}
+
+.sh-hero-content {
+    position: relative;
+    z-index: 1;
 }
 
 /* ── Meta row: profile pill + server status ──────────────────────────────── */
@@ -277,12 +284,16 @@
 /* ── Title & subtitle ────────────────────────────────────────────────────── */
 .sh-title {
     font-family: 'Orbitron', sans-serif;
-    font-size: 1.7rem;
+    font-size: 2.2rem;
     font-weight: 700;
-    letter-spacing: 2px;
-    color: var(--text-primary);
-    margin: 0 0 0.45rem;
-    line-height: 1;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, #fff 0%, var(--primary) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0 0 0.8rem;
+    line-height: 1.1;
+    filter: drop-shadow(0 0 10px rgba(0, 217, 255, 0.3));
 }
 
 .sh-subtitle {
@@ -298,8 +309,9 @@
 .sh-ctas {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 1rem;
     flex-wrap: wrap;
+    margin-top: 0.5rem;
 }
 
 .sh-cta-primary {
@@ -404,12 +416,134 @@
     transition: opacity 0.15s;
 }
 
-.app-suite-section { margin-bottom: 2rem; }
+.app-suite-section { margin-bottom: 3rem; }
 
+/* ── Introduction Cards (Guide) ─────────────────────────────────────────── */
+.sh-guide-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+@media (max-width: 900px) { .sh-guide-grid { grid-template-columns: 1fr; } }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   MISSION CONTROL — System navigation grid
-   ═══════════════════════════════════════════════════════════════════════════ */
+.sh-guide-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+.sh-guide-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 100%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);
+    pointer-events: none;
+}
+.sh-guide-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(0, 217, 255, 0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+.sh-gc-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: rgba(0, 217, 255, 0.1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.25rem;
+    color: var(--primary);
+    box-shadow: inset 0 0 10px rgba(0, 217, 255, 0.2);
+}
+
+.sh-gc-content h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.5rem;
+}
+.sh-gc-content p {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* ── Hub Grouping ───────────────────────────────────────────────────────── */
+.sh-hubs-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+@media (max-width: 800px) { .sh-hubs-container { grid-template-columns: 1fr; } }
+
+.sh-hub-group {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.sh-hg-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.sh-hg-header i {
+    font-size: 0.9rem;
+    color: var(--primary);
+}
+.sh-hg-header h3 {
+    font-size: 0.9rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.sh-hg-links {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+@media (max-width: 500px) { .sh-hg-links { grid-template-columns: 1fr; } }
+
+.sh-hg-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.sh-hg-link:hover {
+    background: rgba(0, 217, 255, 0.08);
+    border-color: rgba(0, 217, 255, 0.2);
+    color: var(--primary);
+    transform: translateX(4px);
+}
+.sh-hg-link i {
+    font-size: 0.85rem;
+    opacity: 0.7;
+}
+
+/* ── System Snapshot (Modernized) ────────────────────────────────────────── */
 
 .sh-system-grid {
     display: grid;
@@ -478,8 +612,13 @@
 .sh-snapshot-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    margin-bottom: 2rem;
+    gap: 1rem;
+    margin-bottom: 3rem;
+    padding: 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
 }
 
 @media (max-width: 900px) { .sh-snapshot-row { grid-template-columns: repeat(2, 1fr); } }
