@@ -289,6 +289,7 @@
         render();
         updateProfileSwitcherBtn();
         refreshHomeWidget();
+        window._suiteHomeUpdate?.();
     }
 
     function createFromPreset(presetId, profileName) {
@@ -296,6 +297,7 @@
         if (!preset) return;
         const id  = 'p-' + Date.now();
         const cfg = buildPresetConfig(preset, profileName || preset.name);
+        cfg.presetId = preset.id;   // store preset type for home page awareness
         store.profiles[id] = cfg;
         store.activeProfile = id;
         syncConfig();
@@ -304,6 +306,7 @@
         render();
         updateProfileSwitcherBtn();
         refreshHomeWidget();
+        window._suiteHomeUpdate?.();
     }
 
     function createProfile() {
@@ -1049,6 +1052,13 @@
 
         sidebarBottom.prepend(buildToggleBtn());
         sidebarBottom.prepend(buildProfileSwitcher());
+
+        // Expose public API for home-page buttons
+        window._sidebarMgr = {
+            showOnboarding: showOnboardingModal,
+            enterEdit:      enterEditMode,
+            switchProfile,
+        };
 
         watchMode();
         watchSuiteHomePanel();

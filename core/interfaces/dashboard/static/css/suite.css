@@ -215,3 +215,554 @@
 .suite-port-note--live {
     color: #10b981;
 }
+
+/* ── Kanban glow (was missing) ─────────────────────────────────────────────── */
+.sac-kanban { background: #3b82f6; box-shadow: 0 0 10px rgba(59,130,246,0.6); }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MISSION CONTROL — Hero
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sh-hero {
+    position: relative;
+    padding: 2.2rem 0 2rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.6rem;
+    overflow: hidden;
+}
+
+/* Subtle radial accent in the corner */
+.sh-hero-bg-accent {
+    position: absolute;
+    top: -60px; right: -80px;
+    width: 360px; height: 280px;
+    background: radial-gradient(ellipse at center, rgba(99,102,241,0.09) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+/* ── Meta row: profile pill + server status ──────────────────────────────── */
+.sh-hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.85rem;
+    flex-wrap: wrap;
+}
+
+.sh-profile-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.22rem 0.7rem;
+    background: rgba(99,102,241,0.08);
+    border: 1px solid rgba(99,102,241,0.22);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--primary, #6366f1);
+    letter-spacing: 0.02em;
+}
+
+.sh-profile-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--primary, #6366f1);
+    box-shadow: 0 0 5px rgba(99,102,241,0.6);
+    flex-shrink: 0;
+}
+
+.hub-server-status { margin-top: 0; }
+
+/* ── Title & subtitle ────────────────────────────────────────────────────── */
+.sh-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--text-primary);
+    margin: 0 0 0.45rem;
+    line-height: 1;
+}
+
+.sh-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    line-height: 1.55;
+    max-width: 580px;
+    margin: 0 0 1.4rem;
+    transition: opacity 0.18s ease;
+}
+
+/* ── CTA buttons ──────────────────────────────────────────────────────────── */
+.sh-ctas {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.sh-cta-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.58rem 1.2rem;
+    background: var(--primary, #6366f1);
+    border: none;
+    border-radius: var(--radius-md, 8px);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s, transform 0.12s;
+    font-family: inherit;
+    box-shadow: 0 4px 14px rgba(99,102,241,0.38);
+    white-space: nowrap;
+}
+.sh-cta-primary:hover {
+    background: #5254d4;
+    box-shadow: 0 6px 20px rgba(99,102,241,0.5);
+    transform: translateY(-1px);
+}
+.sh-cta-primary:active { transform: translateY(0); }
+
+.sh-cta-arrow {
+    font-size: 0.72rem;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.18s, transform 0.18s;
+}
+.sh-cta-primary:hover .sh-cta-arrow { opacity: 0.85; transform: translateX(0); }
+
+.sh-cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.56rem 1rem;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius-md, 8px);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.12s;
+    font-family: inherit;
+    white-space: nowrap;
+}
+.sh-cta-secondary:hover {
+    background: rgba(255,255,255,0.09);
+    border-color: rgba(255,255,255,0.18);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+.sh-cta-secondary:active { transform: translateY(0); }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MISSION CONTROL — Section headers
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sh-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.65rem;
+}
+
+.sh-section-left {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.sh-section-icon {
+    font-size: 0.78rem;
+    color: var(--primary, #6366f1);
+    opacity: 0.8;
+    flex-shrink: 0;
+}
+
+.sh-section-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 0.01em;
+    margin: 0;
+}
+
+.sh-section-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.1rem 0.5rem;
+    background: rgba(99,102,241,0.09);
+    border: 1px solid rgba(99,102,241,0.18);
+    border-radius: 999px;
+    color: var(--primary, #6366f1);
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+}
+
+.app-suite-section { margin-bottom: 2rem; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MISSION CONTROL — System navigation grid
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sh-system-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+@media (max-width: 640px) { .sh-system-grid { grid-template-columns: 1fr; } }
+
+.sh-sys-card {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.9rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.12s;
+    user-select: none;
+}
+.sh-sys-card:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
+}
+.sh-sys-card:active { transform: translateY(0); }
+
+.sh-sys-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.sh-sys-icon--indigo { background: rgba(99,102,241,0.12);  color: #818cf8; border: 1px solid rgba(99,102,241,0.2); }
+.sh-sys-icon--emerald{ background: rgba(16,185,129,0.12);  color: #34d399; border: 1px solid rgba(16,185,129,0.2); }
+.sh-sys-icon--amber  { background: rgba(245,158,11,0.12);  color: #fcd34d; border: 1px solid rgba(245,158,11,0.2); }
+.sh-sys-icon--purple { background: rgba(168,85,247,0.12);  color: #c084fc; border: 1px solid rgba(168,85,247,0.2); }
+
+.sh-sys-info { flex: 1; min-width: 0; }
+.sh-sys-info h4 {
+    font-size: 0.82rem; font-weight: 600;
+    color: var(--text-primary); margin: 0 0 0.18rem; line-height: 1.2;
+}
+.sh-sys-info p {
+    font-size: 0.72rem; color: var(--text-tertiary);
+    margin: 0; line-height: 1.4;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.sh-sys-arrow {
+    font-size: 0.65rem; color: var(--text-tertiary); opacity: 0.3;
+    flex-shrink: 0; transition: opacity 0.15s, transform 0.15s;
+}
+.sh-sys-card:hover .sh-sys-arrow { opacity: 0.7; transform: translateX(2px); }
+
+
+/* ── Suite profiles widget tweak (when inside suite-home) ──────────────── */
+.suite-hub .suite-profiles-widget { margin: 0 0 1.8rem; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MISSION CONTROL — System Snapshot
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sh-snapshot-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 900px) { .sh-snapshot-row { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .sh-snapshot-row { grid-template-columns: 1fr; } }
+
+.sh-snap-card {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.sh-snap-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+.sh-snap-icon--indigo  { background: rgba(99,102,241,0.08); color: #818cf8; border: 1px solid rgba(99,102,241,0.15); }
+.sh-snap-icon--emerald { background: rgba(16,185,129,0.08); color: #34d399; border: 1px solid rgba(16,185,129,0.15); }
+.sh-snap-icon--amber   { background: rgba(245,158,11,0.08); color: #fcd34d; border: 1px solid rgba(245,158,11,0.15); }
+.sh-snap-icon--purple  { background: rgba(168,85,247,0.08); color: #c084fc; border: 1px solid rgba(168,85,247,0.15); }
+
+.sh-snap-body { display: flex; flex-direction: column; gap: 1px; }
+.sh-snap-value {
+    font-family: 'Fira Code', monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+.sh-snap-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MISSION CONTROL — Layout Overview
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sh-section-action {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    color: var(--text-tertiary);
+    font-size: 0.72rem;
+    font-weight: 500;
+    padding: 0.28rem 0.6rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    font-family: inherit;
+}
+.sh-section-action:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.15);
+    color: var(--text-secondary);
+}
+
+.sh-layout-overview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    min-height: 120px;
+}
+
+/* ── Folder Card ─────────────────────────────────────────────────────────── */
+.sh-folder-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.sh-fc-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.sh-fc-icon {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.25);
+}
+
+.sh-fc-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+.sh-fc-count {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.05rem 0.4rem;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-tertiary);
+    border-radius: 4px;
+    margin-left: auto;
+}
+
+.sh-fc-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* ── Tab Chip ────────────────────────────────────────────────────────────── */
+.sh-tab-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.38rem 0.85rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.775rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    white-space: nowrap;
+}
+.sh-tab-chip:hover {
+    background: var(--bg-tertiary);
+    border-color: rgba(99,102,241,0.4);
+    color: var(--primary, #6366f1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.sh-tab-chip i {
+    font-size: 0.75rem;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+}
+.sh-tab-chip:hover i { opacity: 1; }
+
+.sh-standalone-tab {
+    padding: 0.5rem 1rem;
+    background: rgba(255,255,255,0.03);
+}
+
+/* ── States ──────────────────────────────────────────────────────────────── */
+.sh-overview-loading, .sh-overview-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 3rem 0;
+    color: var(--text-tertiary);
+    background: rgba(255,255,255,0.015);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+}
+
+.sh-overview-loading i, .sh-overview-empty i {
+    font-size: 1.4rem;
+    opacity: 0.3;
+}
+
+.sh-overview-empty p {
+    font-size: 0.85rem;
+    margin: 0;
+    opacity: 0.6;
+}
+
+.sh-overview-empty button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.9rem;
+    background: rgba(99,102,241,0.12);
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 6px;
+    color: var(--primary, #6366f1);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    margin-top: 0.4rem;
+}
+.sh-overview-empty button:hover {
+    background: rgba(99,102,241,0.18);
+    transform: translateY(-1px);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MISSION CONTROL — Recent Activity
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sh-recent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sh-recent-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.sh-recent-row:hover {
+    background: var(--bg-tertiary);
+    border-color: rgba(99,102,241,0.4);
+    transform: translateX(4px);
+}
+
+.sh-rr-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.sh-recent-row:hover .sh-rr-icon {
+    color: var(--primary, #6366f1);
+    background: rgba(99,102,241,0.08);
+    border-color: rgba(99,102,241,0.2);
+}
+
+.sh-rr-body { flex: 1; min-width: 0; }
+
+.sh-rr-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.18rem;
+}
+
+.sh-rr-name {
+    font-size: 0.82rem; font-weight: 700;
+    color: var(--text-primary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.sh-rr-time {
+    font-size: 0.68rem; font-weight: 500;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+.sh-rr-preview {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    opacity: 0.7;
+}
+
+.sh-rr-arrow {
+    font-size: 0.65rem; color: var(--text-tertiary); opacity: 0;
+    transform: translateX(-4px);
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.sh-recent-row:hover .sh-rr-arrow { opacity: 0.7; transform: translateX(0); }
+
+
+
