@@ -50,7 +50,7 @@ Whether you're a developer, creator, researcher, or just want a powerful persona
 | <img src="assets/showcase/AethvionSuite_Agent.png" alt="Agents" width="100%"> | <img src="assets/showcase/AethvionSuite_AgentCorp.png" alt="Agent Corp" width="100%"> |
 | **Agent Workspace** · Multi-step ReAct agent runner with real-time SSE event streaming | **Agent Corp** · Manage and collaborate with multiple persistent specialized agents |
 | <img src="assets/showcase/AethvionSuite_MisakaCipher.png" alt="Misaka Cipher Chat Interface" width="100%"> | <img src="assets/showcase/AethvionSuite_Photo.png" alt="Aethvion Suite Photo App" width="100%"> |
-| **Misaka Cipher** · Multi-provider AI chat with threads, auto-routing, and context modes | **Aethvion Photo** · AI image generation and precision layer-based editing system |
+| **Companions** · Multi-provider AI chat with threads, auto-routing, and context modes | **Aethvion Photo** · AI image generation and precision layer-based editing system |
 | <img src="assets/showcase/AethvionSuite_Audio.png" alt="Aethvion Suite Audio App" width="100%"> | <img src="assets/showcase/AethvionSuite_Code.png" alt="Aethvion Suite Code IDE" width="100%"> |
 | **Aethvion Audio** · Professional multi-track timeline editor with live waveforms and effects | **Aethvion Code IDE** · Monaco-based IDE with AI copilot and code execution |
 | <img src="assets/showcase/AethvionSuite_LocalModels.png" alt="Aethvion Suite Local Models" width="100%"> | <img src="assets/showcase/AethvionSuite_DriveInfo.png" alt="Aethvion Suite Drive Info" width="100%"> |
@@ -77,7 +77,7 @@ The central intelligence hub and management platform. It provides the dashboard,
 
 | Interface | Description |
 |-----------|-------------|
-| **Web Dashboard** | 25+ tab control center — chat, agents, tools, memory, games |
+| **Web Dashboard** | dynamic tabs system, build your own workspace, a couple of examples are chat, agents, tools, memory, games, etc. |
 | **Core Terminal** | CLI mode for headless use, scripting, and developer queries |
 
 ### 2. Standalone Integrated Applications
@@ -228,40 +228,6 @@ python apps/code/code_server.py    # Code IDE standalone
 - Peripheral plugin hub — screen capture, webcam, Spotify, weather, system info
 - Registry-driven architecture for adding new integrations
 
-### Dashboard Tabs (25+)
-
-| Tab | Status | Notes |
-|-----|--------|-------|
-| Chat | Working | Threads, context, model selection, auto-routing |
-| Image | Working | Imagen 3 / DALL-E 3 image generation |
-| Audio | Working | Text-to-speech and speech-to-text; Misaka TTS voice selection |
-| Arena | Working | Side-by-side model comparison with enhanced leaderboard |
-| AI Conversations | Working | Two-party model conversation with history persistence, human participant, pause/inject, share/export |
-| Advanced AI Conversation | Working | Multi-persona conversation threads |
-| Leaderboards | Working | Game scores and rankings |
-| Logic Quest | Game | AI-powered logic puzzles |
-| Blackjack | Game | Classic card game |
-| Sudoku | Game | Sudoku puzzles |
-| Word Search | Game | Word search puzzles |
-| Checkers (vs AI) | Game | Checkers against an AI opponent |
-| Misaka Cipher | Working | Main hub: output files, screenshots, camera, uploads |
-| Agent Workspaces | Working | Create workspaces, run multi-step agent tasks with real-time SSE streaming |
-| Tools | Working | View registered tools and agents |
-| Packages | Experimental | Package install with safety scoring — unstable |
-| Memory | Working | Browse task history and episodic memory |
-| Misaka Memory | Working | Dedicated episodic memory browser |
-| Audio Models | Working | Manage local TTS/STT models (Kokoro, XTTS-v2, Whisper) |
-| Aethvion VTuber | Working | Character animation and visualization engine |
-| Aethvion Tracking | Working | Motion tracking module with HUD and telemetry |
-| Aethvion Code | Working | AI-powered IDE (standalone app, port 8083) |
-| Logs | Working | Live log stream |
-| Documentation | Working | In-dashboard documentation viewer |
-| Usage | Working | Token usage, cost tracking, Local/API filters, and granular queries |
-| Status | Working | System and provider health |
-| Ports | Working | View and manage active service ports |
-| Schedule | New | Automate AI tasks with cron schedules and notifications |
-| Settings | Working | Tabbed Model Registry, routing profiles, Notifications, environment config, self-update |
-
 ---
 
 ## Known Limitations
@@ -345,50 +311,6 @@ Aethvion-Suite/
 ├── tests/                       # Test suite
 └── assets/                      # Static assets (character sprites, showcase images)
 ```
-
----
-
-## Roadmap
-
-### Done
-- [done] Multi-provider chat with failover and auto-routing
-- [done] Local GGUF model support via llama-cpp-python
-- [done] Persistent threads and task memory
-- [done] Tool forge and agent spawning
-- [done] Intelligence Firewall (PII/credential scan)
-- [done] Web dashboard with 25+ tabs
-- [done] API usage tracking with cost estimates (Local/API filters)
-- [done] LLM Arena with enhanced leaderboard, system prompt pass-through
-- [done] Image Studio (Imagen 3, DALL-E 3)
-- [done] Advanced AI Conversation (multi-persona)
-- [done] Routing profiles with configurable model pools
-- [done] Discord integration (bot worker, message mirroring, dashboard controls)
-- [done] Audio tab (TTS and STT) with local TTS routing and Misaka voice selection
-- [done] Local Audio Models: Kokoro (TTS), XTTS-v2 (voice cloning), Whisper (STT)
-- [done] Tabbed Model Registry UI with suggested model configs and registry support
-- [done] Games suite with leaderboards
-- [done] Aethvion VTuber and Tracking (WebSocket bridge, live mode, HUD + telemetry)
-- [done] Nexus peripheral module with refresh button
-- [done] Documentation viewer, Port Manager, and in-dashboard assistant
-- [done] **Code IDE** — Monaco editor, AI copilot, file creation, streaming execution, persistent workspace, chat threads, Ctrl+P palette, status bar, Project Notes, python-exec blocks, continuation loop
-- [done] **AI Conversations** — human participant, pause/inject, continue conversation, shareable links, participant personality, history persistence
-- [done] **Agent Workspaces** — create workspaces and threads, ReAct-style agent runner, real-time SSE step streaming, step history
-- [done] Self-update via dashboard (Settings → Version Control)
-- [done] Centralized data path management (`core/utils/paths.py`)
-- [done] Aethvion Hardware Info app
-- [done] Finance: AI market analysis and per-ticker detail panel with live data
-
-### In Progress / Near-Term
-- [in progress] Improved agent reliability for multi-step goals
-- [in progress] Better memory integration in decision making
-- [in progress] Tool forge validation and reliability improvements
-- [in progress] Ollama integration for local model management UI
-- [in progress] Code IDE: diff view, multi-file refactor, git integration
-
-### Long-Term Vision
-- [planned] Reliable autonomous multi-step goal execution
-- [planned] Self-improving architecture (system modifies itself based on usage)
-- [planned] True infinite sessions with human-in-the-loop checkpoints
 
 ---
 
