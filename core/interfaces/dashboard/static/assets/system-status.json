@@ -2,11 +2,37 @@
     "system": {
         "name": "Aethvion Suite",
         "company": "Aethvion",
-        "version": "13",
-        "last_sync": "2026-04-12",
+        "version": "14",
+        "last_sync": "2026-04-14",
         "last_update_commit": "78bf290",
         "contact": "contact@aethvion.com",
         "changelog": [
+            {
+                "version": "14",
+                "date": "2026-04-14",
+                "added": [
+                    "Sidemenu - Profiles, easily switch layouts between for example work and leisure profiles",
+                    "Chat - added: resend message, regenerate response, copy options",
+                    "Chat - code blocks with copy options"
+                ],
+                "improved": [
+                    "Home - complete overhaul for better onboarding and system overview",
+                    "Chat - model stays persistent after refresh/load",
+                    "Audio - moved control menu to the left side for consistency",
+                    "Sidemenu - now fully dynamic and visually improved",
+                    "App Kanban - improved looks and functionality",
+                    "Aethvion Suite - panel transition animation and speed",
+                    "Aethvion Suite - panel header standardization",
+                    "Aethvion Suite - empty state, now showing options instead of nothing",
+                    "Aethvion Suite - button animations",
+                    "Aethvion Suite - scrollbar consistent across all pages"
+                ],
+                "fixed": [
+                    "Chat - showing home on refresh/load",
+                    "Explained - bleeding into chat fixed",
+                    "Explained - bleeding into agents fixed"
+                ]
+            },
             {
                 "version": "13",
                 "date": "2026-04-12",

@@ -31,7 +31,7 @@ Whether you're a developer, creator, researcher, or just want a powerful persona
 - **One-Click Windows Launchers** — Start the entire suite with a simple `.bat` file
 - **Self-Updating** — Easy updates directly from the dashboard
 
-**Current version: v13** (v14 coming soon with major UI & onboarding improvements)
+**Current version: v14 (Major UI & onboarding improvements)** 
 
 ---
 
@@ -227,16 +227,6 @@ python apps/code/code_server.py    # Code IDE standalone
 ### Nexus Module
 - Peripheral plugin hub — screen capture, webcam, Spotify, weather, system info
 - Registry-driven architecture for adding new integrations
-
----
-
-## Known Limitations
-
-- **Autonomous long-running tasks:** Agent execution works for single well-defined tasks, not multi-step plans over hours or days.
-- **Memory integration:** Memory is stored reliably but not yet deeply wired into agent decision-making.
-- **Tool forge reliability:** Simple tools generate fine; anything requiring external libraries or complex multi-file output can be unreliable.
-- **Ollama / vLLM:** Not yet supported. Local inference uses llama-cpp-python (GGUF files) directly.
-- **Production hardening:** This is a personal/research project, not audited or hardened for production deployments.
 
 ---
 
