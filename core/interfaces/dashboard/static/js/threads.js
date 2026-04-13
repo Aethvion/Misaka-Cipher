@@ -1759,6 +1759,21 @@ renderThreadList = function() {
         }
         threadsList.appendChild(_buildThreadItem(template, thread, null));
     });
+
+    // ── Empty state when no threads exist ──────────────────────────────
+    const totalVisible = unfolderedThreads.length + (hasFolders ? Object.values(folders).reduce((acc, f) => {
+        return acc + Object.values(threads).filter(t => t.folder_id === f.id && !t.id.startsWith('agents-')).length;
+    }, 0) : 0);
+    if (totalVisible === 0 && !hasFolders) {
+        const empty = document.createElement('div');
+        empty.className = 'ae-empty';
+        empty.style.cssText = 'min-height:180px;padding:2rem;';
+        empty.innerHTML = `
+            <div class="ae-empty-icon"><i class="fas fa-comment-dots"></i></div>
+            <div class="ae-empty-title">No conversations yet</div>
+            <div class="ae-empty-desc">Start a new thread to begin chatting.</div>`;
+        threadsList.appendChild(empty);
+    }
 };
 
 // ── Build a single thread DOM element ────────────────────────────────────

@@ -51,10 +51,7 @@ function _renderPortsTable(portsData) {
     const entries = Object.entries(portsData);
 
     if (entries.length === 0) {
-        _portsTbody.innerHTML = `<tr><td colspan="4" class="empty-msg" style="text-align:center;padding:40px;color:var(--text-tertiary);">
-            <i class="fas fa-ghost" style="font-size:2rem;margin-bottom:10px;display:block;"></i>
-            No dynamic ports currently active.
-        </td></tr>`;
+        _portsTbody.innerHTML = `<tr><td colspan="4" style="padding:0;border:none;"><div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-plug"></i></div><div class="ae-empty-title">No active ports</div><div class="ae-empty-desc">Launch Aethvion services to see their ports registered here.</div></div></td></tr>`;
         if (_portsCount) _portsCount.textContent = '0';
         return;
     }

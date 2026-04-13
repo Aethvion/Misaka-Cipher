@@ -314,12 +314,23 @@ h6 {
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
-    animation: fadeIn 0.3s ease-out;
 }
 
 .main-tab-panel.active {
     display: flex;
     flex-direction: column;
+    animation: ae-panel-enter 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes ae-panel-enter {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 #chat-panel {
@@ -1448,4 +1459,63 @@ kbd {
     color: var(--text-tertiary, #666);
     font-size: 1.4rem;
     opacity: 0.5;
+}
+
+/* ── v14: Empty State Component ─────────────────────────────────────────────
+   Usage:
+   <div class="ae-empty">
+     <div class="ae-empty-icon"><i class="fas fa-brain"></i></div>
+     <div class="ae-empty-title">No memories yet</div>
+     <div class="ae-empty-desc">Memories are created automatically as you chat.</div>
+     <button class="action-btn primary ae-empty-action">Get Started</button>
+   </div>
+────────────────────────────────────────────────────────────────────────────── */
+.ae-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 0.75rem;
+    padding: 3.5rem 2rem;
+    flex: 1;
+    min-height: 260px;
+    animation: ae-panel-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.ae-empty-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.ae-empty-icon.warning { background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.2); color: var(--warning); }
+.ae-empty-icon.success { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); color: var(--success); }
+.ae-empty-icon.error   { background: rgba(239, 68, 68, 0.1);  border-color: rgba(239, 68, 68, 0.2);  color: var(--error); }
+
+.ae-empty-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.ae-empty-desc {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    max-width: 300px;
+    line-height: 1.65;
+    margin: 0;
+}
+
+.ae-empty-action {
+    margin-top: 0.5rem;
 }

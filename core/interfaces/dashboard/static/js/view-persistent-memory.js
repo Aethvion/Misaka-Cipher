@@ -60,10 +60,10 @@ const PersistentMemory = {
 
         if (topics.length === 0) {
             grid.innerHTML = `
-                <div class="empty-state-notice" style="grid-column: 1 / -1; text-align: center; padding: 4rem; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px dashed var(--border); margin: 1rem;">
-                    <i class="fas fa-brain" style="font-size: 3.5rem; opacity: 0.15; margin-bottom: 1.5rem; display: block;"></i>
-                    <h3 style="font-family: 'Orbitron', sans-serif; letter-spacing: 1px; color: var(--text-primary);">No persistent insights indexed yet</h3>
-                    <p style="color: var(--text-tertiary); max-width: 400px; margin: 1rem auto; font-size: 0.9rem;">As you interact with the AI, important facts and preferences will be distilled into this long-term knowledge base.</p>
+                <div class="ae-empty" style="grid-column: 1 / -1;">
+                    <div class="ae-empty-icon"><i class="fas fa-database"></i></div>
+                    <div class="ae-empty-title">No persistent insights indexed yet</div>
+                    <div class="ae-empty-desc">As you interact with the AI, important facts and preferences will be distilled into this long-term knowledge base.</div>
                 </div>
             `;
             return;

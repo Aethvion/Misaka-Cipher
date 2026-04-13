@@ -114,11 +114,7 @@ const LocalModels = {
             console.error("Failed to load local models:", e);
             const tbody = document.getElementById('local-models-list');
             if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="4" class="placeholder-text" style="color:#ff7675;">
-                    Error loading models
-                    <button class="action-btn small primary" style="margin-left:1rem;" onclick="LocalModels.loadModels()">
-                        <i class="fas fa-rotate-right"></i> Retry
-                    </button>
+                tbody.innerHTML = `<tr><td colspan="4" style="padding:0;border:none;"><div class="ae-empty"><div class="ae-empty-icon error"><i class="fas fa-triangle-exclamation"></i></div><div class="ae-empty-title">Failed to load models</div><div class="ae-empty-desc">Check your connection and try again.</div><button class="action-btn primary ae-empty-action" onclick="LocalModels.loadModels()"><i class="fas fa-rotate-right"></i> Retry</button></div>
                 </td></tr>`;
             }
         }
@@ -185,7 +181,7 @@ const LocalModels = {
         });
 
         if (entries.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="placeholder-text">No models match filters</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" style="padding:0;border:none;"><div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-microchip"></i></div><div class="ae-empty-title">No models match filters</div><div class="ae-empty-desc">Try adjusting your filter criteria.</div></div></td></tr>`;
             return;
         }
 
@@ -270,7 +266,7 @@ const LocalModels = {
         } catch (e) {
             console.error("Failed to load suggested models:", e);
             const grid = document.getElementById('suggested-models-grid');
-            if (grid) grid.innerHTML = '<div class="placeholder-text" style="color:#ff7675;">Error loading suggestions</div>';
+            if (grid) grid.innerHTML = `<div class="ae-empty"><div class="ae-empty-icon error"><i class="fas fa-triangle-exclamation"></i></div><div class="ae-empty-title">Failed to load suggestions</div><div class="ae-empty-desc">Check your connection and try again.</div></div>`;
         }
     },
 
@@ -319,7 +315,7 @@ const LocalModels = {
         });
 
         if (filtered.length === 0) {
-            grid.innerHTML = '<div class="placeholder-text">No suggestions match filters</div>';
+            grid.innerHTML = `<div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-filter"></i></div><div class="ae-empty-title">No suggestions match filters</div><div class="ae-empty-desc">Try adjusting or clearing your filter.</div></div>`;
             return;
         }
 
@@ -877,7 +873,7 @@ const LocalModels = {
         });
 
         if (!filtered.length) {
-            listEl.innerHTML = '<p class="placeholder-text">No Ollama models match filters.</p>';
+            listEl.innerHTML = `<div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-cube"></i></div><div class="ae-empty-title">No Ollama models match filters</div><div class="ae-empty-desc">Try adjusting your search or pull a model from the registry.</div></div>`;
             return;
         }
 

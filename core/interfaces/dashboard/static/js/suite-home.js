@@ -264,9 +264,10 @@
 
         if (!threadArr.length) {
             container.innerHTML = `
-                <div class="sh-overview-empty">
-                    <i class="fas fa-clock"></i>
-                    <p>No recent activity found.</p>
+                <div class="ae-empty" style="min-height:140px;padding:2rem;">
+                    <div class="ae-empty-icon"><i class="fas fa-clock-rotate-left"></i></div>
+                    <div class="ae-empty-title">No recent activity</div>
+                    <div class="ae-empty-desc">Start a conversation in Chat to see your activity here.</div>
                 </div>`;
             return;
         }

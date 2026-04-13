@@ -1,9 +1,14 @@
-<div class="panel-header"
-                    style="flex-direction: column; align-items: stretch; gap: 1rem; height: auto; min-height: 70px;">
+<div class="panel-header" style="flex-direction: column; align-items: stretch; height: auto;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h2>Workspace Files</h2>
-                        <div class="file-filters"
-                            style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                        <div class="panel-header-left">
+                            <div class="panel-header-icon"><i class="fas fa-folder-open"></i></div>
+                            <div class="panel-header-text">
+                                <h2 class="panel-title">Workspace Files</h2>
+                                <p class="panel-subtitle">Browse, search &amp; manage output files</p>
+                            </div>
+                        </div>
+                        <div class="panel-actions file-filters"
+                            style="flex-wrap: wrap; gap: 0.5rem;">
                             <input type="text" id="file-search" placeholder="Search files or paths..."
                                 class="search-input" style="width: 200px;">
 

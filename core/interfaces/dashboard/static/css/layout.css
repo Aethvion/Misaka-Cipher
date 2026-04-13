@@ -787,32 +787,120 @@
     margin-top: 2rem;
 }
 
-/* ===== Panel Header (shared across all tab panels) ===== */
+/* ═══════════════════════════════════════════════════════════════════════════
+   v14 Panel Header System
+   Standard markup:
+   <div class="panel-header">
+     <div class="panel-header-left">
+       <div class="panel-header-icon"><i class="fas fa-brain"></i></div>
+       <div class="panel-header-text">
+         <h2 class="panel-title">Title</h2>
+         <p class="panel-subtitle">Optional subtitle</p>
+       </div>
+     </div>
+     <div class="panel-actions">
+       <button class="action-btn secondary">...</button>
+     </div>
+   </div>
+   Legacy: .panel-header h2 + .panel-controls still fully supported.
+═══════════════════════════════════════════════════════════════════════════ */
 .panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.5rem;
+    padding: 1.1rem 1.5rem;
     border-bottom: 1px solid var(--border);
-    height: 70px;
+    min-height: 62px;
+    flex-shrink: 0;
+    gap: 1rem;
+    background: rgba(0, 0, 0, 0.12);
+}
+
+/* ── Left group: icon + text stack ── */
+.panel-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    min-width: 0;
+}
+
+.panel-header-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid rgba(99, 102, 241, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+.panel-header:hover .panel-header-icon {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.28);
+}
+
+.panel-header-text {
+    min-width: 0;
+}
+
+.panel-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.panel-subtitle {
+    font-size: 0.76rem;
+    color: var(--text-tertiary);
+    margin: 0.15rem 0 0;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Right group: action buttons ── */
+.panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     flex-shrink: 0;
 }
 
+/* ── Legacy compatibility ── */
 .panel-header h2 {
-    font-size: 1.5rem;
+    font-size: 1.05rem;
+    font-weight: 600;
     color: var(--text-primary);
     margin: 0;
+    line-height: 1.3;
 }
 
 .panel-controls {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
 }
 
+/* ── Variants ── */
 .panel-header.borderless {
     background: transparent;
     border-bottom: none;
     padding-bottom: 0;
+}
+
+.panel-header.compact {
+    min-height: 50px;
+    padding: 0.75rem 1.5rem;
 }

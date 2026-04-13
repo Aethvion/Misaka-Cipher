@@ -499,7 +499,7 @@ function _renderModelTable(summary) {
         .sort((a, b) => b.cost - a.cost);
 
     if (!arr.length) {
-        tbody.innerHTML = '<tr><td colspan="9" class="placeholder-text">No usage recorded</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="9" style="padding:0;border:none;"><div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-chart-bar"></i></div><div class="ae-empty-title">No usage recorded yet</div><div class="ae-empty-desc">Usage data appears here after your first API call.</div></div></td></tr>`;
         return;
     }
 
@@ -534,7 +534,9 @@ function _renderRecentTable(entries, filter = '') {
     }
 
     if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="7" class="placeholder-text">${filter ? 'No matches' : 'No API calls recorded yet'}</td></tr>`;
+        tbody.innerHTML = filter
+            ? `<tr><td colspan="7" style="padding:0;border:none;"><div class="ae-empty" style="min-height:100px;padding:1.5rem;"><div class="ae-empty-icon" style="width:36px;height:36px;font-size:0.9rem;"><i class="fas fa-search"></i></div><div class="ae-empty-title" style="font-size:0.85rem;">No matches for "${filter}"</div></div></td></tr>`
+            : `<tr><td colspan="7" style="padding:0;border:none;"><div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-history"></i></div><div class="ae-empty-title">No API calls recorded yet</div><div class="ae-empty-desc">Recent calls will appear here after your first interaction.</div></div></td></tr>`;
         return;
     }
 

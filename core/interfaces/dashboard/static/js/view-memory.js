@@ -34,7 +34,7 @@ function renderPermanentMemory(insights) {
     if (!tbody) return;
 
     if (!insights || insights.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="placeholder-text" style="text-align:center; padding:15px;">No permanent insights yet.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="3" style="padding:0;border:none;"><div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-lightbulb"></i></div><div class="ae-empty-title">No permanent insights yet</div><div class="ae-empty-desc">Insights are distilled automatically from your conversations over time.</div></div></td></tr>`;
         return;
     }
 
@@ -52,7 +52,7 @@ function renderThreadMemory(threads) {
     if (!container) return;
 
     if (!threads || threads.length === 0) {
-        container.innerHTML = '<p class="placeholder-text">No thread memories found.</p>';
+        container.innerHTML = `<div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-comments"></i></div><div class="ae-empty-title">No thread memories found</div><div class="ae-empty-desc">Thread-level context is captured automatically as you build conversations.</div></div>`;
         return;
     }
 
@@ -92,7 +92,7 @@ function renderThreadMemory(threads) {
                     ${detailsRow}
                 `;
             }).join('')
-            : '<tr><td colspan="5" class="placeholder-text" style="text-align:center; padding:10px;">No memories for this thread.</td></tr>';
+            : `<tr><td colspan="5" style="padding:0;border:none;"><div class="ae-empty" style="min-height:100px;padding:1.5rem;"><div class="ae-empty-icon" style="width:36px;height:36px;font-size:0.9rem;"><i class="fas fa-inbox"></i></div><div class="ae-empty-title" style="font-size:0.85rem;">No memories for this thread</div></div></td></tr>`;
 
         return `
             <div class="thread-memory-card" style="margin-bottom: 2rem; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
@@ -162,7 +162,7 @@ async function searchMemory() {
         if (!results) return;
 
         if (data.count === 0) {
-            results.innerHTML = '<p class="placeholder-text">No memories found</p>';
+            results.innerHTML = `<div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-search"></i></div><div class="ae-empty-title">No memories found</div><div class="ae-empty-desc">Try a different search term.</div></div>`;
             return;
         }
 
