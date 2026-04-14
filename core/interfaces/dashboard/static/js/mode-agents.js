@@ -729,9 +729,73 @@ function _agRenderTimeline() {
 }
 
 // ── Plan (left panel checklist) ───────────────────────────────
+// ── Live LLM token streaming ──────────────────────────────────
+// State for the live streaming thought card
+let _agLiveTokenCard = null;
+let _agLiveTokenText = '';
+
+/**
+ * Append a raw token to the live streaming card in the Thoughts panel.
+ * Called for every `llm_token` SSE event while the LLM is generating.
+ */
+function _agHandleLLMToken(event) {
+    const thoughtsList = _agEl('agents-thoughts-list');
+    const rightEmpty   = _agEl('agents-dash-right-empty');
+    if (!thoughtsList) return;
+
+    // Make the thoughts panel visible
+    if (rightEmpty) rightEmpty.style.display = 'none';
+    thoughtsList.style.display = 'flex';
+
+    // Create the live card on first token of this LLM call
+    if (!_agLiveTokenCard) {
+        _agLiveTokenText = '';
+        _agLiveTokenCard = document.createElement('div');
+        _agLiveTokenCard.className = 'agent-thought-msg agent-thought-streaming';
+
+        const tag = document.createElement('span');
+        tag.className = 'agent-thought-tag agent-thought-streaming-tag';
+        tag.innerHTML = '<i class="fas fa-circle-notch fa-spin" style="font-size:0.62rem;margin-right:4px;"></i>Thinking…';
+        _agLiveTokenCard.appendChild(tag);
+
+        const body = document.createElement('div');
+        body.className = 'agent-thought-body agent-thought-live-body';
+        _agLiveTokenCard.appendChild(body);
+
+        thoughtsList.appendChild(_agLiveTokenCard);
+    }
+
+    _agLiveTokenText += event.token || '';
+
+    const body = _agLiveTokenCard.querySelector('.agent-thought-live-body');
+    if (body) {
+        // Strip ACTION: lines — they're noise in a "thinking" view
+        const display = _agLiveTokenText.split('\nACTION:')[0].trimStart();
+        // Show the last 1200 chars so the card doesn't grow unbounded
+        body.textContent = display.length > 1200 ? '…' + display.slice(-1200) : display;
+    }
+
+    thoughtsList.scrollTop = thoughtsList.scrollHeight;
+}
+
+/**
+ * Remove the live streaming card.  Called when:
+ * - a `thinking` event arrives (full response processed — card replaced by formatted thought)
+ * - a `usage` event arrives (end of LLM call)
+ * - a `done` or `error` event arrives
+ */
+function _agFinalizeLiveToken() {
+    if (_agLiveTokenCard) {
+        _agLiveTokenCard.remove();
+        _agLiveTokenCard = null;
+        _agLiveTokenText = '';
+    }
+}
+
 function _agHandleThinking(event) {
     const s = _agentsRenderState;
     if (!s) return;
+    _agFinalizeLiveToken(); // close streaming card before adding formatted thought
     _agPhaseAdd('planning', '🧠', 'Planning');
 
     const opMatch = (event.title || '').match(/\(([^)]+)\)/);
@@ -1392,22 +1456,24 @@ function renderAgentStep(event, isReplay = false) {
         const ti = s.activity.querySelector('.agent-typing-indicator');
         if (ti) ti.remove();
         _agentsHideTyping();
+        _agFinalizeLiveToken(); // close any open streaming card
         _agFinishRender(event);
         container.scrollTop = container.scrollHeight;
         return;
     }
 
     switch (event.type) {
-        case 'thinking':     _agHandleThinking(event);    break;
-        case 'observe':      _agHandleObserve(event);     break;
-        case 'write_file':   _agHandleWriteFile(event);   break;
-        case 'delete_file':  _agHandleDeleteFile(event);  break;
-        case 'read_file':    _agHandleReadFile(event);    break;
-        case 'list_dir':     _agHandleListDir(event);     break;
-        case 'run_command':  _agHandleCommand(event);     break;
-        case 'search_web':   _agHandleSearch(event);      break;
-        case 'fetch_url':    _agHandleFetch(event);       break;
-        case 'usage':        _agHandleUsage(event);       break;
+        case 'llm_token':    _agHandleLLMToken(event);   break;
+        case 'thinking':     _agHandleThinking(event);   break;
+        case 'observe':      _agHandleObserve(event);    break;
+        case 'write_file':   _agHandleWriteFile(event);  break;
+        case 'delete_file':  _agHandleDeleteFile(event); break;
+        case 'read_file':    _agHandleReadFile(event);   break;
+        case 'list_dir':     _agHandleListDir(event);    break;
+        case 'run_command':  _agHandleCommand(event);    break;
+        case 'search_web':   _agHandleSearch(event);     break;
+        case 'fetch_url':    _agHandleFetch(event);      break;
+        case 'usage':        _agFinalizeLiveToken(); _agHandleUsage(event); break;
     }
 
     const ti = s.activity.querySelector('.agent-typing-indicator');

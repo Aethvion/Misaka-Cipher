@@ -200,8 +200,8 @@ ACTION: {{"type": "observe", "content": "I see a screenshot showing X, Y, Z. The
 ACTION: {{"type": "done", "summary": "brief summary of what was accomplished"}}
 
 SURGICAL EDIT RULES (most important):
-1. PATCH, DON'T REWRITE: When modifying an existing file, ALWAYS use patch_file — never rewrite the whole file just to change one thing. patch_file replaces only the exact "old" string with "new". The rest of the file is untouched.
-2. READ BEFORE PATCHING: Always read_file before patch_file so your "old" string exactly matches the current content. A single character difference will cause the patch to fail.
+1. PATCH, DON'T REWRITE: When modifying an existing file, ALWAYS use patch_file — never rewrite the whole file just to change one thing. patch_file replaces only the "old" string with "new". The rest of the file is untouched.
+2. READ BEFORE PATCHING: Always read_file before patch_file so your "old" string matches the current content. patch_file uses whitespace-tolerant matching (trailing-space and indentation differences are auto-corrected), but the content of each line must still match.
 3. MINIMAL CHANGES: Only change what the user asked for. Do not reformat, restructure, restyle, or "clean up" anything that wasn't part of the request. If the user says "add a button", add the button — nothing else changes.
 4. PRESERVE EVERYTHING: When adding to existing code, preserve the existing indentation, style, variable names, class names, comments, and structure. Never rename, reorder, or reorganise untouched sections.
 5. write_file is for NEW files or for cases where the user explicitly asks for a full rewrite. Never use write_file on an existing file just to make a small change.
@@ -218,7 +218,7 @@ EFFICIENCY RULES:
 14. BATCH EVERYTHING: Issue all independent ACTION lines in a single response. Multiple patch_file/append_file calls for different files are fine in one response.
 15. KNOWLEDGE BLOCK: The Context section contains a "Knowledge" block listing every file you have ever read or modified, with function names and their exact line numbers (e.g. handleMouseMove@L145). Use this to jump directly to the right section: read_file with offset=145 to see that function. Check the Knowledge block before deciding to read a file at all — you may already know what you need.
 16. FILE READING: read_file returns up to 50,000 chars per call — enough for most files in one shot. If a result ends with [TRUNCATED], use the exact offset shown to continue. If you see a [NOTE] about reading a section multiple times, check the Knowledge block — it has the function locations. Use offset-based reads to jump directly to the function you need.
-17. PATCH FAILURES: If patch_file returns "FAILED: exact 'old' string not found", the file was likely changed since you last read it. Re-read the file (or the relevant section using offset) to get the current exact content, then retry. If you see a [NOTE] about repeated attempts, switch to append_file for new functions or write_file for a full replacement.
+17. PATCH FAILURES: patch_file tries three matching strategies (exact, trailing-whitespace, indentation-agnostic). If all three fail and you see "patch_file FAILED", the file content has diverged from what you last read. Re-read the file (or the relevant section using offset) to get the current exact content, then retry. If you see a [NOTE] about repeated attempts, switch to append_file for new functions or write_file for a full replacement.
 18. SMART CONTEXT EVICTION: When you finish reading a reference or template file, call distill_file_context immediately — write a compact summary of key functions/patterns you learned, and it will be stored in the Knowledge block while the raw content is evicted automatically. For very large files: read → note function names + line numbers → distill_file_context (one pass is enough, never carry raw reference content into the execution phase). Only keep files you are actively writing to in context. When you call set_plan to start execution after exploration, all read-only files are automatically evicted anyway — distill first so you don't lose your notes. If you see a ⚠ Eviction nudge in Context, act on it immediately.
 19. SEARCH LIMIT: You may call search_web at most 3 times per task. After 2 searches without data, switch to fetch_url or proceed with what you have.
 20. For fetching a specific URL or API use fetch_url. NEVER use curl, wget, or write scripts to fetch web data.
@@ -788,6 +788,12 @@ class AgentRunner:
                 images=call_images,
             ):
                 chunks.append(chunk)
+                # ── Token-level streaming to UI ───────────────────────────
+                # Emit each chunk immediately so the frontend Thoughts panel
+                # shows the model "thinking" in real-time rather than waiting
+                # for the entire LLM call to complete.
+                if chunk:
+                    self._emit({"type": "llm_token", "token": chunk})
             llm_elapsed = (datetime.utcnow() - _llm_start).total_seconds()
             full = "".join(chunks).strip()
             if not full:
@@ -929,8 +935,27 @@ class AgentRunner:
 
             result = self._patch_file(path, old, new)
             self.state.log_action(iteration, "patch_file", path)
-            self._emit({"type": "write_file", "path": path, "detail": f"patch: {len(old)}→{len(new)} chars"})
-            if not result.startswith("patch_file FAILED"):
+
+            if result.startswith("patch_file FAILED"):
+                # Show a warning in the Thoughts panel instead of a misleading
+                # "file written" card — the user should see the failure clearly.
+                self._emit({
+                    "type":   "thinking",
+                    "title":  f"⚠ Patch failed — {path}",
+                    "detail": (
+                        f"All whitespace strategies failed. "
+                        f"The agent will re-read the file and retry."
+                    ),
+                })
+                # Soft nudge on repeated failed patches
+                if attempt >= 2:
+                    result += (
+                        f"\n[NOTE: Attempt {attempt} with the same 'old' string. "
+                        f"Use read_file to get the exact current content of {path}. "
+                        f"Or use write_file / append_file as an alternative.]"
+                    )
+            else:
+                self._emit({"type": "write_file", "path": path, "detail": f"patch: {len(old)}→{len(new)} chars"})
                 # Successful patch — reset the repeat counter and clear read dedup
                 self._action_repeats.pop(repeat_key, None)
                 self._invalidate_read_cache(path)
@@ -946,14 +971,6 @@ class AgentRunner:
                     self.state.update_file_digest(path, digest)
                 except Exception:
                     pass
-            # Soft nudge on repeated failed patches — never block, just guide
-            if result.startswith("patch_file FAILED") and attempt >= 2:
-                result += (
-                    f"\n[NOTE: This is attempt {attempt} with the same 'old' string. "
-                    f"Use read_file to get the exact current content of {path} — "
-                    f"the file may have changed since you last read it. "
-                    f"Or use append_file to add the new code at the end of the file.]"
-                )
             return result
 
         if t == "append_file":
@@ -1209,7 +1226,18 @@ class AgentRunner:
         return entries
 
     def _patch_file(self, path: str, old: str, new: str) -> str:
-        """Replace the first exact occurrence of `old` with `new` in the file."""
+        """Replace first occurrence of `old` with `new`, with whitespace-tolerant fallbacks.
+
+        Three strategies are tried in order, most to least strict:
+          1. Exact match — fastest, always preferred.
+          2. Trailing-whitespace normalised — handles lines where the LLM strips
+             trailing spaces/tabs that are present in the file (very common).
+          3. Full strip (leading + trailing) — handles indentation differences
+             while still preserving the file's own indentation for the replaced block.
+
+        On success, the file is written and a summary is returned.  Only if all
+        three strategies fail is ``patch_file FAILED`` returned.
+        """
         try:
             fp = self.workspace / path
             if not fp.exists():
@@ -1217,16 +1245,65 @@ class AgentRunner:
             if not old:
                 return "Error: patch_file requires a non-empty 'old' string."
             content = fp.read_text(encoding="utf-8", errors="replace")
-            if old not in content:
-                return (
-                    f"patch_file FAILED: exact 'old' string not found in {path}. "
-                    f"Use read_file to get the current contents, then retry with the exact matching text."
-                )
-            count = content.count(old)
-            updated = content.replace(old, new, 1)
-            fp.write_text(updated, encoding="utf-8")
-            suffix = f" (note: {count} occurrences found, replaced the first one)" if count > 1 else ""
-            return f"Patched {path}: replaced {len(old):,} chars with {len(new):,} chars.{suffix}"
+
+            # ── Strategy 1: exact match ───────────────────────────────────
+            if old in content:
+                count = content.count(old)
+                updated = content.replace(old, new, 1)
+                fp.write_text(updated, encoding="utf-8")
+                suffix = f" ({count} occurrences, replaced first)" if count > 1 else ""
+                return f"Patched {path}: {len(old):,}→{len(new):,} chars.{suffix}"
+
+            # ── Strategy 2: strip trailing whitespace per line ────────────
+            # Covers the very common case where the LLM omits trailing spaces
+            # that exist in the actual file (e.g. in Python docstrings, HTML).
+            def _rstrip_lines(s: str) -> str:
+                return "\n".join(line.rstrip() for line in s.splitlines())
+
+            norm_content = _rstrip_lines(content)
+            norm_old     = _rstrip_lines(old)
+            if norm_old and norm_old in norm_content:
+                idx        = norm_content.index(norm_old)
+                line_start = norm_content[:idx].count("\n")
+                line_count = norm_old.count("\n") + 1
+                orig_lines = content.splitlines(keepends=True)
+                orig_block = "".join(orig_lines[line_start : line_start + line_count])
+                updated    = content.replace(orig_block, new, 1)
+                if updated != content:
+                    fp.write_text(updated, encoding="utf-8")
+                    return (
+                        f"Patched {path} (trailing-ws normalized): "
+                        f"{len(orig_block):,}→{len(new):,} chars."
+                    )
+
+            # ── Strategy 3: strip all whitespace per line (indentation-agnostic) ──
+            # Covers cases where the LLM uses 2-space indent but the file uses 4,
+            # or vice-versa.  The original file's indentation is preserved — only
+            # the content of those lines is replaced.
+            def _strip_lines(s: str) -> str:
+                return "\n".join(line.strip() for line in s.splitlines())
+
+            stripped_content = _strip_lines(content)
+            stripped_old     = _strip_lines(old)
+            if stripped_old and stripped_old in stripped_content:
+                idx        = stripped_content.index(stripped_old)
+                line_start = stripped_content[:idx].count("\n")
+                line_count = stripped_old.count("\n") + 1
+                orig_lines = content.splitlines(keepends=True)
+                orig_block = "".join(orig_lines[line_start : line_start + line_count])
+                updated    = content.replace(orig_block, new, 1)
+                if updated != content:
+                    fp.write_text(updated, encoding="utf-8")
+                    return (
+                        f"Patched {path} (whitespace-normalized): "
+                        f"{len(orig_block):,}→{len(new):,} chars."
+                    )
+
+            return (
+                f"patch_file FAILED: 'old' string not found in {path} "
+                f"(tried exact, trailing-ws, and indentation-agnostic matching). "
+                f"Use read_file to get the exact current contents, then retry."
+            )
         except Exception as e:
             return f"Error: {e}"
 
@@ -1373,11 +1450,18 @@ class AgentRunner:
                 capture_output=True, text=True, timeout=60,
             )
             out = ((res.stdout or "") + (res.stderr or "")).strip()
-            if len(out) > 3000:
-                out = out[:3000] + "\n...(truncated)"
-            return out or f"(exit {res.returncode})"
+            # Increase cap from 3k → 5k; use rolling tail so errors at the end
+            # (the most relevant part of test/build output) are never truncated.
+            if len(out) > 5000:
+                out = out[:2000] + f"\n...[{len(out):,} chars — middle truncated]...\n" + out[-2500:]
+            rc = res.returncode
+            # Always prefix exit code on failure so the LLM knows the command failed
+            # even when it produces stdout/stderr output (previously it would not).
+            if rc != 0:
+                return f"(exit {rc})\n{out}" if out else f"(exit {rc})"
+            return out or "(exit 0)"
         except subprocess.TimeoutExpired:
-            return "Timed out (60s)"
+            return "(exit timeout: 60s — command took too long)"
         except Exception as e:
             return f"Error: {e}"
 
@@ -1510,7 +1594,23 @@ class AgentRunner:
 
                 # Emit event first (before executing so UI updates immediately)
                 event = self._make_event(action)
-                result = self._execute(action, iteration)
+                # ── Error-recovery wrapper ────────────────────────────────
+                # Catch unexpected exceptions inside _execute so a single bad
+                # action doesn't terminate the entire task.  The error is fed
+                # back to the LLM as a result string so it can self-correct.
+                try:
+                    result = self._execute(action, iteration)
+                except Exception as exc:
+                    logger.error(
+                        f"[AgentRunner iter={iteration}] _execute raised: {exc}",
+                        exc_info=True,
+                    )
+                    result = f"Error: action '{action.get('type', '?')}' raised exception: {exc}"
+                    self._emit({
+                        "type":   "thinking",
+                        "title":  "⚠ Internal error — recovered",
+                        "detail": str(exc),
+                    })
 
                 if result is None:
                     # State-only action — emit thinking event, skip LLM result
@@ -1555,12 +1655,34 @@ class AgentRunner:
                 {"role": "assistant", "text": agent_line, "turn": iteration}
             )
             if results:
+                # ── Targeted recovery suffix ──────────────────────────────
+                # When one or more actions failed, replace the generic "keep
+                # going" nudge with a focused repair instruction so the LLM
+                # addresses the failure rather than blindly continuing.
+                has_failure = any(
+                    "patch_file FAILED" in r
+                    or "FAILED:" in r
+                    or r.split("): ", 1)[-1].strip().startswith("(exit ")
+                    for r in results
+                )
+                if has_failure:
+                    suffix = (
+                        "\n⚠ One or more actions failed (see above). "
+                        "Analyse each failure:\n"
+                        "- patch_file FAILED → re-read that file section, use exact current text, then retry.\n"
+                        "- (exit N) command → read the error output, fix the root cause, then retry.\n"
+                        "- Error: ... → read the message, correct your approach.\n"
+                        "Do NOT call done until every failure is resolved."
+                    )
+                else:
+                    suffix = "\nKeep going until the task is fully complete."
+
                 self.conversation.append({
                     "role":    "user",
                     "results": results,   # List[str] — each "action(path): content"
                     "turn":    iteration,
                     "header":  "User: Results:",
-                    "suffix":  "\nKeep going until the task is fully complete.",
+                    "suffix":  suffix,
                 })
             # Keep conversation bounded to last 8 entries (4 round-trips)
             if len(self.conversation) > 8:

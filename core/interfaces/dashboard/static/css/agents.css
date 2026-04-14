@@ -1337,6 +1337,35 @@
     margin: 0.3rem 0 0.15rem;
 }
 
+/* ── Live token streaming card ───────────────────────────────── */
+.agent-thought-streaming {
+    border-left: 2px solid rgba(99, 102, 241, 0.35);
+    background: rgba(99, 102, 241, 0.03);
+}
+
+.agent-thought-streaming-tag {
+    display: flex;
+    align-items: center;
+    color: var(--primary) !important;
+    animation: ag-stream-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes ag-stream-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+}
+
+.agent-thought-live-body {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.55;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
 /* ── Done summary markdown fix ───────────────────────────────── */
 .agent-done-summary {
     padding: 0.55rem 0.75rem;
