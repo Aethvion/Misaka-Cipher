@@ -268,7 +268,7 @@ async def get_active_services():
             status = await get_worker_health(model_id)
             services.append({
                 "id": model_id,
-                "name": "Trellis 2" if model_id == "trellis-2" else model_id.title(),
+                "name": "Trellis 2 (WIP)" if model_id == "trellis-2" else model_id.title(),
                 "status": status.get("status", "starting"),
                 "vram_used": status.get("vram_used", 0),
                 "vram_total": status.get("vram_total", 0),
@@ -611,7 +611,48 @@ async def install_3d_model(model: str):
                 if line: yield f"data: {json.dumps({'line': line})}\n\n"
             await proc_u3d.wait()
 
-            # 5. Generate the Server Script Wrapper
+            # --- Windows Compatibility Hardening ---
+            yield f"data: {json.dumps({'line': 'Hardening neural loader for Windows path normalization...'})}\n\n"
+            try:
+                loader_file = repo_dir / "trellis" / "models" / "__init__.py"
+                if loader_file.exists():
+                    code = loader_file.read_text(encoding='utf-8')
+                    if 'path_norm = os.path.normpath(path)' not in code:
+                        fragile_block = 'is_local = os.path.exists'
+                        if fragile_block in code:
+                            new_body = """
+    # --- Aethvion Windows Path Patch ---
+    path_norm = os.path.normpath(path)
+    json_path = f"{path_norm}.json"
+    st_path = f"{path_norm}.safetensors"
+    is_local = os.path.exists(json_path) and os.path.exists(st_path)
+
+    if is_local:
+        config_file = json_path
+        model_file = st_path
+    else:
+        from huggingface_hub import hf_hub_download
+        if os.path.isabs(path_norm) or ":\\\\" in path_norm or path_norm.startswith("\\\\\\\\"):
+             raise FileNotFoundError(f"Local model files not found at {path_norm}.json/.safetensors")
+        path_parts = path.replace('\\\\', '/').split('/')
+        if len(path_parts) < 2:
+            raise ValueError(f"Invalid model path or repo_id: {path}")
+        repo_id = f'{path_parts[0]}/{path_parts[1]}'
+        model_name = '/'.join(path_parts[2:])
+        config_file = hf_hub_download(repo_id, f"{model_name}.json")
+        model_file = hf_hub_download(repo_id, f"{model_name}.safetensors")
+    # --- End Patch ---
+"""
+                            s_idx = code.find(fragile_block)
+                            e_idx = code.find('with open(config_file')
+                            if s_idx != -1 and e_idx != -1:
+                                patched_code = code[:s_idx] + new_body.strip() + "\n\n    " + code[e_idx:]
+                                loader_file.write_text(patched_code, encoding='utf-8')
+                                yield f"data: {json.dumps({'line': '✓ Neural ignition chamber hardened.'})}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'line': f'Warning: Hardening failed: {e}'})}\n\n"
+
+            # 6. Generate the Server Script Wrapper
             yield f"data: {json.dumps({'line': 'Generating FastAPI microservice hook (run_server.py)...'})}\n\n"
             
             # Raw string template — {MODEL_NAME} and {MODEL_ID} are substituted below.
@@ -678,13 +719,93 @@ class _NvMock:
     def __iter__(self):           return iter([])
     def __bool__(self):           return False
 
+def _nv_getattr(name):
+    # Raise AttributeError for dunders so inspect.getfile / hasattr work correctly.
+    # Only intercept real attribute lookups (e.g. dr.rasterize, dr.RasterizeCudaContext).
+    if name.startswith('__') and name.endswith('__'):
+        raise AttributeError(name)
+    return _NvMock()
+
 _nv = types.ModuleType("nvdiffrast")
-_nv.torch = _NvMock()
+_nv.__file__    = __file__   # must be a truthy string so inspect.getfile works
+_nv.__spec__    = None
+_nv.__loader__  = None
+_nv.torch       = _NvMock()
+
 _nvt = types.ModuleType("nvdiffrast.torch")
-_nvt.__getattr__ = lambda n: _NvMock()
-sys.modules["nvdiffrast"]       = _nv
+_nvt.__file__    = __file__
+_nvt.__spec__    = None
+_nvt.__loader__  = None
+_nvt.__getattr__ = _nv_getattr
+
+# --- Part 1: Stealth Mocking for Transformers & Flash-Attn ---
+# We must intercept 'transformers' detection logic because it crashes 
+# if it finds a mock without proper metadata (the KeyError: 'flash_attn' bug).
+
+import sys
+import types
+
+# 1. Pre-define ghost modules
+def _ghost_module(name):
+    from importlib.machinery import ModuleSpec
+    m = types.ModuleType(name)
+    m.__path__ = []
+    m.__spec__ = ModuleSpec(name, None)
+    m.__loader__ = None
+    sys.modules[name] = m
+    return m
+
+_ghost_module("flash_attn")
+_ghost_module("flash_attn.layers")
+_ghost_module("flash_attn.layers.rotary")
+_ghost_module("flash_attn_2_cuda")
+_ghost_module("flash_attn_cuda")
+_ghost_module("slat")
+_ghost_module("kaolin")
+_ghost_module("kaolin._C")
+
+# 2. Patch Transformers logic BEFORE it can run its own imports
+try:
+    import transformers.utils.import_utils as iu
+    iu.is_flash_attn_2_available = lambda: False
+    iu.is_flash_attn_available = lambda: False
+    iu.is_flash_attn_3_available = lambda: False
+    
+    # Inject missing key to prevent the KeyError: 'flash_attn' in older transformers
+    if hasattr(iu, "PACKAGE_DISTRIBUTION_MAPPING"):
+        if "flash_attn" not in iu.PACKAGE_DISTRIBUTION_MAPPING:
+            iu.PACKAGE_DISTRIBUTION_MAPPING["flash_attn"] = ["flash-attn"]
+except Exception as e:
+    # If transformers is not yet installed in venv, we catch and move on
+    pass
+
+# --- Part 2: GPU/Native Library Mocks ---
+# Standard nvdiffrast and kaolin mocks to bypass Windows DLL requirements.
+class _NvMock:
+    def __call__(self, *a, **k): return self
+    def __getattr__(self, n):     return _NvMock()
+    def __iter__(self):           return iter([])
+    def __bool__(self):           return False
+
+def _nv_getattr(name):
+    if name.startswith('__') and name.endswith('__'): raise AttributeError(name)
+    return _NvMock()
+
+_nv = types.ModuleType("nvdiffrast")
+_nv.__file__    = __file__
+_nv.__spec__    = None
+_nv.__loader__  = None
+_nv.torch       = _NvMock()
+_nvt = types.ModuleType("nvdiffrast.torch")
+_nvt.__file__    = __file__
+_nvt.__spec__    = None
+_nvt.__loader__  = None
+_nvt.__getattr__ = _nv_getattr
+
+sys.modules["nvdiffrast"] = _nv
 sys.modules["nvdiffrast.torch"] = _nvt
-print("[{MODEL_ID}] nvdiffrast mocked")
+
+print("[{MODEL_ID}] Transformers detection patched & heavy libs stealth-mocked")
 
 # -- Step 2: path setup -------------------------------------------------------
 _HERE    = os.path.dirname(os.path.abspath(__file__))

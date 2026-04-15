@@ -128,7 +128,7 @@
                     if (!badge) return;
 
                     if (data.status === 'online') {
-                        badge.innerHTML = '<i class="fas fa-check-circle" style="color:#4ade80;"></i> Trellis 2 is Ready';
+                        badge.innerHTML = '<i class="fas fa-check-circle" style="color:#4ade80;"></i> Trellis 2 (WIP) is Ready';
                         badge.style.borderColor = 'rgba(74, 222, 128, 0.4)';
                         badge.style.color = '#4ade80';
                         badge.style.animation = 'none';
@@ -345,7 +345,7 @@
         },
 
         async handleRunModel(modelId) {
-            const label = modelId === 'trellis-2' ? 'Trellis 2' : modelId;
+            const label = modelId === 'trellis-2' ? 'Trellis 2 (WIP)' : modelId;
             window.showToast(`Launching ${label}…`, 'info');
 
             try {
