@@ -74,14 +74,22 @@
                 <div style="font-size:0.7rem; color:var(--text-tertiary); margin-top:-1rem;">Processing meshes and topology...</div>
             </div>
 
-            <!-- Canvas Placeholder -->
-            <div class="tg-viewer-placeholder" id="tg-placeholder">
-                <i class="fas fa-cube"></i>
-                <p>Generate or select a model to begin preview</p>
+            <!-- Real 3D Viewport -->
+            <div id="tg-canvas-root" style="width:100%; height:100%; display:none;">
+                <model-viewer
+                    id="tg-model-viewer"
+                    src=""
+                    camera-controls
+                    auto-rotate
+                    shadow-intensity="1"
+                    environment-image="neutral"
+                    exposure="1"
+                    interaction-prompt="auto"
+                    style="width: 100%; height: 100%; background: transparent;">
+                    
+                    <div slot="progress-bar" class="tg-loader-sphere"></div>
+                </model-viewer>
             </div>
-            
-            <!-- Three.js Container (hidden initially) -->
-            <div id="tg-canvas-root" style="width:100%; height:100%; display:none;"></div>
 
             <!-- Control HUD -->
             <div class="tg-canvas-overlay">
@@ -105,26 +113,7 @@
             <h4 class="tg-history-title">Recent Assets</h4>
         </div>
         <div class="tg-history-list" id="tg-history-list">
-            <!-- Asset cards will be injected here -->
-            <div class="tg-asset-card">
-                <div class="tg-asset-thumb">
-                    <img src="https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400&q=80" alt="Cyberpunk Helmet">
-                </div>
-                <div class="tg-asset-info">
-                    <span class="tg-asset-name">Cyberpunk Helmet</span>
-                    <span class="tg-asset-meta">Trellis 2 • GLB • 4.2 MB</span>
-                </div>
-            </div>
-            
-            <div class="tg-asset-card">
-                <div class="tg-asset-thumb">
-                    <i class="fas fa-box-open" style="font-size:2rem; opacity:0.3;"></i>
-                </div>
-                <div class="tg-asset-info">
-                    <span class="tg-asset-name">Medieval Sword</span>
-                    <span class="tg-asset-meta">TripoSR • GLB • 1.8 MB</span>
-                </div>
-            </div>
+            <!-- Asset cards will be injected here dynamically -->
         </div>
     </aside>
 </div>

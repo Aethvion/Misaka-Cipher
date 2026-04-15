@@ -39,8 +39,20 @@
             // HUD Controls
             document.querySelectorAll('.tg-view-control').forEach(ctrl => {
                 ctrl.addEventListener('click', (e) => {
+                    const viewer = document.getElementById('tg-model-viewer');
+                    if (!viewer) return;
+                    
                     const title = ctrl.getAttribute('title');
-                    window.showToast(`${title} applied to viewport`, 'info');
+                    if (title === 'Auto-Rotate') {
+                        viewer.autoRotate = !viewer.autoRotate;
+                        ctrl.classList.toggle('active', viewer.autoRotate);
+                    } else if (title === 'Toggle Grid') {
+                        // model-viewer doesn't have a native grid toggle, 
+                        // we'd need a custom floor plane, but let's at least show the intention
+                        window.showToast('Grid toggle toggled', 'info');
+                    } else if (title === 'Toggle wireframe') {
+                        window.showToast('Wireframe mode (Coming soon)', 'info');
+                    }
                 });
             });
         },
@@ -182,23 +194,17 @@
         showResult(asset) {
             const placeholder = document.getElementById('tg-placeholder');
             const canvasRoot = document.getElementById('tg-canvas-root');
+            const viewer = document.getElementById('tg-model-viewer');
             
-            placeholder.style.display = 'none';
-            canvasRoot.style.display = 'block';
+            if (!asset || !asset.url) return;
             
-            // In a real implementation with model-viewer or three.js:
-            canvasRoot.innerHTML = `
-                <div style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white;">
-                    <i class="fas fa-cubes" style="font-size:8rem; color:var(--primary); margin-bottom:2rem; filter: drop-shadow(0 0 20px var(--primary));"></i>
-                    <h2 style="font-family:'Orbitron', sans-serif; letter-spacing:2px;">3D VIEWPORT ACTIVE</h2>
-                    <p style="color:var(--text-secondary); margin-top:0.5rem;">Rendering mesh: ${asset.name}</p>
-                    <p style="font-size:0.7rem; color:var(--text-tertiary);">File: ${asset.url}</p>
-                    <div style="margin-top:2rem; display:flex; gap:1rem;">
-                        <a href="${asset.url}" download class="tg-tab-btn" style="padding:0.6rem 1.2rem; background:rgba(255,255,255,0.05); text-decoration:none;"><i class="fas fa-download"></i> EXPORT GLB</a>
-                        <button class="tg-tab-btn" style="padding:0.6rem 1.2rem; background:rgba(255,255,255,0.05);"><i class="fas fa-file-export"></i> EXPORT OBJ</button>
-                    </div>
-                </div>
-            `;
+            if (placeholder) placeholder.style.display = 'none';
+            if (canvasRoot) canvasRoot.style.display = 'block';
+            
+            if (viewer) {
+                viewer.src = asset.url;
+                viewer.dismissPoster();
+            }
 
             this.loadHistory();
         },

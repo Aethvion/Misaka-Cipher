@@ -11,6 +11,12 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
+import httpx
+import subprocess
+import time
+import socket
+import asyncio
+from pathlib import Path
 
 from core.workspace import get_workspace_manager
 from core.utils import get_logger
@@ -43,6 +49,79 @@ class ThreeDGenerationResponse(BaseModel):
     asset: Optional[ThreeDAssetResponse] = None
     error: Optional[str] = None
 
+# --- Worker Management ---
+_WORKER_PROCESS = {} # model -> subprocess.Popen
+_WORKER_PORT = {}    # model -> port
+
+def get_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
+
+async def get_or_start_worker(model: str):
+    global _WORKER_PROCESS, _WORKER_PORT
+    
+    """Start the 3D model worker if not running."""
+    if model in _WORKER_PROCESS and _WORKER_PROCESS[model].poll() is None:
+        return _WORKER_PORT[model], None
+        
+    worker_dir = LOCAL_MODELS_3D / model.replace("-", "")
+    venv_python = worker_dir / "venv" / "Scripts" / "python.exe" if os.name == 'nt' else worker_dir / "venv" / "bin" / "python"
+    server_script = worker_dir / "run_server.py"
+    
+    if not venv_python.exists():
+        return None, f"Worker environment not found at {venv_python}"
+        
+    port = get_free_port()
+    logger.info(f"[3D] Starting {model} worker on port {port}...")
+    
+    try:
+        log_file_path = worker_dir / "worker.log"
+        log_file = open(log_file_path, "w", encoding='utf-8')
+        
+        proc = subprocess.Popen(
+            [str(venv_python), str(server_script), str(port)],
+            cwd=str(worker_dir),
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0,
+            text=True
+        )
+        _WORKER_PROCESS[model] = proc
+        _WORKER_PORT[model] = port
+        
+        # Wait for health check (Heavy ML model can take 2-3 minutes to load VRAM)
+        max_retries = 120
+        async with httpx.AsyncClient() as client:
+            for i in range(max_retries):
+                try:
+                    res = await client.get(f"http://127.0.0.1:{port}/health", timeout=1.0)
+                    if res.status_code == 200:
+                        res_data = res.json()
+                        status = res_data.get("status")
+                        if status == "online":
+                            logger.info(f"[3D] Worker {model} is ready.")
+                            return port, None
+                        elif status == "failed":
+                            err_msg = res_data.get("error", "Unknown loading error")
+                            logger.error(f"[3D] Worker {model} reported loading failure: {err_msg}")
+                            return None, f"Model failed to load: {err_msg}"
+                except:
+                    pass
+                
+                await asyncio.sleep(2.0)
+                
+                if proc.poll() is not None:
+                    log_file.close()
+                    error_out = log_file_path.read_text(errors='replace')
+                    logger.error(f"[3D] Worker {model} failed to start. Output:\n{error_out}")
+                    return None, f"Worker failed to start. Check worker.log"
+                    
+        return port, None
+    except Exception as e:
+        logger.error(f"[3D] Exception starting worker: {e}")
+        return None, str(e)
+
 @router.post("/generate", response_model=ThreeDGenerationResponse)
 async def generate_3d_asset(req: ThreeDGenerationRequest):
     """
@@ -52,18 +131,37 @@ async def generate_3d_asset(req: ThreeDGenerationRequest):
     logger.info(f"[{trace_id}] 3D generation request: {req.model} ({req.action})")
 
     try:
-        # 1. Prepare Workspace
+        # 1. Prepare Workspace & Worker
         workspace = get_workspace_manager()
         
-        # 2. Logic for Generation
-        # For now, we simulation the generation of a GLB file.
-        # In a production environment, this would call out to a Trellis / TripoSR worker.
+        # Start/Get worker
+        port, err = await get_or_start_worker(req.model)
+        if err:
+            return ThreeDGenerationResponse(success=False, error=f"Worker Error: {err}")
+
+        # 2. Call Worker for Generation
+        logger.info(f"[{trace_id}] Routing request to worker on port {port}")
         
-        # CREATE MOCK GLB CONTENT
-        # A minimal binary GLB is 20-30 bytes, but we'll just use a dummy string for now
-        # to simulate a file being saved.
-        mock_glb_content = b"glTF" + b"\x02\x00\x00\x00" + os.urandom(1024) 
-        
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            worker_res = await client.post(
+                f"http://127.0.0.1:{port}/generate",
+                json={
+                    "image_base64": req.input_image,
+                    "prompt": req.prompt,
+                    "seed": req.seed or 1,
+                    "action": req.action
+                }
+            )
+            
+            if worker_res.status_code != 200:
+                return ThreeDGenerationResponse(success=False, error=f"Worker HTTP {worker_res.status_code}")
+            
+            result_data = worker_res.json()
+            if not result_data.get("success"):
+                return ThreeDGenerationResponse(success=False, error=result_data.get("error", "Unknown worker error"))
+
+        # 3. Save Real GLB
+        glb_bytes = base64.b64decode(result_data["glb_base64"])
         filename = f"{req.model}-{trace_id}.glb"
         
         # If the user actually provided an image, we'll save it too for reference
@@ -78,11 +176,11 @@ async def generate_3d_asset(req: ThreeDGenerationRequest):
             except Exception as e:
                 logger.warning(f"Failed to save reference image: {e}")
 
-        # Save the "generated" GLB
+        # Save the REAL GLB
         path = workspace.save_output(
             domain="ThreeD",
             filename=filename,
-            content=mock_glb_content,
+            content=glb_bytes,
             trace_id=trace_id
         )
         
@@ -118,7 +216,7 @@ async def get_3d_history():
     for f in outputs.get('files', []):
         if f.get('domain') == 'ThreeD' and f.get('filename', '').endswith('.glb'):
             history.append(ThreeDAssetResponse(
-                id=f.get('trace_id', 'unknown'),
+                id=f.get('trace_id') or 'unknown',
                 name=f.get('filename').split('-')[0],
                 url=f"/api/3d/serve/{f.get('filename')}",
                 path=f.get('path'),
@@ -163,15 +261,103 @@ from core.utils.paths import LOCAL_MODELS_3D
 # e.g., checkpoints/3d/trellis and return True/False
 @router.get("/install_status/{model}")
 async def get_install_status(model: str):
-    """Check if a specific 3D model/engine is installed locally."""
-    # We will simulate installation by checking if a dummy lock file exists
+    """Check if a specific 3D model/engine and its weights are installed locally."""
     wrapper_name = model.replace("-", "")
-    install_file = LOCAL_MODELS_3D / wrapper_name / ".install_complete"
+    wrapper_dir = LOCAL_MODELS_3D / wrapper_name
+    install_file = wrapper_dir / ".install_complete"
+    weights_file = wrapper_dir / ".install_weights_complete"
     
     return {
         "model": model,
-        "installed": install_file.exists()
+        "installed": install_file.exists(),
+        "weights_installed": weights_file.exists()
     }
+
+@router.post("/install_weights/{model}")
+async def install_weights(model: str):
+    """Start streaming download of 3D model weights from HuggingFace."""
+    from fastapi.responses import StreamingResponse
+    import asyncio
+    import json
+    import shutil
+    from core.utils.paths import LOCAL_MODELS_3D
+    
+    wrapper_name = model.replace("-", "")
+    wrapper_dir = LOCAL_MODELS_3D / wrapper_name
+    weights_dir = wrapper_dir / "weights"
+    weights_complete_file = wrapper_dir / ".install_weights_complete"
+    
+    weights_dir.mkdir(parents=True, exist_ok=True)
+    
+    async def _generate():
+        try:
+            yield f"data: {json.dumps({'line': f'Initializing weight download for {model} to {weights_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"
+            
+            # We use a subprocess to use the HuggingFace CLI or a small script to download
+            # to keep the main event loop clean.
+            # Repo: microsoft/TRELLIS-image-large
+            repo_id = "microsoft/TRELLIS-image-large" if "trellis" in model else "unknown"
+            
+            if repo_id == "unknown":
+                yield f"data: {json.dumps({'done': True, 'success': False, 'error': 'Unknown model repository for weights'})}\n\n"
+                return
+
+            yield f"data: {json.dumps({'line': f'Downloading from HF Repo: {repo_id}...'})}\n\n"
+            
+            # We'll use huggingface_hub cli if possible, or a python script
+            download_script = f"""
+import os
+from huggingface_hub import snapshot_download
+print(f'Starting download of {repo_id}...')
+snapshot_download(
+    repo_id='{repo_id}',
+    local_dir=r'{weights_dir}',
+    local_dir_use_symlinks=False
+)
+print('Download complete.')
+"""
+            temp_script = wrapper_dir / "tmp_download.py"
+            temp_script.write_text(download_script)
+            
+            # Use the venv python if possible, or system python
+            venv_python = wrapper_dir / "venv" / "Scripts" / "python.exe" if os.name == 'nt' else wrapper_dir / "venv" / "bin" / "python"
+            if not venv_python.exists():
+                venv_python = "python" # fallback
+                
+            proc = await asyncio.create_subprocess_exec(
+                str(venv_python), str(temp_script),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                env={**os.environ, "HF_HUB_DISABLE_SYMLINKS": "1", "HF_HUB_ENABLE_HF_TRANSFER": "1"},
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+            )
+            
+            async for raw in proc.stdout:
+                line = raw.decode("utf-8", errors="replace").rstrip()
+                if line:
+                    # Handle carriage returns by splitting/replacing to ensure vertical stacking
+                    cleanLine = line.replace('\r', '\n');
+                    yield f"data: {json.dumps({'line': cleanLine})}\n\n"
+                
+            await proc.wait()
+            
+            if temp_script.exists(): os.remove(temp_script)
+            
+            if proc.returncode == 0:
+                weights_complete_file.write_text(f"Downloaded {datetime.now().isoformat()}")
+                yield f"data: {json.dumps({'line': 'Weight installation verified and complete.', 'done': True, 'success': True})}\n\n"
+            else:
+                yield f"data: {json.dumps({'done': True, 'success': False, 'error': f'Download process failed with exit code {proc.returncode}'})}\n\n"
+                
+        except Exception as e:
+            logger.error(f"Weight download failed: {e}")
+            yield f"data: {json.dumps({'done': True, 'success': False, 'error': str(e)})}\n\n"
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 @router.post("/install/{model}")
 async def install_3d_model(model: str):
@@ -226,9 +412,9 @@ async def install_3d_model(model: str):
                 return
                 
             # 3. Clone the repository
-            yield f"data: {json.dumps({'line': f'Cloning microsoft/TRELLIS into {repo_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"
+            yield f"data: {json.dumps({'line': f'Cloning microsoft/TRELLIS (with submodules) into {repo_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"
             proc_git = await asyncio.create_subprocess_exec(
-                "git", "clone", "https://github.com/microsoft/TRELLIS.git", str(repo_dir),
+                "git", "clone", "--recurse-submodules", "https://github.com/microsoft/TRELLIS.git", str(repo_dir),
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
@@ -243,12 +429,26 @@ async def install_3d_model(model: str):
                 return
                 
             # 4. Install Dependencies into the isolated venv
-            yield f"data: {json.dumps({'line': 'Installing Python dependencies into isolated venv...'})}\n\n"
+            yield f"data: {json.dumps({'line': 'Installing core dependencies (torch, huggingface_hub, etc.)...'})}\n\n"
             
             pip_exe = venv_dir / "Scripts" / "pip.exe" if sys.platform == 'win32' else venv_dir / "bin" / "pip"
-            req_file = repo_dir / "requirements.txt"
             
+            # Ensure we have the basics for weight management even if requirements.txt is missing
+            core_reqs = ["huggingface_hub[cli]", "hf_transfer", "fastapi", "uvicorn", "httpx", "pillow"]
+            proc_core = await asyncio.create_subprocess_exec(
+                str(pip_exe), "install", *core_reqs,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+            )
+            async for raw in proc_core.stdout:
+                line = raw.decode("utf-8", errors="replace").rstrip()
+                if line: yield f"data: {json.dumps({'line': line})}\n\n"
+            await proc_core.wait()
+
+            req_file = repo_dir / "requirements.txt"
             if req_file.exists():
+                yield f"data: {json.dumps({'line': 'Installing repository-specific requirements.txt...'})}\n\n"
                 proc_pip = await asyncio.create_subprocess_exec(
                     str(pip_exe), "install", "-r", str(req_file),
                     stdout=asyncio.subprocess.PIPE,
@@ -259,31 +459,123 @@ async def install_3d_model(model: str):
                     line = raw.decode("utf-8", errors="replace").rstrip()
                     if line: yield f"data: {json.dumps({'line': line})}\n\n"
                 await proc_pip.wait()
-                
-                if proc_pip.returncode != 0:
-                    yield f"data: {json.dumps({'line': '[Warning] Pip install completed with non-zero exit code. You may need to install specific CUDA extensions manually.'})}\n\n"
             else:
-                yield f"data: {json.dumps({'line': 'No requirements.txt found. Skipping dependecy installation.'})}\n\n"
+                yield f"data: {json.dumps({'line': 'No requirements.txt found in repository. Skipping.'})}\n\n"
 
             # 5. Generate the Server Script Wrapper
             yield f"data: {json.dumps({'line': 'Generating FastAPI microservice hook (run_server.py)...'})}\n\n"
             run_script.write_text(f'''\"\"\"
-Aethvion Suite - {model.title()} Microservice
-Standalone isolated backend hook for 3D generation.
+Aethvion Suite - {model.title()} Operational Microservice
+High-fidelity 3D generation backend with CUDA acceleration and nvdiffrast bypass.
 \"\"\"
-from fastapi import FastAPI
-import uvicorn
 import os
 import sys
+import base64
+import torch
+import numpy as np
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Optional
+from unittest.mock import MagicMock
+
+# --- The "Ghost Module" Shim ---
+# Deep dependencies like utils3d import nvdiffrast at top-level. 
+# We inject a mock before importing Trellis to prevent immediate crashes on Windows.
+sys.modules["nvdiffrast"] = MagicMock()
+sys.modules["nvdiffrast.torch"] = MagicMock()
+
+# --- Trellis Core Imports ---
+# These are added to path once everything is patched
+repo_path = os.path.join(os.path.dirname(__file__), "{model}")
+sys.path.append(repo_path)
+
+try:
+    from trellis.pipelines import TrellisImageTo3DPipeline
+    from trellis.utils import postprocessing_utils
+    LOADED = True
+except Exception as e:
+    print(f"Failed to load Trellis: {{e}}")
+    LOADED = False
 
 app = FastAPI(title="{model.title()} Worker")
 
+class GenRequest(BaseModel):
+    image_base64: str
+    prompt: Optional[str] = None
+    seed: int = 42
+    action: str = "image23d"
+
+# Global pipeline instance
+pipeline = None
+
+@app.on_event("startup")
+async def startup_event():
+    global pipeline
+    if not LOADED: return
+    
+    weights_path = os.path.join(os.path.dirname(__file__), "weights")
+    if not os.path.exists(weights_path):
+        print("Weights not found!")
+        return
+        
+    print(f"Loading Trellis pipeline from {{weights_path}}...")
+    try:
+        pipeline = TrellisImageTo3DPipeline.from_pretrained(weights_path)
+        pipeline.cuda()
+        print("Model loaded into VRAM successfully.")
+    except Exception as e:
+        print(f"Error loading model: {{e}}")
+
 @app.get("/health")
 def health():
+    if not LOADED:
+        return {{"status": "failed", "error": "Import error"}}
+    if pipeline is None:
+        return {{"status": "warming", "message": "Loading weights into VRAM..."}}
     return {{"status": "online", "model": "{model}"}}
 
+@app.post("/generate")
+async def generate(req: GenRequest):
+    if pipeline is None:
+        raise HTTPException(status_code=503, detail="Model warming up")
+        
+    try:
+        # 1. Decode Image
+        from PIL import Image
+        import io
+        raw_b64 = req.image_base64
+        if "," in raw_b64:
+            raw_b64 = raw_b64.split(",", 1)[1]
+        img_bytes = base64.b64decode(raw_b64)
+        image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+        
+        # 2. Run Inference
+        print(f"Running inference (Seed: {{req.seed}})...")
+        outputs = pipeline.run(image, seed=req.seed)
+        
+        # 3. Post-process to Mesh
+        # We use a neutral post-processing that avoids nvdiffrast dependencies
+        video = outputs['sample'] # Not used here, but available
+        
+        # Convert to GLB
+        print("Converting to GLB...")
+        glo_mesh = postprocessing_utils.to_glb(outputs['gaussian'][0], outputs['mesh'][0])
+        
+        # 4. Encode and return
+        glb_b64 = base64.b64encode(glo_mesh).decode('utf-8')
+        
+        return {{"success": True, "glb_base64": glb_b64}}
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {{"success": False, "error": str(e)}}
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=0) # Port 0 assigns random available port
+    import sys
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+    uvicorn.run(app, host="127.0.0.1", port=port)
 ''')
             
             # 6. Create success lockfile

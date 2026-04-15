@@ -32,10 +32,15 @@
 
             // Trellis Actions
             const btnInstallTrellis = document.getElementById('btn-install-trellis');
+            const btnInstallWeights = document.getElementById('btn-install-trellis-weights');
             const btnRunTrellis = document.getElementById('btn-run-trellis');
 
             if (btnInstallTrellis) {
                 btnInstallTrellis.addEventListener('click', () => this.installModel('trellis-2'));
+            }
+
+            if (btnInstallWeights) {
+                btnInstallWeights.addEventListener('click', () => this.installWeights('trellis-2'));
             }
 
             if (btnRunTrellis) {
@@ -73,24 +78,110 @@
         
         async checkInstallStatus(modelId) {
             const btnInstall = document.getElementById(`btn-install-trellis`);
+            const btnWeights = document.getElementById(`btn-install-trellis-weights`);
             const btnRun = document.getElementById(`btn-run-trellis`);
             
-            if (!btnInstall || !btnRun) return;
+            if (!btnInstall || !btnWeights || !btnRun) return;
 
             try {
                 const res = await fetch(`/api/3d/install_status/${modelId}`);
                 if (!res.ok) throw new Error('Status check failed');
                 
                 const data = await res.json();
+                
+                // data now expected: { installed: bool, weights_installed: bool }
+                btnInstall.style.display = data.installed ? 'none' : 'block';
+                
                 if (data.installed) {
-                    btnInstall.style.display = 'none';
-                    btnRun.style.display = 'block';
+                    btnWeights.style.display = data.weights_installed ? 'none' : 'block';
+                    btnRun.style.display = data.weights_installed ? 'block' : 'none';
                 } else {
+                    btnWeights.style.display = 'none';
                     btnRun.style.display = 'none';
-                    btnInstall.style.display = 'block';
                 }
             } catch (e) {
                 console.error(`[View3DModels] Failed to load install status for ${modelId}:`, e);
+            }
+        },
+
+        async installWeights(modelId) {
+            const btnWeights = document.getElementById(`btn-install-trellis-weights`);
+            const progress = document.getElementById('trellis-install-progress');
+            const terminalContainer = document.getElementById('trellis-install-log-container');
+            const terminal = document.getElementById('trellis-install-log');
+
+            if (!btnWeights) return;
+
+            btnWeights.style.display = 'none';
+            if (progress) {
+                progress.style.display = 'block';
+                progress.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading weights (12GB)...';
+            }
+            if (terminalContainer) terminalContainer.style.display = 'block';
+            if (terminal) terminal.textContent = '[System] Initiating HuggingFace weight download...\n';
+
+            try {
+                const response = await fetch(`/api/3d/install_weights/${modelId}`, { method: 'POST' });
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = "";
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const parts = buffer.split('\n\n');
+                    buffer = parts.pop();
+
+                    for (const part of parts) {
+                        if (part.startsWith('data: ')) {
+                            try {
+                                const json = JSON.parse(part.substring(6));
+                                if (json.line && terminal) {
+                                    // Handle carriage returns by splitting/replacing to ensure vertical stacking
+                                    const cleanLine = json.line.replace(/\r/g, '\n');
+                                    terminal.textContent += cleanLine + '\n';
+                                    terminal.scrollTop = terminal.scrollHeight;
+                                    
+                                    // Try to parse percentage
+                                    const procText = document.getElementById('trellis-progress-text');
+                                    const procInner = document.getElementById('trellis-progress-inner');
+                                    const procPercent = document.getElementById('trellis-progress-percent');
+                                    
+                                    // Match "X%" pattern
+                                    const match = json.line.match(/(\d+)%/);
+                                    if (match && procInner && procPercent) {
+                                        const p = match[1] + '%';
+                                        procInner.style.width = p;
+                                        procPercent.textContent = p;
+                                    }
+                                    if (procText) {
+                                        // Update text if it's a "Fetching" or "Downloading" line
+                                        if (json.line.includes('Fetching') || json.line.includes('Downloading')) {
+                                            const cleanLine = json.line.split('...')[0].trim();
+                                            if (cleanLine.length > 5) procText.textContent = cleanLine + '...';
+                                        }
+                                    }
+                                }
+                                if (json.done) {
+                                    if (json.success) {
+                                        window.showToast('Weights installed successfully!', 'success');
+                                        this.checkInstallStatus(modelId);
+                                    } else {
+                                        throw new Error(json.error || 'Weight download failed');
+                                    }
+                                }
+                            } catch (e) { console.warn("SSE parse error", e); }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error(`[View3DModels] Installation failed for ${modelId}:`, e);
+                window.showToast('Weight download failed: ' + e.message, 'error');
+                btnWeights.style.display = 'block';
+            } finally {
+                if (progress) progress.style.display = 'none';
             }
         },
 

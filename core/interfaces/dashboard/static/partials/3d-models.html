@@ -1,449 +1,121 @@
-<div class="panel-header">
-    <div class="header-content">
-        <i class="fas fa-cube"></i>
-        <h2>3D Models & Generation</h2>
-    </div>
-    <p class="header-desc">Generate 3D assets from text or images using state-of-the-art local models. Integrated support for Trellis, TripoSR, and more.</p>
-</div>
 
-<div class="td-layout">
-
-    <!-- ── Top bar ──────────────────────────────────────────────── -->
-    <div class="td-topbar">
-        <div class="td-search-wrap">
-            <i class="fas fa-search td-search-icon"></i>
-            <input type="text" id="td-model-search" class="td-search-input"
-                   placeholder="Search 3D models or tools…">
+<div class="hub-container">
+    <!-- ── Premium Header ─────────────────────────────────────────── -->
+    <header class="hub-header">
+        <div class="hub-title-group">
+            <h1>3D Generation Hub</h1>
+            <p>Convert 2D concepts into 3D meshes. Industry-leading geometric reconstruction powered by local CUDA acceleration.</p>
         </div>
-        <div class="td-topbar-right">
-            <div class="td-status-chip">
-                <span class="td-status-dot online"></span>
-                <span id="td-engine-status">3D Engine Ready</span>
+        <div class="hub-stats">
+            <div class="hub-stat-item">
+                <span class="hub-stat-val">1</span>
+                <span class="hub-stat-label">Active Engines</span>
             </div>
-            <button id="refresh-3d-models" class="td-icon-btn" title="Refresh local files">
-                <i class="fas fa-sync-alt"></i>
-            </button>
+            <div class="hub-stat-item">
+                <span class="hub-stat-val"><i class="fas fa-microchip"></i> CUDA 12</span>
+                <span class="hub-stat-label">Inference Mode</span>
+            </div>
         </div>
+    </header>
+
+    <!-- ── Interactive Toolbar ────────────────────────────────────── -->
+    <div class="hub-toolbar">
+        <div class="hub-search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="td-model-search" class="hub-search-input" 
+                   placeholder="Search 3D engines and tools...">
+        </div>
+        
+        <div class="td-status-chip" style="background: rgba(var(--primary-rgb), 0.1); border: 1px solid rgba(var(--primary-rgb), 0.2); padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span class="td-status-dot online" style="width:8px; height:8px; background:#4ade80; border-radius:50%; box-shadow:0 0 8px #4ade80;"></span>
+            <span id="td-engine-status" style="color: #fff; font-weight: 600;">3D Foundry Active</span>
+        </div>
+
+        <button id="refresh-3d-models" class="lm-icon-btn" title="Refresh Registry">
+            <i class="fas fa-rotate"></i>
+        </button>
     </div>
 
-    <!-- ── Main Scroll Area ──────────────────────────────────────── -->
-    <div class="td-content">
+    <!-- ── Trellis 2 Hero Section ────────────────────────────────── -->
+    <section class="hub-provider-section">
+        <div class="hub-provider-hd">
+            <div class="hub-provider-dot" style="--brand-color: var(--primary);"></div>
+            <h2 class="hub-provider-name">State-of-the-Art: Trellis 2</h2>
+        </div>
 
-        <!-- ── Feature: Image to 3D ─────────────── -->
-        <div class="td-hero-section">
-            <div class="td-hero-hd">
-                <div class="td-hero-info">
-                    <h3 class="td-section-title"><i class="fas fa-wand-magic-sparkles"></i> Image to 3D Generation</h3>
-                    <p class="td-section-sub">Create high-quality meshes from a single 2D image.</p>
-                </div>
-                <div class="td-badge-row">
-                    <span class="td-badge primary">New: Trellis 2</span>
-                    <span class="td-badge success">GPU Accelerated</span>
-                </div>
-            </div>
-
-            <div class="td-gen-grid" style="grid-template-columns: 1fr;">
-                <!-- Trellis 2 Card -->
-                <div class="td-gen-card active" data-model="trellis-2">
-                    <div class="td-gen-preview" style="height:250px; background: var(--surface); display:flex; align-items:center; justify-content:center;">
-                        <i class="fas fa-cube" style="font-size: 5rem; color: var(--border);"></i>
-                        <div class="td-gen-overlay">
-                            <span class="td-gen-tag">SOTA</span>
-                        </div>
+        <div class="hub-grid" style="grid-template-columns: 1fr;">
+            <div class="hub-card" style="padding: 2rem;">
+                <div style="display:grid; grid-template-columns: 280px 1fr; gap: 2.5rem;">
+                    
+                    <!-- Preview/Icon Side -->
+                    <div style="background: rgba(0,0,0,0.3); border-radius: 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1px solid var(--hub-card-border);">
+                         <i class="fas fa-cube" style="font-size: 6rem; color: var(--primary); opacity: 0.8; filter: drop-shadow(0 0 20px var(--hub-accent-glow));"></i>
+                         <div style="margin-top: 1.5rem; display:flex; gap:0.5rem;">
+                             <span class="hub-tag" style="background:#818cf8; color:#fff;">SOTA</span>
+                             <span class="hub-tag">STRUCTURED LATENT FLOW</span>
+                         </div>
                     </div>
-                    <div class="td-gen-body">
-                        <h4 class="td-gen-name" style="font-size: 1.2rem;">Trellis 2</h4>
-                        <p class="td-gen-desc">High-fidelity geometric reconstruction with structured latent flow. Best for complex organic shapes.</p>
-                        <div class="td-gen-meta" style="margin-bottom: 1rem;">
-                            <span><i class="fas fa-memory"></i> 12GB VRAM</span>
-                            <span><i class="fas fa-clock"></i> ~45s</span>
+
+                    <!-- Info/Actions Side -->
+                    <div style="display:flex; flex-direction:column; gap:1.25rem;">
+                        <div class="hub-model-info">
+                            <h3 style="font-size: 1.8rem; margin:0;">Trellis 2</h3>
+                            <p style="font-size: 1rem; color: var(--text-secondary);">The new standard for high-fidelity 3D reconstruction. Convert a single image into a high-density geometric mesh with verified topology. Optimized for consumer NVIDIA GPUs.</p>
                         </div>
-                        <div id="trellis-status-container" style="display:flex; flex-direction:column; gap:0.5rem;">
-                            <button id="btn-install-trellis" class="td-btn-action" style="display:none;"><i class="fas fa-download"></i> Install Trellis 2</button>
-                            <button id="btn-run-trellis" class="td-btn-action" style="display:none; background: var(--primary); color: white;"><i class="fas fa-play"></i> Open Workspace</button>
-                            <div id="trellis-install-progress" style="display:none; font-size:0.8rem; color:var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> Installing... Please wait.</div>
-                            
-                            <!-- Installation Log Terminal -->
-                            <div id="trellis-install-log-container" style="display:none; margin-top: 0.5rem; background: #0a0a0b; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
-                                <div style="display: flex; justify-content: space-between; padding: 0.4rem 0.6rem; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 0.75rem; font-family: 'Outfit'; color: var(--text-secondary);">
-                                    <span><i class="fas fa-terminal"></i> Installation Stream</span>
+
+                        <div class="hub-tags">
+                            <span class="hub-tag"><i class="fas fa-memory"></i> 12GB VRAM REQ</span>
+                            <span class="hub-tag"><i class="fas fa-bolt"></i> ~45s INFERENCE</span>
+                            <span class="hub-tag"><i class="fas fa-file-export"></i> .OBJ / .GLB</span>
+                        </div>
+
+                        <div id="trellis-status-container" style="display:flex; flex-direction:column; gap:0.75rem; margin-top: auto;">
+                            <button id="btn-install-trellis" class="hub-action-btn" style="display:none; height:44px; font-size:1rem;">
+                                <i class="fas fa-wrench"></i> 1. Setup Trellis Engine Environment
+                            </button>
+                            <button id="btn-install-trellis-weights" class="hub-action-btn" style="display:none; height:44px; font-size:1rem;">
+                                <i class="fas fa-weight-hanging"></i> 2. Download Core Weights (12GB)
+                            </button>
+                            <button id="btn-run-trellis" class="hub-action-btn" style="display:none; height:44px; font-size:1rem;">
+                                <i class="fas fa-door-open"></i> Enter Trellis 2 Workspace
+                            </button>
+
+                            <!-- Progress Trackers -->
+                            <div id="trellis-install-progress" style="display:none; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 12px; border: 1px solid var(--hub-card-border);">
+                                <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:8px;">
+                                    <span id="trellis-progress-text">Initializing Foundry...</span>
+                                    <span id="trellis-progress-percent">0%</span>
                                 </div>
-                                <pre id="trellis-install-log" style="margin:0; padding: 0.6rem; font-size: 0.7rem; font-family: 'Fira Code', monospace; color: var(--text-secondary); max-height: 150px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;"></pre>
+                                <div class="model-dl-bar-wrap"><div id="trellis-progress-inner" class="model-dl-bar" style="width:0%"></div></div>
+                            </div>
+                            
+                            <!-- Installation Console -->
+                            <div id="trellis-install-log-container" style="display:none; background:#000; border:1px solid var(--hub-card-border); border-radius:10px; overflow:hidden;">
+                                <div style="background:var(--hub-card-bg); padding:0.5rem 1rem; font-size:0.7rem; border-bottom:1px solid var(--hub-card-border); display:flex; align-items:center; gap:0.5rem;">
+                                    <i class="fas fa-terminal" style="color:var(--primary);"></i>
+                                    <span style="color:var(--text-tertiary); text-transform:uppercase; letter-spacing:1px;">System Installation Log</span>
+                                </div>
+                                <pre id="trellis-install-log" style="margin:0; padding:1rem; font-size:0.75rem; color:#4ade80; font-family:'Fira Code', monospace; max-height:180px; overflow-y:auto;"></pre>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </section>
 
-        <!-- ── Local Models Catalogue ────────────────────────────── -->
-        <div class="td-section">
-            <div class="td-section-hd">
-                <i class="fas fa-microchip"></i>
-                <div class="td-section-hd-info">
-                    <h3 class="td-section-title">Installed 3D Weights</h3>
-                    <p class="td-section-sub">Models located in <code>localmodels/3d/</code></p>
-                </div>
-            </div>
-            <div id="td-local-grid" class="td-local-grid">
-                <!-- Populated via JS -->
-                <div class="td-empty-msg">
-                    <i class="fas fa-box-open"></i>
-                    <span>No checkpoints found. Start by downloading a model above.</span>
-                </div>
+    <!-- ── Local Catalogue ────────────────────────────── -->
+    <section class="hub-provider-section">
+        <div class="hub-provider-hd">
+            <div class="hub-provider-dot" style="--brand-color: #fb923c;"></div>
+            <h2 class="hub-provider-name">Foundation Models & Weight Brackets</h2>
+        </div>
+        <div id="td-local-grid" class="hub-grid">
+            <!-- Populated via JS -->
+            <div style="grid-column: 1/-1; padding: 4rem; text-align: center; border: 1px dashed var(--hub-card-border); border-radius: 20px; color: var(--text-tertiary);">
+                <i class="fas fa-box-open" style="font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.2;"></i>
+                <p style="margin:0;">No standalone 3D checkpoints detected in <code>/localmodels/3d/</code></p>
             </div>
         </div>
-
-    </div><!-- .td-content -->
-
-</div><!-- .td-layout -->
-
-<style>
-/* 3D Models & Generation — Main Styles */
-
-.td-layout {
-    display: flex;
-    flex-direction: column;
-    height: calc(100% - 80px); /* Adjust for panel-header */
-    min-height: 0;
-    color: var(--text-primary);
-}
-
-/* ── Topbar ────────────────────────────────────────────────── */
-.td-topbar {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.8rem 1.5rem;
-    background: rgba(0, 0, 0, 0.2);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-}
-
-.td-search-wrap {
-    position: relative;
-    flex: 1;
-    max-width: 400px;
-}
-
-.td-search-icon {
-    position: absolute;
-    left: 0.8rem;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.75rem;
-    color: var(--text-tertiary);
-}
-
-.td-search-input {
-    width: 100%;
-    background: var(--surface-2, rgba(255,255,255,0.05));
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 0.45rem 0.8rem 0.45rem 2.2rem;
-    color: var(--text-primary);
-    font-size: 0.82rem;
-    outline: none;
-    transition: border-color 0.2s;
-}
-
-.td-search-input:focus { border-color: var(--primary); }
-
-.td-topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    margin-left: auto;
-}
-
-.td-status-chip {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 0.35rem 0.75rem;
-    border-radius: 50px;
-    font-size: 0.72rem;
-    border: 1px solid var(--border);
-}
-
-.td-status-dot.online {
-    width: 8px;
-    height: 8px;
-    background: var(--success);
-    border-radius: 50%;
-    box-shadow: 0 0 8px var(--success);
-}
-
-.td-icon-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.td-icon-btn:hover { background: var(--surface-3); color: var(--text-primary); }
-
-/* ── Content Area ──────────────────────────────────────────── */
-.td-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-}
-
-/* ── Hero Generation Cards ─────────────────────────────────── */
-.td-hero-hd {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1.2rem;
-}
-
-.td-section-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin: 0 0 0.2rem 0;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-}
-
-.td-section-title i { color: var(--primary); }
-
-.td-section-sub {
-    font-size: 0.82rem;
-    color: var(--text-tertiary);
-    margin: 0;
-}
-
-.td-badge-row { display: flex; gap: 0.5rem; }
-
-.td-badge {
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 4px;
-    text-transform: uppercase;
-}
-
-.td-badge.primary { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
-.td-badge.success { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-
-.td-gen-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.2rem;
-}
-
-.td-gen-card {
-    background: var(--surface-1);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    flex-direction: column;
-}
-
-.td-gen-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-}
-
-.td-gen-card.active {
-    border-color: var(--primary);
-    background: rgba(99, 102, 241, 0.03);
-}
-
-.td-gen-preview {
-    height: 160px;
-    background: #000;
-    position: relative;
-    overflow: hidden;
-}
-
-.td-gen-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0.7;
-    transition: scale 0.5s;
-}
-
-.td-gen-card:hover .td-gen-preview img { scale: 1.05; opacity: 0.9; }
-
-.td-gen-overlay {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-}
-
-.td-gen-tag {
-    background: var(--primary);
-    color: white;
-    font-size: 0.6rem;
-    font-weight: 800;
-    padding: 2px 6px;
-    border-radius: 4px;
-}
-
-.td-gen-body {
-    padding: 1.2rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-    flex: 1;
-}
-
-.td-gen-name {
-    font-size: 0.95rem;
-    font-weight: 700;
-    margin: 0;
-}
-
-.td-gen-desc {
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-    line-height: 1.5;
-    margin: 0;
-    flex: 1;
-}
-
-.td-gen-meta {
-    display: flex;
-    gap: 1rem;
-    font-size: 0.7rem;
-    color: var(--text-tertiary);
-}
-
-.td-gen-meta i { margin-right: 4px; }
-
-.td-btn-action {
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    font-weight: 600;
-    font-size: 0.8rem;
-    padding: 0.6rem;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.td-btn-action:hover {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: white;
-}
-
-/* ── Tools Row ─────────────────────────────────────────────── */
-.td-tools-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.2rem;
-}
-
-.td-tool-panel {
-    background: var(--surface-1);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 1.2rem;
-}
-
-.td-tool-hd {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.2rem;
-}
-
-.td-tool-hd i {
-    font-size: 1.2rem;
-    color: var(--primary);
-    background: rgba(99, 102, 241, 0.1);
-    padding: 10px;
-    border-radius: 10px;
-}
-
-.td-tool-title { font-size: 0.9rem; font-weight: 700; margin: 0 0 0.15rem 0; }
-.td-tool-sub { font-size: 0.72rem; color: var(--text-tertiary); margin: 0; }
-
-.td-tool-list { display: flex; flex-direction: column; gap: 0.6rem; }
-
-.td-tool-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    transition: background 0.2s;
-}
-
-.td-tool-item:hover { background: rgba(255, 255, 255, 0.04); }
-
-.td-item-info { display: flex; flex-direction: column; gap: 2px; }
-.td-item-name { font-size: 0.82rem; font-weight: 600; }
-.td-item-desc { font-size: 0.7rem; color: var(--text-tertiary); }
-
-.td-mini-btn {
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
-    font-size: 0.72rem;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.td-mini-btn:hover { background: var(--primary); color: white; border-color: var(--primary); }
-
-.td-item-ok { color: var(--success); font-size: 0.9rem; }
-
-/* ── Section Header ────────────────────────────────────────── */
-.td-section-hd {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.2rem;
-}
-
-.td-section-hd i {
-    font-size: 1.1rem;
-    color: var(--text-tertiary);
-}
-
-.td-local-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 1rem;
-}
-
-.td-empty-msg {
-    grid-column: 1 / -1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.8rem;
-    padding: 3rem;
-    background: rgba(255, 255, 255, 0.01);
-    border: 1px dashed var(--border);
-    border-radius: 12px;
-    color: var(--text-tertiary);
-    font-size: 0.85rem;
-}
-
-.td-empty-msg i { font-size: 1.8rem; opacity: 0.3; }
-
-</style>
+    </section>
+</div>
