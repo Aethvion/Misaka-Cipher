@@ -17,7 +17,7 @@
         
         <div class="td-status-chip" style="background: rgba(var(--primary-rgb), 0.1); border: 1px solid rgba(var(--primary-rgb), 0.2); padding: 0.4rem 0.8rem; border-radius: 8px; font-size: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
             <span class="td-status-dot online" style="width:8px; height:8px; background:gray; border-radius:50%;"></span>
-            <span id="td-engine-status" style="color: #fff; font-weight: 600;">Engine Idle</span>
+            <span id="td-engine-status" style="color: #fff; font-weight: 600;">3D Service: Offline</span>
         </div>
 
         <button id="refresh-3d-models" class="lm-icon-btn" title="Refresh Registry">
@@ -64,9 +64,9 @@
                         </div>
 
                         <div id="trellis-setup-actions" style="display:flex; flex-direction:column; gap:0.75rem; margin-top: auto;">
-                            <!-- Deployment Button: Setup Amber for Pending state -->
+                            <!-- Deployment Button -->
                             <button id="btn-install-full" class="hub-action-btn" style="display:none; width:100%; background:#fb923c; color:black; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(251, 146, 60, 0.25);">
-                                <i class="fas fa-hammer"></i> Initialize Deployment + Weights
+                                <i class="fas fa-hammer"></i> Install Trellis 2 + Weights
                             </button>
                             <!-- Execution Button: Vibrant Aethvion Primary for Ready state -->
                             <button id="btn-run-trellis" class="hub-action-btn" style="display:none; width:100%; background:var(--primary); color:black; height: 50px; font-weight: 800; border:none; box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);">
@@ -75,7 +75,7 @@
                             <!-- Prominent Repair Button -->
                             <div id="trellis-fix-container" style="display:none; text-align:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.75rem; margin-top: 0.25rem;">
                                 <button id="btn-fix-trellis" class="hub-tag" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-tertiary); cursor:pointer; font-size: 0.7rem; padding: 0.4rem 1rem; border-radius: 20px; transition: all 0.2s;">
-                                    <i class="fas fa-wrench" style="margin-right: 4px;"></i> Repair Engine Deployment
+                                    <i class="fas fa-wrench" style="margin-right: 4px;"></i> Repair Trellis 2 Installation
                                 </button>
                             </div>
                         </div>
@@ -85,7 +85,7 @@
                             <!-- Bar 1: Engine -->
                             <div id="progress-engine" style="margin-bottom: 1.25rem;">
                                 <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size:0.75rem;">
-                                    <span id="engine-text" style="color:var(--text-tertiary);">1. Environment & Engine Factory</span>
+                                    <span id="engine-text" style="color:var(--text-tertiary);">1. Environment & Core Files</span>
                                     <span id="engine-percent" style="color:var(--primary); font-weight: 700;">0%</span>
                                 </div>
                                 <div class="model-dl-bar-wrap"><div id="engine-bar" class="model-dl-bar" style="width:0%; background:var(--primary); height: 6px;"></div></div>

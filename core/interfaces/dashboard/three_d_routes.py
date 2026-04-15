@@ -522,7 +522,8 @@ async def install_3d_model(model: str):
                 "torch", "torchvision", "easydict", "scipy", "tqdm", 
                 "huggingface_hub[cli]", "hf_transfer", "fastapi", "uvicorn", "httpx", "pillow",
                 "imageio", "imageio-ffmpeg", "opencv-python-headless", "rembg", "onnxruntime-gpu",
-                "trimesh", "open3d", "xatlas", "pyvista", "pymeshfix", "igraph", "transformers", "ninja"
+                "trimesh", "open3d", "xatlas", "pyvista", "pymeshfix", "igraph", "transformers", "ninja",
+                "spconv-cu121" 
             ]
             
             proc_core = await asyncio.create_subprocess_exec(
@@ -535,6 +536,19 @@ async def install_3d_model(model: str):
                 line = raw.decode("utf-8", errors="replace").rstrip()
                 if line: yield f"data: {json.dumps({'line': line})}\n\n"
             await proc_core.wait()
+
+            # Install Kaolin from NVIDIA (crucial for avoidance of build errors on Windows)
+            yield f"data: {json.dumps({'line': 'Installing NVIDIA Kaolin specialized geometry library...'})}\n\n"
+            proc_kaolin = await asyncio.create_subprocess_exec(
+                str(pip_exe), "install", "kaolin", "-f", "https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.1.0_cu121.html",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
+            )
+            async for raw in proc_kaolin.stdout:
+                line = raw.decode("utf-8", errors="replace").rstrip()
+                if line: yield f"data: {json.dumps({'line': line})}\n\n"
+            await proc_kaolin.wait()
 
             # Install custom utils3d as required by Trellis official
             yield f"data: {json.dumps({'line': 'Installing specialized 3D utility repository (utils3d)...'})}\n\n"
@@ -551,10 +565,12 @@ async def install_3d_model(model: str):
 
             # 5. Generate the Server Script Wrapper
             yield f"data: {json.dumps({'line': 'Generating FastAPI microservice hook (run_server.py)...'})}\n\n"
-            run_script.write_text(f'''\"\"\"
-Aethvion Suite - {model.title()} Operational Microservice
+            
+            # Use raw string template to avoid f-string escaping nightmare
+            server_template = r'''"""
+Aethvion Suite - {MODEL_NAME} Operational Microservice
 High-fidelity 3D generation backend with CUDA acceleration and nvdiffrast bypass.
-\"\"\"
+"""
 import os
 import sys
 import base64
@@ -568,29 +584,34 @@ from unittest.mock import MagicMock
 
 # --- The "Ghost Module" Shim ---
 # Deep dependencies like utils3d import nvdiffrast at top-level. 
-# We inject a mock before importing Trellis to prevent immediate crashes on Windows.
-sys.modules["nvdiffrast"] = MagicMock()
-sys.modules["nvdiffrast.torch"] = MagicMock()
+# We use a structured mock to satisfy attribute lookups during startup.
+class MockNvdiffrast:
+    def __init__(self): self.torch = self
+    def __getattr__(self, name): return self
+sys.modules["nvdiffrast"] = MockNvdiffrast()
+sys.modules["nvdiffrast.torch"] = sys.modules["nvdiffrast"]
 
 # --- Trellis Core Imports ---
 # These are added to path once everything is patched
-repo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "{model}"))
+repo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "{MODEL_ID}"))
 if repo_path not in sys.path:
-    sys.path.append(repo_path)
+    sys.path.insert(0, repo_path)
 
 try:
     # Verify path exists
     if not os.path.exists(os.path.join(repo_path, "trellis")):
-        print(f"CRITICAL: Trellis package not found at {{repo_path}}/trellis")
+        print(f"CRITICAL: Trellis package not found at {repo_path}/trellis")
         
     from trellis.pipelines import TrellisImageTo3DPipeline
     from trellis.utils import postprocessing_utils
     LOADED = True
 except Exception as e:
-    print(f"Failed to load Trellis: {{e}}")
+    import traceback
+    print(f"Failed to load Trellis: {e}")
+    traceback.print_exc()
     LOADED = False
 
-app = FastAPI(title="{model.title()} Worker")
+app = FastAPI(title="{MODEL_NAME} Worker")
 
 class GenRequest(BaseModel):
     image_base64: str
@@ -611,21 +632,47 @@ async def startup_event():
         print("Weights not found!")
         return
         
-    print(f"Loading Trellis pipeline from {{weights_path}}...")
+    print(f"Loading Trellis pipeline from {weights_path}...")
     try:
+        # Load with fp16 to conserve VRAM
         pipeline = TrellisImageTo3DPipeline.from_pretrained(weights_path)
-        pipeline.cuda()
-        print("Model loaded into VRAM successfully.")
+        if torch.cuda.is_available():
+            pipeline.cuda()
+            print(f"Model loaded into VRAM. Usage: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
+        else:
+            print("WARNING: CUDA not available, running on CPU")
     except Exception as e:
-        print(f"Error loading model: {{e}}")
+        import traceback
+        print(f"Error loading model: {e}")
+        traceback.print_exc()
 
 @app.get("/health")
 def health():
     if not LOADED:
-        return {{"status": "failed", "error": "Import error"}}
+        return {"status": "failed", "error": "Import error during engine startup"}
+    
+    vram_used = 0
+    vram_total = 0
+    try:
+        if torch.cuda.is_available():
+            vram_used = torch.cuda.memory_allocated() / (1024**3)
+            vram_total = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+    except: pass
+
     if pipeline is None:
-        return {{"status": "warming", "message": "Loading weights into VRAM..."}}
-    return {{"status": "online", "model": "{model}"}}
+        return {
+            "status": "warming", 
+            "message": "Initializing neural weights...",
+            "vram_used": vram_used,
+            "vram_total": vram_total
+        }
+        
+    return {
+        "status": "online", 
+        "model": "{MODEL_ID}",
+        "vram_used": vram_used,
+        "vram_total": vram_total
+    }
 
 @app.post("/generate")
 async def generate(req: GenRequest):
@@ -643,37 +690,35 @@ async def generate(req: GenRequest):
         image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         
         # 2. Run Inference
-        print(f"Running inference (Seed: {{req.seed}})...")
+        print(f"Running inference (Seed: {req.seed})...")
         outputs = pipeline.run(image, seed=req.seed)
         
         # 3. Post-process to Mesh
-        # We use a neutral post-processing that avoids nvdiffrast dependencies
-        video = outputs['sample'] # Not used here, but available
-        
-        # Convert to GLB
         print("Converting to GLB...")
         glo_mesh = postprocessing_utils.to_glb(outputs['gaussian'][0], outputs['mesh'][0])
         
         # 4. Encode and return
         glb_b64 = base64.b64encode(glo_mesh).decode('utf-8')
         
-        return {{"success": True, "glb_base64": glb_b64}}
+        return {"success": True, "glb_base64": glb_b64}
         
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return {{"success": False, "error": str(e)}}
+        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
     import sys
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
     uvicorn.run(app, host="127.0.0.1", port=port)
-''')
-            
+'''
+            run_script.write_text(
+                server_template.replace("{MODEL_NAME}", model.title()).replace("{MODEL_ID}", model)
+            )
+
             # 6. Create success lockfile
             yield f"data: {json.dumps({'line': 'Finalizing installation...'})}\n\n"
-            with open(install_file, "w") as f:
-                f.write(f"Installed {datetime.now().isoformat()}")
+            install_file.write_text(f"Installed {datetime.now().isoformat()}")
                 
             yield f"data: {json.dumps({'done': True, 'success': True})}\n\n"
             

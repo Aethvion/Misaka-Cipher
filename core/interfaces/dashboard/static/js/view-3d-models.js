@@ -57,9 +57,9 @@
             if (!statusText) return;
             try {
                 const res = await fetch('/api/3d/status');
-                if (res.ok) statusText.textContent = '3D Foundry Active';
+                if (res.ok) statusText.textContent = '3D Service: Online';
             } catch (e) {
-                statusText.textContent = '3D Hub Offline';
+                statusText.textContent = '3D Service: Offline';
             }
         },
         
@@ -184,7 +184,7 @@
             if (btnFull) btnFull.style.display = 'none';
             if (progressContainer) progressContainer.style.display = 'block';
             if (logContainer) logContainer.style.display = 'block';
-            if (logElement) logElement.textContent = '[System] Initiating Core Deployment...\n';
+            if (logElement) logElement.textContent = '[System] Initiating Core Installation...\n';
 
             try {
                 // PHASE 1: Engine & Environment
@@ -207,7 +207,7 @@
             const percent = document.getElementById('engine-percent');
             const text = document.getElementById('engine-text');
 
-            if (text) text.textContent = '1. Environment & Engine Factory (Active)';
+            if (text) text.textContent = '1. Environment & Core Files (Active)';
             
             try {
                 const res = await fetch(`/api/3d/install/${modelId}`, { method: 'POST' });
@@ -239,7 +239,7 @@
                             if (msg.success) {
                                 if (bar) bar.style.width = '100%';
                                 if (percent) percent.textContent = '100%';
-                                if (text) text.textContent = '1. Environment & Engine Factory (Ready)';
+                                if (text) text.textContent = '1. Environment & Core Files (Ready)';
                                 return true;
                             } else {
                                 throw new Error(msg.error || 'Engine setup failed');
@@ -305,7 +305,7 @@
                                         setTimeout(() => {
                                             document.getElementById('trellis-install-progress-container').style.display = 'none';
                                             document.getElementById('trellis-install-log-container').style.display = 'none';
-                                            window.showToast('Deployment complete! Foundry is ready.', 'success');
+                                            window.showToast('Installation complete! Trellis 2 is ready.', 'success');
                                             this.checkInstallStatus(modelId);
                                         }, 1500);
                                     } else {
@@ -338,7 +338,7 @@
                 this.checkInstallStatus('trellis-2');
                 this.updateStatus();
                 if (icon) icon.classList.remove('fa-spin');
-                window.showToast('Foundry refreshed.', 'success');
+                window.showToast('3D Models refreshed.', 'success');
             }, 800);
         }
     };
