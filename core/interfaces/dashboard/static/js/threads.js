@@ -34,6 +34,8 @@ function initThreadManagement() {
 
     // Set up    // Listeners
     document.getElementById('new-thread-button').addEventListener('click', createNewThread);
+    const incognitoBtn = document.getElementById('incognito-thread-button');
+    if (incognitoBtn) incognitoBtn.addEventListener('click', createIncognitoThread);
     const headerNewBtn = document.getElementById('header-new-thread-btn');
     if (headerNewBtn) headerNewBtn.addEventListener('click', createNewThread);
 
@@ -221,6 +223,35 @@ async function createNewThread() {
     switchThread(threadId);
 }
 
+// Create new incognito thread
+async function createIncognitoThread() {
+    const threadId = `incognito-${Date.now()}`;
+    const title = 'Incognito Chat';
+
+    // Create thread locally ONLY
+    threads[threadId] = {
+        id: threadId,
+        title: title,
+        task_ids: [],
+        mode: 'chat_only',
+        settings: {
+            memory_mode: 'nomemory', // Force no memory for incognito
+            context_mode: 'none'
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        is_pinned: false,
+        is_incognito: true
+    };
+
+    threadMessages[threadId] = [];
+
+    renderThreadList();
+    switchThread(threadId);
+    
+    showToast('Incognito Mode: This thread is silent and won\'t be saved.', 'info');
+}
+
 // Switch to a different thread
 function switchThread(threadId) {
     if (currentThreadId === threadId) return;
@@ -259,6 +290,39 @@ function switchThread(threadId) {
     // Update terminal visibility
     if (typeof updateTerminalVisibility === 'function') {
         updateTerminalVisibility();
+    }
+
+    // Update Incognito UI state
+    const chatCol = document.querySelector('.chat-column');
+    const incogBtn = document.getElementById('incognito-thread-button');
+    if (thread && thread.is_incognito) {
+        chatCol?.classList.add('incognito-active');
+        incogBtn?.classList.add('active');
+        // Disable memory toggle for incognito
+        const memMode = document.getElementById('chat-memory-mode');
+        if (memMode) {
+            memMode.value = 'nomemory';
+            memMode.disabled = true;
+        }
+    } else {
+        chatCol?.classList.remove('incognito-active');
+        incogBtn?.classList.remove('active');
+        const memMode = document.getElementById('chat-memory-mode');
+        if (memMode) {
+            memMode.disabled = false;
+            // Restore from global settings
+            loadGlobalChatSettings();
+        }
+
+        // Cleanup any incognito threads we just switched AWAY from
+        Object.keys(threads).forEach(id => {
+            if (id.startsWith('incognito-') && id !== threadId) {
+                delete threads[id];
+                delete threadMessages[id];
+                const el = document.querySelector(`.thread-item[data-thread-id="${id}"]`);
+                if (el) el.remove();
+            }
+        });
     }
 }
 
@@ -780,6 +844,7 @@ function renderThreadList() {
         // Set ID and Active State
         threadItem.dataset.threadId = thread.id;
         if (thread.id === currentThreadId) threadItem.classList.add('active');
+        if (thread.is_incognito) threadItem.classList.add('incognito-thread');
 
         // Populate Data
         const titleEl = clone.querySelector('.thread-title');
@@ -1176,7 +1241,8 @@ async function sendMessage() {
                 context_window: ctxWin,
                 memory_mode: memMode,
                 internet_search: internetSearch
-            }
+            },
+            is_incognito: threads[messageThreadId]?.is_incognito || false
         };
 
         if (attachedFiles) {

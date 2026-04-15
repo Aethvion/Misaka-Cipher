@@ -340,3 +340,68 @@
     0%, 100% { opacity: 1; }
     50%       { opacity: 0; }
 }
+
+/* Incognito Button */
+.incognito-thread-button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    font-size: 1.1rem;
+}
+
+.incognito-thread-button:hover {
+    background: rgba(139, 92, 246, 0.1);
+    color: #a78bfa; /* Violet 400 */
+    border-color: rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+    transform: translateY(-1px);
+}
+
+.incognito-thread-button.active {
+    background: #8b5cf6;
+    color: white;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+}
+
+/* Incognito Chat Flare */
+.incognito-active #active-thread-title {
+    color: #a78bfa;
+}
+
+.incognito-active #active-thread-title::after {
+    content: ' (Incognito)';
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-left: 8px;
+    font-weight: 400;
+}
+
+.incognito-active .column-header {
+    border-bottom: 2px solid rgba(139, 92, 246, 0.3) !important;
+}
+
+.incognito-thread .thread-title::before {
+    content: '\f21b'; /* fa-user-secret */
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    margin-right: 8px;
+    color: #a78bfa;
+    font-size: 0.85rem;
+}
+
+.incognito-thread {
+    border-left: 2px solid #8b5cf6 !important;
+}
+
+.incognito-thread.active {
+    background: rgba(139, 92, 246, 0.15) !important;
+}

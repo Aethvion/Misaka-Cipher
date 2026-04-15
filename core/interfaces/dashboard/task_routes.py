@@ -31,6 +31,7 @@ class TaskSubmitRequest(BaseModel):
     settings: Optional[Dict[str, Any]] = None
     workspace_id: Optional[str] = None       # Agent workspace ID (Agents tab)
     agent_thread_id: Optional[str] = None    # Agent thread ID (Agents tab)
+    is_incognito: Optional[bool] = False
 
 
 class ThreadSettingsRequest(BaseModel):
@@ -79,6 +80,7 @@ async def submit_task(request: TaskSubmitRequest):
             settings=request.settings,
             workspace_id=request.workspace_id,
             agent_thread_id=request.agent_thread_id,
+            is_incognito=request.is_incognito,
         )
         
         return TaskResponse(
@@ -157,7 +159,7 @@ async def list_threads():
         for thread in list(task_manager.threads.values()):
             try:
                 thread_id = getattr(thread, 'id', '') or ''
-                if thread_id.startswith('agents-') or thread_id.startswith('explained-'):
+                if thread_id.startswith('agents-') or thread_id.startswith('explained-') or thread_id.startswith('incognito-') or (hasattr(thread, 'metadata') and thread.metadata.get('is_incognito')):
                     continue
                 
                 thread_data = thread.to_dict()

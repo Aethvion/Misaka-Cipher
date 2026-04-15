@@ -630,7 +630,7 @@ class TaskQueueManager:
                     mode: Optional[str] = None, settings: Optional[Dict[str, Any]] = None,
                     task_type: Optional[str] = None, channel_id: Optional[str] = None,
                     workspace_id: Optional[str] = None, agent_thread_id: Optional[str] = None,
-                    storage_root: Optional[str] = None) -> str:
+                    storage_root: Optional[str] = None, is_incognito: bool = False) -> str:
         """
         Submit a task to the queue.
         
@@ -644,6 +644,7 @@ class TaskQueueManager:
             settings: Optional explicit thread settings (context_mode, etc)
             task_type: Optional specialized task type (e.g. 'DISCORD_SEND')
             channel_id: Optional channel ID for output tasks
+            is_incognito: If True, do not persist task or thread to disk
             
         Returns:
             Task ID
@@ -667,6 +668,8 @@ class TaskQueueManager:
                 title=thread_title if thread_title else f"Thread {thread_id}",
                 created_at=datetime.now(timezone.utc)
             )
+            if is_incognito:
+                 self.threads[thread_id].metadata['is_incognito'] = True
         else:
             # Update title if provided and meaningful (not just default)
             if thread_title and thread_title != f"Thread {thread_id}":
@@ -706,6 +709,9 @@ class TaskQueueManager:
             task.metadata['agent_thread_id'] = agent_thread_id
         if storage_root:
             task.metadata['storage_root'] = storage_root
+        
+        if is_incognito:
+            task.metadata['is_incognito'] = True
 
         # ── Inject folder context into task metadata ───────────────────────
         # Workers read context from metadata so they don't need a live folders ref.
@@ -726,16 +732,15 @@ class TaskQueueManager:
                         task.metadata.setdefault('settings', {})[_k] = _v
         # ── End folder context injection ───────────────────────────────────
 
-        # Save thread state
-        self._save_thread(thread_id)
-        
-        # Save task state
-        self._save_task(task)
+        # Save state ONLY if not incognito
+        if not is_incognito:
+            self._save_thread(thread_id)
+            self._save_task(task)
         
         # Add to queue ONLY if it's not a specialized persistent worker task
         if task_type != 'DISCORD_SEND':
             await self.queue.put(task)
-            logger.info(f"Task {task.id} submitted to queue (thread: {thread_id}, mode: {task.metadata['mode']}, model: {model_id})")
+            logger.info(f"Task {task.id} submitted to queue (thread: {thread_id}, mode: {task.metadata['mode']}, model: {model_id}, incognito: {is_incognito})")
         else:
             logger.info(f"Task {task.id} (DISCORD_SEND) registered for DiscordWorker polling")
         
@@ -918,6 +923,8 @@ class TaskQueueManager:
             
         try:
             thread = self.threads[thread_id]
+            if thread.metadata.get('is_incognito'):
+                return
             
             # Create thread-specific workspace directory
             thread_dir = self.workspaces_dir / thread.id
@@ -936,6 +943,8 @@ class TaskQueueManager:
 
     def _save_task(self, task: Task):
         """Save task state to disk."""
+        if task.metadata.get('is_incognito'):
+            return
         try:
             # Task goes into its thread's workspace/tasks/ directory
             thread_dir = self.workspaces_dir / task.thread_id
