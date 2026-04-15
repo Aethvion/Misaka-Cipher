@@ -59,8 +59,6 @@ def get_free_port():
         return s.getsockname()[1]
 
 async def get_or_start_worker(model: str):
-    global _WORKER_PROCESS, _WORKER_PORT
-    
     """Start the 3D model worker if not running."""
     if model in _WORKER_PROCESS and _WORKER_PROCESS[model].poll() is None:
         return _WORKER_PORT[model], None
@@ -583,7 +581,7 @@ if repo_path not in sys.path:
 try:
     # Verify path exists
     if not os.path.exists(os.path.join(repo_path, "trellis")):
-        print(f"CRITICAL: Trellis package not found at {repo_path}/trellis")
+        print(f"CRITICAL: Trellis package not found at {{repo_path}}/trellis")
         
     from trellis.pipelines import TrellisImageTo3DPipeline
     from trellis.utils import postprocessing_utils
