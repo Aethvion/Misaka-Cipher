@@ -1,5 +1,5 @@
 /**
- * Aethvion Suite — 3D Models View (Unified Foundry v14.2)
+ * Aethvion Suite — 3D Models View (Unified Models View v14.2)
  * 
  * Handles search, filtering, and interaction for 3D generation models.
  */
@@ -35,7 +35,11 @@
             }
 
             if (btnRun) {
-                btnRun.addEventListener('click', () => this.handleRunModel('trellis-2'));
+                btnRun.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.handleRunModel('trellis-2');
+                });
             }
 
             if (btnFix) {
@@ -62,22 +66,22 @@
                 statusText.textContent = '3D Service: Offline';
             }
         },
-        
+
         async checkInstallStatus(modelId) {
             const btnInstall = document.getElementById(`btn-install-full`);
             const btnRun = document.getElementById(`btn-run-trellis`);
             const fixContainer = document.getElementById('trellis-fix-container');
-            
+
             if (!btnInstall || !btnRun) return;
 
             try {
                 const res = await fetch(`/api/3d/install_status/${modelId}?t=${Date.now()}`);
                 if (!res.ok) throw new Error('Status check failed');
-                
+
                 const data = await res.json();
-                
+
                 const isFullyReady = data.installed && data.weights_installed;
-                
+
                 btnInstall.style.display = isFullyReady ? 'none' : 'block';
                 btnRun.style.display = isFullyReady ? 'block' : 'none';
                 if (fixContainer) fixContainer.style.display = isFullyReady ? 'block' : 'none';
@@ -85,7 +89,7 @@
                 if (isFullyReady && modelId === 'trellis-2') {
                     this.startHealthPolling(modelId);
                 }
-                
+
             } catch (e) {
                 console.error(`[View3DModels] Failed to load install status:`, e);
             }
@@ -93,17 +97,17 @@
 
         async handleRepair(modelId) {
             if (!confirm('This will wipe the current engine deployment and re-initialize the environment. Weights will be preserved. Proceed?')) return;
-            
+
             const fixContainer = document.getElementById('trellis-fix-container');
             if (fixContainer) fixContainer.style.display = 'none';
 
             try {
                 // 1. Terminate any zombie workers first
                 await fetch(`/api/3d/stop/${modelId}`, { method: 'POST' });
-                
+
                 // 2. Trigger fresh installation flow
                 await this.handleUnifiedInstall(modelId);
-                
+
                 window.showToast('Repair sequence complete.', 'success');
             } catch (e) {
                 console.error('Repair failed:', e);
@@ -115,7 +119,7 @@
         pollInterval: null,
         startHealthPolling(modelId) {
             if (this.pollInterval) return;
-            
+
             const badge = document.getElementById('trellis-health-badge');
             const statusDot = document.querySelector('.td-status-dot');
             const statusText = document.getElementById('td-engine-status');
@@ -124,7 +128,7 @@
                 try {
                     const res = await fetch(`/api/3d/health/${modelId}`);
                     const data = await res.json();
-                    
+
                     if (!badge) return;
 
                     if (data.status === 'online') {
@@ -142,7 +146,7 @@
                         clearInterval(this.pollInterval);
                         this.pollInterval = null;
 
-                    } else if (data.status === 'launching' || data.status === 'warming') {
+                    } else if (data.status === 'launching') {
                         const vram = data.vram_used > 0
                             ? ` (${data.vram_used.toFixed(1)} / ${data.vram_total.toFixed(1)} GB VRAM)`
                             : '';
@@ -176,7 +180,7 @@
                         if (statusDot) statusDot.style.background = 'gray';
                         if (statusText) statusText.textContent = 'Idle';
                     }
-                } catch (e) {}
+                } catch (e) { }
             };
 
             // Inject pulse animation if not exists
@@ -210,8 +214,8 @@
             if (logElement) logElement.textContent = '[System] Initiating Core Installation...\n';
 
             try {
-                // PHASE 1: Engine & Environment
-                const phase1Success = await this.installEnginePhase(modelId);
+                // PHASE 1: Core Files & Environment
+                const phase1Success = await this.installModelPhase(modelId);
                 if (!phase1Success) return;
 
                 // PHASE 2: Model Weights
@@ -224,14 +228,14 @@
             }
         },
 
-        async installEnginePhase(modelId) {
+        async installModelPhase(modelId) {
             const logElement = document.getElementById('trellis-install-log');
             const bar = document.getElementById('engine-bar');
             const percent = document.getElementById('engine-percent');
             const text = document.getElementById('engine-text');
 
             if (text) text.textContent = '1. Environment & Core Files (Active)';
-            
+
             try {
                 const res = await fetch(`/api/3d/install/${modelId}`, { method: 'POST' });
                 const reader = res.body.getReader();
@@ -253,7 +257,7 @@
                         if (msg.line) {
                             logElement.textContent += msg.line + '\n';
                             logElement.scrollTop = logElement.scrollHeight;
-                            
+
                             // Estimate progress based on major milestones in backend logs
                             if (msg.line.includes('environment')) { bar.style.width = '30%'; percent.textContent = '30%'; }
                             if (msg.line.includes('repository')) { bar.style.width = '50%'; percent.textContent = '50%'; }
@@ -265,7 +269,7 @@
                                 if (text) text.textContent = '1. Environment & Core Files (Ready)';
                                 return true;
                             } else {
-                                throw new Error(msg.error || 'Engine setup failed');
+                                throw new Error(msg.error || 'Model setup failed');
                             }
                         }
                     }
@@ -311,7 +315,7 @@
                                         logElement.textContent += json.line + '\n';
                                     }
                                     logElement.scrollTop = logElement.scrollHeight;
-                                    
+
                                     const matches = json.line.match(/(\d+)%/g);
                                     if (matches && bar && percent) {
                                         const p = matches[matches.length - 1].replace('%', '') + '%';
@@ -324,7 +328,7 @@
                                         if (bar) bar.style.width = '100%';
                                         if (percent) percent.textContent = '100%';
                                         if (text) text.textContent = '2. HuggingFace Model Weights (Ready)';
-                                        
+
                                         setTimeout(() => {
                                             document.getElementById('trellis-install-progress-container').style.display = 'none';
                                             document.getElementById('trellis-install-log-container').style.display = 'none';
@@ -335,7 +339,7 @@
                                         throw new Error(json.error || 'Weight download failed');
                                     }
                                 }
-                            } catch (e) {}
+                            } catch (e) { }
                         }
                     }
                 }
@@ -349,7 +353,7 @@
             window.showToast(`Launching ${label}…`, 'info');
 
             try {
-                const res  = await fetch(`/api/3d/launch/${modelId}`);
+                const res = await fetch(`/api/3d/launch/${modelId}`);
                 const data = await res.json();
 
                 if (!data.success) {

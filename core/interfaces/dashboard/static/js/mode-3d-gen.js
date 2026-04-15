@@ -163,7 +163,7 @@
                 });
 
                 if (response.status === 503) {
-                    window.showToast('Trellis 2 (WIP) is currently launching (Loading 12GB VRAM payload). Please wait...', 'info');
+                    window.showToast('Trellis 2 (WIP) is currently launching (Loading 12GB VRAM weights). Please wait...', 'info');
                     return;
                 }
 

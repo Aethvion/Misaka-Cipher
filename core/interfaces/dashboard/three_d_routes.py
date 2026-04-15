@@ -566,16 +566,18 @@ async def install_3d_model(model: str):
             pip_exe = venv_dir / "Scripts" / "pip.exe" if sys.platform == 'win32' else venv_dir / "bin" / "pip"
             
             # Full dependency list from Trellis official setup script
+            # Hardened for RTX 4090 / CUDA 12.4
             core_reqs = [
                 "torch", "torchvision", "easydict", "scipy", "tqdm", 
                 "huggingface_hub[cli]", "hf_transfer", "fastapi", "uvicorn", "httpx", "pillow",
                 "imageio", "imageio-ffmpeg", "opencv-python-headless", "rembg", "onnxruntime-gpu",
                 "trimesh", "open3d", "xatlas", "pyvista", "pymeshfix", "igraph", "transformers", "ninja",
-                "spconv-cu121" 
+                "spconv-cu124" 
             ]
             
+            yield f"data: {json.dumps({'line': 'Installing high-performance CUDA 12.4 core (This may take 3-5m)...'})}\n\n"
             proc_core = await asyncio.create_subprocess_exec(
-                str(pip_exe), "install", *core_reqs,
+                str(pip_exe), "install", *core_reqs, "--index-url", "https://download.pytorch.org/whl/cu124", "--extra-index-url", "https://pypi.org/simple",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
@@ -585,10 +587,10 @@ async def install_3d_model(model: str):
                 if line: yield f"data: {json.dumps({'line': line})}\n\n"
             await proc_core.wait()
 
-            # Install Kaolin from NVIDIA (crucial for avoidance of build errors on Windows)
+            # Install Kaolin with verified compatibility
             yield f"data: {json.dumps({'line': 'Installing NVIDIA Kaolin specialized geometry library...'})}\n\n"
             proc_kaolin = await asyncio.create_subprocess_exec(
-                str(pip_exe), "install", "kaolin", "-f", "https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.1.0_cu121.html",
+                str(pip_exe), "install", "kaolin", "-f", "https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.4.0_cu124.html",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,
                 creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0
@@ -648,7 +650,7 @@ async def install_3d_model(model: str):
                             if s_idx != -1 and e_idx != -1:
                                 patched_code = code[:s_idx] + new_body.strip() + "\n\n    " + code[e_idx:]
                                 loader_file.write_text(patched_code, encoding='utf-8')
-                                yield f"data: {json.dumps({'line': '✓ Neural ignition chamber hardened.'})}\n\n"
+                                yield f"data: {json.dumps({'line': 'Neural environment calibrated.'})}\n\n"
             except Exception as e:
                 yield f"data: {json.dumps({'line': f'Warning: Hardening failed: {e}'})}\n\n"
 

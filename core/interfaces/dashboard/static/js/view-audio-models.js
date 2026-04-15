@@ -119,7 +119,7 @@ const AudioModels = (() => {
         let actions = '';
         if (!installed) {
             actions = `<button class="hub-action-btn" onclick="AudioModels.install('${m.id}', \`${m.install_packages}\`, this)">
-                <i class="fas fa-download"></i> Install Engine
+                <i class="fas fa-download"></i> Install Model
             </button>`;
         } else if (!loaded) {
             let sizeSelect = '';
