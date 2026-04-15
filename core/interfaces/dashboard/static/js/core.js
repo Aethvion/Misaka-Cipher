@@ -149,8 +149,18 @@ function initKeyboardShortcuts() {
                 e.preventDefault();
                 const nav = document.getElementById('sidebar-nav');
                 if (nav) {
-                    const collapsed = nav.classList.toggle('collapsed');
-                    if (typeof prefs !== 'undefined') prefs.set('sidebar_collapsed', collapsed);
+                    if (nav.classList.contains('hidden')) {
+                        nav.classList.remove('hidden');
+                        const hideBtn = document.getElementById('sidebar-hide-toggle');
+                        if (hideBtn) {
+                            hideBtn.innerHTML = '<i class="fas fa-angles-left"></i>';
+                            hideBtn.title = 'Hide Sidebar';
+                        }
+                        savePreference('sidebar_hidden', false);
+                    } else {
+                        const collapsed = nav.classList.toggle('collapsed');
+                        if (typeof savePreference === 'function') savePreference('sidebar_collapsed', collapsed);
+                    }
                 }
                 return;
             }
@@ -313,9 +323,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Restore sidebar state
             const sidebarCollapsed = prefs.get('sidebar_collapsed', false);
-            if (sidebarCollapsed === true || sidebarCollapsed === 'true') {
-                const sidebarNav = document.getElementById('sidebar-nav');
-                if (sidebarNav) sidebarNav.classList.add('collapsed');
+            const sidebarHidden = prefs.get('sidebar_hidden', false);
+            const sidebarNav = document.getElementById('sidebar-nav');
+            if (sidebarNav) {
+                if (sidebarCollapsed === true || sidebarCollapsed === 'true') {
+                    sidebarNav.classList.add('collapsed');
+                }
+                if (sidebarHidden === true || sidebarHidden === 'true') {
+                    sidebarNav.classList.add('hidden');
+                    const hideBtn = document.getElementById('sidebar-hide-toggle');
+                    if (hideBtn) {
+                        hideBtn.innerHTML = '<i class="fas fa-angles-right"></i>';
+                        hideBtn.title = 'Show Sidebar';
+                    }
+                }
             }
             
             // Restore threads collapsed state
@@ -352,9 +373,22 @@ document.addEventListener('DOMContentLoaded', async () => {
             const sidebarRes = await fetch('/api/preferences/get?key=sidebar_collapsed');
             if (sidebarRes.ok) {
                 const sidebarData = await sidebarRes.json();
-                if (sidebarData.value === true || sidebarData.value === 'true') {
-                    const sidebarNav = document.getElementById('sidebar-nav');
-                    if (sidebarNav) sidebarNav.classList.add('collapsed');
+                const sidebarNav = document.getElementById('sidebar-nav');
+                if (sidebarNav && (sidebarData.value === true || sidebarData.value === 'true')) {
+                    sidebarNav.classList.add('collapsed');
+                }
+            }
+            const hiddenRes = await fetch('/api/preferences/get?key=sidebar_hidden');
+            if (hiddenRes.ok) {
+                const hiddenData = await hiddenRes.json();
+                const sidebarNav = document.getElementById('sidebar-nav');
+                if (sidebarNav && (hiddenData.value === true || hiddenData.value === 'true')) {
+                    sidebarNav.classList.add('hidden');
+                    const hideBtn = document.getElementById('sidebar-hide-toggle');
+                    if (hideBtn) {
+                        hideBtn.innerHTML = '<i class="fas fa-angles-right"></i>';
+                        hideBtn.title = 'Show Sidebar';
+                    }
                 }
             }
             const threadsRes = await fetch('/api/preferences/get?key=threads_collapsed');
@@ -547,12 +581,40 @@ function initializeUI() {
 
     // Sidebar Toggle
     const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+    const sidebarHideBtn = document.getElementById('sidebar-hide-toggle');
     const sidebarNav = document.getElementById('sidebar-nav');
+
     if (sidebarToggleBtn && sidebarNav) {
         sidebarToggleBtn.addEventListener('click', () => {
+            // If hidden, show it first
+            if (sidebarNav.classList.contains('hidden')) {
+                sidebarNav.classList.remove('hidden');
+                if (sidebarHideBtn) {
+                    sidebarHideBtn.innerHTML = '<i class="fas fa-angles-left"></i>';
+                    sidebarHideBtn.title = 'Hide Sidebar';
+                }
+                savePreference('sidebar_hidden', false);
+            }
+            
             sidebarNav.classList.toggle('collapsed');
             if (typeof savePreference === 'function') {
                 savePreference('sidebar_collapsed', sidebarNav.classList.contains('collapsed'));
+            }
+        });
+    }
+
+    if (sidebarHideBtn && sidebarNav) {
+        sidebarHideBtn.addEventListener('click', () => {
+            const isHidden = sidebarNav.classList.toggle('hidden');
+            if (isHidden) {
+                sidebarHideBtn.innerHTML = '<i class="fas fa-angles-right"></i>';
+                sidebarHideBtn.title = 'Show Sidebar';
+            } else {
+                sidebarHideBtn.innerHTML = '<i class="fas fa-angles-left"></i>';
+                sidebarHideBtn.title = 'Hide Sidebar';
+            }
+            if (typeof savePreference === 'function') {
+                savePreference('sidebar_hidden', isHidden);
             }
         });
     }

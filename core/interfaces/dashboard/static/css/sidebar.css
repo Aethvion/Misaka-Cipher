@@ -124,6 +124,16 @@
     align-items: center;
 }
 
+/* Hidden State */
+.sidebar-nav.hidden {
+    width: 0;
+    padding: 0;
+    margin: 0;
+    border: none;
+    overflow: hidden;
+    pointer-events: none;
+}
+
 /* Main Tab Overrides for Vertical Layout */
 .sidebar-nav .main-tabs {
     flex-direction: column;
