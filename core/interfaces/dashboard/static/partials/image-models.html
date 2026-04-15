@@ -1,51 +1,140 @@
-<div class="panel-header">
-    <div class="header-content">
-        <i class="fas fa-mountain-sun"></i>
-        <h2>Image Models</h2>
-    </div>
-    <p class="header-desc">Manage local image generation models — Stable Diffusion, SDXL, Flux, and more.</p>
-</div>
 
-<div class="im-coming-soon">
-    <div class="im-cs-inner">
-        <i class="fas fa-clock"></i>
-        <h3>Coming Soon</h3>
-        <p>Image model management is on the roadmap. Support for Stable Diffusion, SDXL, Flux, and other local vision models will be available in a future release.</p>
+<div class="hub-container">
+    <!-- ── Premium Header ─────────────────────────────────────────── -->
+    <header class="hub-header">
+        <div class="hub-title-group">
+            <h1>Image Generation Hub</h1>
+            <p>High-fidelity visual synthesis. Generate stunning art and photorealistic imagery locally.</p>
+        </div>
+        <div class="hub-stats">
+            <div class="hub-stat-item">
+                <span class="hub-stat-val" style="color: #fbbf24;"><i class="fas fa-hammer"></i> Preview</span>
+                <span class="hub-stat-label">Feature Status</span>
+            </div>
+            <div class="hub-stat-item">
+                <span class="hub-stat-val">0</span>
+                <span class="hub-stat-label">Active Models</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ── Interactive Toolbar ────────────────────────────────────── -->
+    <div class="hub-toolbar">
+        <div class="hub-search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="image-search-input" class="hub-search-input" 
+                   placeholder="Image generation is currently in development..." disabled>
+        </div>
+        <div class="im-coming-chip">
+            <i class="fas fa-clock"></i> Alpha Roadmap 2024
+        </div>
     </div>
+
+    <!-- ── Information Banner ────────────────────────────────────── -->
+    <div class="im-banner" style="background: rgba(var(--primary-rgb, 99, 179, 237), 0.05); border: 1px solid rgba(var(--primary-rgb, 99, 179, 237), 0.2); padding: 1.5rem; border-radius: 16px; display: flex; gap: 1.5rem; align-items: center;">
+        <div style="font-size: 2rem; color: var(--primary);"><i class="fas fa-microchip"></i></div>
+        <div>
+            <h4 style="margin:0 0 0.25rem 0; color: #fff;">Under Construction</h4>
+            <p style="margin:0; font-size: 0.85rem; color: var(--text-tertiary);">The Aethvion team is currently optimizing the Stable Diffusion and Flux backends for Windows CUDA environments. The models below represent the planned first-class support library.</p>
+        </div>
+    </div>
+
+    <!-- ── Stability AI Section ───────────────────────────────────── -->
+    <section class="hub-provider-section">
+        <div class="hub-provider-hd">
+            <div class="hub-provider-dot" style="--brand-color: #7c3aed;"></div>
+            <h2 class="hub-provider-name">Stability AI</h2>
+        </div>
+        <div class="hub-grid">
+            <!-- SD 1.5 -->
+            <div class="hub-card" style="--brand-color: #7c3aed; opacity: 0.8;">
+                <div class="hub-card-top">
+                    <div class="hub-model-icon"><i class="fas fa-mountain-sun"></i></div>
+                    <span class="hub-status-badge">Roadmap</span>
+                </div>
+                <div class="hub-model-info">
+                    <h3>Stable Diffusion 1.5</h3>
+                    <p>The industry standard for open-source generation. Fast, efficient, and supports thousands of community LoRAs.</p>
+                </div>
+                <div class="hub-tags">
+                    <span class="hub-tag">Fast</span>
+                    <span class="hub-tag">LoRA Support</span>
+                    <span class="hub-tag">4GB VRAM</span>
+                </div>
+                <div class="hub-card-footer">
+                    <div class="hub-meta-info">
+                        <i class="fas fa-weight-hanging"></i> ~2 GB
+                    </div>
+                </div>
+            </div>
+
+            <!-- SDXL -->
+            <div class="hub-card" style="--brand-color: #7c3aed; opacity: 0.8;">
+                <div class="hub-card-top">
+                    <div class="hub-model-icon"><i class="fas fa-expand"></i></div>
+                    <span class="hub-status-badge">Roadmap</span>
+                </div>
+                <div class="hub-model-info">
+                    <h3>SDXL 1.0</h3>
+                    <p>Native 1024px generation with a dual-encoder system. Superior composition and photorealism compared to v1.5.</p>
+                </div>
+                <div class="hub-tags">
+                    <span class="hub-tag">High Res</span>
+                    <span class="hub-tag">Base + Refiner</span>
+                    <span class="hub-tag">8GB VRAM</span>
+                </div>
+                <div class="hub-card-footer">
+                    <div class="hub-meta-info">
+                        <i class="fas fa-weight-hanging"></i> ~6.5 GB
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Black Forest Labs Section ─────────────────────────────── -->
+    <section class="hub-provider-section">
+        <div class="hub-provider-hd">
+            <div class="hub-provider-dot" style="--brand-color: #06b6d4;"></div>
+            <h2 class="hub-provider-name">Black Forest Labs</h2>
+        </div>
+        <div class="hub-grid">
+            <!-- Flux Schnell -->
+            <div class="hub-card" style="--brand-color: #06b6d4; border-color: rgba(6, 182, 212, 0.3);">
+                <div class="hub-card-top">
+                    <div class="hub-model-icon"><i class="fas fa-bolt-lightning"></i></div>
+                    <span class="hub-status-badge" style="color:#06b6d4; border-color:#06b6d4;">Priority Support</span>
+                </div>
+                <div class="hub-model-info">
+                    <h3>Flux.1 Schnell</h3>
+                    <p>State-of-the-art prompt adherence. Generates incredible quality in just 4 steps. The current 3D generation backbone.</p>
+                </div>
+                <div class="hub-tags">
+                    <span class="hub-tag">SOTA</span>
+                    <span class="hub-tag">4-Step</span>
+                    <span class="hub-tag">12GB VRAM</span>
+                </div>
+                <div class="hub-card-footer">
+                    <div class="hub-meta-info">
+                        <i class="fas fa-weight-hanging"></i> ~23 GB (FP8)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 </div>
 
 <style>
-.im-coming-soon {
+.im-coming-chip {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #fbbf24;
+    background: rgba(251, 191, 36, 0.1);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
     display: flex;
-    justify-content: center;
     align-items: center;
-    padding: 4rem 2rem;
-    min-height: 360px;
-}
-
-.im-cs-inner {
-    text-align: center;
-    max-width: 420px;
-}
-
-.im-cs-inner i {
-    font-size: 2.5rem;
-    color: var(--text-tertiary);
-    margin-bottom: 1.25rem;
-    display: block;
-}
-
-.im-cs-inner h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin: 0 0 0.75rem 0;
-}
-
-.im-cs-inner p {
-    font-size: 0.85rem;
-    color: var(--text-tertiary);
-    line-height: 1.65;
-    margin: 0;
+    gap: 0.5rem;
 }
 </style>

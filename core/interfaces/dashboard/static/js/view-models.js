@@ -12,13 +12,34 @@ const LocalModels = {
     _systemSpecs: null,
     _infoCache: {},
 
+    // ── Provider brand metadata ───────────────────────────────────────────────
+    _PROVIDER_BRANDS: {
+        Google:    { accent: '#4285f4', bg: 'rgba(66,133,244,0.08)',   icon: 'fab fa-google',   desc: 'Gemma series — Google\'s efficient open models for local inference' },
+        Meta:      { accent: '#0082fb', bg: 'rgba(0,130,251,0.08)',    icon: 'fas fa-infinity',  desc: 'Llama series — Meta\'s open-weight foundation models' },
+        Microsoft: { accent: '#00a4ef', bg: 'rgba(0,164,239,0.08)',    icon: 'fab fa-windows',  desc: 'Phi series — small but highly capable language models' },
+        Alibaba:   { accent: '#ff6a00', bg: 'rgba(255,106,0,0.08)',    icon: 'fas fa-cloud',    desc: 'Qwen series — multilingual models from Alibaba Cloud' },
+        DeepSeek:  { accent: '#1a56db', bg: 'rgba(26,86,219,0.08)',    icon: 'fas fa-water',    desc: 'DeepSeek — advanced reasoning and code-focused models' },
+        NVIDIA:    { accent: '#76b900', bg: 'rgba(118,185,0,0.08)',    icon: 'fas fa-bolt',     desc: 'NVIDIA — models optimised for local GPU inference' },
+        Mistral:   { accent: '#f97316', bg: 'rgba(249,115,22,0.08)',   icon: 'fas fa-wind',     desc: 'Mistral AI — efficient open models from Europe' },
+        Other:     { accent: '#6366f1', bg: 'rgba(99,102,241,0.08)',   icon: 'fas fa-cube',     desc: 'Additional models available for local inference' },
+    },
+
+    _getProviderFromTags(tags) {
+        if (!tags || !tags.length) return 'Other';
+        const priority = ['DeepSeek', 'Meta', 'Microsoft', 'Alibaba', 'Mistral', 'Google', 'NVIDIA'];
+        for (const p of priority) {
+            if (tags.some(t => t.toLowerCase() === p.toLowerCase())) return p;
+        }
+        return 'Other';
+    },
+
     init() {
         console.log("[LocalModels] Initializing...");
         this.addEventListeners();
         this.initFilters();
         
         const isAlreadyOnTab = typeof currentMainTab !== 'undefined' && currentMainTab === 'local-models';
-        const isPanelInDom = !!document.getElementById('models-filter-panel');
+        const isPanelInDom = !!document.getElementById('suggested-models-grid');
 
         if (isAlreadyOnTab || isPanelInDom) {
             console.log("[LocalModels] UI detected, loading data...");
@@ -112,17 +133,16 @@ const LocalModels = {
 
         } catch (e) {
             console.error("Failed to load local models:", e);
-            const tbody = document.getElementById('local-models-list');
-            if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="4" style="padding:0;border:none;"><div class="ae-empty"><div class="ae-empty-icon error"><i class="fas fa-triangle-exclamation"></i></div><div class="ae-empty-title">Failed to load models</div><div class="ae-empty-desc">Check your connection and try again.</div><button class="action-btn primary ae-empty-action" onclick="LocalModels.loadModels()"><i class="fas fa-rotate-right"></i> Retry</button></div>
-                </td></tr>`;
+            const container = document.getElementById('local-models-list');
+            if (container) {
+                container.innerHTML = `<div class="ae-empty" style="grid-column:1/-1;"><div class="ae-empty-icon error"><i class="fas fa-triangle-exclamation"></i></div><div class="ae-empty-title">Failed to load models</div><div class="ae-empty-desc">Check your connection and try again.</div><button class="action-btn primary ae-empty-action" onclick="LocalModels.loadModels()"><i class="fas fa-rotate-right"></i> Retry</button></div>`;
             }
         }
     },
 
     renderModels() {
-        const tbody = document.getElementById('local-models-list');
-        if (!tbody) return;
+        const container = document.getElementById('local-models-list');
+        if (!container) return;
 
         let entries = Object.entries(this._models).map(([filename, info]) => {
             return {
@@ -181,7 +201,7 @@ const LocalModels = {
         });
 
         if (entries.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" style="padding:0;border:none;"><div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-microchip"></i></div><div class="ae-empty-title">No models match filters</div><div class="ae-empty-desc">Try adjusting your filter criteria.</div></div></td></tr>`;
+            container.innerHTML = `<div class="ae-empty" style="grid-column:1/-1;"><div class="ae-empty-icon"><i class="fas fa-microchip"></i></div><div class="ae-empty-title">No models downloaded yet</div><div class="ae-empty-desc">Install a model from the catalogue above, or download from Hugging Face below.</div></div>`;
             return;
         }
 
@@ -190,7 +210,7 @@ const LocalModels = {
         if (this._filters.group === 'none') {
             html = entries.map(m => this._buildModelRow(m)).join('');
         } else {
-            const groupKey = this._filters.group; // Usually 'arch'
+            const groupKey = this._filters.group;
             const groups = {};
             entries.forEach(m => {
                 const val = m[groupKey] || 'Other';
@@ -199,56 +219,59 @@ const LocalModels = {
             });
 
             Object.keys(groups).sort().forEach(groupName => {
-                html += `<tr class="group-header-v12"><td colspan="4"><i class="fas fa-folder-open"></i> ${groupName} <span style="font-size:0.75rem; font-weight:400; opacity:0.6; margin-left:0.5rem;">(${groups[groupName].length} models)</span></td></tr>`;
+                html += `<div class="lm-dl-group-hd" style="grid-column:1/-1;"><i class="fas fa-folder-open"></i> ${groupName} <span>(${groups[groupName].length} models)</span></div>`;
                 html += groups[groupName].map(m => this._buildModelRow(m)).join('');
             });
         }
 
-        tbody.innerHTML = html;
+        container.innerHTML = html;
 
-        // Re-add events
-        tbody.querySelectorAll('.delete-model-btn').forEach(btn => {
+        // Re-attach delete events
+        container.querySelectorAll('.delete-model-btn').forEach(btn => {
             btn.onclick = () => this.deleteModel(btn.dataset.filename);
         });
     },
 
     _buildModelRow(m) {
-        // Build arena stats line
         const arena = this._arenaData[m.filename];
         let arenaHtml = '';
         if (arena && arena.battles > 0) {
             const winRate = Math.round((arena.wins / arena.battles) * 100);
-            const avgScore = arena.scores_count > 0 ? (arena.scores_total / arena.scores_count).toFixed(1) : null;
-            const avgSpeed = (arena.total_time_ms / arena.battles / 1000).toFixed(1);
-            arenaHtml = `
-                <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.3rem;">
-                    <span style="font-size:0.65rem; color:var(--text-tertiary); background:rgba(255,255,255,0.04); border-radius:4px; padding:1px 6px;">${arena.battles} battles</span>
-                    <span style="font-size:0.65rem; color:var(--primary); opacity:0.8; background:rgba(99,102,241,0.08); border-radius:4px; padding:1px 6px;">${winRate}% wins</span>
-                    ${avgScore ? `<span style="font-size:0.65rem; color:#fdcb6e; opacity:0.85; background:rgba(253,203,110,0.08); border-radius:4px; padding:1px 6px;">⭐ ${avgScore}</span>` : ''}
-                    <span style="font-size:0.65rem; color:var(--text-tertiary); background:rgba(255,255,255,0.04); border-radius:4px; padding:1px 6px;">${avgSpeed}s avg</span>
-                </div>`;
+            arenaHtml = `<span class="hub-tag" style="background:rgba(99,102,241,0.1); color:#818cf8;">${winRate}% Arena Winrate</span>`;
         }
 
         return `
-            <tr class="faded-in-row">
-                <td style="font-weight: 600; color: #fff;">
-                    <div style="display:flex; flex-direction:column;">
-                        <span>${m.filename}</span>
-                        <span style="font-size:0.7rem; font-weight:400; color:var(--text-tertiary);">${m.arch} ${m.bsize ? `• ${m.bsize}B` : ''}</span>
-                        ${arenaHtml}
-                    </div>
-                </td>
-                <td style="color: var(--text-secondary);">${m.size_mb} MB</td>
-                <td>
-                    <span class="status-badge success-v12"><i class="fas fa-check-circle"></i> Ready</span>
-                </td>
-                <td style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center;">
-                    <button class="btn-icon sm-btn delete-model-btn" data-filename="${m.filename}" title="Delete Model" style="color: rgba(255, 118, 117, 0.8);">
+        <div class="hub-card faded-in-row">
+            <div class="hub-card-top">
+                <div class="hub-model-icon"><i class="fas fa-file-code"></i></div>
+                <div style="display:flex; gap:0.4rem;">
+                    <span class="hub-status-badge installed">Ready</span>
+                    <button class="hub-dl-del delete-model-btn" data-filename="${m.filename}" 
+                            style="background:none; border:none; color:var(--text-tertiary); cursor:pointer;">
                         <i class="fas fa-trash"></i>
                     </button>
-                </td>
-            </tr>
-        `;
+                </div>
+            </div>
+            
+            <div class="hub-model-info">
+                <h3 style="font-family:'Fira Code', monospace; font-size:0.8rem; word-break:break-all;">${m.filename}</h3>
+                <p>${m.arch} Architecture · ${(m.size_mb/1024).toFixed(1)} GB</p>
+            </div>
+
+            <div class="hub-tags">
+                <span class="hub-tag">${m.bsize ? `${m.bsize}B Parameters` : 'Unknown Size'}</span>
+                ${arenaHtml}
+            </div>
+
+            <div class="hub-card-footer">
+                <div class="hub-meta-info">
+                   <i class="fas fa-check-double" style="color:#4ade80;"></i> Optimized & Verified
+                </div>
+                <button class="hub-action-btn secondary" onclick="switchMainTab('chat')">
+                    <i class="fas fa-comment"></i> Chat
+                </button>
+            </div>
+        </div>`;
     },
 
     async loadSuggestedModels() {
@@ -281,7 +304,8 @@ const LocalModels = {
                 bsize,
                 creator: m.repo.split('/')[0],
                 arch: this._getArch(m.name || m.repo),
-                company: this._getCompany(m.name || m.repo)
+                company: this._getCompany(m.name || m.repo),
+                provider: this._getProviderFromTags(m.tags),
             };
         });
 
@@ -291,23 +315,25 @@ const LocalModels = {
                 const inTitle = model.name.toLowerCase().includes(this._filters.search);
                 const inRepo  = model.repo.toLowerCase().includes(this._filters.search);
                 const inDesc  = (model.description || '').toLowerCase().includes(this._filters.search);
-                if (!inTitle && !inRepo && !inDesc) return false;
+                const inTags  = (model.tags || []).some(t => t.toLowerCase().includes(this._filters.search));
+                if (!inTitle && !inRepo && !inDesc && !inTags) return false;
             }
             return true;
         });
 
-        // Sort
+        // Sort within each provider section
         filtered.sort((a, b) => {
             let res = 0;
             switch (this._filters.sort) {
                 case 'name-asc':   res = a.name.localeCompare(b.name); break;
                 case 'name-desc':  res = b.name.localeCompare(a.name); break;
                 case 'size-asc':
-                case 'size-desc':
+                case 'size-desc': {
                     const sA = parseFloat(a.size) || 0;
                     const sB = parseFloat(b.size) || 0;
                     res = this._filters.sort.endsWith('asc') ? sA - sB : sB - sA;
                     break;
+                }
                 case 'params-asc': res = a.bsize - b.bsize; break;
                 case 'params-desc':res = b.bsize - a.bsize; break;
             }
@@ -315,68 +341,73 @@ const LocalModels = {
         });
 
         if (filtered.length === 0) {
-            grid.innerHTML = `<div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-filter"></i></div><div class="ae-empty-title">No suggestions match filters</div><div class="ae-empty-desc">Try adjusting or clearing your filter.</div></div>`;
+            grid.innerHTML = `<div class="ae-empty"><div class="ae-empty-icon"><i class="fas fa-filter"></i></div><div class="ae-empty-title">No models match your search</div><div class="ae-empty-desc">Try adjusting or clearing your filter.</div></div>`;
             return;
         }
 
-        let html = '';
-        if (this._filters.group === 'none') {
-            html = filtered.map(m => this._buildSuggestedCard(m)).join('');
-        } else {
-            const groupKey = this._filters.group; // Usually 'arch'
-            const groups = {};
-            filtered.forEach(m => {
-                const val = m[groupKey] || 'Other';
-                if (!groups[val]) groups[val] = [];
-                groups[val].push(m);
-            });
+        // Group by provider in a fixed display order
+        const providerOrder = ['Google', 'Meta', 'Microsoft', 'Alibaba', 'DeepSeek', 'NVIDIA', 'Mistral', 'Other'];
+        const groups = {};
+        filtered.forEach(m => {
+            const prov = m.provider || 'Other';
+            if (!groups[prov]) groups[prov] = [];
+            groups[prov].push(m);
+        });
 
-            Object.keys(groups).sort().forEach(groupName => {
-                html += `<div class="group-section-v12" style="grid-column: 1 / -1;">
-                            <h3 class="group-title-v12"><i class="fas fa-folder-open"></i> ${groupName} <span>(${groups[groupName].length})</span></h3>
-                            <div class="group-grid-container-v12">
-                                ${groups[groupName].map(m => this._buildSuggestedCard(m)).join('')}
-                            </div>
-                         </div>`;
-            });
-        }
+        let html = '';
+        providerOrder.forEach(provName => {
+            const models = groups[provName];
+            if (!models || models.length === 0) return;
+            const brand = this._PROVIDER_BRANDS[provName] || this._PROVIDER_BRANDS.Other;
+            html += `
+            <div class="hub-provider-section">
+                <div class="hub-provider-hd">
+                    <div class="hub-provider-dot" style="--brand-color: ${brand.accent};"></div>
+                    <h2 class="hub-provider-name">${provName}</h2>
+                </div>
+                <div class="hub-grid">
+                    ${models.map(m => this._buildSuggestedCard(m)).join('')}
+                </div>
+            </div>`;
+        });
 
         grid.innerHTML = html;
     },
 
     _buildSuggestedCard(model) {
         const isUnsupported = !!model.unsupported;
-        const actionHtml = isUnsupported
-            ? `<span title="${model.unsupported_reason || 'Not supported'}" style="font-size:0.75rem; color:#ff7675; display:flex; align-items:center; gap:0.3rem; cursor:help;">
-                    <i class="fas fa-triangle-exclamation"></i> Not yet compatible
-                </span>`
-            : `<button class="action-btn sm-btn install-btn"
-                        onclick="LocalModels.installSuggestedModel('${model.id}', '${model.repo}', '${model.filename}')">
-                    <i class="fas fa-download"></i> Install
-                </button>`;
+        const compatBadge   = this._getCompatBadge(model);
+        const brand = this._PROVIDER_BRANDS[model.provider] || this._PROVIDER_BRANDS.Other;
 
-        const compatBadge = this._getCompatBadge(model);
+        const actionHtml = isUnsupported
+            ? `<span class="hub-status-badge">Incompatible</span>`
+            : `<button class="hub-action-btn install-btn"
+                       onclick="LocalModels.installSuggestedModel('${model.id}', '${model.repo}', '${model.filename}')">
+                   <i class="fas fa-download"></i> Install
+               </button>`;
 
         return `
-        <div class="suggestion-card-v12 faded-in-card" id="suggested-${model.id}" style="${isUnsupported ? 'opacity: 0.6;' : ''}">
-            <div style="display: flex; justify-content: space-between; align-items: start;">
-                <h4>${model.name}</h4>
-                <div style="display:flex; align-items:center; gap:0.5rem;">
-                    <button class="sug-info-btn" onclick="LocalModels.toggleModelInfo('${model.id}', this)" title="Ask AI if this model is compatible with your PC">
-                        <i class="fas fa-circle-question"></i> Info
-                    </button>
-                    <span class="installed-badge" style="display: none; background: var(--success); color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.5px;">INSTALLED</span>
+        <div class="hub-card suggestion-card-v12 faded-in-card" id="suggested-${model.id}" 
+             style="--brand-color: ${brand.accent}; ${isUnsupported ? 'opacity:0.6;' : ''}">
+            <div class="hub-card-top">
+                <div class="hub-model-icon"><i class="${brand.icon}"></i></div>
+                <span class="hub-status-badge installed-badge" style="display:none;">Owned</span>
+            </div>
+            
+            <div class="hub-model-info">
+                <h3>${model.name}</h3>
+                <p>${model.description}</p>
+            </div>
+
+            <div class="hub-tags">
+                ${(model.tags || []).map(tag => `<span class="hub-tag">${tag}</span>`).join('')}
+            </div>
+
+            <div class="hub-card-footer">
+                <div class="hub-meta-info">
+                   <i class="fas fa-weight-hanging"></i> ${model.size}
+                   ${compatBadge}
                 </div>
-            </div>
-            <p class="description">${model.description}</p>
-            <div class="tag-list">
-                ${model.tags.map(tag => `<span class="tag-v12">${tag}</span>`).join('')}
-            </div>
-            <div class="card-footer-v12">
-                <span class="model-size-badge">
-                    <i class="fas fa-microchip"></i> ${model.size}
-                </span>
-                ${compatBadge}
                 ${actionHtml}
             </div>
             <div class="sug-info-panel" id="sug-info-${model.id}" style="display:none;"></div>
@@ -492,7 +523,7 @@ const LocalModels = {
             const filename = filenameMatch ? filenameMatch[1] : '';
 
             if (installedFiles.includes(filename)) {
-                if (badge) badge.style.display = 'block';
+                if (badge) badge.style.display = 'flex';
                 installBtn.disabled = true;
                 installBtn.innerHTML = '<i class="fas fa-check"></i> Installed';
                 installBtn.classList.add('secondary');

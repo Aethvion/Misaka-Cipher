@@ -91,27 +91,24 @@ const AudioModels = (() => {
         const loaded    = status.loaded    || false;
         const device    = status.device    || '—';
 
+        // Capability badges (compact)
         const capBadges = (m.capabilities || []).map(c =>
-            `<span class="am-cap-badge am-cap-${c}">${c.toUpperCase()}</span>`
-        ).join('');
-
-        const tagBadges = (m.tags || []).map(t =>
-            `<span class="am-tag">${t}</span>`
+            `<span class="hub-tag" style="background:rgba(var(--primary-rgb),0.05); color:var(--primary);">${c.toUpperCase()}</span>`
         ).join('');
 
         // Status pill
-        let statusPill = `<span class="am-status am-status-missing">Not Installed</span>`;
-        if (installed && loaded)   statusPill = `<span class="am-status am-status-loaded">Loaded · ${device}</span>`;
-        else if (installed)        statusPill = `<span class="am-status am-status-installed">Installed</span>`;
+        let statusBadge = `<span class="hub-status-badge">Not Installed</span>`;
+        if (installed && loaded)   statusBadge = `<span class="hub-status-badge loaded">Active · ${device}</span>`;
+        else if (installed)        statusBadge = `<span class="hub-status-badge installed">Ready</span>`;
 
         const isDefault = _defaultModel === m.id;
         const isRegistered = _registered.has(m.id);
 
-        // Register button (shown when installed, regardless of loaded state)
+        // Register button
         const registerBtn = installed
-            ? `<button class="action-btn ${isRegistered ? 'success' : 'secondary'} am-register-btn"
+            ? `<button class="hub-action-btn secondary ${isRegistered ? 'success' : ''}" 
                 onclick="AudioModels.registerToRegistry('${m.id}', this)"
-                title="Add to model registry with TTS/STT capability tags"
+                title="Add to system model registry"
                 ${isRegistered ? 'disabled' : ''}>
                 <i class="fas fa-${isRegistered ? 'check-circle' : 'plus-circle'}"></i>
                 ${isRegistered ? 'Registered' : 'Register'}
@@ -121,55 +118,53 @@ const AudioModels = (() => {
         // Action buttons
         let actions = '';
         if (!installed) {
-            const pkgDisplay = (m.install_packages || '').replace(/"/g, '&quot;');
-            actions = `<button class="action-btn primary am-install-btn" onclick="AudioModels.install('${m.id}', \`${m.install_packages}\`, this)">
-                <i class="fas fa-download"></i> Install
+            actions = `<button class="hub-action-btn" onclick="AudioModels.install('${m.id}', \`${m.install_packages}\`, this)">
+                <i class="fas fa-download"></i> Install Engine
             </button>`;
-            if (m.id === 'xtts-v2') {
-                actions += `<span class="am-fix-hint">Requires numpy&lt;2 — bundled in install</span>`;
-            }
         } else if (!loaded) {
             let sizeSelect = '';
             if (m.model_sizes) {
-                sizeSelect = `<select class="setting-select am-size-select" id="am-size-${m.id}">
-                    ${m.model_sizes.map(s => `<option value="${s.id}" ${s.id === 'medium' ? 'selected' : ''}>${s.label} (${s.vram_gb} GB)</option>`).join('')}
+                sizeSelect = `<select class="lm-filter-select" id="am-size-${m.id}" style="margin-right:0.5rem; height:32px; padding:0 0.5rem; font-size:0.75rem;">
+                    ${m.model_sizes.map(s => `<option value="${s.id}" ${s.id === 'medium' ? 'selected' : ''}>${s.label}</option>`).join('')}
                 </select>`;
             }
-            actions = `${sizeSelect}<button class="action-btn primary" onclick="AudioModels.load('${m.id}', this)">
-                <i class="fas fa-play"></i> Load Model
-            </button>${registerBtn}`;
+            actions = `<div style="display:flex; align-items:center;">${sizeSelect}<button class="hub-action-btn" onclick="AudioModels.load('${m.id}', this)">
+                <i class="fas fa-play"></i> Load
+            </button></div>${registerBtn}`;
         } else {
             actions = `
-                <button class="action-btn secondary" onclick="AudioModels.unload('${m.id}', this)">
-                    <i class="fas fa-stop"></i> Unload
+                <button class="hub-action-btn secondary" onclick="AudioModels.unload('${m.id}', this)">
+                    <i class="fas fa-stop"></i> Stop
                 </button>
-                <button class="action-btn ${isDefault ? 'success' : 'secondary'}" onclick="AudioModels.setDefault('${m.id}', this)" title="Use as default TTS in Misaka Cipher">
-                    <i class="fas fa-${isDefault ? 'star' : 'star'}" style="${isDefault ? 'color:#f59e0b' : 'opacity:0.5'}"></i>
-                    ${isDefault ? 'Default' : 'Set Default'}
+                <button class="hub-action-btn ${isDefault ? '' : 'secondary'}" onclick="AudioModels.setDefault('${m.id}', this)" 
+                        style="${isDefault ? 'background:#f59e0b; color:#000;' : ''}">
+                    <i class="fas fa-star"></i> ${isDefault ? 'Main' : 'Set Main'}
                 </button>
                 ${registerBtn}`;
         }
 
-        // Test section (only when loaded)
         const testSection = loaded ? _testSection(m) : '';
 
-        return `<div class="am-model-card-v12 ${loaded ? 'am-card-loaded-v12' : ''}" id="am-card-${m.id}">
-            <div class="am-card-header">
-                <div class="am-card-title">
-                    <span class="am-model-name">${m.name}</span>
-                    ${m.recommended ? '<span class="am-recommended">★ Recommended</span>' : ''}
-                    ${m.badge ? `<span class="am-new-badge">${m.badge}</span>` : ''}
-                    ${statusPill}
-                </div>
-                <div class="am-caps">${capBadges}</div>
+        return `
+        <div class="hub-card ${loaded ? 'active' : ''}" id="am-card-${m.id}" style="--brand-color: var(--primary);">
+            <div class="hub-card-top">
+                <div class="hub-model-icon"><i class="fas fa-wave-square"></i></div>
+                ${statusBadge}
             </div>
-            <p class="am-model-desc">${m.description}</p>
-            <div class="am-card-meta">
-                <span><i class="fas fa-hdd"></i> ${m.size_label}</span>
-                <span><i class="fas fa-microchip"></i> ${m.vram_gb} GB VRAM</span>
+            
+            <div class="hub-model-info">
+                <h3>${m.name} ${m.recommended ? '⭐' : ''}</h3>
+                <p>${m.description}</p>
             </div>
-            <div class="am-tags">${tagBadges}</div>
-            <div class="am-card-actions">${actions}</div>
+
+            <div class="hub-tags">
+                ${capBadges}
+                <span class="hub-tag"><i class="fas fa-hdd" style="font-size:0.6rem;"></i> ${m.size_label}</span>
+            </div>
+
+            <div class="hub-card-footer" style="flex-wrap: wrap; gap: 0.5rem;">
+                ${actions}
+            </div>
             ${testSection}
         </div>`;
     }
@@ -261,12 +256,18 @@ const AudioModels = (() => {
                 return;
             }
             list.innerHTML = voices.map(v => `
-                <div class="am-voice-card-v12">
-                    <div class="am-voice-name">${v.name}</div>
-                    <div class="am-voice-meta" style="font-weight: 700; color: var(--primary);">${v.language.toUpperCase()} · ${v.gender}</div>
-                    <button class="am-voice-delete" onclick="AudioModels.deleteVoice('${v.id}', this)" title="Delete voice">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <div class="hub-card" style="padding: 1rem; --hub-card-bg: rgba(52, 211, 153, 0.05);">
+                    <div class="hub-card-top" style="margin-bottom: 0.5rem;">
+                        <div class="hub-model-icon" style="width:32px; height:32px; font-size:0.9rem;"><i class="fas fa-microphone"></i></div>
+                        <button class="hub-dl-del" onclick="AudioModels.deleteVoice('${v.id}', this)" title="Delete voice"
+                                style="background:none; border:none; color:var(--text-tertiary); cursor:pointer;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <div class="hub-model-info">
+                        <h3 style="font-size:0.85rem; margin:0;">${v.name}</h3>
+                        <p style="font-size:0.7rem;">${v.language.toUpperCase()} · ${v.gender}</p>
+                    </div>
                 </div>
             `).join('');
         } catch (e) {
