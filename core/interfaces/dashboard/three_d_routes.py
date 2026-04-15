@@ -623,19 +623,33 @@ async def install_3d_model(model: str):
                         fragile_block = 'is_local = os.path.exists'
                         if fragile_block in code:
                             new_body = """
-    # --- Aethvion Windows Path Patch ---
+    # --- Aethvion Windows Path Patch (Directory-Aware) ---
     path_norm = os.path.normpath(path)
-    json_path = f"{path_norm}.json"
-    st_path = f"{path_norm}.safetensors"
-    is_local = os.path.exists(json_path) and os.path.exists(st_path)
+    # Check for directory structure first: path/config.json + path/model.safetensors
+    d_json = os.path.join(path_norm, "config.json")
+    d_st   = os.path.join(path_norm, "model.safetensors")
+    
+    # Check for flat structure: path.json + path.safetensors
+    f_json = f"{path_norm}.json"
+    f_st   = f"{path_norm}.safetensors"
+
+    is_local = False
+    if os.path.isdir(path_norm) and os.path.exists(d_json) and os.path.exists(d_st):
+        is_local = True
+        config_file = d_json
+        model_file = d_st
+    elif os.path.exists(f_json) and os.path.exists(f_st):
+        is_local = True
+        config_file = f_json
+        model_file = f_st
 
     if is_local:
-        config_file = json_path
-        model_file = st_path
+        # proceed with config_file and model_file
+        pass
     else:
         from huggingface_hub import hf_hub_download
         if os.path.isabs(path_norm) or ":\\\\" in path_norm or path_norm.startswith("\\\\\\\\"):
-             raise FileNotFoundError(f"Local model files not found at {path_norm}.json/.safetensors")
+             raise FileNotFoundError(f"Local model files not found at {path_norm}")
         path_parts = path.replace('\\\\', '/').split('/')
         if len(path_parts) < 2:
             raise ValueError(f"Invalid model path or repo_id: {path}")
@@ -765,6 +779,13 @@ _ghost_module("flash_attn_cuda")
 _ghost_module("slat")
 _ghost_module("kaolin")
 _ghost_module("kaolin._C")
+_ghost_module("kaolin.utils")
+_ghost_module("kaolin.utils.testing", {"check_tensor": lambda *a, **k: None})
+_ghost_module("kaolin.ops")
+_ghost_module("kaolin.ops.random")
+_ghost_module("kaolin.ops.batch")
+_ghost_module("kaolin.io")
+_ghost_module("kaolin.io.dataset")
 
 # 2. Patch Transformers logic BEFORE it can run its own imports
 try:
