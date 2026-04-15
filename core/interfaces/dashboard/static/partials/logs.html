@@ -1,28 +1,182 @@
 <div class="panel-header">
-                    <div class="panel-header-left">
-                        <div class="panel-header-icon"><i class="fas fa-scroll"></i></div>
-                        <div class="panel-header-text">
-                            <h2 class="panel-title">System Logs</h2>
-                            <p class="panel-subtitle">Live event stream &amp; terminal output</p>
-                        </div>
-                    </div>
-                </div>
+    <div class="panel-header-left">
+        <div class="panel-header-icon"><i class="fas fa-scroll"></i></div>
+        <div class="panel-header-text">
+            <h2 class="panel-title">System Log Explorer</h2>
+            <p class="panel-subtitle">Dynamic monitoring & forensic analysis of suite backends</p>
+        </div>
+    </div>
+    <div class="panel-header-right">
+        <button id="refresh-logs" class="lm-icon-btn" title="Refresh List">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    </div>
+</div>
 
-                <div class="logs-layout">
-                    <div class="logs-pane">
-                        <div class="logs-pane-header">
-                            <h3>📜 System Logs</h3>
-                        </div>
-                        <div class="logs-container" id="logs-container">
-                            <!-- Logs will stream here via WebSocket -->
-                        </div>
-                    </div>
-                    <div class="logs-pane terminal-pane">
-                        <div class="logs-pane-header">
-                            <h3>⚡ System Terminal</h3>
-                        </div>
-                        <div class="terminal-content" id="terminal-content">
-                            <div class="terminal-line"><span class="term-time">[SYSTEM]</span> Ready.</div>
-                        </div>
-                    </div>
-                </div>
+<style>
+    .logs-layout {
+        display: flex;
+        height: calc(100% - 70px);
+        overflow: hidden;
+        gap: 1.5rem;
+        padding-top: 1rem;
+    }
+
+    /* Selection Sidebar */
+    .logs-sidebar {
+        width: 280px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .logs-sidebar-header {
+        padding: 1rem;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        background: rgba(var(--primary-rgb), 0.05);
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .logs-file-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.5rem;
+    }
+
+    .log-file-item {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 4px;
+        border: 1px solid transparent;
+    }
+
+    .log-file-item:hover {
+        background: rgba(255,255,255,0.05);
+    }
+
+    .log-file-item.active {
+        background: rgba(var(--primary-rgb), 0.1);
+        border-color: rgba(var(--primary-rgb), 0.2);
+    }
+
+    .log-file-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .log-file-name {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        word-break: break-all;
+    }
+
+    .log-file-meta {
+        font-size: 0.7rem;
+        color: var(--text-tertiary);
+    }
+
+    /* Content Area */
+    .logs-viewport {
+        flex: 1;
+        background: rgba(0,0,0,0.2);
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .logs-viewport-header {
+        padding: 0.75rem 1.25rem;
+        background: rgba(255,255,255,0.02);
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .logs-viewport-title {
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: var(--primary);
+    }
+
+    .logs-content {
+        flex: 1;
+        padding: 1rem;
+        overflow: auto;
+        font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        color: #d1d5db;
+        white-space: pre-wrap;
+        background: #0d1117;
+    }
+
+    .log-empty-state {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-tertiary);
+        gap: 1rem;
+        text-align: center;
+        opacity: 0.5;
+    }
+
+    .log-empty-state i {
+        font-size: 3rem;
+    }
+
+</style>
+
+<div class="logs-layout">
+    <!-- Log Sidebar (File List) -->
+    <div class="logs-sidebar">
+        <div class="logs-sidebar-header">
+            <i class="fas fa-folder-open"></i> system
+        </div>
+        <div id="log-file-list" class="logs-file-list">
+            <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+        </div>
+    </div>
+
+    <!-- Log Viewer -->
+    <div class="logs-viewport">
+        <div id="log-viewer-header" class="logs-viewport-header" style="display:none;">
+            <div id="active-log-title" class="logs-viewport-title">Select a log file...</div>
+            <div class="log-actions">
+                <button id="download-log" class="lm-icon-btn" title="Download Log" style="padding:4px 8px; font-size:0.8rem;">
+                    <i class="fas fa-download"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div id="log-content-area" class="logs-content">
+            <!-- Log content loads here -->
+        </div>
+
+        <div id="log-empty-overlay" class="log-empty-state">
+            <i class="fas fa-terminal"></i>
+            <div>Select a log file from the sidebar to begin analysis.</div>
+        </div>
+    </div>
+</div>

@@ -132,24 +132,47 @@
                         badge.style.borderColor = 'rgba(74, 222, 128, 0.4)';
                         badge.style.color = '#4ade80';
                         badge.style.animation = 'none';
+                        badge.classList.remove('pulse-amber');
                         badge.style.boxShadow = '0 0 10px rgba(74, 222, 128, 0.2)';
-                        
+
                         if (statusDot) statusDot.style.background = '#4ade80';
                         if (statusText) statusText.textContent = 'Running';
-                    } else if (data.status === 'warming') {
-                        badge.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:#fb923c;"></i> Launching (Loading VRAM...)';
+
+                        // Stop polling once we're online
+                        clearInterval(this.pollInterval);
+                        this.pollInterval = null;
+
+                    } else if (data.status === 'launching' || data.status === 'warming') {
+                        const vram = data.vram_used > 0
+                            ? ` (${data.vram_used.toFixed(1)} / ${data.vram_total.toFixed(1)} GB VRAM)`
+                            : '';
+                        badge.innerHTML = `<i class="fas fa-spinner fa-spin" style="color:#fb923c;"></i> Loading VRAM…${vram}`;
                         badge.style.borderColor = 'rgba(251, 146, 60, 0.4)';
                         badge.style.color = '#fb923c';
                         badge.classList.add('pulse-amber');
-                        
+
                         if (statusDot) statusDot.style.background = '#fb923c';
                         if (statusText) statusText.textContent = 'Launching';
+
+                    } else if (data.status === 'failed') {
+                        badge.innerHTML = '<i class="fas fa-exclamation-triangle" style="color:#f87171;"></i> Load failed — check worker.log';
+                        badge.style.borderColor = 'rgba(248, 113, 113, 0.4)';
+                        badge.style.color = '#f87171';
+                        badge.classList.remove('pulse-amber');
+
+                        if (statusDot) statusDot.style.background = '#f87171';
+                        if (statusText) statusText.textContent = 'Failed';
+
+                        // Stop polling on failure
+                        clearInterval(this.pollInterval);
+                        this.pollInterval = null;
+
                     } else {
                         badge.innerHTML = '<i class="fas fa-power-off"></i> Offline';
                         badge.style.borderColor = 'rgba(255,255,255,0.1)';
                         badge.style.color = 'var(--text-tertiary)';
                         badge.classList.remove('pulse-amber');
-                        
+
                         if (statusDot) statusDot.style.background = 'gray';
                         if (statusText) statusText.textContent = 'Idle';
                     }
@@ -321,14 +344,25 @@
             }
         },
 
-        handleRunModel(modelId) {
-            // Trigger background launch
-            fetch(`/api/3d/launch/${modelId}`).catch(() => {});
-            this.startHealthPolling(modelId);
-            window.showToast(`Launching ${modelId == 'trellis-2' ? 'Trellis 2' : modelId}...`, 'info');
-            
-            // Stay on page, do NOT switch tabs automatically
-            // Users can choose when to go to workspace via sidebar or app menu
+        async handleRunModel(modelId) {
+            const label = modelId === 'trellis-2' ? 'Trellis 2' : modelId;
+            window.showToast(`Launching ${label}…`, 'info');
+
+            try {
+                const res  = await fetch(`/api/3d/launch/${modelId}`);
+                const data = await res.json();
+
+                if (!data.success) {
+                    window.showToast(`Launch failed: ${data.error}`, 'error');
+                    return;
+                }
+
+                // Process started — begin polling for model-load progress
+                this.startHealthPolling(modelId);
+
+            } catch (e) {
+                window.showToast(`Could not reach launch endpoint: ${e.message}`, 'error');
+            }
         },
 
         refresh() {

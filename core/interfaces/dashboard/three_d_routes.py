@@ -252,7 +252,7 @@ async def get_3d_engine_status():
         "vram_available": "24GB" # Simulated
     }
 
-from core.utils.paths import LOCAL_MODELS_3D
+from core.utils.paths import LOCAL_MODELS_3D, LOGS_SYSTEM
 
 # --- Installation Logic Simulation ---
 # For actual implementation, this would check if a specific directory exists
@@ -298,32 +298,80 @@ async def stop_worker(model: str):
 
 @router.get("/launch/{model}")
 async def launch_worker(model: str):
-    """Manually trigger worker startup for a specific model."""
-    # This will call get_or_start_worker and initiate the VRAM load
-    port, err = await get_or_start_worker(model)
-    if err:
-        return {"success": False, "error": err}
-    return {"success": True, "port": port}
+    """
+    Start the worker process and return immediately.
+    The model loads in the background — poll /api/3d/health/{model} for status.
+    """
+    # Already running — return its port right away
+    if model in _WORKER_PROCESS and _WORKER_PROCESS[model].poll() is None:
+        return {"success": True, "port": _WORKER_PORT[model], "message": "Already running"}
+
+    worker_dir   = LOCAL_MODELS_3D / model.replace("-", "")
+    venv_python  = (worker_dir / "venv" / "Scripts" / "python.exe"
+                    if os.name == "nt"
+                    else worker_dir / "venv" / "bin" / "python")
+    server_script = worker_dir / "run_server.py"
+
+    if not venv_python.exists():
+        return {"success": False, "error": "Virtual environment not found — reinstall the model."}
+    if not server_script.exists():
+        return {"success": False, "error": "run_server.py missing — reinstall the model."}
+
+    port = get_free_port()
+    logger.info(f"[3D] Starting {model} worker on port {port}…")
+
+    try:
+        LOGS_SYSTEM.mkdir(parents=True, exist_ok=True)
+        log_file_path = LOGS_SYSTEM / f"{model}-worker.log"
+        log_file = open(log_file_path, "w", encoding="utf-8")
+
+        proc = subprocess.Popen(
+            [str(venv_python), str(server_script), str(port)],
+            cwd=str(worker_dir),
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            text=True,
+        )
+        _WORKER_PROCESS[model] = proc
+        _WORKER_PORT[model]    = port
+        logger.info(f"[3D] Worker PID {proc.pid} started — log: {log_file_path}")
+        return {"success": True, "port": port, "pid": proc.pid,
+                "message": "Worker started — loading model into VRAM"}
+    except Exception as e:
+        logger.error(f"[3D] Failed to start worker: {e}")
+        return {"success": False, "error": str(e)}
 
 @router.get("/health/{model}")
 async def get_worker_health(model: str):
     """Check the live health of a specific 3D model worker."""
-    if model not in _WORKER_PROCESS or _WORKER_PROCESS[model].poll() is not None:
+    if model not in _WORKER_PROCESS:
         return {"status": "offline", "message": "Worker not started"}
-        
+
+    proc = _WORKER_PROCESS[model]
+    if proc.poll() is not None:
+        # Process has exited — surface last lines from the log
+        log_path = LOGS_SYSTEM / f"{model}-worker.log"
+        snippet = ""
+        try:
+            text = log_path.read_text(errors="replace")
+            snippet = text[-600:].strip()
+        except Exception:
+            pass
+        return {"status": "failed", "message": "Worker process exited unexpectedly", "error": snippet}
+
     port = _WORKER_PORT.get(model)
     if not port:
-        return {"status": "starting", "message": "Allocating resources..."}
-        
+        return {"status": "launching", "message": "Allocating resources…"}
+
     try:
         async with httpx.AsyncClient() as client:
-            # Short timeout, we want frequent pings
             res = await client.get(f"http://127.0.0.1:{port}/health", timeout=0.8)
             if res.status_code == 200:
                 return res.json()
-            return {"status": "starting", "message": "Initializing server..."}
-    except:
-        return {"status": "starting", "message": "Establishing connection..."}
+            return {"status": "launching", "message": "Initializing server…"}
+    except Exception:
+        return {"status": "launching", "message": "Establishing connection…"}
 
 @router.get("/install_status/{model}")
 async def get_install_status(model: str):
@@ -386,7 +434,7 @@ snapshot_download(
 print('Download complete.')
 """
             temp_script = wrapper_dir / "tmp_download.py"
-            temp_script.write_text(download_script)
+            temp_script.write_text(download_script, encoding='utf-8')
             
             # Use the venv python if possible, or system python
             venv_python = wrapper_dir / "venv" / "Scripts" / "python.exe" if os.name == 'nt' else wrapper_dir / "venv" / "bin" / "python"
@@ -413,7 +461,7 @@ print('Download complete.')
             if temp_script.exists(): os.remove(temp_script)
             
             if proc.returncode == 0:
-                weights_complete_file.write_text(f"Downloaded {datetime.now().isoformat()}")
+                weights_complete_file.write_text(f"Downloaded {datetime.now().isoformat()}", encoding='utf-8')
                 yield f"data: {json.dumps({'line': 'Weight installation verified and complete.', 'done': True, 'success': True})}\n\n"
             else:
                 yield f"data: {json.dumps({'done': True, 'success': False, 'error': f'Download process failed with exit code {proc.returncode}'})}\n\n"
@@ -566,159 +614,237 @@ async def install_3d_model(model: str):
             # 5. Generate the Server Script Wrapper
             yield f"data: {json.dumps({'line': 'Generating FastAPI microservice hook (run_server.py)...'})}\n\n"
             
-            # Use raw string template to avoid f-string escaping nightmare
+            # Raw string template — {MODEL_NAME} and {MODEL_ID} are substituted below.
+            # Keep ALL other curly braces as-is (they are plain Python dict/format syntax).
             server_template = r'''"""
-Aethvion Suite - {MODEL_NAME} Operational Microservice
-High-fidelity 3D generation backend with CUDA acceleration and nvdiffrast bypass.
+Aethvion Suite — {MODEL_NAME} inference server
+===============================================
+Startup sequence
+  1. Pre-populate sys.modules with mocks for kaolin and nvdiffrast BEFORE any
+     trellis import. Python checks sys.modules first, so the real (broken on
+     Windows) native extensions never execute.
+  2. Add the trellis repo to sys.path.
+  3. Import TrellisImageTo3DPipeline.
+  4. On startup, load weights into VRAM in a background thread so /health can
+     respond immediately with "launching" while the model loads.
 """
 import os
 import sys
 import base64
-import torch
-import numpy as np
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Optional
-from unittest.mock import MagicMock
+import traceback
+import threading
+import types
 
-# --- The "Ghost Module" Shim ---
-# Deep dependencies like utils3d import nvdiffrast at top-level. 
-# We use a structured mock to satisfy attribute lookups during startup.
-class MockNvdiffrast:
-    def __init__(self): self.torch = self
-    def __getattr__(self, name): return self
-sys.modules["nvdiffrast"] = MockNvdiffrast()
-sys.modules["nvdiffrast.torch"] = sys.modules["nvdiffrast"]
+# -- Step 1: mock broken native libraries (must come before trellis import) --
 
-# --- Trellis Core Imports ---
-# These are added to path once everything is patched
-repo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "{MODEL_ID}"))
-if repo_path not in sys.path:
-    sys.path.insert(0, repo_path)
+# kaolin._C is a compiled Windows DLL that fails to load on most systems.
+# The only thing needed at import time is kaolin.utils.testing.check_tensor
+# (a validation no-op used by FlexiCubes). Mock the whole namespace so the
+# real DLL never gets touched.
+def _noop(*a, **kw):
+    pass
+
+_km   = types.ModuleType("kaolin")
+_km_C = types.ModuleType("kaolin._C")
+_kmu  = types.ModuleType("kaolin.utils")
+_kmut = types.ModuleType("kaolin.utils.testing")
+_kmo  = types.ModuleType("kaolin.ops")
+_kmor = types.ModuleType("kaolin.ops.random")
+_kmob = types.ModuleType("kaolin.ops.batch")
+_kmi  = types.ModuleType("kaolin.io")
+_kmid = types.ModuleType("kaolin.io.dataset")
+
+_kmut.check_tensor          = _noop
+_kmut.contained_torch_equal = _noop
+_km._C    = _km_C;  _km.utils = _kmu;  _km.ops = _kmo;  _km.io = _kmi
+_kmu.testing = _kmut
+_kmo.random  = _kmor;  _kmo.batch = _kmob
+_kmi.dataset = _kmid
+
+for _name, _mod in [
+    ("kaolin", _km), ("kaolin._C", _km_C),
+    ("kaolin.utils", _kmu), ("kaolin.utils.testing", _kmut),
+    ("kaolin.ops", _kmo), ("kaolin.ops.random", _kmor), ("kaolin.ops.batch", _kmob),
+    ("kaolin.io", _kmi), ("kaolin.io.dataset", _kmid),
+]:
+    sys.modules[_name] = _mod
+print("[{MODEL_ID}] kaolin mocked")
+
+# nvdiffrast — postprocessing_utils and mesh_renderer import it at module
+# level. Mock it so those imports succeed; actual calls only happen in /generate.
+class _NvMock:
+    def __call__(self, *a, **kw): return self
+    def __getattr__(self, n):     return _NvMock()
+    def __iter__(self):           return iter([])
+    def __bool__(self):           return False
+
+_nv = types.ModuleType("nvdiffrast")
+_nv.torch = _NvMock()
+_nvt = types.ModuleType("nvdiffrast.torch")
+_nvt.__getattr__ = lambda n: _NvMock()
+sys.modules["nvdiffrast"]       = _nv
+sys.modules["nvdiffrast.torch"] = _nvt
+print("[{MODEL_ID}] nvdiffrast mocked")
+
+# -- Step 2: path setup -------------------------------------------------------
+_HERE    = os.path.dirname(os.path.abspath(__file__))
+_REPO    = os.path.join(_HERE, "{MODEL_ID}")   # localmodels/3d/trellis2/trellis-2
+_WEIGHTS = os.path.join(_HERE, "weights")
+
+if not os.path.isdir(_REPO):
+    print(f"[{MODEL_ID}] CRITICAL: repo not found at {_REPO}")
+if not os.path.isdir(_WEIGHTS):
+    print(f"[{MODEL_ID}] CRITICAL: weights not found at {_WEIGHTS}")
+
+if _REPO not in sys.path:
+    sys.path.insert(0, _REPO)
+print(f"[{MODEL_ID}] Repo:    {_REPO}")
+print(f"[{MODEL_ID}] Weights: {_WEIGHTS}")
+
+# -- Step 3: import pipeline class --------------------------------------------
+_Pipeline     = None
+_import_error = None
 
 try:
-    # Verify path exists
-    if not os.path.exists(os.path.join(repo_path, "trellis")):
-        print(f"CRITICAL: Trellis package not found at {repo_path}/trellis")
-        
-    from trellis.pipelines import TrellisImageTo3DPipeline
-    from trellis.utils import postprocessing_utils
-    LOADED = True
-except Exception as e:
-    import traceback
-    print(f"Failed to load Trellis: {e}")
-    traceback.print_exc()
-    LOADED = False
+    print(f"[{MODEL_ID}] Importing TrellisImageTo3DPipeline …")
+    from trellis.pipelines import TrellisImageTo3DPipeline as _T
+    _Pipeline = _T
+    print(f"[{MODEL_ID}] Pipeline class imported OK")
+except Exception:
+    _import_error = traceback.format_exc()
+    print(f"[{MODEL_ID}] IMPORT FAILED:\n{_import_error}")
 
-app = FastAPI(title="{MODEL_NAME} Worker")
+# -- Step 4: FastAPI app ------------------------------------------------------
+import torch
+import uvicorn
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
+
+_pipeline    = None
+_status      = "launching"   # "launching" | "online" | "failed"
+_load_error  = None
+
+
+def _vram():
+    try:
+        if torch.cuda.is_available():
+            u = torch.cuda.memory_allocated(0) / 1024**3
+            t = torch.cuda.get_device_properties(0).total_memory / 1024**3
+            return round(u, 3), round(t, 3)
+    except Exception:
+        pass
+    return 0.0, 0.0
+
+
+def _load():
+    global _pipeline, _status, _load_error
+    if _Pipeline is None:
+        _load_error = _import_error or "Pipeline class not imported"
+        _status = "failed"
+        print(f"[{MODEL_ID}] Cannot load — import failed")
+        return
+
+    pjson = os.path.join(_WEIGHTS, "pipeline.json")
+    if not os.path.exists(pjson):
+        _load_error = f"pipeline.json missing in {_WEIGHTS}"
+        _status = "failed"
+        print(f"[{MODEL_ID}] {_load_error}")
+        return
+
+    cuda_ok = torch.cuda.is_available()
+    if cuda_ok:
+        dev = torch.cuda.get_device_properties(0)
+        print(f"[{MODEL_ID}] CUDA: {dev.name}  ({dev.total_memory/1024**3:.1f} GB)")
+    else:
+        print(f"[{MODEL_ID}] WARNING: CUDA not available — CPU only")
+
+    u0, _ = _vram()
+    print(f"[{MODEL_ID}] VRAM before load: {u0:.2f} GB")
+
+    try:
+        print(f"[{MODEL_ID}] Loading weights (this may take 1-3 min) …")
+        pipeline = _Pipeline.from_pretrained(_WEIGHTS)
+        print(f"[{MODEL_ID}] Weights loaded to RAM")
+        if cuda_ok:
+            pipeline.cuda()
+            u1, t1 = _vram()
+            print(f"[{MODEL_ID}] VRAM after load: {u1:.2f} / {t1:.2f} GB  (delta {u1-u0:.2f} GB)")
+        _pipeline = pipeline
+        _status   = "online"
+        print(f"[{MODEL_ID}] -- STATUS: online --")
+    except Exception:
+        _load_error = traceback.format_exc()
+        _status = "failed"
+        print(f"[{MODEL_ID}] LOAD FAILED:\n{_load_error}")
+
+
+@asynccontextmanager
+async def _lifespan(app):
+    t = threading.Thread(target=_load, daemon=True, name="{MODEL_ID}-loader")
+    t.start()
+    print(f"[{MODEL_ID}] Loader thread started — server accepting /health")
+    yield
+    print(f"[{MODEL_ID}] Shutdown")
+
+
+app = FastAPI(title="{MODEL_NAME} Worker", lifespan=_lifespan)
+
 
 class GenRequest(BaseModel):
     image_base64: str
-    prompt: Optional[str] = None
-    seed: int = 42
-    action: str = "image23d"
+    seed:         int        = 42
+    formats:      List[str]  = ["gaussian", "mesh"]
 
-# Global pipeline instance
-pipeline = None
-
-@app.on_event("startup")
-async def startup_event():
-    global pipeline
-    if not LOADED: return
-    
-    weights_path = os.path.join(os.path.dirname(__file__), "weights")
-    if not os.path.exists(weights_path):
-        print("Weights not found!")
-        return
-        
-    print(f"Loading Trellis pipeline from {weights_path}...")
-    try:
-        # Load with fp16 to conserve VRAM
-        pipeline = TrellisImageTo3DPipeline.from_pretrained(weights_path)
-        if torch.cuda.is_available():
-            pipeline.cuda()
-            print(f"Model loaded into VRAM. Usage: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
-        else:
-            print("WARNING: CUDA not available, running on CPU")
-    except Exception as e:
-        import traceback
-        print(f"Error loading model: {e}")
-        traceback.print_exc()
 
 @app.get("/health")
 def health():
-    if not LOADED:
-        return {"status": "failed", "error": "Import error during engine startup"}
-    
-    vram_used = 0
-    vram_total = 0
-    try:
-        if torch.cuda.is_available():
-            vram_used = torch.cuda.memory_allocated() / (1024**3)
-            vram_total = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-    except: pass
+    u, t = _vram()
+    r = {"status": _status, "vram_used": u, "vram_total": t, "model": "{MODEL_ID}"}
+    if _status == "failed" and _load_error:
+        r["error"] = _load_error[-2000:]
+    return r
 
-    if pipeline is None:
-        return {
-            "status": "warming", 
-            "message": "Initializing neural weights...",
-            "vram_used": vram_used,
-            "vram_total": vram_total
-        }
-        
-    return {
-        "status": "online", 
-        "model": "{MODEL_ID}",
-        "vram_used": vram_used,
-        "vram_total": vram_total
-    }
 
 @app.post("/generate")
 async def generate(req: GenRequest):
-    if pipeline is None:
-        raise HTTPException(status_code=503, detail="Model warming up")
-        
+    if _status != "online" or _pipeline is None:
+        raise HTTPException(status_code=503, detail=f"Model not ready ({_status})")
     try:
-        # 1. Decode Image
         from PIL import Image
-        import io
-        raw_b64 = req.image_base64
-        if "," in raw_b64:
-            raw_b64 = raw_b64.split(",", 1)[1]
-        img_bytes = base64.b64decode(raw_b64)
-        image = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-        
-        # 2. Run Inference
-        print(f"Running inference (Seed: {req.seed})...")
-        outputs = pipeline.run(image, seed=req.seed)
-        
-        # 3. Post-process to Mesh
-        print("Converting to GLB...")
-        glo_mesh = postprocessing_utils.to_glb(outputs['gaussian'][0], outputs['mesh'][0])
-        
-        # 4. Encode and return
-        glb_b64 = base64.b64encode(glo_mesh).decode('utf-8')
-        
-        return {"success": True, "glb_base64": glb_b64}
-        
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {"success": False, "error": str(e)}
+        import io as _io
+        raw = req.image_base64
+        if "," in raw:
+            raw = raw.split(",", 1)[1]
+        image = Image.open(_io.BytesIO(base64.b64decode(raw))).convert("RGB")
+        print(f"[{MODEL_ID}] /generate  seed={req.seed}")
+        outputs = _pipeline.run(image, seed=req.seed, formats=req.formats)
+        print(f"[{MODEL_ID}] Inference complete")
+        if "mesh" in outputs and "gaussian" in outputs:
+            from trellis.utils import postprocessing_utils
+            glb = postprocessing_utils.to_glb(outputs["gaussian"][0], outputs["mesh"][0])
+            return {"success": True, "glb_base64": base64.b64encode(glb).decode()}
+        return {"success": True, "formats_decoded": list(outputs.keys())}
+    except Exception:
+        tb = traceback.format_exc()
+        print(f"[{MODEL_ID}] /generate failed:\n{tb}")
+        return {"success": False, "error": tb}
+
 
 if __name__ == "__main__":
-    import sys
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
-    uvicorn.run(app, host="127.0.0.1", port=port)
+    print(f"[{MODEL_ID}] Starting on port {port}")
+    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
 '''
             run_script.write_text(
-                server_template.replace("{MODEL_NAME}", model.title()).replace("{MODEL_ID}", model)
+                server_template.replace("{MODEL_NAME}", model.title()).replace("{MODEL_ID}", model),
+                encoding='utf-8'
             )
 
             # 6. Create success lockfile
             yield f"data: {json.dumps({'line': 'Finalizing installation...'})}\n\n"
-            install_file.write_text(f"Installed {datetime.now().isoformat()}")
+            install_file.write_text(f"Installed {datetime.now().isoformat()}", encoding='utf-8')
                 
             yield f"data: {json.dumps({'done': True, 'success': True})}\n\n"
             

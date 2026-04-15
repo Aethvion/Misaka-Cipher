@@ -284,7 +284,9 @@ async def initialize_system_background():
         from .overlay_routes import router as overlay_router
         from .explained_routes import router as explained_router
         from .three_d_routes import router as three_d_router
-
+        from .logs_routes import router as logs_router
+        
+        # Include all routers
         # Immediate Router Inclusion (Sync but fast)
         app.include_router(task_router)
         app.include_router(memory_router)
@@ -316,7 +318,8 @@ async def initialize_system_background():
         app.include_router(overlay_router)
         app.include_router(explained_router)
         app.include_router(three_d_router)
-
+        app.include_router(logs_router)
+        
         # Layer 2–4 routing tools
         from core.tools.openapi_ingestion import router as openapi_router
         from core.tools.webhook_link import router as webhook_router
