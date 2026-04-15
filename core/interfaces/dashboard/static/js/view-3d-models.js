@@ -64,7 +64,8 @@
             if (!btnInstall || !btnRun) return;
 
             try {
-                const res = await fetch(`/api/3d/install_status/${modelId}`);
+                // Add timestamp to ensure pulse-fresh data from backend
+                const res = await fetch(`/api/3d/install_status/${modelId}?t=${Date.now()}`);
                 if (!res.ok) throw new Error('Status check failed');
                 
                 const data = await res.json();
