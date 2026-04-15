@@ -1,20 +1,9 @@
-
 <div class="hub-container">
     <!-- ── Premium Header ─────────────────────────────────────────── -->
     <header class="hub-header">
-        <div class="hub-title-group">
-            <h1>3D Generation Hub</h1>
-            <p>Convert 2D concepts into 3D meshes. Industry-leading geometric reconstruction powered by local CUDA acceleration.</p>
-        </div>
-        <div class="hub-stats">
-            <div class="hub-stat-item">
-                <span class="hub-stat-val">1</span>
-                <span class="hub-stat-label">Active Engines</span>
-            </div>
-            <div class="hub-stat-item">
-                <span class="hub-stat-val"><i class="fas fa-microchip"></i> CUDA 12</span>
-                <span class="hub-stat-label">Inference Mode</span>
-            </div>
+        <div class="hub-header-main">
+            <h1 class="hub-title">3D Foundry</h1>
+            <p class="hub-subtitle">High-fidelity 3D reconstruction and generative asset foundry.</p>
         </div>
     </header>
 
@@ -69,34 +58,44 @@
                             <span class="hub-tag"><i class="fas fa-file-export"></i> .OBJ / .GLB</span>
                         </div>
 
-                        <div id="trellis-status-container" style="display:flex; flex-direction:column; gap:0.75rem; margin-top: auto;">
-                            <button id="btn-install-trellis" class="hub-action-btn" style="display:none; height:44px; font-size:1rem;">
-                                <i class="fas fa-wrench"></i> 1. Setup Trellis Engine Environment
+                        <div id="trellis-setup-actions" style="display:flex; gap:1rem; margin-top: auto;">
+                            <!-- Unified Action Button -->
+                            <button id="btn-install-full" class="hub-action-btn" style="display:none; flex:1; background:var(--primary); color:black; height: 50px; font-weight: 700;">
+                                <i class="fas fa-hammer"></i> Install Trellis 2 + Weights
                             </button>
-                            <button id="btn-install-trellis-weights" class="hub-action-btn" style="display:none; height:44px; font-size:1rem;">
-                                <i class="fas fa-weight-hanging"></i> 2. Download Core Weights (12GB)
+                            <!-- Start Button -->
+                            <button id="btn-run-trellis" class="hub-action-btn" style="display:none; flex:1; background:var(--primary); color:black; height: 50px; font-weight: 700;">
+                                <i class="fas fa-cube"></i> Enter Trellis 2 Workspace
                             </button>
-                            <button id="btn-run-trellis" class="hub-action-btn" style="display:none; height:44px; font-size:1rem;">
-                                <i class="fas fa-door-open"></i> Enter Trellis 2 Workspace
-                            </button>
+                        </div>
 
-                            <!-- Progress Trackers -->
-                            <div id="trellis-install-progress" style="display:none; background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 12px; border: 1px solid var(--hub-card-border);">
-                                <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:8px;">
-                                    <span id="trellis-progress-text">Initializing Foundry...</span>
-                                    <span id="trellis-progress-percent">0%</span>
+                        <!-- Dual Progress Bars -->
+                        <div id="trellis-install-progress-container" style="display:none; margin-top: 1rem; background: rgba(0,0,0,0.3); padding: 1.25rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                            <!-- Bar 1: Engine -->
+                            <div id="progress-engine" style="margin-bottom: 1.25rem;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size:0.75rem;">
+                                    <span id="engine-text" style="color:var(--text-tertiary);">1. Environment & Engine Factory</span>
+                                    <span id="engine-percent" style="color:var(--primary); font-weight: 700;">0%</span>
                                 </div>
-                                <div class="model-dl-bar-wrap"><div id="trellis-progress-inner" class="model-dl-bar" style="width:0%"></div></div>
+                                <div class="model-dl-bar-wrap"><div id="engine-bar" class="model-dl-bar" style="width:0%; background:var(--primary); height: 6px;"></div></div>
                             </div>
-                            
-                            <!-- Installation Console -->
-                            <div id="trellis-install-log-container" style="display:none; background:#000; border:1px solid var(--hub-card-border); border-radius:10px; overflow:hidden;">
-                                <div style="background:var(--hub-card-bg); padding:0.5rem 1rem; font-size:0.7rem; border-bottom:1px solid var(--hub-card-border); display:flex; align-items:center; gap:0.5rem;">
-                                    <i class="fas fa-terminal" style="color:var(--primary);"></i>
-                                    <span style="color:var(--text-tertiary); text-transform:uppercase; letter-spacing:1px;">System Installation Log</span>
+                            <!-- Bar 2: Weights -->
+                            <div id="progress-weights" style="opacity: 0.4; transition: opacity 0.3s ease;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom: 6px; font-size:0.75rem;">
+                                    <span id="weights-text" style="color:var(--text-tertiary);">2. HuggingFace Model Weights (12GB)</span>
+                                    <span id="weights-percent" style="color:var(--primary); font-weight: 700;">0%</span>
                                 </div>
-                                <pre id="trellis-install-log" style="margin:0; padding:1rem; font-size:0.75rem; color:#4ade80; font-family:'Fira Code', monospace; max-height:180px; overflow-y:auto;"></pre>
+                                <div class="model-dl-bar-wrap"><div id="weights-bar" class="model-dl-bar" style="width:0%; background:var(--primary); height: 6px;"></div></div>
                             </div>
+                        </div>
+
+                        <!-- Terminal Log -->
+                        <div id="trellis-install-log-container" style="display:none; background:#000; border:1px solid rgba(255,255,255,0.1); border-radius:8px; overflow:hidden;">
+                            <div style="background:rgba(255,255,255,0.05); padding:0.5rem 1rem; font-size:0.65rem; border-bottom:1px solid rgba(255,255,255,0.1); display:flex; align-items:center; gap:0.5rem;">
+                                <i class="fas fa-terminal" style="color:var(--primary); font-size: 0.6rem;"></i>
+                                <span style="color:var(--text-tertiary); text-transform:uppercase; letter-spacing:1px; font-weight: 700;">Foundry Console</span>
+                            </div>
+                            <pre id="trellis-install-log" style="margin:0; padding:1rem; font-size:0.7rem; color:#4ade80; font-family:'Fira Code', monospace; max-height:150px; overflow-y:auto; white-space: pre-wrap; word-wrap: break-word; line-height: 1.4;"></pre>
                         </div>
                     </div>
                 </div>

@@ -267,9 +267,24 @@ async def get_install_status(model: str):
     install_file = wrapper_dir / ".install_complete"
     weights_file = wrapper_dir / ".install_weights_complete"
     
+    # Check for actual torch installation in the venv to ensure integrity
+    venv_python = wrapper_dir / "venv" / "Scripts" / "python.exe" if os.name == 'nt' else wrapper_dir / "venv" / "bin" / "python"
+    has_torch = False
+    if venv_python.exists():
+        try:
+            # Quick check if torch is importable
+            # Use CREATE_NO_WINDOW to prevent flickering CMD prompts
+            creation_flags = 0x08000000 if os.name == 'nt' else 0
+            result = subprocess.run([str(venv_python), "-c", "import torch; print(torch.__version__)"], 
+                                 capture_output=True, text=True, timeout=5,
+                                 creationflags=creation_flags)
+            has_torch = result.returncode == 0
+        except:
+            pass
+
     return {
         "model": model,
-        "installed": install_file.exists(),
+        "installed": install_file.exists() and has_torch,
         "weights_installed": weights_file.exists()
     }
 
@@ -434,7 +449,7 @@ async def install_3d_model(model: str):
             pip_exe = venv_dir / "Scripts" / "pip.exe" if sys.platform == 'win32' else venv_dir / "bin" / "pip"
             
             # Ensure we have the basics for weight management even if requirements.txt is missing
-            core_reqs = ["huggingface_hub[cli]", "hf_transfer", "fastapi", "uvicorn", "httpx", "pillow"]
+            core_reqs = ["torch", "torchvision", "easydict", "scipy", "tqdm", "huggingface_hub[cli]", "hf_transfer", "fastapi", "uvicorn", "httpx", "pillow"]
             proc_core = await asyncio.create_subprocess_exec(
                 str(pip_exe), "install", *core_reqs,
                 stdout=asyncio.subprocess.PIPE,
