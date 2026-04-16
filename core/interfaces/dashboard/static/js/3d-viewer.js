@@ -330,6 +330,12 @@ export class ThreeDViewer {
     animate() {
         if (!this.isAnimating) return;
         requestAnimationFrame(() => this.animate());
+
+        // Performance guard: stop rendering if the container is hidden or tab is backgrounded
+        if (document.hidden || this.container.offsetParent === null || this.container.clientWidth === 0) {
+            return;
+        }
+
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
     }
