@@ -516,11 +516,9 @@
 
     function updateProfileBtnContent(btn) {
         const name  = store.profiles[store.activeProfile]?.name || 'Default';
-        const count = Object.keys(store.profiles).length;
         btn.innerHTML = `
             <span class="profile-dot"></span>
             <span class="profile-btn-name">${esc(name)}</span>
-            <span class="profile-count">${count}</span>
             <i class="fas fa-chevron-up profile-chevron"></i>
         `;
     }
@@ -528,6 +526,7 @@
     function toggleProfileDropdown(wrapper) {
         if (dropdownOpen) { closeProfileDropdown(); return; }
         dropdownOpen = true;
+        document.getElementById('profile-btn')?.classList.add('is-active');
         renderProfileDropdown(wrapper);
         setTimeout(() => {
             document.addEventListener('click', outsideDropdownClose, { capture: true, once: true });
@@ -536,6 +535,7 @@
 
     function closeProfileDropdown() {
         dropdownOpen = false;
+        document.getElementById('profile-btn')?.classList.remove('is-active');
         document.getElementById('profile-dropdown')?.remove();
     }
 

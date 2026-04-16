@@ -511,19 +511,6 @@
     display: block;
 }
 
-/* Bottom Pinned Items */
-.sidebar-bottom {
-    margin-top: auto;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-}
-
-.sidebar-nav.collapsed .sidebar-bottom {
-    align-items: center;
-}
 
 .nav-hidden {
     display: none !important;
@@ -800,17 +787,6 @@
 .sidebar-nav.collapsed .tab-label { display: none; }
 .sidebar-nav.collapsed .tab-icon { margin-right: 0; }
 
-/* Sidebar bottom section */
-.sidebar-bottom {
-    margin-top: auto;
-    padding-top: 0.4rem;
-    border-top: 1px solid var(--border, rgba(255,255,255,0.07));
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    gap: 0.05rem;
-}
-.sidebar-nav.collapsed .sidebar-bottom { align-items: center; }
 
 /* ══════════════════════════════════════════════════════════════════
    SIDEBAR MANAGER — Inline Edit Mode
