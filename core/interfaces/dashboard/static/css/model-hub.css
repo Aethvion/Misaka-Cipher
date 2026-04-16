@@ -338,3 +338,88 @@
     color: var(--text-tertiary);
     margin-bottom: 1rem;
 }
+
+/* ── Management Utilities ────────────────────────────────── */
+.lm-filter-select {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--hub-card-border);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    outline: none;
+}
+.lm-filter-select:hover { border-color: var(--primary); color: white; }
+
+.lm-icon-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--hub-card-border);
+    color: var(--text-tertiary);
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.lm-icon-btn:hover { background: var(--primary); color: black; border-color: var(--primary); }
+
+.lm-finput {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--hub-card-border);
+    border-radius: 8px;
+    padding: 0.7rem 1rem;
+    color: white;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    outline: none;
+}
+.lm-finput:focus { border-color: var(--primary); box-shadow: 0 0 10px var(--hub-accent-glow); }
+.lm-finput-grow { flex: 1; }
+
+.lm-hf-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.lm-hf-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    letter-spacing: 0.5px;
+}
+
+/* ── GPU & Config Styling ──────────────────────────────────── */
+.gpu-setting-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.gpu-setting-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.gpu-setting-hint { font-size: 0.7rem; color: var(--text-tertiary); font-weight: 400; }
+
+.gpu-setting-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.gpu-slider { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); }
+.gpu-num-input { width: 60px; text-align: center; }
+
+.setting-input, .setting-select {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--hub-card-border);
+    border-radius: 6px;
+    padding: 0.5rem;
+    color: white;
+    font-size: 0.8rem;
+}
