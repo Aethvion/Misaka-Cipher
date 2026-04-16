@@ -297,6 +297,24 @@
 .tg-asset-name { font-size: 0.75rem; font-weight: 600; }
 .tg-asset-meta { font-size: 0.65rem; color: var(--text-tertiary); }
 
+.tg-asset-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tg-asset-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #111;
+    color: var(--primary);
+    font-size: 1.5rem;
+    opacity: 0.5;
+}
+
 .tg-loading-overlay {
     position: absolute;
     inset: 0;

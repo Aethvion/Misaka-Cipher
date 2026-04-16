@@ -11,14 +11,20 @@
         state: {
             currentMode: 'i23d', // 'i23d' or 't23d'
             generating: false,
-            uploadedImage: null
+            uploadedImage: null,
+            initialized: false
         },
 
         init() {
+            if (this.state.initialized) {
+                console.log('[Mode3DGen] Already initialized.');
+                return;
+            }
             console.log('[Mode3DGen] Initializing Workspace...');
             this.bindEvents();
             this.initDropzone();
             this.loadHistory();
+            this.state.initialized = true;
         },
 
         bindEvents() {
@@ -220,8 +226,10 @@
             if (!list) return;
 
             try {
-                const response = await fetch('/api/3d/history');
-                const assets = await response.json();
+                // Fetch first page, 10 items
+                const response = await fetch('/api/3d/history?page=1&limit=10');
+                const data = await response.json();
+                const assets = data.assets || [];
                 
                 list.innerHTML = '';
                 assets.forEach(asset => {
@@ -230,14 +238,20 @@
                     card.onclick = () => this.showResult(asset);
                     
                     const sizeMB = (asset.size_bytes / (1024 * 1024)).toFixed(1);
+                    const date = new Date(asset.created_at).toLocaleDateString();
                     
+                    // Use thumbnail if available, else fallback to icon
+                    const thumbHtml = asset.thumbnail_url 
+                        ? `<img src="${asset.thumbnail_url}" alt="Preview" class="tg-asset-thumbnail">`
+                        : `<div class="tg-asset-placeholder"><i class="fas fa-cube"></i></div>`;
+
                     card.innerHTML = `
                         <div class="tg-asset-thumb">
-                            <i class="fas fa-cube" style="font-size:2rem; color:var(--primary);"></i>
+                            ${thumbHtml}
                         </div>
                         <div class="tg-asset-info">
                             <span class="tg-asset-name">${asset.name || 'Generated Mesh'}</span>
-                            <span class="tg-asset-meta">${asset.model} • ${asset.format.toUpperCase()} • ${sizeMB} MB</span>
+                            <span class="tg-asset-meta">${date} • ${sizeMB} MB</span>
                         </div>
                     `;
                     list.appendChild(card);

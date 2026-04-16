@@ -214,35 +214,65 @@ async def generate_3d_asset(req: ThreeDGenerationRequest):
         logger.error(f"[{trace_id}] 3D generation failed: {str(e)}")
         return ThreeDGenerationResponse(success=False, error=str(e))
 
-@router.get("/history", response_model=List[ThreeDAssetResponse])
-async def get_3d_history():
+@router.get("/history")
+async def get_3d_history(page: int = 1, limit: int = 10):
     """
-    Get recent 3D generations.
+    Get recent 3D generations with visual thumbnails.
     """
     workspace = get_workspace_manager()
     outputs = workspace.list_outputs()
     
-    history = []
+    # 1. Filter all GLBs in ThreeD domain
+    all_glbs = []
     for f in outputs.get('files', []):
-        # f['path'] is relative to workspace_root, e.g. "ThreeD/2026-04/trace/model.glb"
         rel_path = f.get('path', '')
         if f.get('domain') == 'ThreeD' and rel_path.endswith('.glb'):
-            # The URL needs the part of the path AFTER "ThreeD/"
-            serve_path = rel_path
-            if serve_path.startswith('ThreeD/'):
-                serve_path = serve_path[7:] # remove "ThreeD/"
+            all_glbs.append(f)
 
-            history.append(ThreeDAssetResponse(
-                id=f.get('trace_id') or 'unknown',
-                name=f.get('filename'),
-                url=f"/api/3d/serve/{serve_path}",
-                path=rel_path,
-                model="unknown",
-                size_bytes=f.get('size_bytes', 0),
-                created_at=f.get('created_at')
-            ))
+    # 2. Sort by creation (list_outputs is already sorted but we'll be safe)
+    all_glbs.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+    
+    # 3. Paginate
+    start = (page - 1) * limit
+    end = start + limit
+    paged_glbs = all_glbs[start:end]
+    
+    history = []
+    for f in paged_glbs:
+        rel_path = f.get('path', '')
+        # remove "ThreeD/"
+        serve_path = rel_path[7:] if rel_path.startswith('ThreeD/') else rel_path
+        
+        # Derive reference image path: it should be in the same folder as "reference.png"
+        ref_image_url = None
+        glp_path_obj = Path(rel_path)
+        ref_path = glp_path_obj.parent / "reference.png"
+        
+        # Check if reference.png exists in the workspace
+        full_ref_path = workspace.workspace_root / ref_path
+        if full_ref_path.exists():
+            # URL is relative to ThreeD domain
+            ref_serve_path = str(ref_path).replace('\\', '/')
+            if ref_serve_path.startswith('ThreeD/'):
+                ref_serve_path = ref_serve_path[7:]
+            ref_image_url = f"/api/3d/serve/{ref_serve_path}"
+
+        history.append({
+            "id": f.get('trace_id') or 'unknown',
+            "name": f.get('filename'),
+            "url": f"/api/3d/serve/{serve_path}",
+            "thumbnail_url": ref_image_url,
+            "path": rel_path,
+            "size_bytes": f.get('size_bytes', 0),
+            "created_at": f.get('created_at')
+        })
             
-    return history
+    return {
+        "assets": history,
+        "total": len(all_glbs),
+        "page": page,
+        "limit": limit
+    }
 
 @router.get("/serve/{filename:path}")
 async def serve_3d_asset(filename: str):
