@@ -198,6 +198,85 @@
 }
 
 .tg-view-control:hover { background: var(--primary); }
+.tg-view-control.active { background: var(--primary); border-color: white; }
+
+.tg-view-controls-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tg-view-control-labeled {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.75rem;
+    font-weight: 500;
+    width: fit-content;
+}
+
+.tg-view-control-labeled:hover { background: var(--primary); }
+.tg-view-control-labeled.active { background: var(--primary); border-color: white; }
+.tg-view-control-labeled i { font-size: 0.9rem; }
+
+.tg-view-modes-grid {
+    display: flex;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
+.tg-mode-chip {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+    pointer-events: auto;
+}
+
+.tg-mode-chip:hover { border-color: var(--primary); color: white; }
+.tg-mode-chip.active { background: var(--primary); border-color: var(--primary); color: white; }
+
+.tg-stats-hud {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    pointer-events: none;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.tg-stat-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: var(--text-tertiary);
+}
+
+.tg-stat-val {
+    color: white;
+    font-weight: 600;
+}
 
 .tg-gen-bar {
     padding: 1.5rem;

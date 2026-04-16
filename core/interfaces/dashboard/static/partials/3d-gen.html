@@ -94,9 +94,34 @@
 
             <!-- Control HUD -->
             <div class="tg-canvas-overlay">
-                <div class="tg-view-control" title="Toggle Grid"><i class="fas fa-border-all"></i></div>
-                <div class="tg-view-control" title="Auto-Rotate"><i class="fas fa-sync"></i></div>
-                <div class="tg-view-control" title="Toggle wireframe"><i class="fas fa-project-diagram"></i></div>
+                <!-- Lighting Suite -->
+                <div class="tg-stats-hud" style="width: 160px; pointer-events: auto;">
+                    <div class="tg-stat-item"><span style="color:var(--primary); font-weight:700;">ENVIRONMENT</span></div>
+                    <div class="tg-stat-item">
+                        <span>Exposure</span>
+                        <input type="range" id="tg-exposure-slider" min="0" max="2" step="0.05" value="1" style="width:70px; cursor:pointer;">
+                    </div>
+                </div>
+
+                <!-- View Modes (Direct Access) -->
+                <div class="tg-view-modes-grid">
+                    <div class="tg-mode-chip active" data-mode="normal" title="Standard view">NORMAL</div>
+                    <div class="tg-mode-chip" data-mode="wireframe" title="Mesh topology">WIRE</div>
+                    <div class="tg-mode-chip" data-mode="points" title="Point cloud density">POINTS</div>
+                    <div class="tg-mode-chip" data-mode="xray" title="Transparent inspection">X-RAY</div>
+                </div>
+
+                <!-- View Controls (System) -->
+                <div class="tg-view-controls-list">
+                    <div class="tg-view-control-labeled" title="Auto-Rotate" id="ctrl-rotate">
+                        <i class="fas fa-sync"></i> <span>Auto-Spin</span>
+                    </div>
+                </div>
+                
+                <!-- Technical Stats Panel (Full Info) -->
+                <div class="tg-stats-hud" id="tg-model-stats">
+                    <!-- Full info injected here -->
+                </div>
             </div>
         </div>
 

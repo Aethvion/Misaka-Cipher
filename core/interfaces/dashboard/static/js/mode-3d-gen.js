@@ -42,25 +42,128 @@
                 genBtn.addEventListener('click', () => this.handleGenerate());
             }
 
-            // HUD Controls
-            document.querySelectorAll('.tg-view-control').forEach(ctrl => {
-                ctrl.addEventListener('click', (e) => {
+            // HUD Controls (Labeled Suite)
+            const btnRotate = document.getElementById('ctrl-rotate');
+            if (btnRotate) {
+                btnRotate.addEventListener('click', () => {
                     const viewer = document.getElementById('tg-model-viewer');
-                    if (!viewer) return;
-                    
-                    const title = ctrl.getAttribute('title');
-                    if (title === 'Auto-Rotate') {
+                    if (viewer) {
                         viewer.autoRotate = !viewer.autoRotate;
-                        ctrl.classList.toggle('active', viewer.autoRotate);
-                    } else if (title === 'Toggle Grid') {
-                        // model-viewer doesn't have a native grid toggle, 
-                        // we'd need a custom floor plane, but let's at least show the intention
-                        window.showToast('Grid toggle toggled', 'info');
-                    } else if (title === 'Toggle wireframe') {
-                        window.showToast('Wireframe mode (Coming soon)', 'info');
+                        btnRotate.classList.toggle('active', viewer.autoRotate);
                     }
                 });
+            }
+
+            // View Mode Chips (Direct Access)
+            document.querySelectorAll('.tg-mode-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const mode = chip.dataset.mode;
+                    const viewer = document.getElementById('tg-model-viewer');
+                    if (!viewer) return;
+
+                    this.state.viewMode = mode;
+                    this.applyViewMode(viewer);
+
+                    // UI Update
+                    document.querySelectorAll('.tg-mode-chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                });
             });
+
+            // Lighting Suite (Exposure Fix)
+            const exposureSlider = document.getElementById('tg-exposure-slider');
+            if (exposureSlider) {
+                exposureSlider.addEventListener('input', (e) => {
+                    const viewer = document.getElementById('tg-model-viewer');
+                    if (viewer) {
+                        const val = e.target.value;
+                        viewer.setAttribute('exposure', val);
+                    }
+                });
+            }
+        },
+
+        applyViewMode(viewer) {
+            if (!viewer.model) return;
+
+            // Direct Three.js access via internal symbol hack
+            const sceneSymbol = Object.getOwnPropertySymbols(viewer).find(s => s.description === 'scene');
+            const threeScene = sceneSymbol ? viewer[sceneSymbol] : null;
+
+            const mode = this.state.viewMode || 'normal';
+
+            if (threeScene) {
+                threeScene.traverse(obj => {
+                    if (obj.isMesh) {
+                        // CRITICAL: Skip the shadow floor/ground plane
+                        if (obj.name.toLowerCase().includes('shadow') || obj.name.toLowerCase().includes('ground')) return;
+                        
+                        const mat = obj.material;
+                        mat.wireframe = (mode === 'wireframe' || mode === 'xray' || mode === 'points');
+                        mat.transparent = (mode === 'xray');
+                        mat.opacity = (mode === 'xray') ? 0.2 : 1.0;
+                        mat.needsUpdate = true;
+                    }
+                });
+            }
+        },
+
+        updateModelInfo(viewer) {
+            const infoBox = document.getElementById('tg-model-stats');
+            const customLoader = viewer.querySelector('.tg-loader-sphere');
+            
+            if (customLoader) {
+                customLoader.style.visibility = 'hidden';
+                customLoader.style.display = 'none';
+            }
+
+            if (!infoBox || !viewer.model) {
+                if (infoBox) infoBox.style.display = 'none';
+                return;
+            }
+
+            infoBox.style.display = 'flex';
+            this.applyViewMode(viewer); 
+
+            // Calculate real triangle and vertex counts
+            let totalTris = 0;
+            let totalVerts = 0;
+
+            const sceneSymbol = Object.getOwnPropertySymbols(viewer).find(s => s.description === 'scene');
+            const threeScene = sceneSymbol ? viewer[sceneSymbol] : null;
+
+            if (threeScene) {
+                threeScene.traverse(obj => {
+                    if (obj.isMesh && obj.geometry) {
+                        if (obj.name.toLowerCase().includes('shadow') || obj.name.toLowerCase().includes('ground')) return;
+                        
+                        const geo = obj.geometry;
+                        if (geo.index) {
+                            totalTris += geo.index.count / 3;
+                        } else if (geo.attributes.position) {
+                            totalTris += geo.attributes.position.count / 3;
+                        }
+                        if (geo.attributes.position) {
+                            totalVerts += geo.attributes.position.count;
+                        }
+                    }
+                });
+            }
+
+            try {
+                const modelPath = viewer.src;
+                const modelName = modelPath.split('/').pop();
+                
+                infoBox.innerHTML = `
+                    <div class="tg-stat-item"><span style="color:var(--primary); font-weight:700;">SPECIFICATIONS</span></div>
+                    <div class="tg-stat-item"><span>Model</span> <span class="tg-stat-val">${modelName.length > 15 ? modelName.substring(0,12)+'...' : modelName}</span></div>
+                    <div class="tg-stat-item"><span>Format</span> <span class="tg-stat-val">GLB/2.0</span></div>
+                    <div class="tg-stat-item"><span>Complexity</span> <span class="tg-stat-val">${Math.round(totalTris).toLocaleString()} tris</span></div>
+                    <div class="tg-stat-item"><span>Topology</span> <span class="tg-stat-val">${Math.round(totalVerts).toLocaleString()} verts</span></div>
+                `;
+            } catch (e) {
+                console.warn('[Mode3DGen] Stat calculation failed:', e);
+            }
         },
 
         switchMode(mode) {
@@ -216,6 +319,7 @@
             if (viewer) {
                 viewer.src = asset.url;
                 viewer.dismissPoster();
+                viewer.addEventListener('load', () => this.updateModelInfo(viewer), { once: true });
             }
 
             this.loadHistory();
