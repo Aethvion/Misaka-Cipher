@@ -221,7 +221,6 @@ function initializeAudioStudio() {
 
         uploadGroup.style.display = (mode === 'stt' || mode === 'edit') ? 'block' : 'none';
 
-        // Hide voice dropdown when switching away from TTS
         if (mode !== 'tts') {
             const vg = document.getElementById('audio-voice-group');
             if (vg) vg.style.display = 'none';
@@ -332,16 +331,25 @@ function initializeAudioStudio() {
         };
     }
 
-    loadAudioModels();
+    // The actual call to load models is deferred slightly to allow UI paint
+    setTimeout(() => {
+        loadAudioModels();
+    }, 100);
 }
 
 async function loadAudioModels() {
     const checklist = document.getElementById('audio-model-checklist');
     if (!checklist) return;
 
+    // Check if registry is ready, if not, wait for it asynchronously WITHOUT blocking this call
     if (typeof _registryData === 'undefined' || !_registryData) {
-        if (typeof window.loadProviderSettings === 'function') await window.loadProviderSettings();
+        if (typeof window.loadProviderSettings === 'function') {
+            window.loadProviderSettings().then(() => loadAudioModels());
+            return;
+        }
+        return;
     }
+    
     if (typeof _registryData === 'undefined' || !_registryData || !_registryData.providers) return;
 
     const mode = document.querySelector('input[name="audio_mode"]:checked').value;
