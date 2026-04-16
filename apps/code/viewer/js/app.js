@@ -14,6 +14,9 @@ const state = {
   currentThreadId:  null,     // active thread id
   selectedModel:    '',
   isRunning:        false,
+  aiStreaming:      false,    // true while an AI response is in-flight
+  aiCtrl:           null,     // AbortController for AI streaming
+  includeFile:      false,    // include active file content with next message
   lastError:        '',       // last stderr output (used by Fix)
   treeExpanded:     new Set(),
   contextTarget:    null,     // {path, isDir, el}
@@ -30,8 +33,12 @@ const state = {
 function saveSettings() {
   try {
     localStorage.setItem('ide_settings', JSON.stringify({
-      selectedModel: state.selectedModel,
-      autoExec:      state.autoExec,
+      selectedModel:  state.selectedModel,
+      autoExec:       state.autoExec,
+      includeFile:    state.includeFile,
+      filetreeW:      document.documentElement.style.getPropertyValue('--filetree-w') || '',
+      aipanelW:       document.documentElement.style.getPropertyValue('--aipanel-w')  || '',
+      bottomH:        document.documentElement.style.getPropertyValue('--bottom-h')   || '',
     }));
   } catch {}
 }
@@ -39,8 +46,11 @@ function loadSettings() {
   try {
     const s = JSON.parse(localStorage.getItem('ide_settings') || '{}');
     if (s.selectedModel) state.selectedModel = s.selectedModel;
-    // Default autoExec = true (auto-run); persisted value overrides
-    state.autoExec = s.autoExec !== false;
+    state.autoExec    = s.autoExec    !== false;
+    state.includeFile = s.includeFile === true;
+    if (s.filetreeW) document.documentElement.style.setProperty('--filetree-w', s.filetreeW);
+    if (s.aipanelW)  document.documentElement.style.setProperty('--aipanel-w',  s.aipanelW);
+    if (s.bottomH)   document.documentElement.style.setProperty('--bottom-h',   s.bottomH);
   } catch {}
 }
 loadSettings();
@@ -114,13 +124,15 @@ async function api(path, opts = {}) {
   return res.json();
 }
 
-/** Stream an SSE endpoint; calls onChunk(text) per chunk, returns full text. */
-async function streamSSE(path, body, onChunk) {
+/** Stream an SSE endpoint; calls onChunk(text) per chunk, returns full text.
+ *  @param {AbortSignal} [signal] - optional abort signal (defaults to run abortCtrl)
+ */
+async function streamSSE(path, body, onChunk, signal = null) {
   const res = await fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    signal: state.abortCtrl?.signal,
+    signal: signal ?? state.abortCtrl?.signal,
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -148,6 +160,33 @@ async function streamSSE(path, body, onChunk) {
     }
   }
   return full;
+}
+
+// ── AI streaming state helpers ────────────────────────────────────────────────
+function _updateChatInputState() {
+  const sendBtn = $('btnSendChat');
+  const stopBtn = $('btnStopAI');
+  if (!sendBtn || !stopBtn) return;
+  if (state.aiStreaming) {
+    sendBtn.style.display = 'none';
+    stopBtn.style.display = '';
+    dom.chatInput.setAttribute('placeholder', 'Generating…');
+  } else {
+    sendBtn.style.display = '';
+    stopBtn.style.display = 'none';
+    dom.chatInput.setAttribute('placeholder', 'Ask about code… (Enter to send, Shift+Enter for newline)');
+  }
+}
+
+function _updateIncludeFileBtn() {
+  const btn = $('btnIncludeFile');
+  if (!btn) return;
+  const active = state.includeFile && !!state.activeTab;
+  btn.setAttribute('aria-pressed', String(active));
+  btn.classList.toggle('chat-aux-btn-active', active);
+  btn.title = active
+    ? `Active file will be included in next message — click to disable`
+    : `Include active file content in message`;
 }
 
 // ── Provider/model loading ────────────────────────────────────────────────────
@@ -429,6 +468,7 @@ function activateTab(path) {
   dom.btnRun.disabled = !runnable;
 
   updateStatusBar();
+  _updateIncludeFileBtn();
 }
 
 function closeTab(path) {
@@ -659,7 +699,7 @@ $('ctx-new-file').addEventListener('click', async () => {
   let dir = state.contextTarget.isDir
     ? state.contextTarget.path
     : state.contextTarget.path.replace(/[/\\][^/\\]+$/, '');
-  const name = prompt('New file name:');
+  const name = await _promptName('New File', 'filename.py', 'untitled.py');
   if (!name) return;
   const fullPath = dir + '/' + name;
   try {
@@ -674,7 +714,7 @@ $('ctx-new-folder').addEventListener('click', async () => {
   let dir = state.contextTarget.isDir
     ? state.contextTarget.path
     : state.contextTarget.path.replace(/[/\\][^/\\]+$/, '');
-  const name = prompt('New folder name:');
+  const name = await _promptName('New Folder', 'folder-name');
   if (!name) return;
   try {
     await api('/api/fs/mkdir', { method: 'POST', body: JSON.stringify({ path: dir + '/' + name }) });
@@ -919,21 +959,84 @@ $('wsBrowse').addEventListener('click', async () => {
 });
 $('wsModal').addEventListener('click', e => { if (e.target === $('wsModal')) $('wsModal').style.display = 'none'; });
 
+// ── Name prompt modal (replaces window.prompt for file/folder/thread names) ───
+function _promptName(title, placeholder, defaultVal = '') {
+  return new Promise(resolve => {
+    $('nameModalTitle').textContent  = title;
+    $('nameModalInput').placeholder  = placeholder;
+    $('nameModalInput').value        = defaultVal;
+    $('nameModal').style.display     = 'flex';
+    setTimeout(() => { $('nameModalInput').focus(); $('nameModalInput').select(); }, 30);
+
+    const cleanup = () => {
+      $('nameModal').style.display = 'none';
+      $('nameModalConfirm').removeEventListener('click', onConfirm);
+      $('nameModalCancel').removeEventListener('click', onCancel);
+      $('nameModalClose').removeEventListener('click', onCancel);
+      $('nameModalInput').removeEventListener('keydown', onKey);
+      $('nameModal').removeEventListener('click', onOverlay);
+    };
+    const onConfirm = () => { const v = $('nameModalInput').value.trim(); cleanup(); resolve(v || null); };
+    const onCancel  = () => { cleanup(); resolve(null); };
+    const onKey     = e => { if (e.key === 'Enter') { e.preventDefault(); onConfirm(); } if (e.key === 'Escape') onCancel(); };
+    const onOverlay = e => { if (e.target === $('nameModal')) onCancel(); };
+
+    $('nameModalConfirm').addEventListener('click', onConfirm);
+    $('nameModalCancel').addEventListener('click', onCancel);
+    $('nameModalClose').addEventListener('click', onCancel);
+    $('nameModalInput').addEventListener('keydown', onKey);
+    $('nameModal').addEventListener('click', onOverlay);
+  });
+}
+
 // ── AI Chat ───────────────────────────────────────────────────────────────────
 function addChatMessage(role, content = '', streaming = false) {
   const wrap = document.createElement('div');
   wrap.className = `chat-msg ${role}`;
+
   const label = document.createElement('div');
   label.className = 'chat-label';
   label.textContent = role === 'user' ? 'You' : 'AI';
+
   const bubble = document.createElement('div');
   bubble.className = 'chat-bubble' + (streaming ? ' streaming-cursor' : '');
   bubble.innerHTML = role === 'assistant' ? renderMarkdown(content) : escHtml(content);
+
+  // Action bar — populated after streaming ends via _attachMessageActions
+  const actions = document.createElement('div');
+  actions.className = 'chat-msg-actions';
+
   wrap.appendChild(label);
   wrap.appendChild(bubble);
+  wrap.appendChild(actions);
   dom.chatMessages.appendChild(wrap);
   dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
   return bubble;
+}
+
+/** Add copy + (for assistant) regenerate buttons to a finished message. */
+function _attachMessageActions(wrap, role, getFinalContent) {
+  const actions = wrap.querySelector('.chat-msg-actions');
+  if (!actions) return;
+  actions.innerHTML = '';
+
+  const mkBtn = (icon, label, fn) => {
+    const b = document.createElement('button');
+    b.className = 'chat-action-btn';
+    b.title = label;
+    b.setAttribute('aria-label', label);
+    b.innerHTML = `<i class="fa-solid ${icon}" aria-hidden="true"></i>`;
+    b.addEventListener('click', fn);
+    return b;
+  };
+
+  actions.appendChild(mkBtn('fa-copy', 'Copy', () => {
+    navigator.clipboard.writeText(getFinalContent()).then(() => toast('Copied', 'success', 1200));
+  }));
+
+  if (role === 'assistant') {
+    actions.appendChild(mkBtn('fa-rotate-right', 'Regenerate', () => regenerateLastResponse()));
+  }
 }
 
 /** Apply a code string to the active editor (replaces selection or full content). */
@@ -974,10 +1077,39 @@ function copyFwc(btn) {
   navigator.clipboard.writeText(code).then(() => toast('Copied', 'success', 1400));
 }
 
-/** Apply FWC code to the active editor. */
-function applyFwc(btn) {
-  const code = btn.closest('.fwc').querySelector('code').textContent;
-  applyCodeToEditor(code);
+/** Write FWC content directly to its target file, then open it. */
+async function applyFwc(btn) {
+  const fwc      = btn.closest('.fwc');
+  const code     = fwc.querySelector('code').textContent;
+  const filePath = fwc.dataset.filepath;
+  const fileName = fwc.dataset.filename;
+
+  // If we have a resolved absolute path, write directly to that file
+  if (filePath && filePath.length > fileName.length) {
+    try {
+      await api('/api/fs/write', { method: 'POST', body: JSON.stringify({ path: filePath, content: code }) });
+      // Refresh any open tab that matches
+      const openTab = state.tabs.find(t => t.path.replace(/\\/g, '/') === filePath);
+      if (openTab) {
+        const model = state.monacoModels.get(openTab.path);
+        if (model) { model.setValue(code); markClean(openTab.path); }
+      }
+      // Update the badge
+      const badge = fwc.querySelector('.fwc-status');
+      if (badge) {
+        badge.className = 'fwc-status fwc-written';
+        badge.innerHTML = `<i class="fa-solid fa-check" aria-hidden="true"></i> Written`;
+      }
+      await refreshTree();
+      await openFile(filePath);
+      toast(`Written: ${fileName}`, 'success', 2000);
+    } catch (e) {
+      toast(`Write failed: ${e.message}`, 'error');
+    }
+  } else {
+    // Fallback: paste into active editor
+    applyCodeToEditor(code);
+  }
 }
 
 /** Markdown renderer with copy/apply buttons on code blocks.
@@ -1326,22 +1458,51 @@ function _isTruncated(text) {
  * continue into the same bubble until the task is complete (max 8 passes).
  */
 async function sendChat(text) {
-  if (!text.trim()) return;
-  dom.chatInput.value = '';
-  state.chatHistory.push({ role: 'user', content: text });
-  addChatMessage('user', text);
-  const bubble = addChatMessage('assistant', '', true);
+  if (!text.trim() || state.aiStreaming) return;
 
-  let full = '';          // cumulative text rendered in bubble (all passes)
+  // Optionally prepend active file content
+  let userContent = text;
+  if (state.includeFile && state.activeTab) {
+    try {
+      const fileData = await api(`/api/fs/read?path=${encodeURIComponent(state.activeTab)}`);
+      const tab = state.tabs.find(t => t.path === state.activeTab);
+      const lang = tab?.language || 'text';
+      const MAX_FILE_CHARS = 20000;
+      const body = fileData.content.length > MAX_FILE_CHARS
+        ? fileData.content.slice(0, MAX_FILE_CHARS) + '\n… (truncated)'
+        : fileData.content;
+      userContent = `[File: ${fileData.name}]\n\`\`\`${lang}\n${body}\n\`\`\`\n\n${text}`;
+    } catch { /* file read failed — send without context */ }
+  }
+
+  dom.chatInput.value = '';
+  state.aiStreaming   = true;
+  state.aiCtrl        = new AbortController();
+  _updateChatInputState();
+
+  state.chatHistory.push({ role: 'user', content: userContent });
+  const userWrap = dom.chatMessages.lastElementChild?.previousElementSibling || null;
+  addChatMessage('user', text); // show original text (not the injected file blob)
+  const assistantWrap = dom.chatMessages.lastElementChild;
+  const bubble = assistantWrap?.querySelector('.chat-bubble') || addChatMessage('assistant', '', true);
+  // Ensure streaming cursor is on the right element
+  if (assistantWrap) {
+    const b = assistantWrap.querySelector('.chat-bubble');
+    if (b) b.classList.add('streaming-cursor');
+  }
+
+  let full = '';
   let pass  = 0;
   const MAX_PASS = 8;
+  let aborted = false;
+
+  // Auto-name thread from first user message (only when it's a new thread)
+  const isFirstMessage = state.chatHistory.filter(m => m.role === 'user').length === 1;
 
   try {
     while (pass <= MAX_PASS) {
-      // Build messages for this pass (history already contains prior turns)
       const msgs = state.chatHistory.map(m => ({ role: m.role, content: m.content }));
 
-      // Stream this pass; onChunk accumulates into outer `full`
       const passText = await streamSSE('/api/ai/chat', {
         messages:  msgs,
         model:     state.selectedModel || undefined,
@@ -1351,42 +1512,115 @@ async function sendChat(text) {
         bubble.innerHTML = renderMarkdown(full);
         bubble.classList.add('streaming-cursor');
         dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
-      });
+      }, state.aiCtrl.signal);
 
       bubble.classList.remove('streaming-cursor');
-
-      // Push this pass's assistant text to history
       state.chatHistory.push({ role: 'assistant', content: passText });
 
       if (_isTruncated(passText) && pass < MAX_PASS) {
-        // Strip the ### CONTINUE marker from display, add a visual divider
         full = full.replace(/\n?###\s*CONTINUE\s*$/i, '').trimEnd();
         full += '\n\n\x00AGENT_CONTINUE\x00\n\n';
         pass++;
-        // Inject 'continue' into history so the next call resumes correctly
         state.chatHistory.push({ role: 'user', content: 'continue' });
-        toast(`Task continues… (part ${pass + 1})`, 'info', 1800);
-        bubble.classList.add('streaming-cursor'); // keep cursor while we loop
+        toast(`Response continues… (part ${pass + 1})`, 'info', 1800);
+        bubble.classList.add('streaming-cursor');
       } else {
-        // All done — strip any stray ### CONTINUE at end
         full = full.replace(/\n?###\s*CONTINUE\s*$/i, '').trimEnd();
         break;
       }
     }
 
     bubble.innerHTML = renderMarkdown(full);
+
+    // Auto-name thread
+    if (isFirstMessage && state.currentThreadId) {
+      const autoName = text.slice(0, 48).replace(/\s+/g, ' ').trim() + (text.length > 48 ? '…' : '');
+      try {
+        await api('/api/threads', { method: 'POST',
+          body: JSON.stringify({ workspace: state.workspace, id: state.currentThreadId, name: autoName }) });
+        $('threadName').textContent = autoName;
+      } catch { /* best-effort */ }
+    }
+
     saveCurrentThread();
     await autoWriteFiles(full);
     await autoExecBlocks(full, bubble);
+
+    // Attach message actions to the completed assistant message
+    _attachMessageActions(assistantWrap || bubble.closest('.chat-msg'), 'assistant', () => full);
+
   } catch (e) {
     bubble.classList.remove('streaming-cursor');
-    bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
+    if (e.name === 'AbortError') {
+      aborted = true;
+      bubble.innerHTML += '<br><span style="color:var(--text-tertiary);font-size:0.75rem">— stopped —</span>';
+    } else {
+      bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
+    }
+  } finally {
+    state.aiStreaming = false;
+    state.aiCtrl     = null;
+    _updateChatInputState();
   }
   dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
 }
 
+/**
+ * Regenerate the last AI response: pop it from history and re-send.
+ */
+async function regenerateLastResponse() {
+  if (state.aiStreaming) return;
+  // Remove last assistant turn from history
+  while (state.chatHistory.length && state.chatHistory[state.chatHistory.length - 1].role === 'assistant') {
+    state.chatHistory.pop();
+  }
+  // Remove last assistant bubble from DOM
+  const msgs = dom.chatMessages.querySelectorAll('.chat-msg.assistant');
+  msgs[msgs.length - 1]?.remove();
+
+  // Get last user message and re-run (without re-adding user bubble — history already has it)
+  const lastUser = [...state.chatHistory].reverse().find(m => m.role === 'user');
+  if (!lastUser) return;
+
+  state.aiStreaming = true;
+  state.aiCtrl     = new AbortController();
+  _updateChatInputState();
+
+  const assistantWrap = document.createElement('div');
+  assistantWrap.className = 'chat-msg assistant';
+  assistantWrap.innerHTML = '<div class="chat-label">AI</div><div class="chat-bubble streaming-cursor"></div><div class="chat-msg-actions"></div>';
+  dom.chatMessages.appendChild(assistantWrap);
+  const bubble = assistantWrap.querySelector('.chat-bubble');
+
+  let full = '';
+  try {
+    const msgs = state.chatHistory.map(m => ({ role: m.role, content: m.content }));
+    full = await streamSSE('/api/ai/chat', {
+      messages: msgs, model: state.selectedModel || undefined, workspace: state.workspace || undefined,
+    }, chunk => {
+      full += chunk; bubble.innerHTML = renderMarkdown(full);
+      dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
+    }, state.aiCtrl.signal);
+
+    bubble.classList.remove('streaming-cursor');
+    state.chatHistory.push({ role: 'assistant', content: full });
+    bubble.innerHTML = renderMarkdown(full);
+    saveCurrentThread();
+    await autoWriteFiles(full);
+    await autoExecBlocks(full, bubble);
+    _attachMessageActions(assistantWrap, 'assistant', () => full);
+  } catch (e) {
+    bubble.classList.remove('streaming-cursor');
+    if (e.name !== 'AbortError') bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
+  } finally {
+    state.aiStreaming = false;
+    state.aiCtrl     = null;
+    _updateChatInputState();
+  }
+}
+
 async function explainSelection() {
-  if (!state.editor) return toast('No file open', 'warn');
+  if (!state.editor || state.aiStreaming) return toast(!state.editor ? 'No file open' : 'AI is busy', 'warn');
   const sel = state.editor.getModel()?.getValueInRange(state.editor.getSelection());
   const code = sel?.trim() || state.editor.getValue();
   if (!code) return;
@@ -1395,50 +1629,66 @@ async function explainSelection() {
   const prompt = `Explain this ${lang} code:\n\`\`\`${lang}\n${code}\n\`\`\``;
   state.chatHistory.push({ role: 'user', content: prompt });
   addChatMessage('user', `Explain ${sel ? 'selection' : 'current file'} (${lang})`);
-  const bubble = addChatMessage('assistant', '', true);
+  const assistantWrap = dom.chatMessages.lastElementChild;
+  const bubble = assistantWrap?.querySelector ? (() => {
+    const b = document.createElement('div'); b.className = 'chat-bubble streaming-cursor';
+    const w = document.createElement('div'); w.className = 'chat-msg assistant';
+    const l = document.createElement('div'); l.className = 'chat-label'; l.textContent = 'AI';
+    const a = document.createElement('div'); a.className = 'chat-msg-actions';
+    w.appendChild(l); w.appendChild(b); w.appendChild(a);
+    dom.chatMessages.appendChild(w); return b;
+  })() : addChatMessage('assistant', '', true);
+  const wrap = bubble.closest('.chat-msg');
+
+  state.aiStreaming = true; state.aiCtrl = new AbortController(); _updateChatInputState();
   let full = '';
   try {
     full = await streamSSE('/api/ai/explain', { code, language: lang, model: state.selectedModel || undefined },
-      chunk => {
-        full += chunk;
-        bubble.innerHTML = renderMarkdown(full);
-        dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
-      });
+      chunk => { full += chunk; bubble.innerHTML = renderMarkdown(full); dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight; },
+      state.aiCtrl.signal);
     bubble.classList.remove('streaming-cursor');
     bubble.innerHTML = renderMarkdown(full);
     state.chatHistory.push({ role: 'assistant', content: full });
     saveCurrentThread();
+    _attachMessageActions(wrap, 'assistant', () => full);
   } catch (e) {
     bubble.classList.remove('streaming-cursor');
-    bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
-  }
+    if (e.name !== 'AbortError') bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
+  } finally { state.aiStreaming = false; state.aiCtrl = null; _updateChatInputState(); }
 }
 
 async function fixWithError() {
-  if (!state.editor) return toast('No file open', 'warn');
+  if (!state.editor || state.aiStreaming) return toast(!state.editor ? 'No file open' : 'AI is busy', 'warn');
   const code  = state.editor.getValue();
-  const error = state.lastError || (await promptUser('Paste the error message:') || '');
+  const error = state.lastError || (await _promptName('Error message', 'Paste the error here…', '') || '');
   if (!error) return;
   const tab = state.tabs.find(t => t.path === state.activeTab);
   const lang = tab?.language || 'python';
-  addChatMessage('user', `Fix this ${lang} error:\n\`\`\`\n${error}\n\`\`\``);
-  const bubble = addChatMessage('assistant', '', true);
+  state.chatHistory.push({ role: 'user', content: `Fix this ${lang} error:\n\`\`\`\n${error}\n\`\`\`` });
+  addChatMessage('user', `Fix ${lang} error`);
+  const b = document.createElement('div'); b.className = 'chat-bubble streaming-cursor';
+  const w = document.createElement('div'); w.className = 'chat-msg assistant';
+  const l = document.createElement('div'); l.className = 'chat-label'; l.textContent = 'AI';
+  const a = document.createElement('div'); a.className = 'chat-msg-actions';
+  w.appendChild(l); w.appendChild(b); w.appendChild(a);
+  dom.chatMessages.appendChild(w);
+  const bubble = b; const wrap = w;
+
+  state.aiStreaming = true; state.aiCtrl = new AbortController(); _updateChatInputState();
   let full = '';
   try {
     full = await streamSSE('/api/ai/fix', { code, error, language: lang, model: state.selectedModel || undefined },
-      chunk => {
-        full += chunk;
-        bubble.innerHTML = renderMarkdown(full);
-        dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
-      });
+      chunk => { full += chunk; bubble.innerHTML = renderMarkdown(full); dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight; },
+      state.aiCtrl.signal);
     bubble.classList.remove('streaming-cursor');
     bubble.innerHTML = renderMarkdown(full);
     state.chatHistory.push({ role: 'assistant', content: full });
     saveCurrentThread();
+    _attachMessageActions(wrap, 'assistant', () => full);
   } catch (e) {
     bubble.classList.remove('streaming-cursor');
-    bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
-  }
+    if (e.name !== 'AbortError') bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
+  } finally { state.aiStreaming = false; state.aiCtrl = null; _updateChatInputState(); }
 }
 
 async function completeAtCursor() {
@@ -1468,7 +1718,7 @@ async function completeAtCursor() {
 }
 
 async function refactorSelection() {
-  if (!state.editor) return toast('No file open', 'warn');
+  if (!state.editor || state.aiStreaming) return toast(!state.editor ? 'No file open' : 'AI is busy', 'warn');
   const sel  = state.editor.getModel()?.getValueInRange(state.editor.getSelection());
   const code = sel?.trim() || state.editor.getValue();
   if (!code) return;
@@ -1476,54 +1726,57 @@ async function refactorSelection() {
   // Show refactor instructions modal
   const modal = $('refactorModal');
   modal.style.display = 'flex';
+  $('refactorInstructions').value = '';
   $('refactorInstructions').focus();
 
-  await new Promise(resolve => {
-    const confirm = async () => {
-      const instructions = $('refactorInstructions').value.trim();
-      if (!instructions) { toast('Enter instructions', 'warn'); return; }
-      modal.style.display = 'none';
-      resolve(instructions);
-      $('refactorConfirm').removeEventListener('click', confirm);
-      $('refactorCancel').removeEventListener('click', cancel);
+  const instructions = await new Promise(resolve => {
+    const onConfirm = () => {
+      const val = $('refactorInstructions').value.trim();
+      if (!val) { toast('Enter instructions', 'warn'); return; }
+      cleanup(); resolve(val);
     };
-    const cancel = () => {
+    const onCancel = () => { cleanup(); resolve(null); };
+    const cleanup = () => {
       modal.style.display = 'none';
-      resolve(null);
-      $('refactorConfirm').removeEventListener('click', confirm);
-      $('refactorCancel').removeEventListener('click', cancel);
+      $('refactorConfirm').removeEventListener('click', onConfirm);
+      $('refactorCancel').removeEventListener('click', onCancel);
+      $('refactorModalClose').removeEventListener('click', onCancel);
     };
-    $('refactorConfirm').addEventListener('click', confirm);
-    $('refactorCancel').addEventListener('click', cancel);
-    $('refactorModalClose').addEventListener('click', cancel, { once: true });
-  }).then(async instructions => {
-    if (!instructions) return;
-    const tab  = state.tabs.find(t => t.path === state.activeTab);
-    const lang = tab?.language || 'python';
-    addChatMessage('user', `Refactor (${lang}): ${instructions}`);
-    const bubble = addChatMessage('assistant', '', true);
-    let full = '';
-    try {
-      full = await streamSSE('/api/ai/refactor', { code, instructions, language: lang, model: state.selectedModel || undefined },
-        chunk => {
-          full += chunk;
-          bubble.innerHTML = renderMarkdown(full);
-          dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
-        });
-      bubble.classList.remove('streaming-cursor');
-      bubble.innerHTML = renderMarkdown(full);
-      state.chatHistory.push({ role: 'assistant', content: full });
-      saveCurrentThread();
-    } catch (e) {
-      bubble.classList.remove('streaming-cursor');
-      bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
-    }
+    $('refactorConfirm').addEventListener('click', onConfirm);
+    $('refactorCancel').addEventListener('click', onCancel);
+    $('refactorModalClose').addEventListener('click', onCancel, { once: true });
   });
+
+  if (!instructions) return;
+  const tab  = state.tabs.find(t => t.path === state.activeTab);
+  const lang = tab?.language || 'python';
+  state.chatHistory.push({ role: 'user', content: `Refactor (${lang}): ${instructions}\n\`\`\`${lang}\n${code}\n\`\`\`` });
+  addChatMessage('user', `Refactor (${lang}): ${instructions}`);
+  const b = document.createElement('div'); b.className = 'chat-bubble streaming-cursor';
+  const w = document.createElement('div'); w.className = 'chat-msg assistant';
+  const l = document.createElement('div'); l.className = 'chat-label'; l.textContent = 'AI';
+  const a = document.createElement('div'); a.className = 'chat-msg-actions';
+  w.appendChild(l); w.appendChild(b); w.appendChild(a);
+  dom.chatMessages.appendChild(w);
+  const bubble = b; const wrap = w;
+
+  state.aiStreaming = true; state.aiCtrl = new AbortController(); _updateChatInputState();
+  let full = '';
+  try {
+    full = await streamSSE('/api/ai/refactor', { code, instructions, language: lang, model: state.selectedModel || undefined },
+      chunk => { full += chunk; bubble.innerHTML = renderMarkdown(full); dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight; },
+      state.aiCtrl.signal);
+    bubble.classList.remove('streaming-cursor');
+    bubble.innerHTML = renderMarkdown(full);
+    state.chatHistory.push({ role: 'assistant', content: full });
+    saveCurrentThread();
+    _attachMessageActions(wrap, 'assistant', () => full);
+  } catch (e) {
+    bubble.classList.remove('streaming-cursor');
+    if (e.name !== 'AbortError') bubble.innerHTML = `<span style="color:var(--error)">${escHtml(e.message)}</span>`;
+  } finally { state.aiStreaming = false; state.aiCtrl = null; _updateChatInputState(); }
 }
 
-function promptUser(msg) {
-  return new Promise(resolve => resolve(window.prompt(msg) || null));
-}
 
 // ── File palette (Ctrl+P) ─────────────────────────────────────────────────────
 let _paletteFiles = [];
@@ -1880,8 +2133,8 @@ async function initThreads() {
 // Thread bar wiring
 $('btnThreadPicker').addEventListener('click', toggleThreadList);
 $('btnNewThread').addEventListener('click', async () => {
-  const name = window.prompt('Thread name:', 'New Chat');
-  if (name !== null) await createThread(name.trim() || 'New Chat');
+  const name = await _promptName('New Thread', 'Thread name', 'New Chat');
+  if (name !== null) await createThread(name || 'New Chat');
 });
 // Close thread list when clicking outside
 document.addEventListener('click', e => {
@@ -1913,7 +2166,7 @@ $('btnRun').addEventListener('click',   runActiveFile);
 $('btnStop').addEventListener('click',  stopRun);
 $('btnNewTab').addEventListener('click', () => { $('wsModal').style.display = 'flex'; });
 $('btnNewFileWelcome').addEventListener('click', async () => {
-  const name = window.prompt('File name:', 'untitled.py');
+  const name = await _promptName('New File', 'filename.py', 'untitled.py');
   if (!name) return;
   const path = state.workspace + '/' + name;
   try {
@@ -1923,7 +2176,7 @@ $('btnNewFileWelcome').addEventListener('click', async () => {
   } catch (e) { toast(e.message, 'error'); }
 });
 $('btnNewFile').addEventListener('click', async () => {
-  const name = window.prompt('File name:', 'untitled.py');
+  const name = await _promptName('New File', 'filename.py', 'untitled.py');
   if (!name) return;
   const path = state.workspace + '/' + name;
   try {
@@ -1933,7 +2186,7 @@ $('btnNewFile').addEventListener('click', async () => {
   } catch (e) { toast(e.message, 'error'); }
 });
 $('btnNewFolder').addEventListener('click', async () => {
-  const name = window.prompt('Folder name:');
+  const name = await _promptName('New Folder', 'folder-name');
   if (!name) return;
   try {
     await api('/api/fs/mkdir', { method: 'POST', body: JSON.stringify({ path: state.workspace + '/' + name }) });
@@ -1946,8 +2199,15 @@ $('btnFix').addEventListener('click',      fixWithError);
 $('btnComplete').addEventListener('click', completeAtCursor);
 $('btnRefactor').addEventListener('click', refactorSelection);
 
-// Chat send
+// Chat send / stop / include-file
 $('btnSendChat').addEventListener('click', () => sendChat(dom.chatInput.value));
+$('btnStopAI').addEventListener('click', () => { state.aiCtrl?.abort(); });
+$('btnIncludeFile').addEventListener('click', () => {
+  state.includeFile = !state.includeFile;
+  saveSettings();
+  _updateIncludeFileBtn();
+  toast(state.includeFile ? 'Active file will be included with your next message' : 'File inclusion disabled', 'info', 2000);
+});
 dom.chatInput.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(dom.chatInput.value); }
 });
@@ -1972,7 +2232,9 @@ function _applyAutoExecUI() {
     btn.setAttribute('aria-pressed', 'false');
   }
 }
-_applyAutoExecUI(); // init from loaded setting
+_applyAutoExecUI();    // init from loaded setting
+_updateChatInputState();
+_updateIncludeFileBtn();
 $('autoExecToggle').addEventListener('click', () => {
   state.autoExec = !state.autoExec;
   saveSettings();
@@ -2033,7 +2295,7 @@ function makeResizable(handle, getEl, getCssVar, dir) {
     if (state.editor) state.editor.layout();
   });
   document.addEventListener('mouseup', () => {
-    if (dragging) { dragging = false; handle.classList.remove('dragging'); }
+    if (dragging) { dragging = false; handle.classList.remove('dragging'); saveSettings(); }
   });
 }
 makeResizable($('resizeLeft'),  () => dom.fileTree, () => '--filetree-w', 'left');
@@ -2052,7 +2314,7 @@ document.addEventListener('mousemove', e => {
   document.documentElement.style.setProperty('--bottom-h', newH + 'px');
   if (state.editor) state.editor.layout();
 });
-document.addEventListener('mouseup', () => { bottomDragging = false; });
+document.addEventListener('mouseup', () => { if (bottomDragging) { bottomDragging = false; saveSettings(); } });
 
 // ── Monaco Editor init ────────────────────────────────────────────────────────
 function initMonaco() {

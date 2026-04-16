@@ -554,12 +554,18 @@ input:focus, textarea:focus { border-color: var(--accent); }
   overflow-y: auto;
   line-height: 1.5;
 }
-#btnSendChat {
+/* Button column next to textarea */
+.chat-input-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+#btnSendChat, #btnStopAI {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-sm);
-  background: var(--accent);
-  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -567,7 +573,49 @@ input:focus, textarea:focus { border-color: var(--accent); }
   font-size: 12px;
   transition: background 0.15s;
 }
+#btnSendChat { background: var(--accent); color: #fff; }
 #btnSendChat:hover { background: var(--accent-hover); }
+#btnStopAI { background: #7f1d1d; color: #fca5a5; border: 1px solid #b91c1c; }
+#btnStopAI:hover { background: #991b1b; }
+
+/* Include-file auxiliary button */
+.chat-aux-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+.chat-aux-btn:hover { color: var(--text-secondary); border-color: var(--border-bright); }
+.chat-aux-btn-active { color: var(--accent-hover) !important; border-color: var(--accent) !important; background: var(--accent-dim); }
+
+/* ── Message action buttons ──────────────────────────────────── */
+.chat-msg-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding: 2px 4px;
+}
+.chat-msg:hover .chat-msg-actions,
+.chat-msg:focus-within .chat-msg-actions { opacity: 1; }
+.chat-action-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: all 0.15s;
+}
+.chat-action-btn:hover { color: var(--text-secondary); background: var(--bg-hover); }
 
 /* ── Bottom panel ─────────────────────────────────────────────── */
 #bottomPanel {
