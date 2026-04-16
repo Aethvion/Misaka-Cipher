@@ -128,7 +128,6 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    scroll-behavior: smooth;
 }
 
 /* Empty state */
@@ -181,6 +180,10 @@
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.instant-msg {
+    animation: none !important;
 }
 
 .agents-message--user {

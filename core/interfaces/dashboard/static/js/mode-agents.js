@@ -266,7 +266,7 @@ function _agentsRenderMessages(messages) {
     }
 
     for (const msg of messages) {
-        _agentsAppendMessage(msg, false);
+        _agentsAppendMessage(msg, false, true); // scroll=false, isHistory=true
     }
     container.scrollTop = container.scrollHeight;
 }
@@ -276,7 +276,7 @@ function _agentsRenderMessages(messages) {
 // done card, so we skip it to avoid a duplicate.
 let _agLastMsgWasAgentSteps = false;
 
-function _agentsAppendMessage(msg, scroll = true) {
+function _agentsAppendMessage(msg, scroll = true, isHistory = false) {
     const container = _agEl('agents-messages');
     if (!container) return;
 
@@ -306,6 +306,7 @@ function _agentsAppendMessage(msg, scroll = true) {
     const role = msg.role || 'assistant';
     const wrapper = document.createElement('div');
     wrapper.className = `agents-message agents-message--${role}`;
+    if (isHistory) wrapper.classList.add('instant-msg');
 
     if (role === 'user') {
         // Task prompt header — compact, dashboard style
@@ -942,6 +943,7 @@ function _agAddThoughtCard(title, detail) {
 
     const msg = document.createElement('div');
     msg.className = 'agent-thought-msg';
+    if (s.isReplay) msg.classList.add('instant-msg');
 
     // Label chip (source tag: "Thinking", "🔍 Found…", etc.)
     const tag = document.createElement('span');
