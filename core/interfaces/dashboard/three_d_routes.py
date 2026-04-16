@@ -158,26 +158,38 @@ async def generate_3d_asset(req: ThreeDGenerationRequest):
             if not result_data.get("success"):
                 return ThreeDGenerationResponse(success=False, error=result_data.get("error", "Unknown worker error"))
 
-        # 3. Save Real GLB
-        glb_bytes = base64.b64decode(result_data["glb_base64"])
-        filename = f"{req.model}-{trace_id}.glb"
+        # 3. Save Logic: Nested structure (YYYY-MM/trace_id/...)
+        now = datetime.now()
+        month_dir = now.strftime("%Y-%m")
+        # We'll use a standard filename inside the folder to keep it clean
+        base_subpath = f"{month_dir}/{trace_id}"
         
-        # If the user actually provided an image, we'll save it too for reference
+        # Ensure the subdirectories exist within ThreeD domain
+        threed_root = workspace.workspace_root / "ThreeD"
+        gen_dir = threed_root / base_subpath
+        gen_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save Real GLB
+        glb_bytes = base64.b64decode(result_data["glb_base64"])
+        glb_filename = f"{req.model}.glb"
+        glb_subpath = f"{base_subpath}/{glb_filename}"
+        
+        # If the user provided an image, save it too
         if req.input_image:
-            image_filename = f"{trace_id}-ref.png"
             try:
                  img_data = req.input_image
                  if "," in img_data:
                      img_data = img_data.split(",", 1)[1]
                  img_bytes = base64.b64decode(img_data)
-                 workspace.save_output(domain="ThreeD", filename=image_filename, content=img_bytes, trace_id=trace_id)
+                 # Save as reference.png in the same folder
+                 workspace.save_output(domain="ThreeD", filename=f"{base_subpath}/reference.png", content=img_bytes, trace_id=trace_id)
             except Exception as e:
                 logger.warning(f"Failed to save reference image: {e}")
 
         # Save the REAL GLB
         path = workspace.save_output(
             domain="ThreeD",
-            filename=filename,
+            filename=glb_subpath,
             content=glb_bytes,
             trace_id=trace_id
         )
@@ -185,12 +197,12 @@ async def generate_3d_asset(req: ThreeDGenerationRequest):
         stat = path.stat()
         asset = ThreeDAssetResponse(
             id=trace_id,
-            name=req.prompt if req.prompt else "3D Capture",
-            url=f"/api/3d/serve/{filename}",
+            name=req.prompt if req.prompt else f"3D {req.model}",
+            url=f"/api/3d/serve/{glb_subpath}",
             path=str(path),
             model=req.model,
             size_bytes=stat.st_size,
-            created_at=datetime.now().isoformat()
+            created_at=now.isoformat()
         )
 
         return ThreeDGenerationResponse(
@@ -212,30 +224,38 @@ async def get_3d_history():
     
     history = []
     for f in outputs.get('files', []):
-        if f.get('domain') == 'ThreeD' and f.get('filename', '').endswith('.glb'):
+        # f['path'] is relative to workspace_root, e.g. "ThreeD/2026-04/trace/model.glb"
+        rel_path = f.get('path', '')
+        if f.get('domain') == 'ThreeD' and rel_path.endswith('.glb'):
+            # The URL needs the part of the path AFTER "ThreeD/"
+            serve_path = rel_path
+            if serve_path.startswith('ThreeD/'):
+                serve_path = serve_path[7:] # remove "ThreeD/"
+
             history.append(ThreeDAssetResponse(
                 id=f.get('trace_id') or 'unknown',
-                name=f.get('filename').split('-')[0],
-                url=f"/api/3d/serve/{f.get('filename')}",
-                path=f.get('path'),
-                model="trellis-2", # Dummy model for legacy
+                name=f.get('filename'),
+                url=f"/api/3d/serve/{serve_path}",
+                path=rel_path,
+                model="unknown",
                 size_bytes=f.get('size_bytes', 0),
                 created_at=f.get('created_at')
             ))
             
     return history
 
-@router.get("/serve/{filename}")
+@router.get("/serve/{filename:path}")
 async def serve_3d_asset(filename: str):
-    """Serve a generated 3D file."""
+    """Serve a generated 3D file (supports nested paths)."""
     workspace = get_workspace_manager()
-    path = workspace.get_output_path(domain="ThreeD", filename=filename)
+    # Normalize path to prevent directory traversal
+    safe_filename = filename.replace("..", "")
+    path = workspace.workspace_root / "ThreeD" / safe_filename
     
-    if not path.exists():
+    if not path.exists() or not path.is_file():
         raise HTTPException(status_code=404, detail="Asset not found")
     
     from fastapi.responses import FileResponse
-    # Return with glb content type
     return FileResponse(path, media_type="model/gltf-binary")
 
 @router.get("/status")
