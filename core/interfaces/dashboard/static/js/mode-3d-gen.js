@@ -2,7 +2,10 @@
  * Aethvion Suite — 3D Workspace Mode
  * 
  * Logic for generation, previewing, and managing 3D assets.
+ * Integrates with ThreeDViewer engine for high-fidelity rendering.
  */
+
+import { ThreeDViewer } from './3d-viewer.js';
 
 (function () {
     'use strict';
@@ -12,7 +15,8 @@
             currentMode: 'i23d', // 'i23d' or 't23d'
             generating: false,
             uploadedImage: null,
-            initialized: false
+            initialized: false,
+            viewer: null
         },
 
         init() {
@@ -20,11 +24,33 @@
                 console.log('[Mode3DGen] Already initialized.');
                 return;
             }
-            console.log('[Mode3DGen] Initializing Workspace...');
+            console.log('[Mode3DGen] Initializing Workspace (Three.js Engine)...');
+            
+            // Initialize Three.js Viewer
+            this.state.viewer = new ThreeDViewer('tg-three-container');
+
             this.bindEvents();
             this.initDropzone();
             this.loadHistory();
             this.state.initialized = true;
+
+            // Handle listener for loading states
+            const container = document.getElementById('tg-three-container');
+            const overlay = document.getElementById('tg-loading');
+
+            if (container) {
+                container.addEventListener('viewer-loading', () => {
+                    if (overlay) overlay.style.display = 'flex';
+                });
+                container.addEventListener('viewer-loaded', (e) => {
+                    if (overlay) overlay.style.display = 'none';
+                    this.updateModelInfo(this.state.viewer);
+                });
+                container.addEventListener('viewer-error', (e) => {
+                    if (overlay) overlay.style.display = 'none';
+                    window.showToast('Model render error', 'error');
+                });
+            }
         },
 
         bindEvents() {
@@ -42,121 +68,103 @@
                 genBtn.addEventListener('click', () => this.handleGenerate());
             }
 
-            // HUD Controls (Labeled Suite)
-            const btnRotate = document.getElementById('ctrl-rotate');
-            if (btnRotate) {
-                btnRotate.addEventListener('click', () => {
-                    const viewer = document.getElementById('tg-model-viewer');
-                    if (viewer) {
-                        viewer.autoRotate = !viewer.autoRotate;
-                        btnRotate.classList.toggle('active', viewer.autoRotate);
-                    }
-                });
-            }
-
-            // View Mode Chips (Direct Access)
-            document.querySelectorAll('.tg-mode-chip').forEach(chip => {
-                chip.addEventListener('click', () => {
-                    const mode = chip.dataset.mode;
-                    const viewer = document.getElementById('tg-model-viewer');
-                    if (!viewer) return;
-
-                    this.state.viewMode = mode;
-                    this.applyViewMode(viewer);
-
-                    // UI Update
-                    document.querySelectorAll('.tg-mode-chip').forEach(c => c.classList.remove('active'));
-                    chip.classList.add('active');
+            // Lighting Presets (New Three.js v14.2)
+            document.querySelectorAll('[data-preset]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const preset = e.target.dataset.preset;
+                    this.state.viewer.setLightingPreset(preset);
+                    
+                    document.querySelectorAll('[data-preset]').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
                 });
             });
 
-            // Lighting Suite (Exposure Fix)
-            const exposureSlider = document.getElementById('tg-exposure-slider');
-            if (exposureSlider) {
-                exposureSlider.addEventListener('input', (e) => {
-                    const viewer = document.getElementById('tg-model-viewer');
-                    if (viewer) {
-                        const val = e.target.value;
-                        viewer.setAttribute('exposure', val);
+            // Lighting Intensity
+            const intensitySlider = document.getElementById('ctrl-light-intensity');
+            if (intensitySlider) {
+                intensitySlider.addEventListener('input', (e) => {
+                    if (this.state.viewer) {
+                        this.state.viewer.setLightIntensity(e.target.value);
                     }
+                });
+            }
+
+            // View Mode Shading (Normal/Wireframe)
+            document.querySelectorAll('.tg-mode-chip[data-mode]').forEach(chip => {
+                chip.addEventListener('click', (e) => {
+                    const mode = e.target.dataset.mode;
+                    if (!this.state.viewer || !this.state.viewer.model) return;
+
+                    this.applyShadingMode(mode);
+
+                    document.querySelectorAll('.tg-mode-chip[data-mode]').forEach(c => c.classList.remove('active'));
+                    e.target.classList.add('active');
+                });
+            });
+
+            // Utility Controls
+            const btnFloor = document.getElementById('ctrl-floor');
+            if (btnFloor) {
+                btnFloor.addEventListener('click', () => {
+                    const nextState = !btnFloor.classList.contains('active');
+                    this.state.viewer.toggleFloor(nextState);
+                    btnFloor.classList.toggle('active', nextState);
+                });
+            }
+
+            const btnResetCam = document.getElementById('ctrl-reset-cam');
+            if (btnResetCam) {
+                btnResetCam.addEventListener('click', () => {
+                    this.state.viewer.resetCamera();
                 });
             }
         },
 
-        applyViewMode(viewer) {
-            if (!viewer.model) return;
-
-            // Direct Three.js access via internal symbol hack
-            const sceneSymbol = Object.getOwnPropertySymbols(viewer).find(s => s.description === 'scene');
-            const threeScene = sceneSymbol ? viewer[sceneSymbol] : null;
-
-            const mode = this.state.viewMode || 'normal';
-
-            if (threeScene) {
-                threeScene.traverse(obj => {
-                    if (obj.isMesh) {
-                        // CRITICAL: Skip the shadow floor/ground plane
-                        if (obj.name.toLowerCase().includes('shadow') || obj.name.toLowerCase().includes('ground')) return;
-                        
-                        const mat = obj.material;
-                        mat.wireframe = (mode === 'wireframe' || mode === 'xray' || mode === 'points');
-                        mat.transparent = (mode === 'xray');
-                        mat.opacity = (mode === 'xray') ? 0.2 : 1.0;
-                        mat.needsUpdate = true;
-                    }
-                });
+        applyShadingMode(mode) {
+            if (this.state.viewer) {
+                this.state.viewer.setShadingMode(mode);
             }
         },
 
-        updateModelInfo(viewer) {
+        updateModelInfo(viewerEngine) {
             const infoBox = document.getElementById('tg-model-stats');
-            const customLoader = viewer.querySelector('.tg-loader-sphere');
+            const customLoader = document.querySelector('.tg-loader-sphere');
             
             if (customLoader) {
                 customLoader.style.visibility = 'hidden';
                 customLoader.style.display = 'none';
             }
 
-            if (!infoBox || !viewer.model) {
+            if (!infoBox || !viewerEngine.model) {
                 if (infoBox) infoBox.style.display = 'none';
                 return;
             }
 
             infoBox.style.display = 'flex';
-            this.applyViewMode(viewer); 
 
-            // Calculate real triangle and vertex counts
+            // Calculate real triangle and vertex counts from Three.js
             let totalTris = 0;
             let totalVerts = 0;
 
-            const sceneSymbol = Object.getOwnPropertySymbols(viewer).find(s => s.description === 'scene');
-            const threeScene = sceneSymbol ? viewer[sceneSymbol] : null;
-
-            if (threeScene) {
-                threeScene.traverse(obj => {
-                    if (obj.isMesh && obj.geometry) {
-                        if (obj.name.toLowerCase().includes('shadow') || obj.name.toLowerCase().includes('ground')) return;
-                        
-                        const geo = obj.geometry;
-                        if (geo.index) {
-                            totalTris += geo.index.count / 3;
-                        } else if (geo.attributes.position) {
-                            totalTris += geo.attributes.position.count / 3;
-                        }
-                        if (geo.attributes.position) {
-                            totalVerts += geo.attributes.position.count;
-                        }
+            viewerEngine.model.traverse(obj => {
+                if (obj.isMesh && obj.geometry) {
+                    const geo = obj.geometry;
+                    if (geo.index) {
+                        totalTris += geo.index.count / 3;
+                    } else if (geo.attributes.position) {
+                        totalTris += geo.attributes.position.count / 3;
                     }
-                });
-            }
+                    if (geo.attributes.position) {
+                        totalVerts += geo.attributes.position.count;
+                    }
+                }
+            });
 
             try {
-                const modelPath = viewer.src;
-                const modelName = modelPath.split('/').pop();
+                const modelPath = viewerEngine.model.name || 'Generated Mesh';
                 
                 infoBox.innerHTML = `
                     <div class="tg-stat-item"><span style="color:var(--primary); font-weight:700;">SPECIFICATIONS</span></div>
-                    <div class="tg-stat-item"><span>Model</span> <span class="tg-stat-val">${modelName.length > 15 ? modelName.substring(0,12)+'...' : modelName}</span></div>
                     <div class="tg-stat-item"><span>Format</span> <span class="tg-stat-val">GLB/2.0</span></div>
                     <div class="tg-stat-item"><span>Complexity</span> <span class="tg-stat-val">${Math.round(totalTris).toLocaleString()} tris</span></div>
                     <div class="tg-stat-item"><span>Topology</span> <span class="tg-stat-val">${Math.round(totalVerts).toLocaleString()} verts</span></div>
@@ -169,7 +177,6 @@
         switchMode(mode) {
             this.state.currentMode = mode;
             
-            // UI Updates
             document.querySelectorAll('.tg-tab-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.type === mode);
             });
@@ -200,14 +207,8 @@
                 if (file) this.handleImage(file);
             });
 
-            dropzone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropzone.style.borderColor = 'var(--primary)';
-            });
-
-            dropzone.addEventListener('dragleave', () => {
-                dropzone.style.borderColor = 'var(--border)';
-            });
+            dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.style.borderColor = 'var(--primary)'; });
+            dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = 'var(--border)'; });
 
             dropzone.addEventListener('drop', (e) => {
                 e.preventDefault();
@@ -242,7 +243,6 @@
             const textured = document.getElementById('tg-textured').checked;
             const seed = document.getElementById('tg-seed').value;
 
-            // Basic Validation
             if (this.state.currentMode === 'i23d' && !this.state.uploadedImage) {
                 window.showToast('Please upload a reference image.', 'warn');
                 return;
@@ -252,7 +252,6 @@
                 return;
             }
 
-            // Start Generation
             this.state.generating = true;
             this.updateGenUI(true);
 
@@ -273,14 +272,14 @@
 
                 if (response.status === 503) {
                     const modelLabel = model === 'triposr' ? 'TripoSR' : 'Trellis 2';
-                    window.showToast(`${modelLabel} is currently launching (Loading model weights into VRAM). Please wait...`, 'info');
+                    window.showToast(`${modelLabel} is launching...`, 'info');
                     return;
                 }
 
                 const data = await response.json();
                 if (!data.success) throw new Error(data.error || 'Generation failed');
                 
-                window.showToast('3D Generation Successful! Previewing mesh...', 'success');
+                window.showToast('Mesh generated successfully!', 'success');
                 this.showResult(data.asset);
             } catch (e) {
                 console.error('[Mode3DGen] Generation error:', e);
@@ -309,17 +308,15 @@
         showResult(asset) {
             const placeholder = document.getElementById('tg-placeholder');
             const canvasRoot = document.getElementById('tg-canvas-root');
-            const viewer = document.getElementById('tg-model-viewer');
             
             if (!asset || !asset.url) return;
             
             if (placeholder) placeholder.style.display = 'none';
             if (canvasRoot) canvasRoot.style.display = 'block';
             
-            if (viewer) {
-                viewer.src = asset.url;
-                viewer.dismissPoster();
-                viewer.addEventListener('load', () => this.updateModelInfo(viewer), { once: true });
+            if (this.state.viewer) {
+                this.state.viewer.onResize();
+                this.state.viewer.loadModel(asset.url);
             }
 
             this.loadHistory();
@@ -330,7 +327,6 @@
             if (!list) return;
 
             try {
-                // Fetch first page, 10 items
                 const response = await fetch('/api/3d/history?page=1&limit=10');
                 const data = await response.json();
                 const assets = data.assets || [];
@@ -343,16 +339,12 @@
                     
                     const sizeMB = (asset.size_bytes / (1024 * 1024)).toFixed(1);
                     const date = new Date(asset.created_at).toLocaleDateString();
-                    
-                    // Use thumbnail if available, else fallback to icon
                     const thumbHtml = asset.thumbnail_url 
                         ? `<img src="${asset.thumbnail_url}" alt="Preview" class="tg-asset-thumbnail">`
                         : `<div class="tg-asset-placeholder"><i class="fas fa-cube"></i></div>`;
 
                     card.innerHTML = `
-                        <div class="tg-asset-thumb">
-                            ${thumbHtml}
-                        </div>
+                        <div class="tg-asset-thumb">${thumbHtml}</div>
                         <div class="tg-asset-info">
                             <span class="tg-asset-name">${asset.name || 'Generated Mesh'}</span>
                             <span class="tg-asset-meta">${date} • ${sizeMB} MB</span>
@@ -375,7 +367,7 @@
         registerTabInit('3d-gen', () => Mode3DGen.init());
     }
 
-    // Also listen for panelLoaded as a secondary hook
+    // Panel loading hook
     document.addEventListener('panelLoaded', (e) => {
         if (e.detail.tabName === '3d-gen') {
             Mode3DGen.init();
@@ -383,5 +375,4 @@
     });
 
     window.Mode3DGen = Mode3DGen;
-
 })();

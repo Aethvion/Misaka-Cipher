@@ -75,52 +75,45 @@
                 <div style="font-size:0.7rem; color:var(--text-tertiary); margin-top:-1rem;">Processing meshes and topology...</div>
             </div>
 
-            <!-- Real 3D Viewport -->
+            <!-- Real 3D Viewport (Three.js Engine) -->
             <div id="tg-canvas-root" style="width:100%; height:100%; display:none;">
-                <model-viewer
-                    id="tg-model-viewer"
-                    src=""
-                    camera-controls
-                    auto-rotate
-                    shadow-intensity="1"
-                    environment-image="neutral"
-                    exposure="1"
-                    interaction-prompt="auto"
-                    style="width: 100%; height: 100%; background: transparent;">
-                    
-                    <div slot="progress-bar" class="tg-loader-sphere"></div>
-                </model-viewer>
+                <div id="tg-three-container" style="width: 100%; height: 100%; cursor: grab;"></div>
             </div>
 
             <!-- Control HUD -->
             <div class="tg-canvas-overlay">
-                <!-- Lighting Suite -->
-                <div class="tg-stats-hud" style="width: 160px; pointer-events: auto;">
-                    <div class="tg-stat-item"><span style="color:var(--primary); font-weight:700;">ENVIRONMENT</span></div>
-                    <div class="tg-stat-item">
-                        <span>Exposure</span>
-                        <input type="range" id="tg-exposure-slider" min="0" max="2" step="0.05" value="1" style="width:70px; cursor:pointer;">
-                    </div>
+                <!-- Lighting Suite (Mood Presets) -->
+                <div class="tg-view-modes-grid" style="pointer-events: auto;">
+                    <div class="tg-mode-chip active" data-preset="studio" title="Clean, neutral lighting">STUDIO</div>
+                    <div class="tg-mode-chip" data-preset="dramatic" title="High contrast & deep shadows">DRAMATIC</div>
+                    <div class="tg-mode-chip" data-preset="outdoor" title="Warm sunlight & soft sky">OUTDOOR</div>
+                    <div class="tg-mode-chip" data-preset="none" title="No environment lighting">NONE</div>
                 </div>
 
-                <!-- View Modes (Direct Access) -->
-                <div class="tg-view-modes-grid">
+                <!-- View Modes (Shading) -->
+                <div class="tg-view-modes-grid" style="pointer-events: auto;">
                     <div class="tg-mode-chip active" data-mode="normal" title="Standard view">NORMAL</div>
+                    <div class="tg-mode-chip" data-mode="solid-wire" title="Solid + Wireframe">NORMAL + WIRE</div>
                     <div class="tg-mode-chip" data-mode="wireframe" title="Mesh topology">WIRE</div>
-                    <div class="tg-mode-chip" data-mode="points" title="Point cloud density">POINTS</div>
-                    <div class="tg-mode-chip" data-mode="xray" title="Transparent inspection">X-RAY</div>
                 </div>
 
-                <!-- View Controls (System) -->
-                <div class="tg-view-controls-list">
-                    <div class="tg-view-control-labeled" title="Auto-Rotate" id="ctrl-rotate">
-                        <i class="fas fa-sync"></i> <span>Auto-Spin</span>
+                <!-- Utilities (System) -->
+                <div class="tg-view-controls-list" style="pointer-events: auto;">
+                    <div class="tg-view-control-labeled" title="Lighting Intensity">
+                        <i class="fas fa-sun"></i>
+                        <input type="range" id="ctrl-light-intensity" min="0" max="3" step="0.1" value="1.0" style="width: 70px; cursor: pointer;">
+                    </div>
+                    <div class="tg-view-control-labeled active" title="Toggle floor reflection" id="ctrl-floor">
+                        <i class="fas fa-layer-group"></i> <span>Floor</span>
+                    </div>
+                    <div class="tg-view-control-labeled" title="Reset camera view" id="ctrl-reset-cam">
+                        <i class="fas fa-camera"></i> <span>Reset View</span>
                     </div>
                 </div>
                 
                 <!-- Technical Stats Panel (Full Info) -->
                 <div class="tg-stats-hud" id="tg-model-stats">
-                    <!-- Full info injected here -->
+                    <!-- Technical data injected here -->
                 </div>
             </div>
         </div>

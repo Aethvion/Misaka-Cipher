@@ -843,6 +843,12 @@ async def generate(req: GenRequest):
         print("[triposr] Extracting mesh...")
         meshes = _model.extract_mesh(scene_codes, has_vertex_color=True, resolution=req.resolution)
 
+        # 90 degrees left rotation at creation level
+        import numpy as np
+        import trimesh
+        matrix = trimesh.transformations.rotation_matrix(np.pi/2, [0, 1, 0])
+        meshes[0].apply_transform(matrix)
+
         glb_bytes = meshes[0].export(file_type="glb")
         print(f"[triposr] GLB size: {len(glb_bytes)/1024:.1f} KB")
 
@@ -1285,6 +1291,12 @@ async def generate(req: GenRequest):
         outputs = _pipeline.run(image, seed=req.seed, formats=req.formats)
         print(f"[{MODEL_ID}] Inference complete")
         if "mesh" in outputs and "gaussian" in outputs:
+            # 90 degrees left rotation at creation level
+            import numpy as np
+            import trimesh
+            matrix = trimesh.transformations.rotation_matrix(np.pi/2, [0, 1, 0])
+            outputs["mesh"][0].apply_transform(matrix)
+
             from trellis.utils import postprocessing_utils
             glb = postprocessing_utils.to_glb(outputs["gaussian"][0], outputs["mesh"][0])
             return {"success": True, "glb_base64": base64.b64encode(glb).decode()}
