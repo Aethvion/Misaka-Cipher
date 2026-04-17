@@ -11,26 +11,23 @@ from core.interfaces.cli_modules.utils import (
 from core.interfaces.cli_modules.system_module import show_system_status
 from core.interfaces.cli_modules.nexus_module import nexus_core_module
 from core.interfaces.cli_modules.factory_module import factory_module
-from core.interfaces.cli_modules.forge_module import forge_module
 from core.interfaces.cli_modules.memory_module import memory_module
 from core.interfaces.cli_modules.companions_module import companions_module
 
 from core.nexus_core import NexusCore
 from core.factory import AgentFactory
-from core.forge import ToolForge
 from core.utils import get_logger
 
 logger = get_logger(__name__)
 
 
-class MisakaCLI:
+class AethvionCLI:
     """Main CLI coordinator for Aethvion Suite."""
 
     def __init__(self):
         """Initialize CLI and system components."""
         self.nexus = None
         self.factory = None
-        self.forge = None
         self.running = False
 
     def initialize(self):
@@ -47,11 +44,6 @@ class MisakaCLI:
             # Initialize Factory
             console.print("  • The Factory...", end="")
             self.factory = AgentFactory(self.nexus)
-            console.print(" [bold green]✓[/bold green]")
-
-            # Initialize Forge
-            console.print("  • The Forge...", end="")
-            self.forge = ToolForge(self.nexus)
             console.print(" [bold green]✓[/bold green]")
 
             # Memory Tier initializes lazily
@@ -110,7 +102,6 @@ class MisakaCLI:
         options = [
             "Nexus Core          — Direct AI Interaction",
             "The Factory         — Agent Spawning & Execution",
-            "The Forge           — Autonomous Tool Generation",
             "Memory              — Query & Search State",
             "Chat History        — Browse Unified History",
             "Advanced AI Conv.   — Research Lab",
@@ -152,34 +143,30 @@ class MisakaCLI:
                 factory_module(self.factory)
 
             elif choice == 3:
-                from core.interfaces.cli_modules.forge_module import forge_module
-                forge_module(self.forge)
-
-            elif choice == 4:
                 from core.interfaces.cli_modules.memory_module import memory_module
                 memory_module()
 
-            elif choice == 5:
+            elif choice == 4:
                 from core.interfaces.cli_modules.memory_module import chat_history_module
                 chat_history_module()
 
-            elif choice == 6:
+            elif choice == 5:
                 from core.interfaces.cli_modules.research_module import research_module
                 research_module(self.nexus)
 
-            elif choice == 7:
+            elif choice == 6:
                 from core.interfaces.cli_modules.arena_module import arena_module
                 arena_module(self.nexus)
 
-            elif choice == 8:
+            elif choice == 7:
                 from core.interfaces.cli_modules.settings_module import settings_module
                 settings_module()
 
-            elif choice == 9:
+            elif choice == 8:
                 from core.interfaces.cli_modules.system_module import show_system_status
-                show_system_status(self.nexus, self.factory, self.forge)
+                show_system_status(self.nexus, self.factory)
 
-            elif choice == 10:
+            elif choice == 9:
                 from core.interfaces.cli_modules.companions_module import companions_module
                 companions_module()
 
@@ -201,7 +188,7 @@ def _try_read_env_token() -> str:
 def main():
     """Main entry point for CLI."""
     try:
-        cli = MisakaCLI()
+        cli = AethvionCLI()
         cli.run()
     except KeyboardInterrupt:
         console.print("\n\n[yellow]Interrupted by user[/yellow]")

@@ -11,7 +11,6 @@ from core.interfaces.cli_modules.utils import (
 )
 from core.nexus_core import NexusCore
 from core.factory import AgentFactory
-from core.forge import ToolForge
 from core.memory import get_episodic_memory, get_knowledge_graph
 from rich.panel import Panel
 from rich.columns import Columns
@@ -20,14 +19,13 @@ from rich.text import Text
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 
-def show_system_status(nexus: NexusCore, factory: AgentFactory, forge: ToolForge):
+def show_system_status(nexus: NexusCore, factory: AgentFactory):
     """
     Display comprehensive system status.
 
     Args:
         nexus: NexusCore instance
         factory: AgentFactory instance
-        forge: ToolForge instance
     """
     clear_screen()
     print_header("System Status", "Aethvion Suite — Comprehensive Diagnostics")
@@ -81,24 +79,6 @@ def show_system_status(nexus: NexusCore, factory: AgentFactory, forge: ToolForge
     except Exception as e:
         print_warning(f"Factory status unavailable: {str(e)}")
         issues.append(f"Factory: {str(e)}")
-
-    # ── Forge ────────────────────────────────────────────────────────────────
-    console.print("\n[bold cyan]═══ The Forge ═══[/bold cyan]")
-    try:
-        tool_count   = forge.get_tool_count()
-        recent_tools = forge.list_tools()[-3:] if forge.list_tools() else []
-
-        print_key_value("Total Tools", tool_count)
-        if recent_tools:
-            console.print("[bold yellow]Recent Tools:[/bold yellow]")
-            for tool in recent_tools:
-                console.print(f"  • {tool['name']} ({tool['domain']})")
-        else:
-            console.print("[dim]No tools generated yet[/dim]")
-        print_success("Forge operational")
-    except Exception as e:
-        print_warning(f"Forge status unavailable: {str(e)}")
-        issues.append(f"Forge: {str(e)}")
 
     # ── Memory Tier ──────────────────────────────────────────────────────────
     console.print("\n[bold cyan]═══ The Memory Tier ═══[/bold cyan]")

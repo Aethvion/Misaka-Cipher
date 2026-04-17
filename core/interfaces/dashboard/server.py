@@ -102,10 +102,22 @@ async def initialize_system_background():
         from .advanced_aiconv_routes import router as adv_aiconv_router
         from .research_board_routes import router as board_router
         from .assistant_routes import router as assistant_router
+        from .ollama_routes import router as ollama_router
+        from .audio_models_routes import router as audio_router
+        from .corp_routes import router as corp_router
+        from .games_routes import router as games_router
+        from .overlay_routes import router as overlay_router
+        from .schedule_routes import router as schedule_router
+        from .smarter_than_ai_routes import router as smarter_router
+        from .three_d_routes import router as threed_router
+        from .agent_workspace_routes import router as agent_ws_router
+        from .notification_routes import router as notification_router
+        from .discord_routes import router as discord_router
+        from .logs_routes import router as logs_router
+        from .documentation_routes import router as documentation_router
+        
         from core.companions.companion_routes import router as companion_router
         from core.companions.companion_creator_routes import router as companion_creator_router
-        from .documentation_routes import router as documentation_router
-        from .logs_routes import router as logs_router
         
         app.include_router(system_router)
         app.include_router(preferences_router)
@@ -120,10 +132,21 @@ async def initialize_system_background():
         app.include_router(adv_aiconv_router)
         app.include_router(board_router)
         app.include_router(assistant_router)
+        app.include_router(ollama_router)
+        app.include_router(audio_router)
+        app.include_router(corp_router)
+        app.include_router(games_router)
+        app.include_router(overlay_router)
+        app.include_router(schedule_router)
+        app.include_router(smarter_router)
+        app.include_router(threed_router)
+        app.include_router(agent_ws_router)
+        app.include_router(notification_router)
+        app.include_router(discord_router)
+        app.include_router(logs_router)
+        app.include_router(documentation_router)
         app.include_router(companion_router)
         app.include_router(companion_creator_router)
-        app.include_router(documentation_router)
-        app.include_router(logs_router)
 
         # Blocking init
         await asyncio.to_thread(perform_blocking_init)

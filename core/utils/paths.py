@@ -28,11 +28,11 @@ APPS           = DATA / "apps"
 CONFIG         = DATA / "config"
 LOGS           = DATA / "logs"
 SYSTEM         = DATA / "system"
-COMPANIONS     = DATA / "companions"
 MODES          = DATA / "modes"
+COMPANIONS     = MODES / "companions"
 DEFAULT_OUTPUT = DATA / "default_output"
 
-# ── Modes (Tab-specific data) ─────────────────────────────────────────────────
+# ── Modes (Tab-specific state & history) ──────────────────────────────────────
 MODE_CHAT         = MODES / "chat"
 MODE_AGENTS       = MODES / "agents"
 MODE_AGENT_CORP   = MODES / "agent_corp"
