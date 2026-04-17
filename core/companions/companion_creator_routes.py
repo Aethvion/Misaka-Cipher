@@ -16,12 +16,12 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
+from core.utils.paths import COMPANIONS
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/companion-creator", tags=["companion-creator"])
 
-_ROOT = Path(__file__).parent.parent.parent.parent
-_CUSTOM_DIR = _ROOT / "data" / "companions" / "custom"
+_CUSTOM_DIR = COMPANIONS
 _CUSTOM_DIR.mkdir(parents=True, exist_ok=True)
 
 
