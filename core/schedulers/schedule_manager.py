@@ -17,7 +17,12 @@ try:
 except ImportError:
     from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore
 
-_UTC = ZoneInfo('UTC')
+try:
+    _UTC = ZoneInfo('UTC')
+except Exception:
+    # Fallback for environments where ZoneInfo('UTC') might fail
+    import datetime
+    _UTC = datetime.timezone.utc
 
 from core.utils.logger import get_logger
 from core.utils import utcnow_iso

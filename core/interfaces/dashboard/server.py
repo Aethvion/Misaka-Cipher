@@ -26,6 +26,9 @@ from .routes.preferences_routes import router as preferences_router
 from .routes.workspace_routes import router as workspace_router
 
 logger = get_logger(__name__)
+nexus = None
+orchestrator = None
+factory = None
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -167,12 +170,17 @@ def perform_blocking_init():
     from core.factory import AgentFactory
     from core.orchestrator import MasterOrchestrator
 
-    app.state.nexus = NexusCore()
-    app.state.nexus.initialize()
-    app.state.factory = AgentFactory(app.state.nexus)
-    app.state.orchestrator = MasterOrchestrator(app.state.nexus, app.state.factory)
+    global nexus, orchestrator, factory
+    nexus = NexusCore()
+    nexus.initialize()
+    factory = AgentFactory(nexus)
+    orchestrator = MasterOrchestrator(nexus, factory)
     
-    app.state.orchestrator.set_step_callback(
+    app.state.nexus = nexus
+    app.state.factory = factory
+    app.state.orchestrator = orchestrator
+    
+    orchestrator.set_step_callback(
         lambda data: asyncio.run_coroutine_threadsafe(manager.broadcast(data, "chat"), app.state.main_event_loop)
     )
 
@@ -210,6 +218,16 @@ async def websocket_logs(websocket: WebSocket):
             await websocket.send_json({"type": "heartbeat", "timestamp": utcnow_iso()})
     except (WebSocketDisconnect, RuntimeError): pass
     finally: manager.disconnect(websocket, "logs")
+
+@app.websocket("/ws/agents")
+async def websocket_agents(websocket: WebSocket):
+    await manager.connect(websocket, "agents")
+    try:
+        while True:
+            await asyncio.sleep(10)
+            await websocket.send_json({"type": "heartbeat", "timestamp": utcnow_iso()})
+    except (WebSocketDisconnect, RuntimeError): pass
+    finally: manager.disconnect(websocket, "agents")
 
 @app.on_event("shutdown")
 async def shutdown_event():

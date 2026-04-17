@@ -4,7 +4,7 @@ REST API for the Schedule tab: recurring AI task management.
 """
 import json
 import re
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 
@@ -128,8 +128,13 @@ def _parse_schedule_update(text: str) -> Optional[dict]:
 
 @router.get("/tasks")
 async def list_tasks():
-    from core.schedulers.schedule_manager import get_schedule_manager
-    return {"tasks": get_schedule_manager().list_tasks()}
+    try:
+        from core.schedulers.schedule_manager import get_schedule_manager
+        tasks = get_schedule_manager().list_tasks()
+        return {"tasks": tasks}
+    except Exception as e:
+        logger.error(f"[schedule/list_tasks] Error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/tasks", status_code=201)
@@ -169,10 +174,10 @@ async def update_settings(task_id: str, req: UpdateSettingsRequest):
 
 
 @router.post("/tasks/{task_id}/chat")
-async def chat(task_id: str, req: ChatRequest):
+async def chat(task_id: str, req: ChatRequest, request: Request):
     """Send a user message; AI responds and optionally configures the schedule."""
     from core.schedulers.schedule_manager import get_schedule_manager
-    from core.interfaces.dashboard.server import nexus as _nexus
+    _nexus = request.app.state.nexus
 
     mgr = get_schedule_manager()
     task = mgr.get_task(task_id)
@@ -236,19 +241,16 @@ async def chat(task_id: str, req: ChatRequest):
 
 
 @router.post("/tasks/{task_id}/run")
-async def run_now(task_id: str):
+async def run_now(task_id: str, request: Request):
     from core.schedulers.schedule_manager import get_schedule_manager
     mgr = get_schedule_manager()
     task = mgr.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     # Give nexus to manager if not yet set
-    try:
-        from core.interfaces.dashboard.server import nexus as _nexus
-        if _nexus:
-            mgr.set_nexus(_nexus)
-    except Exception:
-        pass
+    _nexus = request.app.state.nexus
+    if _nexus:
+        mgr.set_nexus(_nexus)
     return mgr.run_now(task_id)
 
 

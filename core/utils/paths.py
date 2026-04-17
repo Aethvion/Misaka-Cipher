@@ -41,6 +41,7 @@ MODE_ADV_AICONV   = MODES / "advanced_ai_conversations"
 MODE_EXPLAINED    = MODES / "explained"
 MODE_COMPANIONS   = COMPANIONS
 MODE_WORKSPACES   = MODES / "workspaces"
+MODE_SCHEDULE     = MODES / "schedule"
 
 # Legacy compatibility / Common aliases
 HISTORY     = MODES     # Generic history root
@@ -81,7 +82,7 @@ HISTORY_AGENTS   = MODE_AGENTS
 HISTORY_EXPLAINED = MODE_EXPLAINED
 
 # ── Scheduled Tasks ───────────────────────────────────────────────────────────
-SCHEDULED_TASKS  = DATA / "scheduled_tasks"     # Recurring AI task definitions
+SCHEDULED_TASKS  = MODE_SCHEDULE           # Recurring AI task definitions
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 LOGS_USAGE          = LOGS / "usage"          # AI API usage — YYYY-MM/usage_YYYY-MM-DD.json
@@ -157,6 +158,7 @@ def ensure_all() -> None:
         PERSONA_MISAKA, PERSONA_MISAKA_THREADS,
         WS_OUTPUTS, WS_TOOLS, WS_MEDIA, WS_UPLOADS, WS_PROJECTS,
         OUT_IMAGES, OUT_MODELS, OUT_DOCS,
+        SCHEDULED_TASKS,
     ]
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)

@@ -8,9 +8,11 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import json
 import asyncio
+from pydantic import BaseModel
 
-from core.utils import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.memory import get_episodic_memory, get_knowledge_graph
+from core.utils.paths import PERSISTENT_MEMORY_JSON
 
 logger = get_logger("web.memory_routes")
 
@@ -156,4 +158,62 @@ async def get_memory_overview():
 
     except Exception as e:
         logger.error(f"Error generating memory overview: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/persistent")
+async def get_persistent_memory():
+    """Retrieve the full persistent JSON memory store."""
+    if not PERSISTENT_MEMORY_JSON.exists():
+        return {}
+    try:
+        return json.loads(PERSISTENT_MEMORY_JSON.read_text(encoding='utf-8'))
+    except Exception as e:
+        logger.error(f"Error reading persistent memory: {e}")
+        return {}
+
+
+class MemoryUpdateRequest(BaseModel):
+    topic: str
+    content: str
+
+
+@router.post("/persistent/update")
+async def update_persistent_memory(req: MemoryUpdateRequest):
+    """Upsert a topic into the persistent memory store."""
+    try:
+        data = {}
+        if PERSISTENT_MEMORY_JSON.exists():
+            data = json.loads(PERSISTENT_MEMORY_JSON.read_text(encoding='utf-8'))
+        
+        # Store as object with timestamp
+        data[req.topic] = {
+            "content": req.content,
+            "updated_at": utcnow_iso()
+        }
+        
+        PERSISTENT_MEMORY_JSON.parent.mkdir(parents=True, exist_ok=True)
+        PERSISTENT_MEMORY_JSON.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding='utf-8')
+        return {"status": "success", "topic": req.topic}
+    except Exception as e:
+        logger.error(f"Error updating persistent memory topic '{req.topic}': {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/persistent/{topic}")
+async def delete_persistent_memory_topic(topic: str):
+    """Remove a topic from the persistent memory store."""
+    try:
+        if not PERSISTENT_MEMORY_JSON.exists():
+            return {"status": "skipped", "reason": "File not found"}
+            
+        data = json.loads(PERSISTENT_MEMORY_JSON.read_text(encoding='utf-8'))
+        if topic in data:
+            del data[topic]
+            PERSISTENT_MEMORY_JSON.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding='utf-8')
+            return {"status": "success", "topic": topic}
+        
+        return {"status": "skipped", "reason": "Topic not found"}
+    except Exception as e:
+        logger.error(f"Error deleting persistent memory topic '{topic}': {e}")
         raise HTTPException(status_code=500, detail=str(e))
