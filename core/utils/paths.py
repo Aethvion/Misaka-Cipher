@@ -88,6 +88,7 @@ LOGS_USAGE          = LOGS / "usage"          # AI API usage — YYYY-MM/usage_Y
 LOGS_NOTIFICATIONS  = LOGS / "notifications"  # Notifications — YYYY-MM/YYYY-MM-DD.json
 LAUNCHER_LOG        = LOGS / "launcher.log"
 CRASH_LOG           = LOGS / "crashlog.log"
+LOGS_SYSTEM         = LOGS                    # Unified system logs root
 
 # ── System runtime ────────────────────────────────────────────────────────────
 LOCK_FILE    = SYSTEM / "aethvion.lock"
