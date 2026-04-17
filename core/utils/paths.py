@@ -39,12 +39,12 @@ MODE_AGENT_CORP   = MODES / "agent_corp"
 MODE_AI_CONV      = MODES / "ai_conversations"
 MODE_ADV_AICONV   = MODES / "advanced_ai_conversations"
 MODE_EXPLAINED    = MODES / "explained"
-MODE_VAULT        = MODES / "vault"
+MODE_COMPANIONS   = COMPANIONS
 MODE_WORKSPACES   = MODES / "workspaces"
 
 # Legacy compatibility / Common aliases
 HISTORY     = MODES     # Generic history root
-VAULT       = MODE_VAULT
+VAULT       = COMPANIONS
 WORKSPACES  = MODE_WORKSPACES
 CORP_ROOT   = MODE_AGENT_CORP
 
@@ -97,11 +97,13 @@ PORTS_LOCK   = SYSTEM / "ports.lock"
 # ── Companions ────────────────────────────────────────────────────────────────
 COMPANIONS_MISAKA   = COMPANIONS / "misaka_cipher"
 
-# ── Vault (persistent brain) ──────────────────────────────────────────────────
-VAULT_PERSONAS  = MODE_VAULT / "personas"
-VAULT_KNOWLEDGE = MODE_VAULT / "knowledge"
-VAULT_SEARCH    = MODE_VAULT / "search"
-VAULT_EPISODIC  = MODE_VAULT / "episodic"
+# ── Companions (persistent brain) ─────────────────────────────────────────────
+COMPANIONS_PERSONAS  = COMPANIONS / "personas"
+COMPANIONS_KNOWLEDGE = COMPANIONS / "knowledge"
+COMPANIONS_MEMORY    = COMPANIONS / "memory"
+VAULT_PERSONAS       = COMPANIONS_PERSONAS
+VAULT_KNOWLEDGE      = COMPANIONS_KNOWLEDGE
+VAULT_MEMORY         = COMPANIONS_MEMORY
 
 # Misaka Cipher persona
 PERSONA_MISAKA         = VAULT_PERSONAS / "misakacipher"
@@ -145,11 +147,10 @@ def ensure_all() -> None:
         APP_GAMES, APP_HARDWARE, APP_NEXUS, APP_PHOTO, APP_TRACKING, APP_VTUBER,
         # Modes
         MODE_CHAT, MODE_AGENTS, MODE_AGENT_CORP, MODE_AI_CONV, MODE_ADV_AICONV,
-        MODE_EXPLAINED, MODE_VAULT, MODE_WORKSPACES,
+        MODE_EXPLAINED, MODE_COMPANIONS, MODE_WORKSPACES,
         # Sub-directories
         LOGS_USAGE, LOGS_NOTIFICATIONS,
-        COMPANIONS_MISAKA, COMPANIONS_MISAKA / "history",
-        VAULT_PERSONAS, VAULT_KNOWLEDGE, VAULT_SEARCH, VAULT_EPISODIC,
+        COMPANIONS_PERSONAS, COMPANIONS_KNOWLEDGE, COMPANIONS_MEMORY,
         PERSONA_MISAKA, PERSONA_MISAKA_THREADS,
         WS_OUTPUTS, WS_TOOLS, WS_MEDIA, WS_UPLOADS, WS_PROJECTS,
         OUT_IMAGES, OUT_MODELS, OUT_DOCS,

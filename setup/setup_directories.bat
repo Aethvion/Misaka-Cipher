@@ -32,41 +32,42 @@ if not exist "data\apps\vtuber\files"      mkdir "data\apps\vtuber\files"
 echo [SETUP] Configuring system config...
 if not exist "data\config"                 mkdir "data\config"
 
-:: ── History ──────────────────────────────────────────────────
-echo [SETUP] Configuring conversation history...
-if not exist "data\history"                    mkdir "data\history"
-if not exist "data\history\chat"               mkdir "data\history\chat"
-if not exist "data\history\ai_conversations"   mkdir "data\history\ai_conversations"
-if not exist "data\history\advanced"           mkdir "data\history\advanced"
-
 :: ── Logs ─────────────────────────────────────────────────────
 echo [SETUP] Configuring unified logging...
 if not exist "data\logs"                   mkdir "data\logs"
 if not exist "data\logs\usage"             mkdir "data\logs\usage"
-if not exist "data\logs\system"            mkdir "data\logs\system"
+if not exist "data\logs\notifications"     mkdir "data\logs\notifications"
+
+:: ── Companions ───────────────────────────────────────────────
+echo [SETUP] Configuring companions...
+if not exist "data\companions"             mkdir "data\companions"
+if not exist "data\companions\personas"    mkdir "data\companions\personas"
+if not exist "data\companions\personas\misakacipher"              mkdir "data\companions\personas\misakacipher"
+if not exist "data\companions\personas\misakacipher\threads"      mkdir "data\companions\personas\misakacipher\threads"
+if not exist "data\companions\knowledge"                          mkdir "data\companions\knowledge"
+if not exist "data\companions\memory"                             mkdir "data\companions\memory"
+
+:: ── Modes ────────────────────────────────────────────────────
+echo [SETUP] Configuring dashboard modes...
+if not exist "data\modes"                          mkdir "data\modes"
+if not exist "data\modes\chat"                     mkdir "data\modes\chat"
+if not exist "data\modes\agents"                   mkdir "data\modes\agents"
+if not exist "data\modes\agent_corp"               mkdir "data\modes\agent_corp"
+if not exist "data\modes\ai_conversations"         mkdir "data\modes\ai_conversations"
+if not exist "data\modes\advanced_ai_conversations" mkdir "data\modes\advanced_ai_conversations"
+if not exist "data\modes\explained"                mkdir "data\modes\explained"
+if not exist "data\modes\workspaces"               mkdir "data\modes\workspaces"
 
 :: ── System ───────────────────────────────────────────────────
 echo [SETUP] Configuring runtime system state...
 if not exist "data\system"                 mkdir "data\system"
 
-:: ── Vault ────────────────────────────────────────────────────
-echo [SETUP] Configuring persistent vault...
-if not exist "data\vault"                                    mkdir "data\vault"
-if not exist "data\vault\personas"                           mkdir "data\vault\personas"
-if not exist "data\vault\personas\misakacipher"              mkdir "data\vault\personas\misakacipher"
-if not exist "data\vault\personas\misakacipher\threads"      mkdir "data\vault\personas\misakacipher\threads"
-if not exist "data\vault\knowledge"                          mkdir "data\vault\knowledge"
-if not exist "data\vault\search"                             mkdir "data\vault\search"
-if not exist "data\vault\episodic"                           mkdir "data\vault\episodic"
-
-:: ── Workspaces ───────────────────────────────────────────────
-echo [SETUP] Configuring workspaces...
-if not exist "data\workspaces"             mkdir "data\workspaces"
-if not exist "data\workspaces\outputs"     mkdir "data\workspaces\outputs"
-if not exist "data\workspaces\tools"       mkdir "data\workspaces\tools"
-if not exist "data\workspaces\media"       mkdir "data\workspaces\media"
-if not exist "data\workspaces\uploads"     mkdir "data\workspaces\uploads"
-if not exist "data\workspaces\projects"    mkdir "data\workspaces\projects"
+:: ── Default Output ───────────────────────────────────────────
+echo [SETUP] Configuring default outputs...
+if not exist "data\default_output"             mkdir "data\default_output"
+if not exist "data\default_output\images"      mkdir "data\default_output\images"
+if not exist "data\default_output\models"      mkdir "data\default_output\models"
+if not exist "data\default_output\documents"   mkdir "data\default_output\documents"
 
 :: ── Local Models ─────────────────────────────────────────────
 echo [SETUP] Configuring local model storage...
