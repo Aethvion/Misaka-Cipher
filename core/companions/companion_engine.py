@@ -123,8 +123,12 @@ class CompanionEngine:
         
         mem_up = False
         if capabilities.get("memory_updates_enabled", True):
-            if (new_mem := clean_memory_tags(content)):
-                memory.update(new_mem); mem_up = True
+            # update_from_xml returns the content with memory tags stripped, 
+            # while persisting the changes to the companion's JSON memory files.
+            cleaned_content = memory.update_from_xml(content)
+            if cleaned_content != content:
+                content = cleaned_content
+                mem_up = True
         
         history.save_message("user", message, utcnow_iso())
         history.save_message("assistant", content, utcnow_iso(), model=response.model)
