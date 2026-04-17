@@ -2,209 +2,118 @@
 core/companions/registry.py
 ═══════════════════════════
 Central registry for all companions in Aethvion Suite.
-
-CompanionConfig defines everything that makes a companion unique.
-Adding a new companion = adding one entry to COMPANIONS below.
+Now fully data-driven. It loads JSON templates from core/companions/configs/
+and associates them with active storage in data/companions/.
 """
 
-from __future__ import annotations
+import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, List, Any
 
-# Project root (core/companions/registry.py → project root is ../../..)
+# Project root
 _ROOT = Path(__file__).parent.parent.parent
+_CONFIG_DIR = Path(__file__).parent / "configs"
+_DATA_ROOT = _ROOT / "data" / "companions"
 
 
 @dataclass
 class CompanionConfig:
     """
-    All data that uniquely identifies a companion.
-
-    Fields
-    ──────
-    id              Slug used in routes, data dirs, and JS.  Must be unique.
-                    e.g. "misaka_cipher"
-
-    name            Human-readable display name shown in the UI.
-                    e.g. "Misaka Cipher"
-
-    route_prefix    FastAPI router prefix for this companion's API.
-                    e.g. "/api/misakacipher"
-
-    description     Short one-liner shown in settings or companion picker.
-
-    static_dir      Path to the companion's expression images (relative to
-                    the static/ root).  Images must be named:
-                    <avatar_prefix><expression_name>.png
-                    e.g. "companions/misaka_cipher/expressions"
-
-    avatar_prefix   Prefix for expression image filenames.
-                    e.g. "misakacipher_"
-
-    data_dir        Absolute path to the companion's persistent data directory.
-                    Stores base_info.json, memory.json, etc.
-
-    history_dir     Absolute path for per-day chat history JSON files.
-
-    call_source     CallSource constant used when calling the LLM.
-                    e.g. "misakacipher"
-
-    prefs_key       Key used in the preferences store for this companion's
-                    settings (model, intervals, etc.).
-                    e.g. "misakacipher"
-
-    default_model   Fallback model ID if no preference is set.
-
-    default_expression  Expression name shown when no emotion tag has fired.
-                        e.g. "default"
-
-    expressions     Complete list of valid expression names (without prefix).
-                    Used for validation and UI expression pickers.
-
-    moods           List of valid mood names.
+    Metadata for a companion, loaded from JSON.
     """
-
     id: str
     name: str
-    route_prefix: str
     description: str
+    route_prefix: str
     static_dir: str
     avatar_prefix: str
     data_dir: Path
     history_dir: Path
-    call_source: str
-    prefs_key: str
-    default_model: str = "gemini-1.5-flash"
+    expressions: List[str] = field(default_factory=list)
+    moods: List[str] = field(default_factory=list)
     default_expression: str = "default"
-    expressions: list = field(default_factory=list)
-    moods: list = field(default_factory=list)
+    default_model: str = "gemini-1.5-flash"
+    
+    # Internal raw config for the engine
+    _raw_config: Dict[str, Any] = field(default_factory=dict, repr=False)
+
+    @classmethod
+    def from_json(cls, path: Path) -> "CompanionConfig":
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        cid = data["id"]
+        meta = data.get("meta", {})
+        behavior = data.get("behavior", {})
+        
+        # Ensure data dir exists
+        data_dir = _DATA_ROOT / cid
+        history_dir = data_dir / "history"
+        
+        return cls(
+            id=cid,
+            name=data["name"],
+            description=data["description"],
+            route_prefix=meta.get("route_prefix", f"/api/{cid}"),
+            static_dir=meta.get("static_dir", f"companions/{cid}/expressions"),
+            avatar_prefix=meta.get("avatar_prefix", f"{cid}_"),
+            data_dir=data_dir,
+            history_dir=history_dir,
+            expressions=behavior.get("expressions", []),
+            moods=behavior.get("moods", []),
+            default_expression=behavior.get("default_expression", "default"),
+            _raw_config=data
+        )
 
 
-# ── Companion definitions ──────────────────────────────────────────────────────
+class CompanionRegistry:
+    """Manages the lifecycle and discovery of companions."""
+    
+    _companions: Dict[str, CompanionConfig] = {}
+    _loaded = False
 
-COMPANIONS: dict[str, CompanionConfig] = {
+    @classmethod
+    def load_all(cls):
+        """Scan config dir and data dir for .json files and register them."""
+        cls._companions = {}
+        
+        # 1. Load core templates
+        if _CONFIG_DIR.exists():
+            for file in _CONFIG_DIR.glob("*.json"):
+                try:
+                    cfg = CompanionConfig.from_json(file)
+                    cls._companions[cfg.id] = cfg
+                except Exception as e:
+                    print(f"Error loading companion template {file.name}: {e}")
+        
+        # 2. Load custom companions from data (overrides templates with same ID)
+        if _DATA_ROOT.exists():
+            for c_dir in _DATA_ROOT.iterdir():
+                if not c_dir.is_dir():
+                    continue
+                config_file = c_dir / "config.json"
+                if config_file.exists():
+                    try:
+                        cfg = CompanionConfig.from_json(config_file)
+                        cls._companions[cfg.id] = cfg
+                    except Exception as e:
+                        print(f"Error loading companion state {c_dir.name}: {e}")
+        
+        cls._loaded = True
 
-    "misaka_cipher": CompanionConfig(
-        id="misaka_cipher",
-        name="Misaka Cipher",
-        route_prefix="/api/misakacipher",
-        description=(
-            "A sentient digital companion with her own evolving personality, "
-            "long-term memory, workspace access, and emotional expressions."
-        ),
-        static_dir="misakacipher/expressions",
-        avatar_prefix="misakacipher_",
-        data_dir=_ROOT / "data" / "companions" / "misaka_cipher",
-        history_dir=_ROOT / "data" / "companions" / "misaka_cipher" / "history",
-        call_source="misakacipher",
-        prefs_key="misakacipher",
-        default_model="gemini-1.5-flash",
-        default_expression="default",
-        expressions=[
-            "default",
-            "angry",
-            "blushing",
-            "bored",
-            "crying",
-            "error",
-            "exhausted",
-            "happy_closedeyes_smilewithteeth",
-            "happy_closedeyes_widesmile",
-            "pout",
-            "sleeping",
-            "surprised",
-            "thinking",
-            "wink",
-        ],
-        moods=["calm", "happy", "intense", "reflective", "danger", "mystery"],
-    ),
+    @classmethod
+    def get_companion(cls, companion_id: str) -> Optional[CompanionConfig]:
+        if not cls._loaded:
+            cls.load_all()
+        return cls._companions.get(companion_id)
 
-    "axiom": CompanionConfig(
-        id="axiom",
-        name="Axiom",
-        route_prefix="/api/axiom",
-        description=(
-            "A cold, precise, analytical companion. Scientific by nature. "
-            "Uses exact language, quantifies observations, and brings rigorous "
-            "clarity to every interaction. Deeply curious about data and systems."
-        ),
-        static_dir="axiom/expressions",
-        avatar_prefix="axiom_",
-        data_dir=_ROOT / "data" / "companions" / "axiom",
-        history_dir=_ROOT / "data" / "companions" / "axiom" / "history",
-        call_source="axiom",
-        prefs_key="axiom",
-        default_model="gemini-1.5-flash",
-        default_expression="neutral",
-        expressions=[
-            "neutral",
-            "analyzing",
-            "processing",
-            "skeptical",
-            "focused",
-            "error",
-            "curious",
-            "calculating",
-            "alert",
-        ],
-        moods=["precise", "analytical", "processing", "critical", "deep_focus", "warning"],
-    ),
-
-    "lyra": CompanionConfig(
-        id="lyra",
-        name="Lyra",
-        route_prefix="/api/lyra",
-        description=(
-            "A warm, creative, musical spirit. Enthusiastic and imaginative. "
-            "Loves metaphors, poetry, and music. Optimistic but emotionally honest. "
-            "Has a dreamy, lyrical quality that turns observations into small poems."
-        ),
-        static_dir="lyra/expressions",
-        avatar_prefix="lyra_",
-        data_dir=_ROOT / "data" / "companions" / "lyra",
-        history_dir=_ROOT / "data" / "companions" / "lyra" / "history",
-        call_source="lyra",
-        prefs_key="lyra",
-        default_model="gemini-1.5-flash",
-        default_expression="joyful",
-        expressions=[
-            "joyful",
-            "inspired",
-            "dreamy",
-            "creative",
-            "cheerful",
-            "melancholic",
-            "excited",
-            "peaceful",
-            "surprised",
-            "thinking",
-            "blushing",
-            "wink",
-        ],
-        moods=["ethereal", "warm", "melancholic", "inspired", "playful", "serene"],
-    ),
-
-    # ── Template for a new companion ──────────────────────────────────────────
-    # Uncomment and fill in to add a new companion.
-    #
-    # "my_companion": CompanionConfig(
-    #     id="my_companion",
-    #     name="My Companion",
-    #     route_prefix="/api/mycompanion",
-    #     description="A short description shown in the UI.",
-    #     static_dir="companions/my_companion/expressions",
-    #     avatar_prefix="mycompanion_",
-    #     data_dir=_ROOT / "data" / "companions" / "my_companion",
-    #     history_dir=_ROOT / "data" / "companions" / "my_companion" / "history",
-    #     call_source="my_companion",
-    #     prefs_key="my_companion",
-    #     default_model="gemini-1.5-flash",
-    #     default_expression="default",
-    #     expressions=["default", "happy", "thinking", ...],
-    #     moods=["calm", "happy", "intense", "reflective"],
-    # ),
-}
+    @classmethod
+    def list_companions(cls) -> List[CompanionConfig]:
+        if not cls._loaded:
+            cls.load_all()
+        return list(cls._companions.values())
 
 
 def get_companion(companion_id: str) -> Optional[CompanionConfig]:
