@@ -1063,7 +1063,7 @@ async def get_system_specs():
 
     # ── Save to data/system_specs.json ───────────────────────────────────────
     try:
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        SYSTEM_SPECS_PATH.parent.mkdir(parents=True, exist_ok=True)
         SYSTEM_SPECS_PATH.write_text(json.dumps(specs, indent=2))
     except Exception as exc:
         logger.warning(f"Could not save system specs: {exc}")
