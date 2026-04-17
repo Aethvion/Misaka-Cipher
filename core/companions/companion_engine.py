@@ -133,7 +133,7 @@ class CompanionEngine:
         final_content = full_content
         if capabilities.get("tools_enabled", True):
             from core.workspace.workspace_utils import load_workspaces
-            workspaces = load_workspaces()
+            workspaces = load_workspaces(config.id)
             
             async for tool_event in execute_tools_stream(full_content, workspaces):
                 if tool_event["type"] == "tool_start":

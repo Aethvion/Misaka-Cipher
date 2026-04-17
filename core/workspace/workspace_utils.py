@@ -11,28 +11,33 @@ from core.utils.paths import PERSONA_MISAKA
 
 logger = logging.getLogger(__name__)
 
-MEMORY_DIR = PERSONA_MISAKA
-WORKSPACES_FILE = MEMORY_DIR / "workspaces.json"
+from core.utils.paths import COMPANIONS
 
-def load_workspaces() -> List[dict]:
-    """Load workspace configurations from disk."""
-    if not WORKSPACES_FILE.exists():
+def get_workspaces_file(companion_id: str) -> Path:
+    """Resolve the workspaces.json path for a specific companion."""
+    return COMPANIONS / companion_id / "workspaces.json"
+
+def load_workspaces(companion_id: str) -> List[dict]:
+    """Load workspace configurations from disk for a specific companion."""
+    ws_file = get_workspaces_file(companion_id)
+    if not ws_file.exists():
         return []
     try:
-        with open(WORKSPACES_FILE, "r", encoding="utf-8") as f:
+        with open(ws_file, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
-        logger.error(f"Failed to load workspaces.json: {e}")
+        logger.error(f"Failed to load workspaces for {companion_id}: {e}")
         return []
 
-def save_workspaces(workspaces: List[dict]) -> None:
-    """Save workspace configurations to disk."""
+def save_workspaces(companion_id: str, workspaces: List[dict]) -> None:
+    """Save workspace configurations to disk for a specific companion."""
     try:
-        MEMORY_DIR.mkdir(parents=True, exist_ok=True)
-        with open(WORKSPACES_FILE, "w", encoding="utf-8") as f:
+        ws_file = get_workspaces_file(companion_id)
+        ws_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(ws_file, "w", encoding="utf-8") as f:
             json.dump(workspaces, f, indent=4)
     except Exception as e:
-        logger.error(f"Failed to save workspaces.json: {e}")
+        logger.error(f"Failed to save workspaces for {companion_id}: {e}")
 
 def validate_path(target_path: str, workspaces: List[dict], required_permission: str) -> Tuple[bool, str]:
     """

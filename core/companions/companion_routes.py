@@ -93,26 +93,26 @@ async def get_expressions(companion_id: str):
 
 @router.get("/{companion_id}/workspaces")
 async def list_companion_workspaces(companion_id: str):
-    """Retrieve all system-wide workspaces (shared across companions)."""
-    return {"workspaces": load_workspaces()}
+    """Retrieve all workspaces for this companion."""
+    return {"workspaces": load_workspaces(companion_id)}
 
 @router.post("/{companion_id}/workspaces")
 async def add_companion_workspace(companion_id: str, request: WorkspaceRequest):
-    """Add a new system-wide workspace."""
+    """Add a new workspace for this companion."""
     import uuid
-    workspaces = load_workspaces()
+    workspaces = load_workspaces(companion_id)
     new_ws = request.dict()
     new_ws["id"] = str(uuid.uuid4())
     workspaces.append(new_ws)
-    save_workspaces(workspaces)
+    save_workspaces(companion_id, workspaces)
     return {"status": "success", "workspace": new_ws}
 
 @router.delete("/{companion_id}/workspaces/{ws_id}")
 async def delete_companion_workspace(companion_id: str, ws_id: str):
-    """Delete a system-wide workspace by ID."""
-    workspaces = load_workspaces()
+    """Delete a workspace for this companion by ID."""
+    workspaces = load_workspaces(companion_id)
     workspaces = [ws for ws in workspaces if ws.get("id") != ws_id]
-    save_workspaces(workspaces)
+    save_workspaces(companion_id, workspaces)
     return {"status": "success"}
 
 @router.get("/{companion_id}/nexus/registry")
