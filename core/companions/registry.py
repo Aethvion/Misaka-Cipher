@@ -118,4 +118,4 @@ class CompanionRegistry:
 
 def get_companion(companion_id: str) -> Optional[CompanionConfig]:
     """Return a CompanionConfig by ID, or None if not found."""
-    return COMPANIONS.get(companion_id)
+    return CompanionRegistry.get_companion(companion_id)
