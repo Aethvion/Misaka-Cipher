@@ -32,8 +32,8 @@ factory = None
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="Aethvion Suite - Nexus Portal",
-    description="Autonomous AI Orchestration System",
+    title="Aethvion Suite",
+    description="Intelligent AI Assistant Suite",
     version=str(VERSION)
 )
 fastapi_utils.add_dev_cache_control(app)
@@ -42,7 +42,7 @@ fastapi_utils.add_dev_cache_control(app)
 app.state.RUNNING_APPS = {}
 app.state.startup_status = {
     "initialized": False,
-    "status": "Starting Server...",
+    "status": "Starting Aethvion...",
     "progress": 0,
     "error": None
 }
@@ -159,11 +159,11 @@ async def initialize_system_background():
         task_manager = get_task_queue_manager(app.state.orchestrator)
         await task_manager.start()
         
-        app.state.startup_status.update({"status": "All systems operational", "progress": 100, "initialized": True})
-        logger.info("Aethvion Suite (Thin) ready!")
+        app.state.startup_status.update({"status": "Ready", "progress": 100, "initialized": True})
+        logger.info("Aethvion Suite ready!")
     except Exception as e:
         logger.error(f"Startup failed: {e}", exc_info=True)
-        app.state.startup_status.update({"status": "Startup Failed", "error": str(e)})
+        app.state.startup_status.update({"status": "Something went wrong. Try restarting Aethvion.", "error": str(e)})
 
 def perform_blocking_init():
     from core.nexus_core import NexusCore
@@ -171,9 +171,14 @@ def perform_blocking_init():
     from core.orchestrator import MasterOrchestrator
 
     global nexus, orchestrator, factory
+    app.state.startup_status.update({"status": "Starting AI engine...", "progress": 20})
     nexus = NexusCore()
     nexus.initialize()
+    
+    app.state.startup_status.update({"status": "Preparing AI agents...", "progress": 50})
     factory = AgentFactory(nexus)
+    
+    app.state.startup_status.update({"status": "Connecting components...", "progress": 70})
     orchestrator = MasterOrchestrator(nexus, factory)
     
     app.state.nexus = nexus
@@ -191,7 +196,8 @@ class ChatMessage(BaseModel):
 
 @app.post("/api/chat")
 async def chat(message: ChatMessage):
-    if not app.state.orchestrator: raise HTTPException(503, "Not initialized")
+    if not app.state.orchestrator: 
+        raise HTTPException(503, "Still starting up — try again in a moment.")
     from core.orchestrator.task_queue import get_task_queue_manager
     task_id = await get_task_queue_manager().submit_task(message.message, thread_id=message.thread_id)
     return {"task_id": task_id}

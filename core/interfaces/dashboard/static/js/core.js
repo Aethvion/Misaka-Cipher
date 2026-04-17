@@ -542,9 +542,11 @@ function updateConnectionStatus(connected) {
     if (connected) {
         dot.classList.add('connected');
         text.textContent = 'Connected';
+        indicator.title = 'Aethvion Suite is online and connected to local services.';
     } else {
         dot.classList.remove('connected');
         text.textContent = 'Disconnected';
+        indicator.title = 'Aethvion Suite is offline. Some features may be unavailable.';
     }
 }
 

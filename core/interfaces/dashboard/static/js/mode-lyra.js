@@ -604,7 +604,7 @@ async function sendLyraMessage() {
         console.error('[Lyra] Send error:', err);
         lyraRemoveToolStatus();
         lyraAddStaticMessage('assistant',
-            `[Emotion: melancholic] Something went quiet... ${err.message}`, ts);
+            `[Emotion: melancholic] Something went quiet... I've lost the thread of our conversation.`, ts);
         if (statusLine) statusLine.textContent = 'A silence fell.';
     } finally {
         isLyraTyping = false;

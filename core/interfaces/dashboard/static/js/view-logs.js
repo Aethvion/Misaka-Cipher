@@ -131,12 +131,12 @@ async function loadLogFile(filename) {
     const title = document.getElementById('current-log-filename');
     if (!viewer) return;
 
-    viewer.innerHTML = '<div class="loading-spinner"></div> Initializing forensic capture...';
+    viewer.innerHTML = '<div class="loading-spinner"></div> Loading log file...';
     title.innerText = filename;
 
     try {
         const res = await fetch(`/api/logs/read/${filename}`);
-        if (!res.ok) throw new Error("Capture failed");
+        if (!res.ok) throw new Error("Load failed");
         const data = await res.json();
 
         if (data.error) throw new Error(data.error);
@@ -152,7 +152,7 @@ async function loadLogFile(filename) {
         viewer.scrollTop = viewer.scrollHeight;
     } catch (e) {
         console.error('[LogsView] Read error:', e);
-        viewer.innerHTML = `<div class="error">Forensic sequence interrupted: ${e.message}</div>`;
+        viewer.innerHTML = `<div class="error">Failed to load log: ${e.message}</div>`;
     }
 }
 

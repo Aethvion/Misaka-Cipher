@@ -163,17 +163,17 @@ function updateAxiomExpression(expression) {
     const statusLine = document.getElementById('axiom-status-line');
     if (statusLine) {
         const labels = {
-            neutral:    'System nominal. Awaiting input.',
-            analyzing:  'Analysis in progress...',
-            processing: 'Processing parameters...',
-            skeptical:  'Insufficient data. Query requires clarification.',
-            focused:    'Deep focus engaged.',
-            error:      'Error state detected.',
-            curious:    'Anomaly detected — investigation initiated.',
-            calculating:'Calculation sequence running...',
-            alert:      'ALERT: Attention required.',
+            neutral:    'Ready.',
+            analyzing:  'Analyzing data...',
+            processing: 'Processing...',
+            skeptical:  'I need more information to be precise.',
+            focused:    'Deep focus active.',
+            error:      'Something went wrong.',
+            curious:    'Investigation in progress...',
+            calculating:'Calculating...',
+            alert:      'Attention required.',
         };
-        statusLine.textContent = labels[cssClass] || 'Operational.';
+        statusLine.textContent = labels[cssClass] || 'Ready.';
     }
 
     localStorage.setItem('axiom_last_expression', key);
@@ -568,16 +568,16 @@ async function sendAxiomMessage() {
                         if (data.expression) updateAxiomExpression(data.expression);
 
                         const idleLabels = {
-                            neutral:    'System nominal. Awaiting input.',
+                            neutral:    'Ready.',
                             analyzing:  'Analysis complete.',
-                            processing: 'Process terminated.',
+                            processing: 'Done.',
                             focused:    'Focus released.',
-                            curious:    'Inquiry concluded.',
+                            curious:    'Investigation concluded.',
                             calculating:'Calculation complete.',
-                            alert:      'Alert state cleared.',
+                            alert:      'Ready.',
                         };
                         if (statusLine) {
-                            statusLine.textContent = idleLabels[currentAxiomExpression] || 'Operational.';
+                            statusLine.textContent = idleLabels[currentAxiomExpression] || 'Ready.';
                         }
                     }
                     else if (data.type === 'error') {
@@ -593,9 +593,11 @@ async function sendAxiomMessage() {
     } catch (err) {
         console.error('[Axiom] Send error:', err);
         axiomRemoveToolStatus();
-        axiomAddStaticMessage('assistant',
-            `[Emotion: error] Error: ${err.message}. Query could not be processed.`, ts);
-        if (statusLine) statusLine.textContent = 'Error state.';
+        axiomAddStaticMessage('assistant', `An error occurred. Please try again.`, ts);
+        if (statusLine) {
+            statusLine.textContent = "Something went wrong. Please try again.";
+            setTimeout(() => { if (statusLine) statusLine.textContent = "Ready."; }, 5000);
+        }
     } finally {
         isAxiomTyping = false;
     }

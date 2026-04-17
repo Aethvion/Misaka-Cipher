@@ -637,7 +637,7 @@ async function sendMisakaMessage() {
 
                         const idleStatus = data.expression
                             ? _misakaPrettifyExpression(data.expression)
-                            : "Neural core engaged.";
+                            : "Ready.";
 
                         if (data.memory_updated || data.synthesis_ran) {
                             await refreshMisakaMemory();
@@ -662,9 +662,9 @@ async function sendMisakaMessage() {
 
     } catch (err) {
         console.error("Misaka send error:", err);
-        addAssistantMessageStatic('misaka', `I encountered a neural synchronization error: ${err.message}`, ts);
-        if (statusLine) statusLine.textContent = "Neural error — check console.";
-        setTimeout(() => { if (statusLine) statusLine.textContent = "Neural core engaged."; }, 5000);
+        addAssistantMessageStatic('misaka', `An error occurred. Please try again.`, ts);
+        if (statusLine) statusLine.textContent = "Something went wrong. Please try again.";
+        setTimeout(() => { if (statusLine) statusLine.textContent = "Ready."; }, 5000);
         if (window.ParticleSphere) ParticleSphere.setActive(false);
     }
 }

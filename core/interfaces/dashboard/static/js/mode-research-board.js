@@ -268,8 +268,8 @@ async function runNextSprint() {
     if (!rbIsRunning) return;
     rbSprintCount++;
     
-    updateRbStatus(`Consulting Sprint ${rbSprintCount} in progress...`, true);
-    rbProgressInfo.innerText = `SPRINT ${rbSprintCount}`;
+    updateRbStatus(`Thinking: Round ${rbSprintCount}...`, true);
+    rbProgressInfo.innerText = `Round ${rbSprintCount}`;
     
     const modelId = rbModelSelect ? rbModelSelect.value : 'auto';
     
@@ -299,12 +299,12 @@ async function runNextSprint() {
 
         } catch (e) {
             console.error(e);
-            appendRbMessage({ role: 'system', content: `[ERROR] ${persona.name} had a connection issue.` });
+            appendRbMessage({ role: 'system', content: `${persona.name} had a connection issue.` });
         }
     }
 
-    // Sprint finished, wait for user
-    updateRbStatus(`Sprint ${rbSprintCount} complete. Awaiting CEO Feedback.`, false);
+    // Round finished, wait for user
+    updateRbStatus(`Round ${rbSprintCount} complete. Awaiting feedback...`, false);
     rbUserInputArea.style.display = 'flex';
     rbUserInputArea.querySelector('textarea').focus();
 }
@@ -321,7 +321,7 @@ async function submitUserDirective() {
     const msg = {
         id: 'user-' + Date.now(),
         role: 'user',
-        name: 'CEO',
+        name: 'You',
         content: directive
     };
     
@@ -330,7 +330,7 @@ async function submitUserDirective() {
         await fetch(`/api/research/threads/${rbActiveThreadId}/system_message`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: `[CEO DIRECTIVE]: ${directive}` })
+            body: JSON.stringify({ message: `[DIRECTOR]: ${directive}` })
         });
         
         appendRbMessage(msg);
@@ -349,7 +349,7 @@ function updateTurnUi(persona, sprint) {
     if (pill) pill.classList.add('active');
 
     rbStatusText.innerHTML = `<i class="fas fa-comment-dots"></i> ${persona.name} is speaking...`;
-    rbProgressInfo.innerText = `SPRINT: ${sprint}`;
+    rbProgressInfo.innerText = `Round ${sprint}`;
 }
 
 function appendRbMessage(msg, personaId = null) {
@@ -368,8 +368,8 @@ function appendRbMessage(msg, personaId = null) {
         else if (personaId.includes('growth')) simpleId = 'growth';
     }
 
-    const persona = rbPersonas.find(p => p.id === personaId) || { name: msg.name || 'User' };
-    const roleLabel = msg.role === 'user' ? 'CEO' : 'Consultant';
+    const persona = rbPersonas.find(p => p.id === personaId) || { name: msg.name || 'You' };
+    const roleLabel = msg.role === 'user' ? 'You' : 'Expert';
 
     const html = `
         <div class="rb-message rb-msg-${simpleId} ${msg.role === 'user' ? 'user-msg' : ''}">
@@ -427,7 +427,7 @@ function updateRbStatus(text, pulsing = false) {
 function resetRb() {
     rbIsRunning = false;
     rbStartBtn.disabled = false;
-    rbStartBtn.innerHTML = '<i class="fas fa-play"></i> Start Board Meeting';
+    rbStartBtn.innerHTML = '<i class="fas fa-play"></i> Start Session';
     if (rbMembersDetails) rbMembersDetails.classList.remove('collapsed');
 }
 

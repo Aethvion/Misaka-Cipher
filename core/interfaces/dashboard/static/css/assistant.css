@@ -165,7 +165,7 @@
 }
 
 .misaka-d-message.user::before {
-    content: "Commander: ";
+    content: "You: ";
     color: var(--accent);
     font-weight: bold;
     font-family: 'Orbitron', sans-serif;

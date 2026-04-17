@@ -8,7 +8,7 @@ async function loadHeaderStatus() {
         const text = indicator.querySelector('.status-text');
         
         const color = isOnline ? 'var(--success)' : 'var(--error)';
-        const statusText = isOnline ? 'ONLINE' : 'OFFLINE';
+        const statusText = isOnline ? 'Online' : 'Offline';
         
         if (dot) {
             dot.style.backgroundColor = color;
@@ -154,7 +154,7 @@ async function loadSystemStatusTab() {
 
     } catch (error) {
         console.error('Error loading system status:', error);
-        container.innerHTML = '<div class="error-placeholder">Failed to load system status. Check console.</div>';
+        container.innerHTML = '<div class="error-placeholder">Couldn\'t load system info. Try refreshing.</div>';
     }
 }
 
@@ -228,15 +228,15 @@ function renderSystemTelemetry(apiData, metricsData) {
 
         localContainer.innerHTML = `
             <div class="telemetry-card">
-                <div class="t-label">PROJECT SIZE</div>
+                <div class="t-label">Project Size</div>
                 <div class="t-value">${formatBytes(systemMetrics.project_size_bytes)}</div>
             </div>
             <div class="telemetry-card">
-                <div class="t-label">EPISODIC (DB)</div>
+                <div class="t-label">Episodic (DB)</div>
                 <div class="t-value">${memoryMetrics.episodic_count || 0} <span class="t-sub">(Memories)</span></div>
             </div>
             <div class="telemetry-card">
-                <div class="t-label">KNOWLEDGE BASE</div>
+                <div class="t-label">Knowledge Base</div>
                 <div class="t-value">${formatBytes(systemMetrics.db_size_bytes)} <span class="t-sub">(DB)</span></div>
             </div>
 
@@ -246,19 +246,19 @@ function renderSystemTelemetry(apiData, metricsData) {
         if (extContainer) {
             extContainer.innerHTML = `
                 <div class="telemetry-card">
-                    <div class="t-label">GIT LATEST</div>
+                    <div class="t-label">Git Latest</div>
                     <div class="t-value" style="font-size: 0.85rem; font-family: 'Fira Code', monospace; line-height: 1.4;">${systemMetrics.git_commit || 'Unknown'}</div>
                 </div>
                 <div class="telemetry-card">
-                    <div class="t-label">HOST PLATFORM</div>
+                    <div class="t-label">Host Platform</div>
                     <div class="t-value" style="font-size: 0.95rem;">${systemMetrics.platform || 'Unknown'}</div>
                 </div>
                 <div class="telemetry-card">
-                    <div class="t-label">PYTHON RUNTIME</div>
+                    <div class="t-label">Python Runtime</div>
                     <div class="t-value">${systemMetrics.python_version || 'Unknown'}</div>
                 </div>
                 <div class="telemetry-card">
-                    <div class="t-label">LOCAL MODELS</div>
+                    <div class="t-label">Local Models</div>
                     <div class="t-value">${systemMetrics.model_count || 0} <span class="t-sub">GGUF</span></div>
                 </div>
             `;
@@ -269,25 +269,25 @@ function renderSystemTelemetry(apiData, metricsData) {
 function renderRealtimeCards(nexusStatus, factoryStatus, vitals) {
     return `
         <div class="telemetry-card">
-            <div class="t-label">NEXUS STATUS</div>
+            <div class="t-label">System Status</div>
             <div class="t-value ${nexusStatus.initialized ? 'online' : 'offline'}">
-                ${nexusStatus.initialized ? 'ONLINE' : 'OFFLINE'}
+                ${nexusStatus.initialized ? 'Online' : 'Offline'}
             </div>
         </div>
         <div class="telemetry-card">
-            <div class="t-label">CPU USAGE</div>
+            <div class="t-label">CPU Usage</div>
             <div class="t-value">
                 ${vitals.cpu_percent || 0}%
             </div>
         </div>
         <div class="telemetry-card">
-            <div class="t-label">RAM USAGE</div>
+            <div class="t-label">RAM Usage</div>
             <div class="t-value" style="font-size: 1rem;">
                 ${vitals.ram_used_gb || 0} GB <span class="t-sub">/ ${vitals.ram_total_gb || 0} GB (${vitals.ram_percent || 0}%)</span>
             </div>
         </div>
         <div class="telemetry-card">
-            <div class="t-label">ACTIVE AGENTS</div>
+            <div class="t-label">Active Agents</div>
             <div class="t-value">${factoryStatus.active_agents || 0} <span class="t-sub">/ ${factoryStatus.total_agents || 0}</span></div>
         </div>
     `;
