@@ -56,10 +56,10 @@ async def get_memory(companion_id: str):
     return memory.load()
 
 @router.get("/{companion_id}/history")
-async def get_history(companion_id: str, offset: int = 0, limit: int = 3):
+async def get_history(companion_id: str, offset_days: int = 0, limit_days: int = 3):
     cfg = _get_cfg(companion_id)
     history = CompanionHistory(cfg.history_dir, cfg.name)
-    return history.load_days(offset, limit)
+    return history.load_days(offset_days, limit_days)
 
 @router.post("/{companion_id}/initiate")
 async def initiate(companion_id: str, request: InitiateRequest):
