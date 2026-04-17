@@ -1,78 +1,65 @@
 """
 core/companions/registry.py
 ═══════════════════════════
-Central registry for all companions in Aethvion Suite.
-Now fully data-driven. It loads JSON templates from core/companions/configs/
-and associates them with active storage in data/companions/.
+Dynamic, data-driven registry for all Aethvion companions.
+Scans for JSON configurations in core blueprints and runtime data directories.
 """
 
 import json
-import os
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Dict, List, Any
+from typing import Dict, Any, List, Optional
+from dataclasses import dataclass, field
 
-# Project root
-_ROOT = Path(__file__).parent.parent.parent
-_CONFIG_DIR = Path(__file__).parent / "configs"
-_DATA_ROOT = _ROOT / "data" / "companions"
-
+# Paths
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
+_CONFIG_DIR   = _PROJECT_ROOT / "core" / "companions" / "configs"
+_DATA_ROOT     = _PROJECT_ROOT / "data" / "companions"
 
 @dataclass
 class CompanionConfig:
-    """
-    Metadata for a companion, loaded from JSON.
-    """
     id: str
     name: str
     description: str
     route_prefix: str
-    static_dir: str
-    avatar_prefix: str
-    data_dir: Path
-    history_dir: Path
-    expressions: List[str] = field(default_factory=list)
-    moods: List[str] = field(default_factory=list)
+    call_source: str
+    prefs_key: str
+    default_model: str
     default_expression: str = "default"
-    default_model: str = "gemini-1.5-flash"
-    
-    # Internal raw config for the engine
-    _raw_config: Dict[str, Any] = field(default_factory=dict, repr=False)
+    moods: List[str] = field(default_factory=lambda: ["calm"])
+    expressions: List[str] = field(default_factory=lambda: ["default"])
+    static_dir: str = ""
+    data_dir: Path = field(default_factory=Path)
+    history_dir: Path = field(default_factory=Path)
+    _raw_config: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_json(cls, path: Path) -> "CompanionConfig":
-        with open(path, "r", encoding="utf-8") as f:
+    def from_json(cls, json_path: Path) -> "CompanionConfig":
+        with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         
         cid = data["id"]
-        meta = data.get("meta", {})
-        behavior = data.get("behavior", {})
-        
-        # Ensure data dir exists
-        data_dir = _DATA_ROOT / cid
-        history_dir = data_dir / "history"
+        c_data_dir = _DATA_ROOT / cid
         
         return cls(
             id=cid,
             name=data["name"],
             description=data["description"],
-            route_prefix=meta.get("route_prefix", f"/api/{cid}"),
-            static_dir=meta.get("static_dir", f"companions/{cid}/expressions"),
-            avatar_prefix=meta.get("avatar_prefix", f"{cid}_"),
-            data_dir=data_dir,
-            history_dir=history_dir,
-            expressions=behavior.get("expressions", []),
-            moods=behavior.get("moods", []),
-            default_expression=behavior.get("default_expression", "default"),
+            route_prefix=data.get("route_prefix", f"/api/{cid}"),
+            call_source=data.get("call_source", cid),
+            prefs_key=data.get("prefs_key", cid),
+            default_model=data["default_model"],
+            default_expression=data.get("default_expression", "default"),
+            moods=data.get("moods", ["calm"]),
+            expressions=data.get("expressions", ["default"]),
+            static_dir=f"companions/{cid}",
+            data_dir=c_data_dir,
+            history_dir=c_data_dir / "history",
             _raw_config=data
         )
 
-
 class CompanionRegistry:
-    """Manages the lifecycle and discovery of companions."""
-    
     _companions: Dict[str, CompanionConfig] = {}
-    _loaded = False
+    _loaded: bool = False
 
     @classmethod
     def load_all(cls):
@@ -97,7 +84,6 @@ class CompanionRegistry:
                 if config_file.exists():
                     try:
                         cfg = CompanionConfig.from_json(config_file)
-                        # This intentionally overwrites the template with active state
                         cls._companions[cfg.id] = cfg
                     except Exception as e:
                         print(f"Error loading companion state {c_dir.name}: {e}")
@@ -108,7 +94,6 @@ class CompanionRegistry:
     def get_companion(cls, companion_id: str) -> Optional[CompanionConfig]:
         if not cls._loaded:
             cls.load_all()
-        # Ensure we always list characters from both sources
         return cls._companions.get(companion_id)
 
     @classmethod
@@ -117,7 +102,6 @@ class CompanionRegistry:
             cls.load_all()
         return list(cls._companions.values())
 
-
 def get_companion(companion_id: str) -> Optional[CompanionConfig]:
-    """Return a CompanionConfig by ID, or None if not found."""
+    """Helper for backward compatibility where needed."""
     return CompanionRegistry.get_companion(companion_id)
