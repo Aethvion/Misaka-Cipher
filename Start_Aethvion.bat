@@ -1,38 +1,29 @@
 @echo off
-SETLOCAL EnableDelayedExpansion
-:: ============================================================
-::  AETHVION SUITE - Consumer Launcher
-::  Standard background mode: auto-install + auto-browser.
-:: ============================================================
-SET PROJECT_DIR=%~dp0
+setlocal EnableDelayedExpansion
+
+:: ── 1. Configuration ────────────────────────────────────────
+set "PROJECT_DIR=%~dp0"
 cd /d "%PROJECT_DIR%"
-TITLE Aethvion Suite - Initializing...
 
-echo.
-echo ============================================================
-echo   AETHVION SUITE  ^|  CONSUMER MODE
-echo ============================================================
-echo.
+:: ── 2. Installation Check ──────────────────────────────────
+:: We check for core dependencies. If any fail, we need the installer.
+set "ALREADY_INSTALLED=1"
 
-:: ── 1. Initialize Graphical Installer ──────────────────────────
-echo [1/5] INITIALIZING ORCHESTRATOR...
-call setup\installer\installer.bat
-if %errorlevel% neq 0 (
-    echo [ERROR] Installer failed to initialize.
-    pause
-    exit /b 1
+if not exist ".venv\Scripts\python.exe" set "ALREADY_INSTALLED=0"
+if not exist "core\launcher.py" set "ALREADY_INSTALLED=0"
+
+if "!ALREADY_INSTALLED!"=="1" (
+    ".venv\Scripts\python.exe" -c "import fastapi, customtkinter, PIL" >nul 2>&1
+    if !errorlevel! neq 0 set "ALREADY_INSTALLED=0"
 )
 
-
-:: ── 6. Launch via pythonw (no console window) ────────────────
-echo.
-echo [5/5] LAUNCHING CORE ENGINE...
-echo [INFO] Dashboards will open in your app-mode browser shortly.
-echo [INFO] You can close this window once the server starts.
-echo.
-
-start "" ".venv\Scripts\pythonw.exe" core\launcher.py --consumer --browser app %*
-
-:: Small delay to ensure process spawns correctly before closing BAT
-timeout /t 3 /nobreak >nul
-exit
+:: ── 3. Optimized Execution Path ────────────────────────────
+if "!ALREADY_INSTALLED!"=="1" (
+    :: Silent Background Launch
+    start "" /b ".venv\Scripts\pythonw.exe" core\launcher.py --consumer --browser app
+    exit
+) else (
+    :: Launch Orchestrator Silently
+    start "" /b setup\installer\installer.bat
+    exit
+)

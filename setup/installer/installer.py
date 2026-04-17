@@ -1,8 +1,7 @@
 """
-Aethvion Suite - Professional Graphical Installer
-══════════════════════════════════════════════════
-A refined, dark-themed installer for the Aethvion Suite framework.
-Uses CustomTkinter for a premium native look and feel.
+Aethvion Suite - Professional Graphical Installer v3
+═════════════════════════════════════════════════════
+Advanced Orchestrator for Aethvion Suite Deployment.
 """
 
 import sys
@@ -13,227 +12,271 @@ import time
 import webbrowser
 import customtkinter as ctk
 from pathlib import Path
+from PIL import Image
 
 # Configuration
-VERSION = "v14.0"
+VERSION = "14.0"
 ACCENT_COLOR = "#6366f1"  # Indigo
-BG_COLOR = "#0f1115"      # Deep Charcoal
+BG_COLOR = "#090b0f"      # Deepest Black
 SUCCESS_COLOR = "#10b981" # Emerald
+PANEL_COLOR = "#15181e"   # Panel base
+DEBUG_MODE = False
 
 class AethvionInstaller(ctk.CTk):
     def __init__(self):
         super().__init__()
-
-        self.title(f"Aethvion Suite {VERSION} - Installer")
-        self.geometry("600x480")
+        
+        # Window Configuration
+        self.title(f"Aethvion Suite Deployment Engine")
+        width, height = 800, 560
+        self.geometry(f"{width}x{height}")
+        self._center_window(width, height)
         self.resizable(False, False)
         
-        # UI Styling
+        # Theme
         ctk.set_appearance_mode("dark")
         self.configure(fg_color=BG_COLOR)
 
-        # Paths
+        # Environment Paths
         self.project_root = Path(__file__).parent.parent.parent
         self.setup_dir = self.project_root / "setup"
+        self.logo_path = self.project_root / "assets" / "aethvion" / "aethvion_logo.png"
 
-        # State
+        # State Tracking
         self.installing = False
         self.complete = False
+        self._current_progress = 0.0
 
-        self._create_widgets()
+        self._create_layout()
 
-    def _create_widgets(self):
-        # ── Main Container ──────────────────────────────────────────────────
-        self.main_container = ctk.CTkFrame(self, fg_color="transparent")
-        self.main_container.pack(fill="both", expand=True, padx=40, pady=40)
+    def _center_window(self, w, h):
+        x = (self.winfo_screenwidth() // 2) - (w // 2)
+        y = (self.winfo_screenheight() // 2) - (h // 2)
+        self.geometry(f"{w}x{h}+{x}+{y}")
 
-        # ── Logo / Header ──────────────────────────────────────────────────
-        self.logo_label = ctk.CTkLabel(
-            self.main_container, 
-            text="✦", 
-            font=("Inter", 72),
-            text_color=ACCENT_COLOR
+    def _create_layout(self):
+        # ── Sidebar Visual ──────────────────────────────────────────────────
+        self.sidebar = ctk.CTkFrame(self, width=240, corner_radius=0, fg_color=PANEL_COLOR)
+        self.sidebar.pack(side="left", fill="y")
+        
+        # Branded Logo
+        try:
+            pil_img = Image.open(self.logo_path)
+            # Center-fit logic
+            w, h = pil_img.size
+            ratio = 180 / w
+            logo_ctk = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(180, h * ratio))
+            self.logo = ctk.CTkLabel(self.sidebar, image=logo_ctk, text="")
+            self.logo.pack(pady=(50, 20))
+        except Exception:
+            self.logo = ctk.CTkLabel(self.sidebar, text="✦ AETHVION", font=("Inter", 24, "bold"), text_color=ACCENT_COLOR)
+            self.logo.pack(pady=50)
+
+        self.info_box = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.info_box.pack(fill="x", padx=30, side="bottom", pady=40)
+        
+        ctk.CTkLabel(self.info_box, text="BUILD VERSION", font=("Inter", 10, "bold"), text_color="#475569").pack(anchor="w")
+        ctk.CTkLabel(self.info_box, text=f"Release {VERSION} - Stable", font=("Inter", 12), text_color="#94a3b8").pack(anchor="w", pady=(0, 10))
+        
+        ctk.CTkLabel(self.info_box, text="ENVIRONMENT", font=("Inter", 10, "bold"), text_color="#475569").pack(anchor="w")
+        ctk.CTkLabel(self.info_box, text="Local Intelligence Hub", font=("Inter", 12), text_color="#94a3b8").pack(anchor="w")
+
+        # ── Main Content Area ───────────────────────────────────────────────
+        self.main_content = ctk.CTkFrame(self, fg_color="transparent")
+        self.main_content.pack(side="right", fill="both", expand=True, padx=50, pady=50)
+
+        self.view_container = ctk.CTkFrame(self.main_content, fg_color="transparent")
+        self.view_container.pack(fill="both", expand=True)
+
+        self._show_welcome_view()
+
+    def _show_welcome_view(self):
+        self.header = ctk.CTkLabel(self.view_container, text="System Orchestrator", font=("Inter", 32, "bold"), text_color="white")
+        self.header.pack(anchor="w")
+
+        self.sub_header = ctk.CTkLabel(self.view_container, text="Kernel Deployment and Environment Synchronization", font=("Inter", 14), text_color=ACCENT_COLOR)
+        self.sub_header.pack(anchor="w", pady=(0, 40))
+
+        self.desc = ctk.CTkLabel(
+            self.view_container,
+            text="You are about to deploy the Aethvion Suite core framework. "
+                 "This process will automate the construction of the Python dependency graph, "
+                 "structure local intelligence storage, and synchronize cross-app assets.\n\n"
+                 "Estimated Completion: 2-5 minutes depending on bandwidth.",
+            font=("Inter", 13),
+            text_color="#94a3b8",
+            wraplength=420,
+            justify="left"
         )
-        self.logo_label.pack(pady=(20, 0))
+        self.desc.pack(anchor="w", pady=(0, 60))
 
-        self.title_label = ctk.CTkLabel(
-            self.main_container, 
-            text="AETHVION SUITE",
-            font=("Inter", 24, "bold"),
-            text_color="white"
-        )
-        self.title_label.pack()
-
-        self.version_label = ctk.CTkLabel(
-            self.main_container, 
-            text=f"Professional Agentic Framework • {VERSION}",
-            font=("Inter", 12),
-            text_color="#94a3b8"
-        )
-        self.version_label.pack(pady=(0, 40))
-
-        # ── Dynamic Content Area ──────────────────────────────────────────────
-        self.content_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        self.content_frame.pack(fill="both", expand=True)
-
-        # WELCOME VIEW
-        self.welcome_btn = ctk.CTkButton(
-            self.content_frame,
-            text="Install Aethvion Suite",
+        self.deploy_btn = ctk.CTkButton(
+            self.view_container,
+            text="SYNCHRONIZE SYSTEM",
             font=("Inter", 14, "bold"),
             height=50,
+            width=240,
             fg_color=ACCENT_COLOR,
             hover_color="#4f46e5",
-            command=self.start_installation
+            command=self.start_deployment
         )
-        self.welcome_btn.pack(pady=20)
+        self.deploy_btn.pack(anchor="w")
 
-        self.tagline = ctk.CTkLabel(
-            self.content_frame,
-            text="Architecting the future of objective-driven intelligence.",
-            font=("Inter", 11, "italic"),
-            text_color="#64748b"
-        )
-        self.tagline.pack()
-
-        # ── Bottom Bar ────────────────────────────────────────────────────
-        self.bottom_label = ctk.CTkLabel(
-            self,
-            text="© 2026 Aethvion. All rights reserved.",
-            font=("Inter", 10),
-            text_color="#334155"
-        )
-        self.bottom_label.pack(side="bottom", pady=10)
-
-    def prepare_status_view(self):
-        """Transition to status screen."""
-        for widget in self.content_frame.winfo_children():
+    def _show_deployment_view(self):
+        for widget in self.view_container.winfo_children():
             widget.destroy()
 
-        self.status_label = ctk.CTkLabel(
-            self.content_frame,
-            text="Initializing deployment...",
-            font=("Inter", 13),
-            text_color="white"
-        )
-        self.status_label.pack(pady=(20, 10))
+        self.status_title = ctk.CTkLabel(self.view_container, text="Synchronizing Kernel...", font=("Inter", 18, "bold"), text_color="white")
+        self.status_title.pack(anchor="w")
 
-        self.progress_bar = ctk.CTkProgressBar(
-            self.content_frame,
-            width=400,
-            height=12,
-            progress_color=ACCENT_COLOR,
-            fg_color="#1e293b"
-        )
-        self.progress_bar.pack(pady=10)
+        self.status_sub = ctk.CTkLabel(self.view_container, text="Phase 1: Analyzing local environment", font=("Inter", 13), text_color="#94a3b8")
+        self.status_sub.pack(anchor="w", pady=(5, 15))
+
+        # Progress bar with Percentage
+        self.bar_container = ctk.CTkFrame(self.view_container, fg_color="transparent")
+        self.bar_container.pack(fill="x", pady=(0, 20))
+        
+        self.progress_bar = ctk.CTkProgressBar(self.bar_container, height=10, progress_color=ACCENT_COLOR, fg_color="#1e293b")
+        self.progress_bar.pack(side="left", fill="x", expand=True)
         self.progress_bar.set(0)
 
-        self.step_label = ctk.CTkLabel(
-            self.content_frame,
-            text="Awaiting orchestrator...",
-            font=("Inter", 11),
-            text_color="#94a3b8"
+        self.pct_label = ctk.CTkLabel(self.bar_container, text="0%", font=("Inter", 12, "bold"), text_color=ACCENT_COLOR, width=50)
+        self.pct_label.pack(side="right", padx=(10, 0))
+
+        # Log Console
+        self.console = ctk.CTkTextbox(
+            self.view_container,
+            height=240,
+            fg_color="#050608",
+            text_color="#cbd5e1",
+            font=("Consolas", 11),
+            border_width=1,
+            border_color="#1e293b",
+            padx=15,
+            pady=15
         )
-        self.step_label.pack()
+        self.console.pack(fill="x")
+        self.console.insert("end", "[SYS] Initiating Aethvion Kernel deployment...\n")
+        self.console.configure(state="disabled")
 
-    def update_status(self, text, progress, step_text):
-        self.status_label.configure(text=text)
-        self.progress_bar.set(progress)
-        self.step_label.configure(text=step_text)
-        self.update_idletasks()
+    def log(self, message):
+        self.console.configure(state="normal")
+        self.console.insert("end", f"› {message.strip()}\n")
+        self.console.see("end")
+        self.console.configure(state="disabled")
 
-    def start_installation(self):
+    def update_pct(self, value):
+        self._current_progress = value
+        self.progress_bar.set(value)
+        self.pct_label.configure(text=f"{int(value * 100)}%")
+
+    def start_deployment(self):
         if self.installing: return
         self.installing = True
-        self.prepare_status_view()
-        
-        # Start installation thread
-        threading.Thread(target=self.run_install_logic, daemon=True).start()
+        self._show_deployment_view()
+        threading.Thread(target=self._run_deployment_thread, daemon=True).start()
 
-    def run_script(self, script_name):
-        """Safely run a batch script and wait for completion."""
-        script_path = self.setup_dir / script_name
-        if not script_path.exists():
+    def _exec(self, script, start_pct, end_pct, status_text):
+        path = self.setup_dir / script
+        if not path.exists():
+            self.after(0, lambda: self.log(f"CRITICAL: Resource {script} missing."))
             return False
             
-        process = subprocess.Popen(
-            [str(script_path)],
+        self.after(0, lambda: self.status_sub.configure(text=status_text))
+        
+        proc = subprocess.Popen(
+            [str(path)],
             cwd=str(self.project_root),
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
             creationflags=subprocess.CREATE_NO_WINDOW
         )
-        process.wait()
-        return process.returncode == 0
+        
+        # Simple progress interpolation while running
+        steps = 10
+        increment = (end_pct - start_pct) / steps
+        
+        def pipe_reader():
+            for line in iter(proc.stdout.readline, ""):
+                if line:
+                    self.after(0, lambda l=line: self.log(l))
+            proc.stdout.close()
 
-    def run_install_logic(self):
+        reader_thread = threading.Thread(target=pipe_reader, daemon=True)
+        reader_thread.start()
+        
+        for i in range(steps):
+            if proc.poll() is not None: break
+            time.sleep(0.5)
+            self.after(0, lambda v=start_pct + (i * increment): self.update_pct(v))
+            
+        proc.wait()
+        self.after(0, lambda: self.update_pct(end_pct))
+        return proc.returncode == 0
+
+    def _run_deployment_thread(self):
         try:
-            # Step 1: Env
-            self.after(0, lambda: self.update_status("Calibrating Environment", 0.1, "Setting up Python virtual environment..."))
-            time.sleep(1) # Visual padding
-            self.run_script("setup_environment.bat")
+            # Stage 1: Dependency Graph (0 -> 40%)
+            if not self._exec("setup_environment.bat", 0.0, 0.4, "Synchronizing Dependency Graph"):
+                raise Exception("Kernel environment calibration failed.")
 
-            # Step 2: Directories
-            self.after(0, lambda: self.update_status("Building Core Foundations", 0.4, "Structuring project directories and data folders..."))
-            time.sleep(1)
-            self.run_script("setup_directories.bat")
+            # Stage 2: Intelligence Structure (40 -> 60%)
+            if not self._exec("setup_directories.bat", 0.4, 0.6, "Constructing Intelligence Storage"):
+                raise Exception("Sub-system directory structure failed.")
 
-            # Step 3: Latest
-            self.after(0, lambda: self.update_status("Synchronizing Systems", 0.7, "Pulling latest assets and updating dependencies..."))
-            time.sleep(1)
-            self.run_script("update_to_latest.bat")
+            # Stage 3: Asset Optimization (60 -> 90%)
+            if not self._exec("update_to_latest.bat", 0.6, 0.9, "Optimizing Neural Assets"):
+                raise Exception("External assets synchronization failed.")
 
-            # Step 4: Finalize
-            self.after(0, lambda: self.update_status("Finalizing Neural Pathways", 0.9, "Cleaning up and preparing launch manifest..."))
+            # Finalize (90 -> 100%)
+            self.after(0, lambda: self.status_sub.configure(text="Deployment Successful. Synchronizing Launch Hub."))
+            self.after(0, lambda: self.update_pct(1.0))
             time.sleep(1.5)
-
-            self.after(0, self.show_completion)
+            self.after(0, self._show_success_view)
 
         except Exception as e:
-            self.after(0, lambda: self.update_status("Deployment Error", 1.0, f"Error: {str(e)}"))
+            self.after(0, lambda: self.status_sub.configure(text="DEPLOYMENT TERMINATED", text_color="#ef4444"))
+            self.after(0, lambda m=str(e): self.log(f"ALERT: {m}"))
 
-    def show_completion(self):
-        for widget in self.content_frame.winfo_children():
+    def _show_success_view(self):
+        for widget in self.view_container.winfo_children():
             widget.destroy()
 
         self.complete = True
-        self.logo_label.configure(text_color=SUCCESS_COLOR, text="✓")
         
-        self.success_title = ctk.CTkLabel(
-            self.content_frame,
-            text="Installation Complete",
-            font=("Inter", 20, "bold"),
-            text_color=SUCCESS_COLOR
-        )
-        self.success_title.pack(pady=(10, 5))
+        self.win_header = ctk.CTkLabel(self.view_container, text="Deployment Complete", font=("Inter", 24, "bold"), text_color=SUCCESS_COLOR)
+        self.win_header.pack(anchor="w")
 
-        self.success_sub = ctk.CTkLabel(
-            self.content_frame,
-            text="Aethvion Suite is now ready for deployment.",
-            font=("Inter", 12),
-            text_color="#94a3b8"
+        self.win_sub = ctk.CTkLabel(
+            self.view_container,
+            text="The Aethvion Suite kernel is now fully operational and synchronized. "
+                 "All local intelligence paths have been established.",
+            font=("Inter", 13),
+            text_color="#94a3b8",
+            wraplength=420,
+            justify="left"
         )
-        self.success_sub.pack(pady=(0, 30))
+        self.win_sub.pack(anchor="w", pady=(10, 50))
 
         self.launch_btn = ctk.CTkButton(
-            self.content_frame,
-            text="Launch Dashboard",
+            self.view_container,
+            text="LAUNCH MISSION CONTROL",
             font=("Inter", 14, "bold"),
             height=50,
+            width=260,
             fg_color=SUCCESS_COLOR,
             hover_color="#059669",
-            command=self.launch_suite
+            command=self.finalize_and_launch
         )
-        self.launch_btn.pack()
+        self.launch_btn.pack(anchor="w")
 
-    def launch_suite(self):
-        # Open the dashboard URL and close installer
-        webbrowser.open("http://localhost:8080")
-        # Attempt to run the start script in background
-        start_script = self.project_root / "Start_AethvionWeb.bat"
-        if start_script.exists():
-            subprocess.Popen([str(start_script)], cwd=str(self.project_root), creationflags=subprocess.CREATE_NEW_CONSOLE)
-        
+    def finalize_and_launch(self):
+        # Trigger the browser app-mode launch via launcher.py
+        launch_script = self.project_root / "Start_Aethvion.bat"
+        # We start the ACTUAL app launch now that it's installed
+        subprocess.Popen([str(launch_script)], cwd=str(self.project_root), creationflags=subprocess.CREATE_NO_WINDOW)
         self.destroy()
         sys.exit(0)
 
