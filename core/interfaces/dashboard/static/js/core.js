@@ -1535,9 +1535,12 @@ function generateCategorizedModelOptions(data, type = 'chat', selectedId = null)
 
     let modelsHtml = '';
     const providerOrder = ['google_ai', 'openai', 'anthropic', 'grok', 'local'];
+    const displayedProviders = new Set();
 
+    // 1. Order known providers first
     for (const p of providerOrder) {
         if (!categorizedModels[p] || categorizedModels[p].length === 0) continue;
+        displayedProviders.add(p);
 
         const readableName = p === 'google_ai' ? 'Google AI' : p === 'openai' ? 'OpenAI' : p.charAt(0).toUpperCase() + p.slice(1);
         modelsHtml += `<optgroup label="${readableName}">`;
@@ -1552,8 +1555,142 @@ function generateCategorizedModelOptions(data, type = 'chat', selectedId = null)
         modelsHtml += `</optgroup>`;
     }
 
+    // 2. Add any remaining providers that were not in the order list
+    const remainingProviders = Object.keys(categorizedModels).filter(p => !displayedProviders.has(p));
+    for (const p of remainingProviders) {
+        if (categorizedModels[p].length === 0) continue;
+
+        const readableName = p.charAt(0).toUpperCase() + p.slice(1);
+        modelsHtml += `<optgroup label="${readableName}">`;
+
+        for (const m of categorizedModels[p]) {
+            const costHint = (m.input_cost_per_1m_tokens || m.output_cost_per_1m_tokens)
+                ? ` ($${m.input_cost_per_1m_tokens}/$${m.output_cost_per_1m_tokens})`
+                : '';
+            const s = m.id === selectedId ? 'selected' : '';
+            modelsHtml += `<option value="${m.id}" title="${m.description || ''}" ${s}>${m.id}${costHint}</option>`;
+        }
+        modelsHtml += `</optgroup>`;
+    }
+
     return profilesHtml + modelsHtml;
 }
+
+/**
+ * Global function to load chat models and populate all model selects.
+ * Defined in core.js to be available on startup for all panels.
+ */
+async function loadChatModels() {
+    const selects = [
+        document.getElementById('model-select'),
+        document.getElementById('setting-assistant-model'),
+        document.getElementById('agent-model-select'),
+        document.getElementById('arena-model-add'),
+        document.getElementById('aiconv-model-add'),
+        document.getElementById('advaiconv-person-add'),
+        document.getElementById('setting-misakacipher-model'),
+        document.getElementById('setting-axiom-model'),
+        document.getElementById('setting-lyra-model'),
+        document.getElementById('setting-info-model'),
+        document.getElementById('overlay-model')
+    ].filter(Boolean);
+
+    // If no selects found, we still might want to fetch and cache the data
+    // for panels that might load later.
+    
+    try {
+        const res = await fetch('/api/registry/models/chat');
+        if (!res.ok) throw new Error('Failed to load chat models');
+        const data = await res.json();
+
+        // Standardize tags in registry data too if they come back as lowercase
+        if (data.models) {
+            data.models.forEach(m => {
+                if (m.capabilities) {
+                    m.capabilities = m.capabilities.map(c => c.toUpperCase());
+                }
+            });
+        }
+
+        const chatOptions = generateCategorizedModelOptions(data, 'chat');
+        const agentOptions = generateCategorizedModelOptions(data, 'agent');
+        
+        // Always cache the latest options
+        window._cachedChatModelOptions = chatOptions;
+        window._cachedAgentModelOptions = agentOptions;
+        window._cachedRegistryData = data;
+
+        if (selects.length === 0) return;
+
+        selects.forEach(sel => {
+            const currentVal = sel.value;
+            const isAgent = sel.id === 'agent-model-select';
+            sel.innerHTML = isAgent ? agentOptions : chatOptions;
+
+            // Restore preferences or local storage
+            if (sel.id === 'setting-assistant-model') {
+                const prefModel = window.prefs?.get('assistant.model', 'gemini-2.0-flash');
+                if (sel.querySelector(`option[value="${prefModel}"]`)) sel.value = prefModel;
+            } else if (sel.id === 'setting-misakacipher-model') {
+                const prefModel = window.prefs?.get('misakacipher.model', 'gemini-1.5-flash');
+                if (sel.querySelector(`option[value="${prefModel}"]`)) sel.value = prefModel;
+            } else if (sel.id === 'model-select') {
+                const saved = localStorage.getItem('chat_model');
+                if (saved && sel.querySelector(`option[value="${saved}"]`)) sel.value = saved;
+            } else if (currentVal && sel.querySelector(`option[value="${currentVal}"]`)) {
+                sel.value = currentVal;
+            }
+        });
+
+    } catch (err) {
+        console.error('Error loading chat models:', err);
+    }
+}
+window.loadChatModels = loadChatModels;
+
+// Listen for tab changes to populate models in newly loaded dynamic panels
+document.addEventListener('tabChanged', (e) => {
+    if (e.detail && e.detail.tab === 'chat') {
+        loadChatModels();
+    }
+});
+
+/**
+ * MutationObserver to handle dynamically injected model selects.
+ * This is the most robust way to ensure that any model-select element 
+ * (like the one in chat.html) is populated immediately upon being added to the DOM.
+ */
+(function initModelSelectMonitor() {
+    const observer = new MutationObserver((mutations) => {
+        let shouldPopulate = false;
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (node.nodeType !== 1) continue;
+                if (node.id === 'model-select' || node.querySelector?.('#model-select')) {
+                    shouldPopulate = true;
+                    break;
+                }
+            }
+            if (shouldPopulate) break;
+        }
+        if (shouldPopulate) {
+            loadChatModels();
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Also run as soon as anything is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadChatModels);
+    } else {
+        loadChatModels();
+    }
+    
+    // Fallback for extreme race conditions (e.g. partial loader cache)
+    setTimeout(loadChatModels, 500);
+    setTimeout(loadChatModels, 2000);
+})();
 
 
 // ===== Global Modal & Notification Handlers =====

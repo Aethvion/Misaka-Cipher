@@ -1255,92 +1255,6 @@ function initCapsTd(cell) {
     });
 }
 
-async function loadChatModels() {
-    const selects = [
-        document.getElementById('model-select'),
-        document.getElementById('setting-assistant-model'),
-        document.getElementById('agent-model-select'),
-        document.getElementById('arena-model-add'),
-        document.getElementById('aiconv-model-add'),
-        document.getElementById('advaiconv-person-add'),
-        document.getElementById('setting-misakacipher-model'),
-        document.getElementById('setting-axiom-model'),
-        document.getElementById('setting-lyra-model'),
-        document.getElementById('setting-info-model'),
-        document.getElementById('overlay-model')
-    ].filter(Boolean);
-
-    if (selects.length === 0) return;
-
-    try {
-        const res = await fetch('/api/registry/models/chat');
-        if (!res.ok) throw new Error('Failed to load chat models');
-        const data = await res.json();
-
-        // Standardize tags in registry data too if they come back as lowercase
-        if (data.models) {
-            data.models.forEach(m => {
-                if (m.capabilities) {
-                    m.capabilities = m.capabilities.map(c => c.toUpperCase());
-                }
-            });
-        }
-
-        const chatOptions = generateCategorizedModelOptions(data, 'chat');
-        const agentOptions = generateCategorizedModelOptions(data, 'agent');
-        window._cachedChatModelOptions = chatOptions; // cache for dynamic selects
-
-        selects.forEach(sel => {
-            const currentVal = sel.value;
-            const isAgent = sel.id === 'agent-model-select';
-            sel.innerHTML = isAgent ? agentOptions : chatOptions;
-
-            // Fix for model select initialization
-            if (sel.id === 'setting-assistant-model') {
-                const prefModel = prefs.get('assistant.model', 'gemini-2.0-flash');
-                if (sel.querySelector(`option[value="${prefModel}"]`)) {
-                    sel.value = prefModel;
-                }
-            } else if (sel.id === 'setting-misakacipher-model') {
-                const prefModel = prefs.get('misakacipher.model', 'gemini-1.5-flash');
-                if (sel.querySelector(`option[value="${prefModel}"]`)) {
-                    sel.value = prefModel;
-                }
-            } else if (sel.id === 'setting-axiom-model') {
-                const prefModel = prefs.get('axiom.model', 'gemini-1.5-flash');
-                if (sel.querySelector(`option[value="${prefModel}"]`)) {
-                    sel.value = prefModel;
-                }
-            } else if (sel.id === 'setting-lyra-model') {
-                const prefModel = prefs.get('lyra.model', 'gemini-1.5-flash');
-                if (sel.querySelector(`option[value="${prefModel}"]`)) {
-                    sel.value = prefModel;
-                }
-            } else if (sel.id === 'setting-info-model') {
-                const prefModel = prefs.get('system.info_model', 'flash');
-                if (sel.querySelector(`option[value="${prefModel}"]`)) {
-                    sel.value = prefModel;
-                }
-            } else if (sel.id === 'overlay-model') {
-                // Restored separately by loadOverlaySettings() after config is fetched
-                // Keep current selection if still valid, otherwise leave at default
-                if (currentVal && sel.querySelector(`option[value="${currentVal}"]`)) {
-                    sel.value = currentVal;
-                }
-            } else if (sel.id === 'model-select') {
-                const saved = localStorage.getItem('chat_model');
-                if (saved && sel.querySelector(`option[value="${saved}"]`)) {
-                    sel.value = saved;
-                }
-            } else if (currentVal && sel.querySelector(`option[value="${currentVal}"]`)) {
-                sel.value = currentVal;
-            }
-        });
-
-    } catch (err) {
-        console.error('Error loading chat models:', err);
-    }
-}
 
 function renderProviderCards(registry) {
     const container = document.getElementById('provider-cards-container');
@@ -2119,6 +2033,7 @@ async function moveProfile(element, direction) {
 // Global initialization
 // Expose so other views can trigger a fresh reload of registry data + re-render
 window.loadProviderSettings = loadProviderSettings;
+window.loadChatModels = loadChatModels;
 window.toggleCompanionAccordion = toggleCompanionAccordion;
 
 // ── Settings panel init (deferred until partial is injected) ─────────────────
@@ -3341,4 +3256,6 @@ document.addEventListener('tabChanged', (e) => {
         loadChatModels();
     }
 });
+
+
 
