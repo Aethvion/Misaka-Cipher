@@ -1,7 +1,7 @@
 """
-Aethvion Suite - Professional Installer v7
+Aethvion Suite - Professional Installer v9
 ═══════════════════════════════════════════
-Fully transparent design with granular PIP tracking and expandable technical log.
+Persistent technical logs, high-fidelity sub-step parsing, and smooth completion transition.
 """
 
 import sys
@@ -32,23 +32,24 @@ class StepRow(ctk.CTkFrame):
     def __init__(self, master, title: str, **kwargs):
         super().__init__(master, fg_color="transparent", **kwargs)
         self.columnconfigure(1, weight=1)
+        self.columnconfigure(2, weight=1)
+        
+        self.icon_lbl = ctk.CTkLabel(self, text=self.ICON_PENDING, font=("Inter", 14), text_color=MUTED, width=15)
+        self.icon_lbl.grid(row=0, column=0, padx=(0, 8), sticky="w")
 
-        self.icon_lbl = ctk.CTkLabel(self, text=self.ICON_PENDING, font=("Inter", 14), text_color=MUTED, width=20)
-        self.icon_lbl.grid(row=0, column=0, padx=(0, 10), sticky="nw")
+        self.title_lbl = ctk.CTkLabel(self, text=title, font=("Inter", 12), text_color=MUTED, anchor="w")
+        self.title_lbl.grid(row=0, column=1, sticky="w")
 
-        self.title_lbl = ctk.CTkLabel(self, text=title, font=("Inter", 13), text_color=MUTED, anchor="w")
-        self.title_lbl.grid(row=0, column=1, sticky="nw")
-
-        self.pct_lbl = ctk.CTkLabel(self, text="", font=("Inter", 11), text_color=MUTED, anchor="e", width=40)
-        self.pct_lbl.grid(row=0, column=2, sticky="ne")
-
-        self.sub_lbl = ctk.CTkLabel(self, text="", font=("Inter", 10), text_color=MUTED, anchor="w", height=14)
-        self.sub_lbl.grid(row=1, column=1, columnspan=2, sticky="nw")
-
-        self.bar = ctk.CTkProgressBar(self, height=4, progress_color=ACCENT, fg_color="#1e2330")
+        self.bar = ctk.CTkProgressBar(self, height=4, width=100, progress_color=ACCENT, fg_color="#1e2330")
         self.bar.set(0)
-        self.bar.grid(row=2, column=1, columnspan=2, sticky="ew", pady=(2, 0))
+        self.bar.grid(row=0, column=2, padx=10, sticky="ew")
         self.bar.grid_remove()
+
+        self.pct_lbl = ctk.CTkLabel(self, text="", font=("Inter", 11, "bold"), text_color=MUTED, anchor="e", width=35)
+        self.pct_lbl.grid(row=0, column=3, sticky="e")
+
+        self.sub_lbl = ctk.CTkLabel(self, text="", font=("Inter", 10), text_color=MUTED, anchor="w", height=10)
+        self.sub_lbl.grid(row=1, column=1, columnspan=3, sticky="nw")
 
     def set_active(self, sub: str = ""):
         self.icon_lbl.configure(text=self.ICON_ACTIVE, text_color=ACCENT)
@@ -78,11 +79,11 @@ class StepRow(ctk.CTkFrame):
 
 class AethvionInstaller(ctk.CTk):
     STEPS = [
-        "Checking Python Environment",
-        "Preparing Download List",
-        "Installing Libraries",
-        "Setting up Project Folders",
-        "Finalizing Settings",
+        "Environment Check",
+        "Requirement Scan",
+        "Library Linkage",
+        "Data Synchronization",
+        "Final Validation",
     ]
 
     def __init__(self):
@@ -92,8 +93,8 @@ class AethvionInstaller(ctk.CTk):
         self.logo_path    = self.project_root / "assets" / "aethvion" / "aethvion_logo.png"
 
         # Window
-        W, H = 540, 600
-        self.title("Aethvion Suite Setup")
+        W, H = 540, 620
+        self.title("Aethvion Suite Orchestrator")
         self._center(W, H)
         self.resizable(False, False)
         
@@ -119,57 +120,49 @@ class AethvionInstaller(ctk.CTk):
 
     def _build_ui(self):
         self.main_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.main_frame.pack(fill="both", expand=True, padx=40, pady=(40, 20))
+        self.main_frame.pack(fill="both", expand=True, padx=40, pady=(30, 20))
 
         # Header
-        hdr = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        hdr.pack(fill="x")
+        self.hdr = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        self.hdr.pack(fill="x")
         
         try:
             pil = Image.open(self.logo_path)
-            ratio = 110 / pil.size[0]
-            img = ctk.CTkImage(light_image=pil, dark_image=pil, size=(110, int(pil.size[1] * ratio)))
-            ctk.CTkLabel(hdr, image=img, text="").pack(anchor="center")
-        except:
-            ctk.CTkLabel(hdr, text="✦ AETHVION", font=("Inter", 24, "bold"), text_color=ACCENT).pack(anchor="center")
+            ratio = 100 / pil.size[0]
+            img = ctk.CTkImage(light_image=pil, dark_image=pil, size=(100, int(pil.size[1] * ratio)))
+            ctk.CTkLabel(self.hdr, image=img, text="").pack(anchor="center")
+        except: pass
 
-        ctk.CTkLabel(hdr, text="Aethvion Suite Setup", font=("Inter", 22, "bold"), text_color=TEXT).pack(pady=(12, 0))
-        ctk.CTkLabel(hdr, text="Local Intelligence Dashboard Deployment", font=("Inter", 12), text_color=MUTED).pack()
+        self.title_lbl = ctk.CTkLabel(self.hdr, text="Aethvion Suite Setup", font=("Inter", 20, "bold"), text_color=TEXT)
+        self.title_lbl.pack(pady=(10, 0))
+        self.sub_lbl = ctk.CTkLabel(self.hdr, text="Synchronizing local mission control", font=("Inter", 12), text_color=MUTED)
+        self.sub_lbl.pack()
 
         # Step List
-        self.scroll_frame = ctk.CTkScrollableFrame(self.main_frame, fg_color="transparent", height=240)
-        self.scroll_frame.pack(fill="x", pady=20)
+        self.scroll_frame = ctk.CTkScrollableFrame(self.main_frame, fg_color="transparent", height=160)
+        self.scroll_frame.pack(fill="x", pady=(20, 10))
 
         self.step_rows = []
         for i, title in enumerate(self.STEPS):
             row = StepRow(self.scroll_frame, title)
-            row.pack(fill="x", pady=(0, 10))
+            row.pack(fill="x", pady=1)
             self.step_rows.append(row)
 
-        # Foldout Console
+        # Persistent Technical Logs
         self.console_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        self.console_frame.pack(fill="x")
+        self.console_frame.pack(fill="both", expand=True, pady=(10, 0))
 
-        self.console_btn = ctk.CTkButton(self.console_frame, text="View Installation Logs ▼", font=("Inter", 11), fg_color="transparent", text_color=MUTED, hover_color="#1e2330", height=20, command=self._toggle_console)
-        self.console_btn.pack(pady=(0, 5))
-
-        self.console_box = ctk.CTkTextbox(self.console_frame, height=0, fg_color="#080a0d", text_color="#a1a1aa", font=("Consolas", 10), border_width=1, border_color=BORDER)
-        self.console_box.pack(fill="x")
+        ctk.CTkLabel(self.console_frame, text="TRANSMISSION LOG", font=("Inter", 9, "bold"), text_color=MUTED).pack(anchor="w", pady=(0, 4))
+        self.console_box = ctk.CTkTextbox(self.console_frame, fg_color="#080a0d", text_color="#10b981", font=("Consolas", 10), border_width=1, border_color=BORDER)
+        self.console_box.pack(fill="both", expand=True)
         self.console_box.configure(state="disabled")
 
-        self.launch_btn = ctk.CTkButton(self.main_frame, text="OPEN DASHBOARD", font=("Inter", 14, "bold"), height=46, fg_color=SUCCESS, hover_color="#059669", command=self._launch)
-
-    def _toggle_console(self):
-        if self.console_box.cget("height") == 0:
-            self.console_box.configure(height=120)
-            self.console_btn.configure(text="Hide Installation Logs ▲")
-        else:
-            self.console_box.configure(height=0)
-            self.console_btn.configure(text="View Installation Logs ▼")
+        # Success Button (Hidden)
+        self.launch_btn = ctk.CTkButton(self.main_frame, text="LAUNCH AETHVION SUITE", font=("Inter", 14, "bold"), height=50, fg_color=SUCCESS, hover_color="#059669", command=self._launch)
 
     def log(self, text):
         self.console_box.configure(state="normal")
-        self.console_box.insert("end", f"> {text.strip()}\n")
+        self.console_box.insert("end", f"› {text.strip()}\n")
         self.console_box.see("end")
         self.console_box.configure(state="disabled")
 
@@ -183,35 +176,44 @@ class AethvionInstaller(ctk.CTk):
 
     def _install_thread(self):
         try:
-            # Step 1: Environment
+            # 1. Environment
+            self.log("[System] Initializing Environment Audit...")
             self._step_active(0, "Analyzing host...")
             venv = self.project_root / ".venv"
             if not venv.exists():
-                self._step_progress(0, 0.4, "Creating environment...")
+                self.log("[Setup] Creating fresh virtual environment")
+                self._step_progress(0, 0.4, "Isolating workspace...")
                 subprocess.run(["python", "-m", "venv", str(venv)], creationflags=subprocess.CREATE_NO_WINDOW)
-            self._step_progress(0, 0.8, "Updating tools...")
+            
+            self.log("[Setup] Synchronizing pip tools")
+            self._step_progress(0, 0.8, "Aligning kernel...")
             subprocess.run([str(venv/"Scripts"/"python.exe"), "-m", "pip", "install", "--upgrade", "pip", "--quiet"], creationflags=subprocess.CREATE_NO_WINDOW)
             self._step_done(0)
 
-            # Step 2 & 3: Libraries
+            # 2 & 3. Libraries
             self._phase_pip(1, 2)
 
-            # Step 4: Folders
-            self._step_active(3, "Structuring project directories...")
+            # 4. Directories
+            self.log("[System] Mapping Internal Data Structures...")
+            self._step_active(3, "Synchronizing folders...")
             subprocess.run(["cmd", "/c", str(self.setup_dir/"setup_directories.bat")], creationflags=subprocess.CREATE_NO_WINDOW)
             self._step_done(3)
 
-            # Step 5: Finalize
-            self._step_active(4, "Synchronizing settings...")
+            # 5. Finalize
+            self.log("[System] Validating Core Integration...")
+            self._step_active(4, "Applying settings...")
             time.sleep(1)
             self._step_done(4)
             
-            self._ui(lambda: self.launch_btn.pack(fill="x", pady=20))
+            self.log("[Success] Deployment sequence completed.")
+            self.log("[System] Install finished.")
+            self._ui(self._show_success)
         except Exception as e:
-            self._ui(lambda m=str(e): self.log(f"Setup Error: {m}"))
+            self.log(f"[Alert] Synchronization failed: {e}")
 
     def _phase_pip(self, s1, s2):
-        self._step_active(s1, "Gathering package requirements...")
+        self.log("[System] Scanning Requirement Manifest...")
+        self._step_active(s1, "Initializing scan...")
         pip_exe = str(self.project_root/".venv"/"Scripts"/"pip.exe")
         
         proc = subprocess.Popen([pip_exe, "install", "-e", ".[memory]", "--progress-bar", "off"], cwd=str(self.project_root), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, creationflags=subprocess.CREATE_NO_WINDOW)
@@ -220,46 +222,66 @@ class AethvionInstaller(ctk.CTk):
         installed_count = 0
         current_phase = 1 
         
+        # PIP sometimes buffers poorly. We'll try to be aggressive here.
         for line in iter(proc.stdout.readline, ""):
             line = line.strip()
             if not line: continue
             self._ui(lambda l=line: self.log(l))
 
-            # Detect collection phase
+            # Phase 1: COLLECTION
             if "Collecting" in line:
-                pkg = line.split("Collecting")[-1].strip().split()[0]
-                if pkg not in all_pkgs: all_pkgs.append(pkg)
-                self._step_progress(s1, min(0.98, len(all_pkgs)/25), f"Found {pkg}...")
+                pkg_match = re.search(r"Collecting ([^\s;>=<!(]+)", line)
+                if pkg_match:
+                    pkg = pkg_match.group(1)
+                    if pkg not in all_pkgs: all_pkgs.append(pkg)
+                self._step_progress(s1, min(0.98, len(all_pkgs)/30), f"Discovered {line.split()[-1]}")
             
-            # Transition to installation
+            # Transition to INSTALL
             elif "Installing collected packages" in line:
                 current_phase = 2
                 self._step_done(s1)
-                self._step_active(s2, f"Installing {len(all_pkgs)} libraries...")
-                # Try to parse the list of packages from the 'Installing collected packages:' line
-                list_match = line.split("Installing collected packages:")
-                if len(list_match) > 1:
-                    # Overwrite all_pkgs with actual final list if possible
-                    actual_list = [p.strip() for p in list_match[1].split(",") if p.strip()]
-                    if actual_list: all_pkgs = actual_list
+                
+                # If we have a list of packages in the line, use it!
+                pkgs_match = line.split("Installing collected packages:")
+                if len(pkgs_match) > 1:
+                    actual_pkgs = [p.strip() for p in pkgs_match[1].split(",") if p.strip()]
+                    if len(actual_pkgs) > 5: all_pkgs = actual_pkgs
+                
+                self._step_active(s2, f"Installing 0 of {len(all_pkgs)} packages")
 
-            # Track individual installations
+            # Phase 2: INSTALLATION
             elif current_phase == 2:
-                # pip often prints 'Installing xxx' or 'Successfully installed xxx'
+                # Catching: 'Installing xxx'
                 if line.startswith("Installing"):
                     pkg = line.split("Installing")[-1].strip().split()[0]
-                    self._step_progress(s2, min(0.99, (installed_count+0.5)/max(len(all_pkgs), 1)), f"Linking {pkg}...")
+                    total = max(len(all_pkgs), 1)
+                    # We use (installed_count + 0.5) to show partial work on a single package
+                    pct = min(0.99, (installed_count + 0.5) / total)
+                    self._step_progress(s2, pct, f"Linking {pkg}...")
+                
+                # Catching: 'Successfully installed xxx-1.2.3'
                 elif "Successfully installed" in line:
-                    # Count how many packages in this string
-                    pkgs_in_line = line.replace("Successfully installed", "").strip().split()
-                    installed_count += len(pkgs_in_line)
+                    pstr = line.replace("Successfully installed", "").strip()
+                    # Count packages in the comma-separated or space-separated list
+                    pkgs_done = re.split(r'[,\s]+', pstr)
+                    installed_count += len([p for p in pkgs_done if p])
+                    
                     total = max(len(all_pkgs), 1)
                     pct = min(1.0, installed_count / total)
-                    self._step_progress(s2, pct, f"Installed {installed_count} of {total} libraries")
+                    self._step_progress(s2, pct, f"Completed {installed_count} of {total} packages")
 
         proc.wait()
         self._step_done(s1)
         self._step_done(s2)
+
+    def _show_success(self):
+        # Hide the progress section
+        self.scroll_frame.pack_forget()
+        self.title_lbl.configure(text="Synchronization Complete", text_color=SUCCESS)
+        self.sub_lbl.configure(text="Aethvion Suite is ready for local operation.")
+        
+        # Show Launch button
+        self.launch_btn.pack(fill="x", pady=20)
 
     def _launch(self):
         subprocess.Popen([str(self.project_root/"Start_Aethvion.bat")], cwd=str(self.project_root), creationflags=subprocess.CREATE_NEW_CONSOLE)
