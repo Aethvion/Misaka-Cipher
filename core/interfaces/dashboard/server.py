@@ -265,7 +265,7 @@ async def initialize_system_background():
         from .advanced_aiconv_routes import router as adv_aiconv_router
         from .research_board_routes import router as board_router
         from .assistant_routes import router as assistant_router
-        from core.companions.companion_routes import routers as companion_routers
+        from core.companions.companion_routes import router as companion_router
         from .documentation_routes import router as documentation_router
         from .games_routes import router as games_router
         from .smarter_than_ai_routes import router as smarter_than_ai_router
@@ -296,8 +296,7 @@ async def initialize_system_background():
         app.include_router(adv_aiconv_router)
         app.include_router(board_router)
         app.include_router(assistant_router)
-        for _companion_router in companion_routers:
-            app.include_router(_companion_router)
+        app.include_router(companion_router)
         app.include_router(documentation_router)
         app.include_router(games_router)
         app.include_router(smarter_than_ai_router)

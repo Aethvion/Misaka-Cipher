@@ -76,10 +76,10 @@ class CompanionRegistry:
 
     @classmethod
     def load_all(cls):
-        """Scan config dir and data dir for .json files and register them."""
+        """Scan core and data dirs. Data overrides Core templates."""
         cls._companions = {}
         
-        # 1. Load core templates
+        # 1. Load core templates as baseline
         if _CONFIG_DIR.exists():
             for file in _CONFIG_DIR.glob("*.json"):
                 try:
@@ -88,7 +88,7 @@ class CompanionRegistry:
                 except Exception as e:
                     print(f"Error loading companion template {file.name}: {e}")
         
-        # 2. Load custom companions from data (overrides templates with same ID)
+        # 2. Overwrite/Add with active state or custom companions from data/
         if _DATA_ROOT.exists():
             for c_dir in _DATA_ROOT.iterdir():
                 if not c_dir.is_dir():
@@ -97,6 +97,7 @@ class CompanionRegistry:
                 if config_file.exists():
                     try:
                         cfg = CompanionConfig.from_json(config_file)
+                        # This intentionally overwrites the template with active state
                         cls._companions[cfg.id] = cfg
                     except Exception as e:
                         print(f"Error loading companion state {c_dir.name}: {e}")
@@ -107,6 +108,7 @@ class CompanionRegistry:
     def get_companion(cls, companion_id: str) -> Optional[CompanionConfig]:
         if not cls._loaded:
             cls.load_all()
+        # Ensure we always list characters from both sources
         return cls._companions.get(companion_id)
 
     @classmethod

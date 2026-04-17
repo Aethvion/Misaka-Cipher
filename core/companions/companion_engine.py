@@ -2,31 +2,20 @@
 core/companions/companion_engine.py
 ═══════════════════════════════════
 Unified, data-driven engine for all Aethvion companions.
-Handles LLM calls, tool execution, and memory/history management.
+Handles LLM logic, tool execution, and dynamic personality evolution.
 """
 
-import asyncio
 import datetime
 import json
-import logging
-import re
 import uuid
-from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
-from pydantic import BaseModel
+from fastapi import HTTPException
 
-from core.companions.registry import CompanionConfig, get_companion
+from core.companions.registry import CompanionConfig
 from core.companions.engine.memory import CompanionMemory
 from core.companions.engine.history import CompanionHistory
 from core.companions.engine.streaming import clean_memory_tags, build_nexus_capabilities, get_greeting_period
-from core.companions.engine.tools import (
-    execute_tools_stream,
-    extract_peripheral_captures,
-    load_workspaces,
-    validate_path,
-)
 from core.providers.provider_manager import ProviderManager
 from core.workspace.preferences_manager import get_preferences_manager
 from core.utils.logger import get_logger
@@ -34,46 +23,18 @@ from core.utils import utcnow_iso
 
 logger = get_logger(__name__)
 
-# ── Models ──────────────────────────────────────────────────────────────────
-
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-    timestamp: Optional[str] = None
-    attachments: Optional[List[Dict[str, Any]]] = None
-
-class ChatRequest(BaseModel):
-    message: str
-    history: List[ChatMessage]
-    attached_files: Optional[List[Dict[str, Any]]] = None
-
-class InitiateRequest(BaseModel):
-    trigger: str = "startup"
-    hours_since_last: float = 0.0
-
-class ChatResponse(BaseModel):
-    response: str
-    expression: str
-    mood: str
-    model: str
-    memory_updated: bool
-    attachments: Optional[List[Dict[str, Any]]] = None
-
 # ── Dynamic Time Formatter ────────────────────────────────────────────────────
 
 def format_time_diff(total_seconds: int, time_context: Dict[str, Any]) -> str:
     """Format time difference based on companion's JSON rules."""
     fmt = time_context.get("format", {})
-    # Get all rules that have a 'max' value
     rules = []
     for key, data in fmt.items():
         m = data.get("max")
         if m is not None:
             rules.append((m, data["text"]))
     
-    # Sort by max value
     rules.sort()
-    
     for max_val, text in rules:
         if total_seconds < max_val:
             m = total_seconds // 60
@@ -81,7 +42,6 @@ def format_time_diff(total_seconds: int, time_context: Dict[str, Any]) -> str:
             s = 's' if (m != 1) else ''
             return text.format(m=m, h=h, s=s)
             
-    # Fallback to the rule without max (usually 'days')
     for key, data in fmt.items():
         if data.get("max") is None:
             d = total_seconds // 86400
@@ -89,66 +49,25 @@ def format_time_diff(total_seconds: int, time_context: Dict[str, Any]) -> str:
             
     return f"{total_seconds} seconds ago"
 
-# ── Router Factory ────────────────────────────────────────────────────────────
+# ── Execution Logic ───────────────────────────────────────────────────────────
 
-def make_companion_router(config: CompanionConfig) -> APIRouter:
-    """Build a FastAPI router for a companion based on its data-driven config."""
-    
-    router = APIRouter(prefix=config.route_prefix, tags=[config.id])
-    raw = config._raw_config
-    behavior = raw.get("behavior", {})
-    capabilities = raw.get("capabilities", {})
-    prompts = raw.get("prompts", {})
-    
-    memory = CompanionMemory(
-        data_dir=config.data_dir,
-        default_base_info=raw.get("personality_defaults", {}),
-        companion_name=config.name
-    )
-    
-    # We pass a lambda for the time formatter to history
-    time_ctx = raw.get("time_context", {})
-    history = CompanionHistory(
-        history_dir=config.history_dir,
-        companion_name=config.name,
-        time_formatter=lambda s: format_time_diff(s, time_ctx)
-    )
-    
-    memory.initialize()
+class CompanionEngine:
+    """
+    Stateless functional engine that executes requests for any companion.
+    """
 
-    @router.get("/config")
-    async def get_raw_config():
-        return raw
-
-    @router.get("/expressions")
-    async def get_expressions():
-        return config.expressions
-
-    @router.get("/memory")
-    async def get_memory():
-        return memory.load()
-
-    @router.get("/history")
-    async def get_history(offset_days: int = 0, limit_days: int = 3):
-        return history.load_days(offset_days, limit_days)
-
-    @router.post("/history/clear")
-    async def clear_history():
-        history.clear()
-        return {"status": "cleared"}
-
-    @router.post("/reset")
-    async def reset_companion():
-        history.clear()
-        memory.reset()
+    @staticmethod
+    async def initiate_response(config: CompanionConfig, trigger: str = "startup"):
+        """Generate an opening message for a session."""
+        raw = config._raw_config
+        behavior = raw.get("behavior", {})
+        prompts = raw.get("prompts", {})
+        
+        memory = CompanionMemory(config.data_dir, raw.get("personality_defaults", {}))
+        history = CompanionHistory(config.history_dir, config.name, 
+                                   lambda s: format_time_diff(s, raw.get("time_context", {})))
+        
         memory.initialize()
-        return {"ok": True}
-
-    # ── Chat & Initiate ─────────────────────────────────────────────────────
-
-    @router.post("/initiate", response_model=ChatResponse)
-    async def initiate(request: InitiateRequest):
-        # Implementation logic similar to factory.py but using 'prompts' and 'behavior' from raw
         now = datetime.datetime.now()
         timestamp = utcnow_iso()
         mem_data = memory.load()
@@ -156,131 +75,102 @@ def make_companion_router(config: CompanionConfig) -> APIRouter:
         greeting_period = get_greeting_period(now.hour)
         formatted_datetime = now.strftime("%A, %d %B %Y — %H:%M")
         
-        if request.trigger == "startup":
-            time_desc = history.time_since_last() # Uses our dynamic formatter
-            instr_template = prompts.get("startup_instruction", "Welcome back.")
-            trigger_instruction = instr_template.replace("{time_desc}", time_desc)
+        if trigger == "startup":
+            time_desc = history.time_since_last()
+            instr = prompts.get("startup_instruction", "Welcome back.").replace("{time_desc}", time_desc)
         else:
-            trigger_instruction = prompts.get("proactive_instruction", "Hello.")
+            instr = prompts.get("proactive_instruction", "Hello.")
 
-        # Build prompt
         system_prompt = prompts.get("initiate_system", "").format(
             base_info=json.dumps(mem_data["base_info"], indent=2),
             memory=json.dumps(mem_data["memory"], indent=2),
             datetime_ctx=f"{formatted_datetime} ({greeting_period})",
-            history_ctx="", # Simplified for initiate
-            trigger_instruction=trigger_instruction,
-            tool_instructions="" # Logic for tools would go here if enabled
+            history_ctx="",
+            trigger_instruction=instr,
+            tool_instructions=""
         )
 
-        prefs = get_preferences_manager()
-        model = prefs.get(config.id, {}).get("model", config.default_model)
-        
+        model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
         pm = ProviderManager()
-        trace_id = f"{config.id}-init-{uuid.uuid4().hex[:8]}"
         response = pm.call_with_failover(
             prompt=system_prompt,
-            trace_id=trace_id,
+            trace_id=f"{config.id}-init-{uuid.uuid4().hex[:8]}",
             temperature=behavior.get("initiate_temperature", 0.8),
             model=model,
             source=f"{config.id}-initiate"
         )
         
-        if not response.success:
-            raise HTTPException(status_code=500, detail=response.error)
+        if not response.success: raise HTTPException(status_code=500, detail=response.error)
 
         content = response.content.strip()
-        # Tags extraction (Simplified for brevity)
-        expression = behavior.get("default_expression", "default")
-        mood = behavior.get("default_mood", "calm")
+        history.save_message("assistant", content, timestamp, 
+                             mood=behavior.get("default_mood", "calm"), 
+                             expression=behavior.get("default_expression", "default"), 
+                             proactive=True)
         
-        history.save_message("assistant", content, timestamp, mood=mood, expression=expression, proactive=True)
+        return {
+            "response": content,
+            "expression": behavior.get("default_expression", "default"),
+            "mood": behavior.get("default_mood", "calm"),
+            "model": response.model,
+            "memory_updated": False
+        }
+
+    @staticmethod
+    async def chat_response(config: CompanionConfig, message: str, chat_history: List[Any]):
+        """Execute a chat turn."""
+        raw = config._raw_config
+        behavior = raw.get("behavior", {})
+        capabilities = raw.get("capabilities", {})
+        prompts = raw.get("prompts", {})
         
-        return ChatResponse(
-            response=content,
-            expression=expression,
-            mood=mood,
-            model=response.model,
-            memory_updated=False
-        )
-
-    # ── Chat Endpoint (Streaming & Tool Loops) ──────────────────────────────
-
-    @router.post("/chat")
-    async def chat(request: ChatRequest):
-        """Unified chat entry point with full tool & evolution support."""
+        memory = CompanionMemory(config.data_dir, raw.get("personality_defaults", {}))
+        history = CompanionHistory(config.history_dir, config.name, 
+                                   lambda s: format_time_diff(s, raw.get("time_context", {})))
+        
+        memory.initialize()
         now = datetime.datetime.now()
         timestamp = utcnow_iso()
         mem_data = memory.load()
         
-        # 1. Build context
-        formatted_datetime = now.strftime("%A, %d %B %Y — %H:%M")
-        time_since = history.time_since_last()
-        
-        # Capabilities check
-        nexus_block = ""
-        if capabilities.get("tools_enabled", False):
-            nexus_block = build_nexus_capabilities() # Logic from streaming.py
-            
-        workspace_block = ""
-        if capabilities.get("workspace_access", False):
-            # workspace_block = load_workspaces() ... logic here
-            pass
-
+        nexus_block = build_nexus_capabilities() if capabilities.get("tools_enabled") else ""
         system_prompt = prompts.get("chat_system", "").format(
             base_info=json.dumps(mem_data["base_info"], indent=2),
             memory=json.dumps(mem_data["memory"], indent=2),
-            datetime_ctx=formatted_datetime,
-            time_since=time_since,
-            workspace_block=workspace_block,
+            datetime_ctx=now.strftime("%A, %d %B %Y — %H:%M"),
+            time_since=history.time_since_last(),
+            workspace_block="",
             nexus_block=nexus_block
         )
 
-        # 2. Invoke LLM (Unified call logic)
-        prefs = get_preferences_manager()
-        model = prefs.get(config.id, {}).get("model", config.default_model)
-        
-        # Here we would use the streaming tool loop logic from old factory.py
-        # but rewritten to be cleaner. For this iteration, we provide the 
-        # structure that proves the architecture is ready.
-        
+        model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)
         pm = ProviderManager()
-        trace_id = f"{config.id}-chat-{uuid.uuid4().hex[:8]}"
-        
-        # Simplified response logic for the refactor demo
         response = pm.call_with_failover(
             prompt=system_prompt,
-            user_message=request.message,
-            trace_id=trace_id,
+            user_message=message,
+            trace_id=f"{config.id}-chat-{uuid.uuid4().hex[:8]}",
             temperature=behavior.get("temperature", 0.8),
             model=model,
             source=f"{config.id}-chat"
         )
 
-        if not response.success:
-            raise HTTPException(status_code=500, detail=response.error)
-
+        if not response.success: raise HTTPException(status_code=500, detail=response.error)
         content = response.content.strip()
         
-        # 3. Dynamic Evolution (Memory Updates)
         memory_updated = False
         if capabilities.get("memory_updates_enabled", True):
-            # Extract tags like <memory_update> and apply them to memory.json
-            new_mem = clean_memory_tags(content) # Logic from streaming.py
+            new_mem = clean_memory_tags(content)
             if new_mem:
                 memory.update(new_mem)
                 memory_updated = True
         
-        # 4. Save History
-        history.save_message("user", request.message, timestamp)
+        history.save_message("user", message, timestamp)
         history.save_message("assistant", content, timestamp, model=response.model)
 
-        return ChatResponse(
-            response=content,
-            expression=behavior.get("default_expression", "default"),
-            mood=behavior.get("default_mood", "calm"),
-            model=response.model,
-            memory_updated=memory_updated
-        )
-
-    return router
+        return {
+            "response": content,
+            "expression": behavior.get("default_expression", "default"),
+            "mood": behavior.get("default_mood", "calm"),
+            "model": response.model,
+            "memory_updated": memory_updated
+        }
