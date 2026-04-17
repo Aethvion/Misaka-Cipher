@@ -198,6 +198,9 @@
             d.order.push({ type: 'folder', id: fid, children: def.tabs });
         });
 
+        // Ensure all missing tabs are appended as flat entries (usually hidden)
+        surfaceNewTabs(d);
+
         return d;
     }
 
