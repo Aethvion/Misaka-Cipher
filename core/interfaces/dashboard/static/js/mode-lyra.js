@@ -228,7 +228,7 @@ function updateLyraMood(mood) {
 
 async function lyraLoadHistory(offsetDays, limitDays, isInitial) {
     try {
-        const res = await fetch(`/api/lyra/history?offset_days=${offsetDays}&limit_days=${limitDays}`);
+        const res = await fetch(`/api/companions/lyra/history?offset_days=${offsetDays}&limit_days=${limitDays}`);
         if (!res.ok) return;
         const data = await res.json();
 
@@ -478,7 +478,7 @@ async function sendLyraMessage() {
     try {
         if (statusLine) statusLine.textContent = 'Something is forming...';
 
-        const response = await fetch('/api/lyra/chat', {
+        const response = await fetch('/api/companions/lyra/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -615,7 +615,7 @@ async function sendLyraMessage() {
 
 async function refreshLyraMemory() {
     try {
-        const res = await fetch('/api/lyra/memory');
+        const res = await fetch('/api/companions/lyra/memory');
         if (!res.ok) return;
         const data = await res.json();
         console.log('[Lyra] Memory loaded:', Object.keys(data));

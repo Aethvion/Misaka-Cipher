@@ -1168,7 +1168,7 @@ async function sendMessage() {
         try {
             const formData = new FormData();
             formData.append('file', window._mainChatAttachedFile.file, window._mainChatAttachedFile.name);
-            const uploadRes = await fetch('/api/misakacipher/upload-context', {
+            const uploadRes = await fetch('/api/companions/misakacipher/upload-context', {
                 method: 'POST',
                 body: formData
             });

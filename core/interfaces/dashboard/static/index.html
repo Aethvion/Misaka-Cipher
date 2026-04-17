@@ -771,10 +771,10 @@
 // ── Custom Companions: Sidebar + Settings Dynamic Loader ──────────────────────
 async function loadCustomCompanionsSidebar() {
     try {
-        const res = await fetch('/api/companion-creator/list');
+        const res = await fetch('/api/companions/list');
         if (!res.ok) return;
         const data = await res.json();
-        const companions = data.companions || [];
+        const companions = (data.companions || []).filter(c => !['misakacipher','axiom','lyra'].includes(c.id));
 
         // ── Sidebar + panels ──────────────────────────────────────────────
         const sidebarContainer = document.getElementById('custom-companions-sidebar');

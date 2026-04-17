@@ -207,7 +207,7 @@ function updateAxiomMood(mood) {
 
 async function axiomLoadHistory(offsetDays, limitDays, isInitial) {
     try {
-        const res = await fetch(`/api/axiom/history?offset_days=${offsetDays}&limit_days=${limitDays}`);
+        const res = await fetch(`/api/companions/axiom/history?offset_days=${offsetDays}&limit_days=${limitDays}`);
         if (!res.ok) return;
         const data = await res.json();
 
@@ -460,7 +460,7 @@ async function sendAxiomMessage() {
     try {
         if (statusLine) statusLine.textContent = 'Processing query...';
 
-        const response = await fetch('/api/axiom/chat', {
+        const response = await fetch('/api/companions/axiom/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -605,7 +605,7 @@ async function sendAxiomMessage() {
 
 async function refreshAxiomMemory() {
     try {
-        const res = await fetch('/api/axiom/memory');
+        const res = await fetch('/api/companions/axiom/memory');
         if (!res.ok) return;
         const data = await res.json();
         console.log('[Axiom] Memory loaded:', Object.keys(data));

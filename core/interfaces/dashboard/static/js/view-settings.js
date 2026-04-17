@@ -192,7 +192,7 @@ async function loadPreferences() {
             resetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting…';
 
             try {
-                const res = await fetch('/api/misakacipher/reset', { method: 'POST' });
+                const res = await fetch('/api/companions/misakacipher/reset', { method: 'POST' });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
                     throw new Error(err.detail || `HTTP ${res.status}`);
@@ -282,7 +282,7 @@ async function loadPreferences() {
             try {
                 axiomResetBtn.disabled = true;
                 axiomResetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
-                const res = await fetch('/api/axiom/reset', { method: 'POST' });
+                const res = await fetch('/api/companions/axiom/reset', { method: 'POST' });
                 if (!res.ok) throw new Error((await res.json()).detail || 'Reset failed');
                 axiomResetBtn.innerHTML = '<i class="fas fa-check"></i> Reset Complete';
                 setTimeout(() => { axiomResetBtn.disabled = false; axiomResetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Axiom'; }, 3000);
@@ -342,7 +342,7 @@ async function loadPreferences() {
             try {
                 lyraResetBtn.disabled = true;
                 lyraResetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
-                const res = await fetch('/api/lyra/reset', { method: 'POST' });
+                const res = await fetch('/api/companions/lyra/reset', { method: 'POST' });
                 if (!res.ok) throw new Error((await res.json()).detail || 'Reset failed');
                 lyraResetBtn.innerHTML = '<i class="fas fa-check"></i> Reset Complete';
                 setTimeout(() => { lyraResetBtn.disabled = false; lyraResetBtn.innerHTML = '<i class="fas fa-trash-alt"></i> Reset Lyra'; }, 3000);
@@ -421,7 +421,7 @@ window._populateModelSelect = function(sel, prefModel) {
 
 async function loadNexusModules() {
     try {
-        const res = await fetch('/api/misakacipher/nexus/registry');
+        const res = await fetch('/api/companions/misakacipher/nexus/registry');
         if (!res.ok) return;
         const data = await res.json();
         renderNexusModules(data.modules || []);
@@ -500,7 +500,7 @@ async function authorizeNexusModule(moduleId) {
         }
 
         try {
-            const res = await fetch('/api/misakacipher/nexus/spotify/authorize', {
+            const res = await fetch('/api/companions/misakacipher/nexus/spotify/authorize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(settings)
@@ -518,7 +518,7 @@ async function authorizeNexusModule(moduleId) {
 
 async function loadMisakaWorkspaces() {
     try {
-        const res = await fetch('/api/misakacipher/workspaces');
+        const res = await fetch('/api/companions/misakacipher/workspaces');
         if (!res.ok) return;
         const data = await res.json();
         renderWorkspaces(data.workspaces || []);
@@ -568,7 +568,7 @@ async function addMisakaWorkspace() {
     const recursive = document.getElementById('ws-recursive')?.checked ?? true;
 
     try {
-        const res = await fetch('/api/misakacipher/workspaces', {
+        const res = await fetch('/api/companions/misakacipher/workspaces', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ label, path, permissions, recursive })
@@ -589,7 +589,7 @@ async function addMisakaWorkspace() {
 async function deleteMisakaWorkspace(id) {
     if (!confirm('Remove this workspace?')) return;
     try {
-        await fetch(`/api/misakacipher/workspaces/${id}`, { method: 'DELETE' });
+        await fetch(`/api/companions/misakacipher/workspaces/${id}`, { method: 'DELETE' });
         await loadMisakaWorkspaces();
     } catch (e) {
         console.error('Failed to delete workspace:', e);

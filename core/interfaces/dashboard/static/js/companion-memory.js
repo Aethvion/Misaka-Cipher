@@ -18,19 +18,13 @@
     // ── State ──────────────────────────────────────────────────────────────────
     let _currentCompanion = 'misakacipher';
     let _initialized = false;
-
-    // Map companion ID → { label, endpoint }
-    const BUILTIN_COMPANIONS = {
-        misakacipher: { label: 'Misaka Cipher', endpoint: '/api/misakacipher/memory' },
-        axiom:        { label: 'Axiom',          endpoint: '/api/axiom/memory'         },
-        lyra:         { label: 'Lyra',           endpoint: '/api/lyra/memory'           },
-    };
+    let _companionMap = {}; // id -> { name, label }
 
     // ── Public API (called from core.js on tab switch) ─────────────────────────
     window.refreshCompanionMemory = async function () {
         if (!_initialized) {
             _initialized = true;
-            await _loadCustomCompanionButtons();
+            await _loadCompanionList();
         }
         await _fetchAndDisplay(_currentCompanion);
     };
@@ -61,30 +55,28 @@
         memoryEl.innerHTML   = loadingHtml;
         if (statusEl) statusEl.textContent = 'fetching…';
 
-        // Resolve endpoint
-        let endpoint, label;
-        if (BUILTIN_COMPANIONS[companionId]) {
-            endpoint = BUILTIN_COMPANIONS[companionId].endpoint;
-            label    = BUILTIN_COMPANIONS[companionId].label;
-        } else {
-            // Custom companion via companion-creator API
-            endpoint = `/api/companion-creator/${companionId}/memory`;
-            label    = companionId;
-        }
-
-        // Update active name
+        // Resolve label from map
+        const label = _companionMap[companionId] || companionId;
         if (activeNameEl) activeNameEl.textContent = label;
 
         try {
-            const res  = await fetch(endpoint);
+            // Unified Endpoint
+            const res  = await fetch(`/api/companions/${companionId}/memory`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            const base_info = data.base_info || data.base_info_data || {};
+            // Handle possible nested data structures
+            const base_info = data.base_info || data.base_info_data || data;
             const memory    = data.memory    || data.memory_data    || {};
 
-            baseInfoEl.textContent = JSON.stringify(base_info, null, 2);
-            memoryEl.textContent   = JSON.stringify(memory,    null, 2);
+            if (data.base_info && data.memory) {
+                baseInfoEl.textContent = JSON.stringify(data.base_info, null, 2);
+                memoryEl.textContent   = JSON.stringify(data.memory, null, 2);
+            } else {
+                baseInfoEl.textContent = JSON.stringify(base_info, null, 2);
+                memoryEl.textContent   = JSON.stringify(memory, null, 2);
+            }
+            
             if (statusEl) statusEl.textContent = `loaded ${new Date().toLocaleTimeString()}`;
 
         } catch (err) {
@@ -95,20 +87,21 @@
         }
     }
 
-    async function _loadCustomCompanionButtons() {
+    async function _loadCompanionList() {
         const container = document.getElementById('cm-custom-btns');
         if (!container) return;
         container.innerHTML = '';
 
         try {
-            const res  = await fetch('/api/companion-creator/list');
+            const res  = await fetch('/api/companions/list');
             if (!res.ok) return;
             const data = await res.json();
             const companions = data.companions || [];
 
             for (const c of companions) {
-                // Skip if it's one of the built-ins (by id)
-                if (BUILTIN_COMPANIONS[c.id]) continue;
+                _companionMap[c.id] = c.name;
+                const exists = document.querySelector(`.cm-selector-btn[data-companion="${c.id}"]`);
+                if (exists) continue;
 
                 const btn = document.createElement('button');
                 btn.className = 'cm-selector-btn';
@@ -121,11 +114,10 @@
                 container.appendChild(btn);
             }
         } catch (e) {
-            // Companion creator may not have any entries — silently ignore
+            console.error("Failed to load companions list:", e);
         }
     }
 
-    // ── Listen for panelLoaded so we init on first open ───────────────────────
     document.addEventListener('panelLoaded', function (e) {
         if (e.detail && e.detail.panel === 'companion-memory') {
             window.refreshCompanionMemory();

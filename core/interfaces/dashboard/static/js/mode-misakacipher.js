@@ -168,7 +168,7 @@ async function initializeMisakaCipher() {
 
 async function loadHistory(offset = 0, limit = 3, isInitial = false) {
     try {
-        const response = await fetch(`/api/misakacipher/history?offset_days=${offset}&limit_days=${limit}`);
+        const response = await fetch(`/api/companions/misakacipher/history?offset_days=${offset}&limit_days=${limit}`);
         const data = await response.json();
 
         const chatMessages = document.getElementById('misaka-chat-messages');
@@ -432,7 +432,7 @@ function formatDate(dateStr) {
 
 async function loadExpressions() {
     try {
-        const response = await fetch('/api/misakacipher/expressions');
+        const response = await fetch('/api/companions/misakacipher/expressions');
         const expressions = await response.json();
     } catch (e) {
         console.error("Error loading expressions:", e);
@@ -441,7 +441,7 @@ async function loadExpressions() {
 
 async function refreshMisakaMemory() {
     try {
-        const response = await fetch('/api/misakacipher/memory');
+        const response = await fetch('/api/companions/misakacipher/memory');
         const data = await response.json();
 
         const baseViewer = document.getElementById('misaka-base-info-viewer');
@@ -479,7 +479,7 @@ async function sendMisakaMessage() {
         try {
             const formData = new FormData();
             formData.append('file', _misakaAttachedFile.file, _misakaAttachedFile.name);
-            const uploadRes = await fetch('/api/misakacipher/upload-context', {
+            const uploadRes = await fetch('/api/companions/misakacipher/upload-context', {
                 method: 'POST',
                 body: formData
             });
@@ -518,7 +518,7 @@ async function sendMisakaMessage() {
         const statusLine = document.getElementById('misaka-status-line');
         if (statusLine) statusLine.textContent = "Processing...";
 
-        const response = await fetch('/api/misakacipher/chat', {
+        const response = await fetch('/api/companions/misakacipher/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -996,7 +996,7 @@ function _randomBetween(min, max) {
 
 async function _getHoursSinceLastMessage() {
     try {
-        const res = await fetch('/api/misakacipher/history?offset_days=0&limit_days=1');
+        const res = await fetch('/api/companions/misakacipher/history?offset_days=0&limit_days=1');
         if (!res.ok) return null;
         const data = await res.json();
         if (!data.history || !data.history[0] || !data.history[0].messages) return null;
@@ -1089,7 +1089,7 @@ function pauseProactiveForTyping() {
 
 async function triggerProactiveMessage(trigger, hoursSince) {
     try {
-        const res = await fetch('/api/misakacipher/initiate', {
+        const res = await fetch('/api/companions/misakacipher/initiate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ trigger, hours_since_last: hoursSince })

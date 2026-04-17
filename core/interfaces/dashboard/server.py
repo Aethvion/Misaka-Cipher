@@ -284,7 +284,6 @@ async def initialize_system_background():
         from .logs_routes import router as logs_router
         
         # Include all routers
-        # Immediate Router Inclusion (Sync but fast)
         app.include_router(task_router)
         app.include_router(memory_router)
         app.include_router(persistent_memory_router)
