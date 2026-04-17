@@ -105,6 +105,8 @@ COMPANIONS_MEMORY    = COMPANIONS / "memory"
 VAULT_PERSONAS       = COMPANIONS_PERSONAS
 VAULT_KNOWLEDGE      = COMPANIONS_KNOWLEDGE
 VAULT_MEMORY         = COMPANIONS_MEMORY
+VAULT_EPISODIC       = VAULT_MEMORY           # Legacy alias for memory storage
+VAULT_SEARCH         = VAULT_MEMORY           # Legacy alias for search storage
 
 # Misaka Cipher persona
 PERSONA_MISAKA         = VAULT_PERSONAS / "misakacipher"
