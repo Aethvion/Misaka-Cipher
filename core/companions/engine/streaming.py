@@ -32,20 +32,20 @@ def clean_memory_tags(text: str) -> str:
     return text
 
 
-def build_nexus_capabilities() -> str:
+def build_bridges_capabilities() -> str:
     """
-    Read the live Nexus registry and return a formatted capabilities block
+    Read the live bridge registry and return a formatted capabilities block
     suitable for injection into a companion's system prompt.
-    Returns empty string if Nexus is unavailable or has no modules.
+    Returns empty string if bridge is unavailable or has no modules.
     """
     try:
-        from core.nexus import nexus_manager
-        registry = nexus_manager.get_registry()
+        from core.bridges import bridge_manager
+        registry = bridge_manager.get_registry()
         modules = registry.get("modules", [])
         if not modules:
             return ""
         lines = [
-            'NEXUS CAPABILITIES — use [tool:nexus module="<id>" cmd="<command>" ...] syntax:'
+            'BRIDGE CAPABILITIES — use [tool:bridge module="<id>" cmd="<command>" ...] syntax:'
         ]
         for mod in modules:
             mod_id = mod.get("id", "?")
@@ -61,7 +61,7 @@ def build_nexus_capabilities() -> str:
             lines.append(f"  Module: {mod_id} ({mod_name}){auth_note}")
             for cmd, desc in commands.items():
                 lines.append(f'    → cmd="{cmd}" — {desc}')
-        lines.append('  Example: [tool:nexus module="screen_capture" cmd="take_screenshot"]')
+        lines.append('  Example: [tool:bridge module="screen_capture" cmd="take_screenshot"]')
         return "\n".join(lines)
     except Exception:
         return ""

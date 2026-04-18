@@ -14,7 +14,7 @@ from core.companions.companion_engine import CompanionEngine
 from core.companions.engine.memory import CompanionMemory
 from core.companions.engine.history import CompanionHistory
 from core.workspace.workspace_utils import load_workspaces, save_workspaces
-from core.nexus.nexus_manager import get_registry
+from core.bridges.bridge_manager import get_registry
 
 router = APIRouter(prefix="/api/companions", tags=["companions"])
 
@@ -89,7 +89,7 @@ async def upload_context(companion_id: str, file: Any = None):
 async def get_expressions(companion_id: str):
     return _get_cfg(companion_id).expressions
 
-# --- Managerial Routes (Workspaces & Nexus) ---
+# --- Managerial Routes (Workspaces & Bridges) ---
 
 @router.get("/{companion_id}/workspaces")
 async def list_companion_workspaces(companion_id: str):
@@ -115,16 +115,16 @@ async def delete_companion_workspace(companion_id: str, ws_id: str):
     save_workspaces(companion_id, workspaces)
     return {"status": "success"}
 
-@router.get("/{companion_id}/nexus/registry")
-async def get_nexus_registry(companion_id: str):
-    """Return the registry of available Nexus modules/links."""
+@router.get("/{companion_id}/bridges/registry")
+async def get_bridges_registry(companion_id: str):
+    """Return the registry of available Bridge modules."""
     return get_registry()
 
-@router.post("/{companion_id}/nexus/spotify/authorize")
+@router.post("/{companion_id}/bridges/spotify/authorize")
 async def authorize_spotify(companion_id: str, request: SpotifyAuthRequest):
     """Generate a Spotify authorization URL."""
     try:
-        from core.nexus.spotify_link import get_auth_url
+        from core.bridges.spotify_bridge import get_auth_url
         url = get_auth_url(request.dict())
         return {"url": url}
     except Exception as e:

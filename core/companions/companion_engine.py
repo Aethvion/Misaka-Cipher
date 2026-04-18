@@ -14,7 +14,7 @@ from fastapi import HTTPException
 from core.companions.registry import CompanionConfig
 from core.companions.engine.memory import CompanionMemory
 from core.companions.engine.history import CompanionHistory
-from core.companions.engine.streaming import clean_memory_tags, build_nexus_capabilities, get_greeting_period
+from core.companions.engine.streaming import clean_memory_tags, build_bridges_capabilities, get_greeting_period
 from core.companions.engine.tools import execute_tools_stream, extract_peripheral_captures
 from core.providers.provider_manager import ProviderManager
 from core.workspace.preferences_manager import get_preferences_manager
@@ -101,13 +101,13 @@ class CompanionEngine:
         
         memory.initialize()
         mem_data = memory.load()
-        nexus_block = build_nexus_capabilities() if capabilities.get("tools_enabled") else ""
+        bridges_block = build_bridges_capabilities() if capabilities.get("tools_enabled") else ""
         system_prompt = prompts.get("chat_system", "").format(
             base_info=json.dumps(mem_data["base_info"], indent=2),
             memory=json.dumps(mem_data["memory"], indent=2),
             datetime_ctx=datetime.datetime.now().strftime("%A, %d %B %Y — %H:%M"),
             time_since=history.time_since_last(),
-            workspace_block="", nexus_block=nexus_block
+            workspace_block="", bridges_block=bridges_block
         )
 
         model = get_preferences_manager().get(config.id, {}).get("model", config.default_model)

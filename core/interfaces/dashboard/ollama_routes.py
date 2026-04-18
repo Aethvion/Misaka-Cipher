@@ -158,7 +158,7 @@ async def ollama_register(request: Request):
     _save_registry(registry)
 
     if hasattr(request.app.state, "nexus"):
-        request.app.state.nexus.reload_config()
+        request.app.state.aether.reload_config()
 
     return {"success": True, "model": name}
 
@@ -180,6 +180,6 @@ async def ollama_unregister(request: Request):
     _save_registry(registry)
 
     if hasattr(request.app.state, "nexus"):
-        request.app.state.nexus.reload_config()
+        request.app.state.aether.reload_config()
 
     return {"success": True}

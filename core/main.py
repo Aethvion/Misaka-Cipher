@@ -69,10 +69,10 @@ def run_web_server():
     """Launch web dashboard with orchestrator."""
     from core.utils.port_manager import PortManager
     base_port = int(os.environ.get("PORT", 8080))
-    port = PortManager.bind_port("Aethvion Suite Nexus", base_port)
+    port = PortManager.bind_port("Aethvion Suite", base_port)
     
     print("\n" + "=" * 70)
-    print("AETHVION SUITE - NEXUS PORTAL (WEB)")
+    print("AETHVION SUITE - DASHBOARD")
     print("=" * 70 + "\n")
     print("Launching web server...")
     print(f"Dashboard will be available at: http://localhost:{port}")
@@ -109,13 +109,13 @@ def run_web_server():
 
 def run_verification_tests():
     """Run verification tests."""
-    from core.nexus_core import NexusCore, Request
+    from core.aether_core import AetherCore, Request
 
     print("\n" + "=" * 70)
     print("AETHVION SUITE - VERIFICATION TEST")
     print("=" * 70 + "\n")
 
-    nexus = NexusCore()
+    nexus = AetherCore()
     nexus.initialize()
 
     print("\n" + "-" * 70)

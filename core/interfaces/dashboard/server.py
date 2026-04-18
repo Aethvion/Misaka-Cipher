@@ -26,7 +26,7 @@ from .routes.preferences_routes import router as preferences_router
 from .routes.workspace_routes import router as workspace_router
 
 logger = get_logger(__name__)
-nexus = None
+aether = None
 orchestrator = None
 factory = None
 
@@ -47,7 +47,7 @@ app.state.startup_status = {
     "error": None
 }
 app.state.orchestrator = None
-app.state.nexus = None
+app.state.aether = None
 app.state.factory = None
 app.state.discord_worker = None
 app.state.main_event_loop = None
@@ -166,22 +166,22 @@ async def initialize_system_background():
         app.state.startup_status.update({"status": "Something went wrong. Try restarting Aethvion.", "error": str(e)})
 
 def perform_blocking_init():
-    from core.nexus_core import NexusCore
+    from core.aether_core import AetherCore
     from core.factory import AgentFactory
     from core.orchestrator import MasterOrchestrator
 
-    global nexus, orchestrator, factory
+    global aether, orchestrator, factory
     app.state.startup_status.update({"status": "Starting AI engine...", "progress": 20})
-    nexus = NexusCore()
-    nexus.initialize()
+    aether = AetherCore()
+    aether.initialize()
     
     app.state.startup_status.update({"status": "Preparing AI agents...", "progress": 50})
-    factory = AgentFactory(nexus)
+    factory = AgentFactory(aether)
     
     app.state.startup_status.update({"status": "Connecting components...", "progress": 70})
-    orchestrator = MasterOrchestrator(nexus, factory)
+    orchestrator = MasterOrchestrator(aether, factory)
     
-    app.state.nexus = nexus
+    app.state.aether = aether
     app.state.factory = factory
     app.state.orchestrator = orchestrator
     

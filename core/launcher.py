@@ -1,7 +1,7 @@
 """
 core/launcher.py
-────────────────
-Aethvion Suite — Master Process Launcher
+----------------
+Aethvion Suite - Master Process Launcher
 
 Starts every app server as a child process, tracks their PIDs, and cleans them
 all up on exit (Ctrl-C, SIGTERM, window-close, or normal return).
@@ -11,7 +11,7 @@ processes are automatically killed even if the launcher is force-killed by the
 task manager or by closing the console window.
 
 Modes
-─────
+-----
   --consumer   Silent consumer mode.  Uses pythonw.exe + CREATE_NO_WINDOW so
                no black CMD windows are visible anywhere.
 
@@ -19,19 +19,19 @@ Modes
                visible console window with live log output.
 
 Browser flags
-─────────────
+-------------
   --browser app   Open the dashboard in Chrome/Edge --app= mode (no URL bar).
   --browser web   Open the dashboard in a normal browser tab.
   --browser none  Do not open any browser automatically.
 
 Optional flags
-──────────────
+--------------
   --apps all                Start every optional app (default).
   --apps none               Start only the dashboard, no optional apps.
   --apps code,hardwareinfo  Start only the listed optional apps.
 
 Usage
-─────
+-----
   # Consumer (silent, app-mode window):
   pythonw core\\launcher.py --consumer --browser app
 
@@ -69,7 +69,7 @@ def _log(msg):
 
 _log("--- Launcher script loaded ---")
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
+# -- Paths ---------------------------------------------------------------------
 
 ROOT      = Path(__file__).parent.parent
 VENV_DIR  = ROOT / ".venv" / "Scripts"
@@ -77,11 +77,11 @@ VENV_PY   = VENV_DIR / "python.exe"
 VENV_PYW  = VENV_DIR / "pythonw.exe"
 RESTART_EXIT_CODE = 42
 
-# ── App registry ──────────────────────────────────────────────────────────────
+# -- App registry --------------------------------------------------------------
 # Each entry describes one server process.
 #   module   : run as `python -m <module>` (mutually exclusive with script)
 #   script   : path relative to ROOT, run as `python <script>`
-#   port     : default port (informational — actual port decided by PortManager)
+#   port     : default port (informational - actual port decided by PortManager)
 #   title    : human-readable label
 #   required : if True, always started; if False, only when requested
 
@@ -142,19 +142,19 @@ APP_REGISTRY: dict[str, dict] = {
     },
     "overlay": {
         "script":   "apps/overlay/main.py",
-        "port":     None,   # sidecar — no web server, lives in system tray
+        "port":     None,   # sidecar - no web server, lives in system tray
         "title":    "Desktop Overlay",
         "required": False,
     },
 }
 
-# ── Windows Job Object (KillOnJobClose) ───────────────────────────────────────
+# -- Windows Job Object (KillOnJobClose) ---------------------------------------
 
 def _install_job_object() -> None:
     """
     On Windows: assign the launcher process to a Job Object with the
-    KillOnJobClose flag.  When the launcher exits for ANY reason — including
-    being force-killed or the console window being closed — Windows
+    KillOnJobClose flag.  When the launcher exits for ANY reason - including
+    being force-killed or the console window being closed - Windows
     automatically terminates every process in the job.
 
     Child processes inherit the job assignment, so all app servers die with us.
@@ -219,17 +219,17 @@ def _install_job_object() -> None:
             k32.CloseHandle(job)
             return
 
-        # Assign THIS process to the job — children inherit automatically
+        # Assign THIS process to the job - children inherit automatically
         k32.AssignProcessToJobObject(job, k32.GetCurrentProcess())
         # Keep the handle open for the lifetime of the process (do NOT close it)
         _install_job_object._job_handle = job  # type: ignore[attr-defined]
-        print("[Launcher] Windows Job Object active — all child processes will die with the launcher.")
+        print("[Launcher] Windows Job Object active - all child processes will die with the launcher.")
     except Exception as exc:
         # Non-critical; fall through to atexit/signal cleanup
         print(f"[Launcher] Job Object setup skipped ({exc}); using atexit cleanup instead.")
 
 
-# ── Process Management Extras ─────────────────────────────────────────────────
+# -- Process Management Extras -------------------------------------------------
 
 def _is_running_aethvion(proc: psutil.Process) -> bool:
     """Check if a process looks like an Aethvion Suite component (excluding this launcher)."""
@@ -251,7 +251,7 @@ def _is_running_aethvion(proc: psutil.Process) -> bool:
 
 def _cleanup_stale_processes() -> None:
     """Kill any existing Python processes that look like Aethvion Suite."""
-    print("[Launcher] Cleaning up stale Aethvion processes…")
+    print("[Launcher] Cleaning up stale Aethvion processes...")
     mypid = os.getpid()
     for proc in psutil.process_iter(['pid', 'name']):
         try:
@@ -348,7 +348,7 @@ def _ensure_singleton() -> None:
         print(f"[Launcher] Singleton check failed: {e}")
 
 
-# ── Child-process tracking ─────────────────────────────────────────────────────
+# -- Child-process tracking -----------------------------------------------------
 
 _child_procs: list[subprocess.Popen] = []
 _child_lock  = threading.Lock()
@@ -367,7 +367,7 @@ def _cleanup() -> None:
     if not procs:
         return
 
-    print("\n[Launcher] Sending SIGTERM to all child processes…")
+    print("\n[Launcher] Sending SIGTERM to all child processes...")
     for proc in procs:
         try:
             proc.terminate()
@@ -421,7 +421,7 @@ atexit.register(_cleanup)
 
 
 def _signal_handler(sig: int, frame) -> None:  # type: ignore[type-arg]
-    print(f"\n[Launcher] Caught signal {sig}. Shutting down…")
+    print(f"\n[Launcher] Caught signal {sig}. Shutting down...")
     _cleanup()
     sys.exit(0)
 
@@ -429,7 +429,7 @@ def _signal_handler(sig: int, frame) -> None:  # type: ignore[type-arg]
 signal.signal(signal.SIGINT,  _signal_handler)
 signal.signal(signal.SIGTERM, _signal_handler)
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# -- Helpers --------------------------------------------------------------------
 
 def _get_python(consumer: bool) -> str:
     if consumer:
@@ -451,7 +451,7 @@ def _launch_process(name: str, cfg: dict, consumer: bool) -> subprocess.Popen | 
     if "script" in cfg:
         script_path = ROOT / cfg["script"]
         if not script_path.exists():
-            print(f"[Launcher]  ⚠  {cfg['title']:<20} script not found — skipping")
+            print(f"[Launcher]  [!!]  {cfg['title']:<20} script not found - skipping")
             return None
 
     python = _get_python(consumer)
@@ -476,15 +476,15 @@ def _launch_process(name: str, cfg: dict, consumer: bool) -> subprocess.Popen | 
         proc = subprocess.Popen(cmd, **popen_kwargs)
         _register(proc)
         if cfg.get("port"):
-            print(f"[Launcher]  ✓  {cfg['title']:<20} PID {proc.pid:<6}  →  http://localhost:{cfg['port']}")
+            print(f"[Launcher]  [OK]  {cfg['title']:<20} PID {proc.pid:<6}  ->  http://localhost:{cfg['port']}")
         else:
-            print(f"[Launcher]  ✓  {cfg['title']:<20} PID {proc.pid:<6}  (tray sidecar)")
+            print(f"[Launcher]  [OK]  {cfg['title']:<20} PID {proc.pid:<6}  (tray sidecar)")
         return proc
     except FileNotFoundError:
-        print(f"[Launcher]  ✗  {cfg['title']} — executable not found: {python}")
+        print(f"[Launcher]  [FAIL]  {cfg['title']} - executable not found: {python}")
         return None
     except Exception as exc:
-        print(f"[Launcher]  ✗  {cfg['title']} — {exc}")
+        print(f"[Launcher]  [FAIL]  {cfg['title']} - {exc}")
         return None
 
 
@@ -500,17 +500,17 @@ def _monitor_dashboard(proc: subprocess.Popen, consumer: bool) -> None:
             
             if code == 0:
                 _log("Dashboard exited gracefully (code 0). Shutting down suite...")
-                print("\n[Launcher] Dashboard shut down gracefully. Cleaning up…")
+                print("\n[Launcher] Dashboard shut down gracefully. Cleaning up...")
                 _cleanup()
                 os._exit(0)
             
-            print("[Launcher] Dashboard crashed — restarting…")
+            print("[Launcher] Dashboard crashed - restarting...")
             new = _launch_process("dashboard", APP_REGISTRY["dashboard"], consumer)
             if new:
                 proc = new
 
 
-# ── Main ───────────────────────────────────────────────────────────────────────
+# -- Main -----------------------------------------------------------------------
 
 def main() -> None:
     _log("Main function entered")
@@ -536,9 +536,9 @@ def main() -> None:
         metavar="all|none|NAME[,NAME]",
         help=(
             "Which optional apps to start alongside the dashboard.\n"
-            "  all           – start every optional app (default)\n"
-            "  none          – start only the dashboard\n"
-            "  code,hwinfo   – start only the listed apps"
+            "  all           - start every optional app (default)\n"
+            "  none          - start only the dashboard\n"
+            "  code,hwinfo   - start only the listed apps"
         ),
     )
     parser.add_argument(
@@ -547,9 +547,9 @@ def main() -> None:
         default="app",
         help=(
             "How to open the dashboard after launch.\n"
-            "  app  – Chrome/Edge --app= mode (no URL bar)\n"
-            "  web  – normal browser tab\n"
-            "  none – do not open any browser"
+            "  app  - Chrome/Edge --app= mode (no URL bar)\n"
+            "  web  - normal browser tab\n"
+            "  none - do not open any browser"
         ),
     )
     args = parser.parse_args()
@@ -558,22 +558,22 @@ def main() -> None:
     mode_label  = "CONSUMER" if consumer else "DEV"
     browser_mode: str = args.browser
 
-    # ── Ensure singleton and clean up ──────────────────────────────────────────
+    # -- Ensure singleton and clean up ------------------------------------------
     _log("Checking singleton and cleaning stale processes...")
     _ensure_singleton()
     _cleanup_stale_processes()
 
-    # ── Install Windows Job Object for reliable cleanup ────────────────────────
+    # -- Install Windows Job Object for reliable cleanup ------------------------
     _log("Installing Job Object...")
     _install_job_object()
 
-    # ── Banner ────────────────────────────────────────────────────────────────
+    # -- Banner ----------------------------------------------------------------
     print()
     print("=" * 60)
     print(f"  AETHVION SUITE LAUNCHER  [{mode_label} MODE]")
     print("=" * 60)
 
-    # ── Load .env ─────────────────────────────────────────────────────────────
+    # -- Load .env -------------------------------------------------------------
     env_path = ROOT / ".env"
     if env_path.exists():
         try:
@@ -582,7 +582,7 @@ def main() -> None:
         except ImportError:
             pass
 
-    # ── Resolve which optional apps to start ──────────────────────────────────
+    # -- Resolve which optional apps to start ----------------------------------
     optional_keys = [k for k, v in APP_REGISTRY.items() if not v.get("required", False)]
 
     apps_arg = args.apps.strip().lower()
@@ -601,7 +601,7 @@ def main() -> None:
             else:
                 print(f"[Launcher] Unknown app '{name}'. Known: {', '.join(optional_keys)}")
 
-    # ── Launch dashboard first ─────────────────────────────────────────────────
+    # -- Launch dashboard first -------------------------------------------------
     _log("Launching dashboard...")
     print()
     dashboard_proc = _launch_process("dashboard", APP_REGISTRY["dashboard"], consumer)
@@ -610,14 +610,14 @@ def main() -> None:
     else:
         _log(f"Dashboard launched with PID {dashboard_proc.pid}")
 
-    # ── Stagger optional app launches (avoid port-registry race) ──────────────
+    # -- Stagger optional app launches (avoid port-registry race) --------------
     # A brief stagger lets each server write its port before the next one reads.
     for i, app_name in enumerate(extra_names):
         if i > 0:
             time.sleep(0.5)          # 500 ms gap between launches
         _launch_process(app_name, APP_REGISTRY[app_name], consumer)
 
-    # ── Auto-start overlay sidecar if configured ──────────────────────────────
+    # -- Auto-start overlay sidecar if configured ------------------------------
     try:
         import json as _json
         _overlay_cfg_path = ROOT / "data" / "overlay" / "config.json"
@@ -630,7 +630,7 @@ def main() -> None:
 
     print()
 
-    # ── Open browser ──────────────────────────────────────────────────────────
+    # -- Open browser ----------------------------------------------------------
     if dashboard_proc and browser_mode != "none":
         dashboard_port = int(os.environ.get("PORT", APP_REGISTRY["dashboard"]["port"]))
 
@@ -678,7 +678,7 @@ def main() -> None:
             daemon=True,
         ).start()
 
-    # ── Keep launcher alive ───────────────────────────────────────────────────
+    # -- Keep launcher alive ---------------------------------------------------
     if consumer:
         try:
             while True:

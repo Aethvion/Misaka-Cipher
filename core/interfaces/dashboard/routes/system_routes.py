@@ -129,7 +129,7 @@ async def health_check(request: Request):
         "timestamp": utcnow_iso(),
         "components": {
             "orchestrator": getattr(state, 'orchestrator', None) is not None,
-            "nexus": getattr(state, 'nexus', None) is not None and state.nexus._initialized,
+            "aether": getattr(state, 'aether', None) is not None and state.aether._initialized,
             "factory": getattr(state, 'factory', None) is not None
         }
     }
@@ -254,11 +254,11 @@ async def open_module_folder(req: dict):
 async def get_system_status(request: Request):
     state = request.app.state
     startup_status = getattr(state, 'startup_status', {})
-    if not startup_status.get("initialized", False) or not state.nexus:
-        raise HTTPException(status_code=53, detail="System initializing")
+    if not startup_status.get("initialized", False) or not state.aether:
+        raise HTTPException(status_code=503, detail="System initializing")
     
     try:
-        status = state.nexus.get_status()
+        status = state.aether.get_status()
         vitals = {"cpu_percent": psutil.cpu_percent(), "ram_percent": psutil.virtual_memory().percent}
         
         try:
@@ -267,7 +267,7 @@ async def get_system_status(request: Request):
         except: usage_today = {"tokens": 0, "cost": 0.0}
         
         return {
-            "nexus": status,
+            "aether": status,
             "factory": {
                 "active_agents": state.factory.registry.get_active_count() if state.factory else 0,
                 "total_agents": len(state.factory.registry.get_all_agents()) if state.factory else 0

@@ -62,10 +62,10 @@ naming_convention:
 
 # Module Registry
 modules:
-  nexus_core:
+  aether_core:
     enabled: true
     description: "Central routing and orchestration"
-    entry_point: "nexus_core.NexusCore"
+    entry_point: "aether_core.AetherCore"
     
   factory:
     enabled: true
@@ -95,7 +95,7 @@ features:
   enable_factory: true
   enable_forge: true
   enable_memory: true
-  enable_nexus_portal: true
+  enable_aether_portal: true
   enable_intelligence_firewall: true
   enable_auto_failover: true
 

@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from .memory_spec import CoreInsight, generate_insight_id
 from .episodic_memory import EpisodicMemoryStore, get_episodic_memory
 from .knowledge_graph import KnowledgeGraph, get_knowledge_graph
-from core.nexus_core import NexusCore, Request
+from core.aether_core import AetherCore, Request
 from core.utils import get_logger, utcnow_iso
 from core.utils.paths import KNOWLEDGE_INSIGHTS
 
@@ -32,7 +32,7 @@ class Heartbeat:
         self,
         memory_store: Optional[EpisodicMemoryStore] = None,
         knowledge_graph: Optional[KnowledgeGraph] = None,
-        nexus_core: Optional[NexusCore] = None,
+        aether_core: Optional[AetherCore] = None,
         config_path: Optional[Path] = None
     ):
         """
@@ -41,12 +41,12 @@ class Heartbeat:
         Args:
             memory_store: Episodic memory store
             knowledge_graph: Knowledge graph
-            nexus_core: Nexus Core for AI summarization
+            aether_core: Aether Core for AI summarization
             config_path: Path to memory.yaml
         """
         self.memory_store = memory_store or get_episodic_memory()
         self.knowledge_graph = knowledge_graph or get_knowledge_graph()
-        self.nexus_core = nexus_core
+        self.aether_core = aether_core
         
         # Load configuration
         if config_path is None:
@@ -125,8 +125,7 @@ class Heartbeat:
                 intent_categories = memory.metadata.get('intent_categories', '')
                 key_events.append(f"Intent detected: {intent_categories}")
         
-        # Generate natural language summary via Nexus Core (if available)
-        if self.nexus_core:
+        if self.aether_core:
             summary_prompt = self._build_summary_prompt(
                 memories=memories,
                 domains=list(domains_active),
@@ -136,7 +135,7 @@ class Heartbeat:
             )
             
             try:
-                response = self.nexus_core.route_request(Request(
+                response = self.aether_core.route_request(Request(
                     prompt=summary_prompt,
                     request_type="heartbeat_summarization",
                     temperature=0.3,
@@ -235,10 +234,10 @@ _heartbeat = None
 def get_heartbeat(
     memory_store: Optional[EpisodicMemoryStore] = None,
     knowledge_graph: Optional[KnowledgeGraph] = None,
-    nexus_core: Optional[NexusCore] = None
+    aether_core: Optional[AetherCore] = None
 ) -> Heartbeat:
     """Get the global heartbeat instance."""
     global _heartbeat
     if _heartbeat is None:
-        _heartbeat = Heartbeat(memory_store, knowledge_graph, nexus_core)
+        _heartbeat = Heartbeat(memory_store, knowledge_graph, aether_core)
     return _heartbeat

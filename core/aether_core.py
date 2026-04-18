@@ -1,10 +1,10 @@
 """
-Aethvion Suite - Nexus Core
+Aethvion Suite - Aether Core
 Central routing, logging, and orchestration layer
 
 This is the SINGLE POINT OF ENTRY for all system interactions.
 All agent-to-agent calls, tool executions, and external API requests
-MUST route through Nexus Core.
+MUST route through Aether Core.
 """
 
 from typing import Optional, Dict, Any, List
@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 
 @dataclass
 class Request:
-    """Request object for Nexus Core."""
+    """Request object for Aether Core."""
     prompt: str
     system_prompt: Optional[str] = None
     request_type: str = "generation"  # generation, tool_execution, agent_call
@@ -43,7 +43,7 @@ class Request:
 
 @dataclass
 class Response:
-    """Response object from Nexus Core."""
+    """Response object from Aether Core."""
     content: str
     trace_id: str
     provider: str
@@ -54,9 +54,9 @@ class Response:
     routing_decision: Optional[str] = None
 
 
-class NexusCore:
+class AetherCore:
     """
-    Nexus Core - Central routing and orchestration system.
+    Aether Core - Central routing and orchestration system.
 
     Responsibilities:
     - Single point of entry for all requests
@@ -67,23 +67,23 @@ class NexusCore:
     """
 
     def __init__(self):
-        """Initialize Nexus Core."""
+        """Initialize Aether Core."""
         self.trace_manager = get_trace_manager()
         self.provider_manager = None
         self.firewall = None
         self._initialized = False
 
         logger.info("=" * 60)
-        logger.info("Aethvion Suite - NEXUS CORE")
+        logger.info("Aethvion Suite - AETHER CORE")
         logger.info("=" * 60)
 
     def initialize(self):
-        """Initialize all Nexus Core components."""
+        """Initialize all Aether Core components."""
         if self._initialized:
-            logger.warning("Nexus Core already initialized")
+            logger.warning("Aether Core already initialized")
             return
 
-        logger.info("Initializing Nexus Core components...")
+        logger.info("Initializing Aether Core components...")
 
         try:
             # Initialize Provider Manager
@@ -102,16 +102,16 @@ class NexusCore:
                 logger.info(f"  {provider_name}: {status.value}")
 
             self._initialized = True
-            logger.info("Nexus Core initialization: COMPLETE")
+            logger.info("Aether Core initialization: COMPLETE")
             logger.info("=" * 60)
 
         except Exception as e:
-            logger.error(f"Nexus Core initialization FAILED: {str(e)}")
+            logger.error(f"Aether Core initialization FAILED: {str(e)}")
             raise
 
     def route_request(self, request: Request) -> Response:
         """
-        Route a request through the Nexus Core pipeline.
+        Route a request through the Aether Core pipeline.
 
         Pipeline:
         1. Generate Trace_ID
@@ -127,7 +127,7 @@ class NexusCore:
             Response object
         """
         if not self._initialized:
-            raise RuntimeError("Nexus Core not initialized. Call initialize() first.")
+            raise RuntimeError("Aether Core not initialized. Call initialize() first.")
 
         # Use caller's trace_id if provided (for usage log correlation with task queue)
         if request.trace_id:
@@ -239,7 +239,7 @@ class NexusCore:
                     )
 
         except Exception as e:
-            logger.error(f"[{trace_id}] Nexus Core routing failed: {str(e)}")
+            logger.error(f"[{trace_id}] Aether Core routing failed: {str(e)}")
             self.trace_manager.end_trace(trace_id, status='error')
 
             return Response(
@@ -247,11 +247,11 @@ class NexusCore:
                 trace_id=trace_id,
                 provider="none",
                 success=False,
-                error=f"Nexus Core error: {str(e)}"
+                error=f"Aether Core error: {str(e)}"
             )
 
     def get_status(self) -> Dict:
-        """Get Nexus Core status."""
+        """Get Aether Core status."""
         if not self._initialized:
             return {'initialized': False}
 
@@ -264,7 +264,7 @@ class NexusCore:
 
     def reload_config(self):
         """Reload configuration for all components."""
-        logger.info("Nexus Core reloading configuration...")
+        logger.info("Aether Core reloading configuration...")
         if self.provider_manager:
             self.provider_manager.reload_config()
         # TODO: Reload firewall if needed

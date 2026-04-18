@@ -11,7 +11,7 @@ import asyncio
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 
-from core.nexus import nexus_manager
+from core.bridges import bridge_manager
 from core.memory.identity_manager import IdentityManager
 from core.memory.history_manager import HistoryManager
 from core.workspace.preferences_manager import get_preferences_manager
@@ -59,12 +59,12 @@ class PersonaManager:
         except Exception: return "Some time ago"
 
     @staticmethod
-    def _build_nexus_capabilities() -> str:
+    def _build_bridges_capabilities() -> str:
         try:
-            registry = nexus_manager.get_registry()
+            registry = bridge_manager.get_registry()
             modules = registry.get("modules", [])
             if not modules: return ""
-            lines = ["NEXUS CAPABILITIES — use [tool:nexus module=\"<id>\" cmd=\"<command>\" ...] syntax:"]
+            lines = ["BRIDGE CAPABILITIES — use [tool:bridge module=\"<id>\" cmd=\"<command>\" ...] syntax:"]
             for mod in modules:
                 mod_id, mod_name, auth = mod.get("id", "?"), mod.get("name", "?"), mod.get("requires_auth", False)
                 is_auth = mod.get("is_authorized", True)
@@ -73,7 +73,7 @@ class PersonaManager:
                 lines.append(f"  Module: {mod_id} ({mod_name}){auth_note}")
                 for cmd, desc in commands.items():
                     lines.append(f"    → cmd=\"{cmd}\" — {desc}")
-            lines.append("  Example: [tool:nexus module=\"screen_capture\" cmd=\"take_screenshot\"]")
+            lines.append("  Example: [tool:bridge module=\"screen_capture\" cmd=\"take_screenshot\"]")
             return "\n".join(lines)
         except Exception: return ""
 
@@ -91,11 +91,11 @@ class PersonaManager:
             workspace_summary = "WORKSPACE ACCESS:\nYou have access to the following directories:\n" + "\n".join(ws_lines)
 
         if allow_tools:
-            nexus_caps = PersonaManager._build_nexus_capabilities()
+            bridges_caps = PersonaManager._build_bridges_capabilities()
             search_cap = "  [tool:web_search query=\"<query>\"] — Search the internet for real-time information.\n" if internet_search else ""
-            nexus_block = f"\n{nexus_caps}\n{search_cap}\n" if (nexus_caps or search_cap) else ""
+            bridges_block = f"\n{bridges_caps}\n{search_cap}\n" if (bridges_caps or search_cap) else ""
         else:
-            nexus_block = ""
+            bridges_block = ""
         
         prefs = get_preferences_manager()
         p_min = prefs.get('misakacipher', {}).get('session_interval_min', 5)
@@ -135,7 +135,7 @@ You are a real, evolving person. This is your private space with your user. Not 
 4. MEMORY IN USE: Weave in what you remember about the user organically — don't announce it, just show it.
 5. NO UNPROMPTED TOOL USE: Only use tools when explicitly given a task.
 6. REAL-TIME: If `web_search` is available and the user asks about something current, use it.
-{nexus_block}
+{bridges_block}
 8. EXPRESSIONS: EVERY single message MUST start with [Emotion: <name>] — pick the one that best fits your feeling right now. Choose from: happy, thinking, blush, pouting, surprise, sad, angry, wink, bored, exhausted, sleeping, error. Vary them — don't repeat the same emotion every message. Examples: "[Emotion: happy] omg that's great!" or "[Emotion: thinking] hmm let me think about that…"
 9. MOODS: Set the atmosphere once per conversation turn with [Mood: <name>]. Choose from: calm, happy, intense, reflective, danger, mystery. Place it right after the emotion tag.
 10. HUMANITY: Use [msg_break] to split into two short consecutive messages when it feels natural — like two texts in a row.
@@ -234,21 +234,21 @@ CRITICAL: No raw JSON, no technical jargon unless asked. Never break character.
                 listing = "\n".join(f"{'[DIR] ' if i.is_dir() else '[FILE]'} {i.name}" for i in sorted(items))
                 return f"[list_files: {path}]\n{listing}"
 
-            if tool_name == "nexus":
+            if tool_name == "bridge" or tool_name == "nexus":
                 module_id, command = attrs.get("module", ""), attrs.get("cmd", "")
                 args_dict = {k: v for k, v in attrs.items() if k not in ["module", "cmd"]}
-                result = nexus_manager.call_module(module_id, command, args_dict)
-                return f"[nexus:{module_id}.{command}] {result}"
+                result = bridge_manager.call_module(module_id, command, args_dict)
+                return f"[bridge:{module_id}.{command}] {result}"
             
-            # Auto-route to Nexus
-            registry = nexus_manager.get_registry()
+            # Auto-route to Bridge
+            registry = bridge_manager.get_registry()
             module_info = next((m for m in registry.get("modules", []) if m["id"] == tool_name), None)
             if module_info:
                 command = attrs.get("cmd", "")
                 if not command and module_info.get("available_commands"):
                     command = list(module_info["available_commands"].keys())[0]
                 args_dict = {k: v for k, v in attrs.items() if k != "cmd"}
-                result = nexus_manager.call_module(tool_name, command, args_dict)
+                result = bridge_manager.call_module(tool_name, command, args_dict)
                 return f"[{tool_name}:{command}] {result}"
 
             return f"[{tool_name} ERROR] Unknown tool"

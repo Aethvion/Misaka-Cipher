@@ -30,7 +30,7 @@ async function loadHeaderStatus() {
             return;
         }
         const data = await response.json();
-        const isOnline = data.nexus && data.nexus.initialized;
+        const isOnline = data.aether && data.aether.initialized;
         updateUI(isOnline);
 
         if (data.usage_today) {
@@ -189,18 +189,18 @@ function updateRealtimeVitals(apiData) {
     const container = document.getElementById('realtime-info-grid');
     if (!container) return;
 
-    const nexusStatus = apiData.nexus || {};
+    const aetherStatus = apiData.aether || {};
     const factoryStatus = apiData.factory || {};
     const vitals = apiData.vitals || {};
 
-    container.innerHTML = renderRealtimeCards(nexusStatus, factoryStatus, vitals);
+    container.innerHTML = renderRealtimeCards(aetherStatus, factoryStatus, vitals);
 }
 
 function renderSystemTelemetry(apiData, metricsData) {
     const rtContainer = document.getElementById('realtime-info-grid');
     if (rtContainer) {
         rtContainer.innerHTML = renderRealtimeCards(
-            apiData.nexus || {},
+            apiData.aether || {},
             apiData.factory || {},
             apiData.vitals || {}
         );
@@ -232,7 +232,7 @@ function renderSystemTelemetry(apiData, metricsData) {
                 <div class="t-value">${formatBytes(systemMetrics.project_size_bytes)}</div>
             </div>
             <div class="telemetry-card">
-                <div class="t-label">Episodic (DB)</div>
+                <div class="t-label">Memory Entries</div>
                 <div class="t-value">${memoryMetrics.episodic_count || 0} <span class="t-sub">(Memories)</span></div>
             </div>
             <div class="telemetry-card">
@@ -266,12 +266,12 @@ function renderSystemTelemetry(apiData, metricsData) {
     }
 }
 
-function renderRealtimeCards(nexusStatus, factoryStatus, vitals) {
+function renderRealtimeCards(aetherStatus, factoryStatus, vitals) {
     return `
         <div class="telemetry-card">
             <div class="t-label">System Status</div>
-            <div class="t-value ${nexusStatus.initialized ? 'online' : 'offline'}">
-                ${nexusStatus.initialized ? 'Online' : 'Offline'}
+            <div class="t-value ${aetherStatus.initialized ? 'online' : 'offline'}">
+                ${aetherStatus.initialized ? 'Online' : 'Offline'}
             </div>
         </div>
         <div class="telemetry-card">

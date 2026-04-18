@@ -1,4 +1,4 @@
-﻿"""
+"""
 Misaka Cipher - Agent Factory
 Core spawning engine for creating transient worker agents
 """
@@ -11,7 +11,7 @@ from .agent_spec import AgentSpec
 from .base_agent import BaseAgent
 from .generic_agent import GenericAgent
 from .agent_registry import get_agent_registry
-from core.nexus_core import NexusCore
+from core.aether_core import AetherCore
 from core.utils import get_logger, get_trace_manager, validate_tool_name
 from core.workspace import get_workspace_manager
 
@@ -24,16 +24,16 @@ class AgentFactory:
     
     Creates transient, stateless worker agents that:
     - Follow Aethvion naming: [Domain]_[Action]_[Object]
-    - Route all requests through Nexus Core
+    - Route all requests through Aether Core
     - Execute tasks and automatically clean up
     """
     
-    def __init__(self, nexus: NexusCore, config_path: Optional[str] = None):
+    def __init__(self, nexus: AetherCore, config_path: Optional[str] = None):
         """
         Initialize Agent Factory.
         
         Args:
-            nexus: NexusCore instance for routing
+            nexus: AetherCore instance for routing
             config_path: Optional path to aethvion.yaml
         """
         self.nexus = nexus

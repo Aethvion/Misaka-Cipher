@@ -9,7 +9,7 @@ from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, print_table,
     print_key_value, print_success, print_warning, print_error, pause
 )
-from core.nexus_core import NexusCore
+from core.aether_core import AetherCore
 from core.factory import AgentFactory
 from core.memory import get_episodic_memory, get_knowledge_graph
 from rich.panel import Panel
@@ -19,12 +19,12 @@ from rich.text import Text
 _PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 
-def show_system_status(nexus: NexusCore, factory: AgentFactory):
+def show_system_status(nexus: AetherCore, factory: AgentFactory):
     """
     Display comprehensive system status.
 
     Args:
-        nexus: NexusCore instance
+        nexus: AetherCore instance
         factory: AgentFactory instance
     """
     clear_screen()
@@ -32,8 +32,8 @@ def show_system_status(nexus: NexusCore, factory: AgentFactory):
 
     issues = []  # Track any problems for the health summary
 
-    # ── Nexus Core ──────────────────────────────────────────────────────────
-    console.print("\n[bold cyan]═══ Nexus Core ═══[/bold cyan]")
+    # ── Aether Core ──────────────────────────────────────────────────────────
+    console.print("\n[bold cyan]═══ Aether Core ═══[/bold cyan]")
     status = nexus.get_status()
 
     print_key_value("Initialized",   "✓ Yes" if status['initialized'] else "✗ No")

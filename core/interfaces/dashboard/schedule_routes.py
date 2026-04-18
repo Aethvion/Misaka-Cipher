@@ -177,7 +177,7 @@ async def update_settings(task_id: str, req: UpdateSettingsRequest):
 async def chat(task_id: str, req: ChatRequest, request: Request):
     """Send a user message; AI responds and optionally configures the schedule."""
     from core.schedulers.schedule_manager import get_schedule_manager
-    _nexus = request.app.state.nexus
+    _nexus = request.app.state.aether
 
     mgr = get_schedule_manager()
     task = mgr.get_task(task_id)
@@ -248,7 +248,7 @@ async def run_now(task_id: str, request: Request):
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     # Give nexus to manager if not yet set
-    _nexus = request.app.state.nexus
+    _nexus = request.app.state.aether
     if _nexus:
         mgr.set_nexus(_nexus)
     return mgr.run_now(task_id)

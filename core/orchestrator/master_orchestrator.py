@@ -13,7 +13,7 @@ import asyncio
 from pathlib import Path
 from core.tools.standard.file_ops import WORKSPACE_ROOT
 
-from core.nexus_core import NexusCore, Request, Response
+from core.aether_core import AetherCore, Request, Response
 from core.factory import AgentFactory, AgentSpec
 from core.memory import get_episodic_memory, get_knowledge_graph
 from core.memory.memory_spec import EpisodicMemory, generate_memory_id
@@ -67,23 +67,23 @@ class MasterOrchestrator:
     - Spawn specialized agents (Factory)
     - Generate missing tools (Forge)
     - Query knowledge base (Memory Tier)
-    - Provide direct responses (Nexus Core)
+    - Provide direct responses (Aether Core)
     
     Acts as a Supervisor Agent that coordinates subsystems without
     requiring explicit user menu selection.
     """
     
-    def __init__(self, nexus: NexusCore, factory: AgentFactory):
+    def __init__(self, aether: AetherCore, factory: AgentFactory):
         """
         Initialize Master Orchestrator.
         
         Args:
-            nexus: NexusCore instance for AI routing
+            aether: AetherCore instance for AI routing
             factory: AgentFactory for spawning agents
         """
-        self.nexus = nexus
+        self.aether = aether
         self.factory = factory
-        self.intent_analyzer = IntentAnalyzer(nexus)
+        self.intent_analyzer = IntentAnalyzer(aether)
         
         # Memory tier (lazy loaded)
         self.episodic_memory = get_episodic_memory()
@@ -322,7 +322,7 @@ class MasterOrchestrator:
                 images=images
             )
             
-            response = self.nexus.route_request(request)
+            response = self.aether.route_request(request)
             if not response.success:
                 return ExecutionResult(trace_id, False, f"LLM Error: {response.error}", actions_taken, [], [], 0, 0)
             
@@ -451,12 +451,12 @@ class MasterOrchestrator:
                 logger.warning(f"[{trace_id}] Web search pre-execution failed: {_search_err}")
 
         # ── Step 2: Build system prompt ────────────────────────────────────────
-        nexus_caps = PersonaManager._build_nexus_capabilities() if allow_tools else ""
+        aether_caps = PersonaManager._build_bridges_capabilities() if allow_tools else ""
 
         prompt_parts = [neutral_base, time_context]
 
-        if nexus_caps:
-            prompt_parts.append(f"NEXUS CAPABILITIES (use [tool:nexus ...] syntax):\n{nexus_caps}")
+        if aether_caps:
+            prompt_parts.append(f"BRIDGE CAPABILITIES (use [tool:bridge ...] syntax):\n{aether_caps}")
 
         if internet_search:
             if pre_search_context:
@@ -502,7 +502,7 @@ class MasterOrchestrator:
                 images=images,
             )
 
-            response = self.nexus.route_request(request)
+            response = self.aether.route_request(request)
             if not response.success:
                 return ExecutionResult(trace_id, False, f"LLM Error: {response.error}", actions_taken, [], [], 0, 0)
 
@@ -900,7 +900,7 @@ class MasterOrchestrator:
         )
     
     def _generate_chat_response(self, intent: IntentAnalysis, system_prompt: Optional[str] = None, model_id: Optional[str] = None, trace_id: Optional[str] = None, images: Optional[List[Dict[str, Any]]] = None) -> Response:
-        """Generate direct chat response via Nexus Core."""
+        """Generate direct chat response via Aether Core."""
         request = Request(
             prompt=intent.prompt,
             system_prompt=system_prompt,
@@ -911,7 +911,7 @@ class MasterOrchestrator:
             images=images
         )
         
-        response = self.nexus.route_request(request)
+        response = self.aether.route_request(request)
         
         if response.success:
             return response
@@ -929,7 +929,7 @@ class MasterOrchestrator:
     
     def _get_system_status(self) -> str:
         """Get system status summary."""
-        status = self.nexus.get_status()
+        status = self.aether.get_status()
         
         # Format status
         providers_healthy = sum(1 for p in status['providers']['providers'].values() if p['is_healthy'])
@@ -937,7 +937,7 @@ class MasterOrchestrator:
         
         return f"""**System Status**
 
-**Nexus Core**: {'✓ Operational' if status['initialized'] else '✗ Not initialized'}
+**Aether Core**: {'✓ Operational' if status['initialized'] else '✗ Not initialized'}
 **Active Traces**: {status['active_traces']}
 **Firewall**: {'ACTIVE' if status['firewall'].get('enabled') else 'DISABLED'}
 **Providers**: {providers_healthy}/{total_providers} healthy

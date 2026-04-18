@@ -268,7 +268,7 @@ async def register_to_registry(req: SetDefaultRequest, request: Request):
 
         _save_registry(registry)
         if hasattr(request.app.state, "nexus"):
-            request.app.state.nexus.reload_config()
+            request.app.state.aether.reload_config()
 
         return {"success": True, "model_id": req.model_id, "capabilities": caps}
     except Exception as e:

@@ -1,6 +1,6 @@
-﻿"""
-Aethvion Suite - Nexus Core Module
-Direct AI interaction through Nexus Core
+"""
+Aethvion Suite - Aether Core Module
+Direct AI interaction through Aether Core
 """
 
 from core.interfaces.cli_modules.utils import (
@@ -8,21 +8,21 @@ from core.interfaces.cli_modules.utils import (
     format_trace_id, print_success, print_error, print_key_value,
     confirm, pause, show_progress
 )
-from core.nexus_core import NexusCore, Request
+from core.aether_core import AetherCore, Request
 from rich.panel import Panel
 from rich.markdown import Markdown
 
 
-def nexus_core_module(nexus: NexusCore):
+def aether_core_module(aether: AetherCore):
     """
-    Interactive Nexus Core chat interface.
+    Interactive Aether Core chat interface.
     
     Args:
-        nexus: NexusCore instance
+        aether: AetherCore instance
     """
     while True:
         clear_screen()
-        print_header("Nexus Core", "Direct AI Interaction")
+        print_header("Aether Core", "Direct AI Interaction")
         
         console.print("\n[bold cyan]Enter your prompt below:[/bold cyan]")
         console.print("[dim](Leave empty to return to main menu)[/dim]\n")
@@ -76,10 +76,10 @@ def nexus_core_module(nexus: NexusCore):
                 
         # Send request
         console.print()
-        with show_progress("Sending request to Nexus Core...") as progress:
+        with show_progress("Sending request to Aether Core...") as progress:
             progress.add_task("processing", total=None)
             
-            # Pass model directly; Request.model overrides Nexus router default
+            # Pass model directly; Request.model overrides Aether router default
             request = Request(
                 prompt=prompt,
                 request_type="generation",
@@ -88,7 +88,7 @@ def nexus_core_module(nexus: NexusCore):
                 model=selected_model if selected_model else None,
             )
             
-            response = nexus.route_request(request)
+            response = aether.route_request(request)
         
         # Display response
         console.print("\n" + "═" * 50 + "\n")

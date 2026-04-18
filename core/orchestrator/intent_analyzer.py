@@ -6,7 +6,7 @@ Classifies user messages into actionable intents
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional, Dict, List, Any
-from core.nexus_core import NexusCore, Request
+from core.aether_core import AetherCore, Request
 from core.utils import get_logger
 
 logger = get_logger(__name__)
@@ -46,18 +46,18 @@ class IntentAnalyzer:
     """
     Analyzes user messages to determine intent and extract parameters.
     
-    Uses Nexus Core AI to classify intents and extract structured data
+    Uses Aether Core AI to classify intents and extract structured data
     for orchestrator action planning.
     """
     
-    def __init__(self, nexus: NexusCore):
+    def __init__(self, aether: AetherCore):
         """
         Initialize intent analyzer.
         
         Args:
-            nexus: NexusCore instance for AI analysis
+            aether: AetherCore instance for AI analysis
         """
-        self.nexus = nexus
+        self.aether = aether
         logger.info("Intent Analyzer initialized")
     
     def analyze(self, user_message: str, trace_id: str = None, force_chat: bool = False, source: str = "unknown") -> IntentAnalysis:
@@ -87,7 +87,7 @@ class IntentAnalyzer:
         # Build analysis prompt
         analysis_prompt = self._build_analysis_prompt(user_message)
         
-        # Send to Nexus Core
+        # Send to Aether Core
         request = Request(
             prompt=analysis_prompt,
             request_type="generation",
@@ -97,7 +97,7 @@ class IntentAnalyzer:
             metadata={"source": source}
         )
         
-        response = self.nexus.route_request(request)
+        response = self.aether.route_request(request)
         
         if not response.success:
             logger.warning(f"Intent analysis failed: {response.error}")

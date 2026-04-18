@@ -9,7 +9,7 @@ import time
 
 from .agent_spec import AgentSpec
 from .agent_result import AgentResult
-from core.nexus_core import NexusCore, Request
+from core.aether_core import AetherCore, Request
 from core.utils import get_logger, get_trace_manager, utcnow_iso
 
 
@@ -19,18 +19,18 @@ class BaseAgent(ABC):
     
     All agents must:
     - Follow Aethvion naming: [Domain]_[Action]_[Object]
-    - Route all requests through Nexus Core
+    - Route all requests through Aether Core
     - Execute statelessly (no persistent state between runs)
     - Clean up resources after execution
     """
     
-    def __init__(self, spec: AgentSpec, nexus: NexusCore, trace_id: str):
+    def __init__(self, spec: AgentSpec, nexus: AetherCore, trace_id: str):
         """
         Initialize agent.
         
         Args:
             spec: Agent specification
-            nexus: NexusCore instance for routing requests
+            nexus: AetherCore instance for routing requests
             trace_id: Unique Trace_ID for this agent
         """
         self.spec = spec
@@ -149,7 +149,7 @@ class BaseAgent(ABC):
         max_tokens: Optional[int] = None
     ) -> str:
         """
-        Make a request through Nexus Core.
+        Make a request through Aether Core.
         
         Args:
             prompt: Prompt to send
@@ -157,9 +157,9 @@ class BaseAgent(ABC):
             max_tokens: Override max tokens (uses spec default if None)
             
         Returns:
-            Response content from Nexus Core
+            Response content from Aether Core
         """
-        self.logger.debug(f"[{self.trace_id}] Agent {self.name} calling Nexus Core")
+        self.logger.debug(f"[{self.trace_id}] Agent {self.name} calling Aether Core")
         
         request = Request(
             prompt=prompt,
@@ -184,10 +184,10 @@ class BaseAgent(ABC):
             return response.content
         else:
             self.logger.error(
-                f"[{self.trace_id}] Agent {self.name} Nexus call failed: "
+                f"[{self.trace_id}] Agent {self.name} Aether call failed: "
                 f"{response.error}"
             )
-            raise RuntimeError(f"Nexus Core request failed: {response.error}")
+            raise RuntimeError(f"Aether Core request failed: {response.error}")
     
     def log(self, message: str, level: str = "info"):
         """

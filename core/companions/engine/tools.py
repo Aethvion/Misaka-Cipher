@@ -1,7 +1,7 @@
 """
 core/companions/engine/tools.py
 ════════════════════════════════
-Tool execution — file operations + Nexus module dispatch.
+Tool execution — file operations + bridge module dispatch.
 Shared by ALL companions; workspaces gate file permissions per companion instance.
 """
 from __future__ import annotations
@@ -170,26 +170,26 @@ def _execute_one(tool_name: str, attrs: dict[str, str], workspaces: list[dict]) 
                 return f"[search_files '{query}' in {search_path}]\n" + "\n\n".join(matches)
             return f"[search_files] No matches for '{query}' in {search_path}"
 
-        # Nexus explicit: [tool:nexus module="..." cmd="..."]
-        if tool_name == "nexus":
-            from core.nexus import nexus_manager
+        # bridge explicit: [tool:bridge module="..." cmd="..."]
+        if tool_name == "bridge":
+            from core.bridge import bridge_manager
             module_id = attrs.get("module", "")
             cmd = attrs.get("cmd", "")
             args = {k: v for k, v in attrs.items() if k not in ("module", "cmd")}
-            result = nexus_manager.call_module(module_id, cmd, args)
-            return f"[nexus:{module_id}.{cmd}] {result}"
+            result = bridge_manager.call_module(module_id, cmd, args)
+            return f"[bridge:{module_id}.{cmd}] {result}"
 
-        # Nexus auto-route: tool_name matches a registered module id
+        # bridge auto-route: tool_name matches a registered module id
         try:
-            from core.nexus import nexus_manager
-            registry = nexus_manager.get_registry()
+            from core.bridge import bridge_manager
+            registry = bridge_manager.get_registry()
             mod = next((m for m in registry.get("modules", []) if m["id"] == tool_name), None)
             if mod:
                 cmd = attrs.get("cmd", "")
                 if not cmd and mod.get("available_commands"):
                     cmd = next(iter(mod["available_commands"]))
                 args = {k: v for k, v in attrs.items() if k != "cmd"}
-                result = nexus_manager.call_module(tool_name, cmd, args)
+                result = bridge_manager.call_module(tool_name, cmd, args)
                 return f"[{tool_name}:{cmd}] {result}"
         except Exception:
             pass

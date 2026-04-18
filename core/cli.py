@@ -9,12 +9,12 @@ from core.interfaces.cli_modules.utils import (
     print_success, print_error, print_warning
 )
 from core.interfaces.cli_modules.system_module import show_system_status
-from core.interfaces.cli_modules.nexus_module import nexus_core_module
+from core.interfaces.cli_modules.aether_module import aether_core_module
 from core.interfaces.cli_modules.factory_module import factory_module
 from core.interfaces.cli_modules.memory_module import memory_module
 from core.interfaces.cli_modules.companions_module import companions_module
 
-from core.nexus_core import NexusCore
+from core.aether_core import AetherCore
 from core.factory import AgentFactory
 from core.utils import get_logger
 
@@ -35,9 +35,9 @@ class AethvionCLI:
         try:
             console.print("[bold cyan]Initializing Aethvion Suite...[/bold cyan]")
 
-            # Initialize Nexus Core
-            console.print("  • Nexus Core...", end="")
-            self.nexus = NexusCore()
+            # Initialize Aether Core
+            console.print("  • Aether Core...", end="")
+            self.nexus = AetherCore()
             self.nexus.initialize()
             console.print(" [bold green]✓[/bold green]")
 
@@ -100,7 +100,7 @@ class AethvionCLI:
         print_banner()
 
         options = [
-            "Nexus Core          — Direct AI Interaction",
+            "Aether Core         — Direct AI Interaction",
             "The Factory         — Agent Spawning & Execution",
             "Memory              — Query & Search State",
             "Chat History        — Browse Unified History",
@@ -135,8 +135,8 @@ class AethvionCLI:
                 break
 
             elif choice == 1:
-                from core.interfaces.cli_modules.nexus_module import nexus_core_module
-                nexus_core_module(self.nexus)
+                from core.interfaces.cli_modules.aether_module import aether_core_module
+                aether_core_module(self.nexus)
 
             elif choice == 2:
                 from core.interfaces.cli_modules.factory_module import factory_module

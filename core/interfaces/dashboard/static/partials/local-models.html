@@ -109,13 +109,13 @@
                     <input type="text" id="hf-filename" class="lm-finput" placeholder="mistral-7b-instruct-v0.2.Q4_K_M.gguf">
                 </div>
                 <button id="start-hf-download" class="hub-action-btn" style="width:100%">
-                    <i class="fas fa-plus"></i> Initialize Download
+                    <i class="fas fa-plus"></i> Download Model
                 </button>
             </div>
             
             <div id="download-progress-container" style="display:none; margin-top:1rem;">
                 <div style="display:flex; justify-content:space-between; font-size:0.7rem; margin-bottom:4px;">
-                    <span id="download-status">Streaming Bytes...</span>
+                    <span id="download-status">Downloading...</span>
                     <span id="download-percent">0%</span>
                 </div>
                 <div class="model-dl-bar-wrap"><div id="download-progress-bar" class="model-dl-bar" style="width:0%"></div></div>
@@ -161,7 +161,7 @@
             <p>System compatibility analysis for model performance.</p>
             
             <div id="system-specs-row" class="specs-row" style="display:flex; flex-wrap:wrap; gap:0.5rem;">
-                <span class="placeholder-text">Analyzing topology...</span>
+                <span class="placeholder-text">Checking hardware specs…</span>
             </div>
             
             <button class="hub-action-btn secondary" style="margin-top:1rem; width:100%" onclick="LocalModels.loadSystemSpecs(true)">

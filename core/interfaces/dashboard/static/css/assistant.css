@@ -177,7 +177,7 @@
 }
 
 .misaka-d-message.misaka::before {
-    content: "Chat: ";
+    content: "Misaka: ";
     color: var(--primary);
     font-weight: bold;
     font-family: 'Orbitron', sans-serif;

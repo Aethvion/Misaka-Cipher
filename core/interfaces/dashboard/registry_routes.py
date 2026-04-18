@@ -242,8 +242,8 @@ async def update_registry(updates: Dict[str, Any], request: Request):
     """Update the model registry (full replace)."""
     try:
         _save_registry(updates)
-        if hasattr(request.app.state, 'nexus'):
-            request.app.state.nexus.reload_config()
+        if hasattr(request.app.state, 'aether'):
+            request.app.state.aether.reload_config()
         return {"status": "success", "registry": updates}
     except Exception as e:
         logger.error(f"Failed to update registry: {e}")
@@ -347,8 +347,8 @@ async def add_provider(provider_data: Dict[str, Any], request: Request):
         registry["providers"] = providers
         _save_registry(registry)
         
-        if hasattr(request.app.state, 'nexus'):
-            request.app.state.nexus.reload_config()
+        if hasattr(request.app.state, 'aether'):
+            request.app.state.aether.reload_config()
             
         logger.info(f"Added provider type '{provider_type}' to registry")
         return {"status": "success", "provider": providers[provider_type]}
@@ -376,8 +376,8 @@ async def update_provider(provider_name: str, updates: Dict[str, Any], request: 
         registry["providers"] = providers
         _save_registry(registry)
         
-        if hasattr(request.app.state, 'nexus'):
-            request.app.state.nexus.reload_config()
+        if hasattr(request.app.state, 'aether'):
+            request.app.state.aether.reload_config()
             
         return {"status": "success", "provider": provider_name, "config": providers[provider_name]}
     except HTTPException:
@@ -412,8 +412,8 @@ async def add_model(provider_name: str, model_data: Dict[str, Any], request: Req
         models[model_key] = entry
 
         _save_registry(registry)
-        if hasattr(request.app.state, 'nexus'):
-            request.app.state.nexus.reload_config()
+        if hasattr(request.app.state, 'aether'):
+            request.app.state.aether.reload_config()
             
         logger.info(f"Added model '{model_key}' to provider '{provider_name}'")
         return {"status": "success", "provider": provider_name, "model_key": model_key, "model": entry}
@@ -443,8 +443,8 @@ async def update_model(provider_name: str, model_key: str, model_data: Dict[str,
             models[model_key][k] = v
 
         _save_registry(registry)
-        if hasattr(request.app.state, 'nexus'):
-            request.app.state.nexus.reload_config()
+        if hasattr(request.app.state, 'aether'):
+            request.app.state.aether.reload_config()
             
         logger.info(f"Updated model '{model_key}' for provider '{provider_name}'")
         return {"status": "success", "provider": provider_name, "model_key": model_key, "model": models[model_key]}
@@ -471,8 +471,8 @@ async def delete_model(provider_name: str, model_key: str, request: Request):
 
         del models[model_key]
         _save_registry(registry)
-        if hasattr(request.app.state, 'nexus'):
-            request.app.state.nexus.reload_config()
+        if hasattr(request.app.state, 'aether'):
+            request.app.state.aether.reload_config()
             
         logger.info(f"Deleted model '{model_key}' from provider '{provider_name}'")
         return {"status": "success", "provider": provider_name, "model_key": model_key}
@@ -607,8 +607,8 @@ async def save_auto_routing(data: Dict[str, Any], request: Request):
         registry = _load_registry()
         registry["auto_routing"] = data.get("auto_routing", registry.get("auto_routing", {}))
         _save_registry(registry)
-        if hasattr(request.app.state, 'nexus'):
-            request.app.state.nexus.reload_config()
+        if hasattr(request.app.state, 'aether'):
+            request.app.state.aether.reload_config()
         return {"status": "success"}
     except Exception as e:
         logger.error(f"Failed to save auto routing config: {e}")
@@ -878,8 +878,8 @@ async def register_local_model(data: Dict[str, Any], request: Request):
         _save_registry(registry)
             
         # 6. Reload config
-        if hasattr(request.app.state, 'nexus'):
-            request.app.state.nexus.reload_config()
+        if hasattr(request.app.state, 'aether'):
+            request.app.state.aether.reload_config()
             
         return {"status": "success", "message": f"Model {filename} registered successfully"}
         
@@ -1185,8 +1185,8 @@ async def install_cuda_llama():
 async def reload_registry_config(request: Request):
     """Force reload of model registry and providers config."""
     try:
-        if hasattr(request.app.state, 'nexus'):
-            request.app.state.nexus.reload_config()
+        if hasattr(request.app.state, 'aether'):
+            request.app.state.aether.reload_config()
         return {"status": "success", "message": "Configuration reloaded"}
     except Exception as e:
         logger.error(f"Failed to reload config: {e}")

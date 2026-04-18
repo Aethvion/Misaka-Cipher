@@ -358,7 +358,7 @@ async function loadPreferences() {
     loadGlobalSettings();
     initDevMode();
     loadMisakaWorkspaces();
-    loadNexusModules();
+    loadBridgeModules();
 }
 
 // ── Companion Accordion toggle ────────────────────────────────────────────────
@@ -417,24 +417,24 @@ window._populateModelSelect = function(sel, prefModel) {
     }
 };
 
-// ===== Nexus Module Management =====
+// ===== Bridge Module Management =====
 
-async function loadNexusModules() {
+async function loadBridgeModules() {
     try {
-        const res = await fetch('/api/companions/misakacipher/nexus/registry');
+        const res = await fetch('/api/companions/misakacipher/bridges/registry');
         if (!res.ok) return;
         const data = await res.json();
-        renderNexusModules(data.modules || []);
+        renderBridgeModules(data.modules || []);
     } catch (e) {
-        console.warn('Could not load Nexus modules:', e);
+        console.warn('Could not load Bridge modules:', e);
     }
 }
 
-function renderNexusModules(modules) {
-    const container = document.getElementById('nexus-module-list');
+function renderBridgeModules(modules) {
+    const container = document.getElementById('bridge-module-list');
     if (!container) return;
     if (!modules.length) {
-        container.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">No Nexus modules available.</span>';
+        container.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.8rem; font-style: italic;">No Bridge modules available.</span>';
         return;
     }
     container.innerHTML = '';
@@ -449,16 +449,16 @@ function renderNexusModules(modules) {
                     ${mod.settings.map(s => `
                         <div style="display:flex; flex-direction:column; gap:0.2rem;">
                             <label style="font-size:0.75rem; color:var(--text-secondary);">${s.replace(/_/g, ' ').toUpperCase()}</label>
-                            <input type="password" class="control-input nexus-setting" data-mod="${mod.id}" data-key="${s}" value="${prefs.get(`nexus.${mod.id}.${s}`, '')}" style="width:100%; box-sizing:border-box; font-size:0.8rem; padding:0.4rem;">
+                            <input type="password" class="control-input bridge-setting" data-mod="${mod.id}" data-key="${s}" value="${prefs.get(`nexus.${mod.id}.${s}`, '')}" style="width:100%; box-sizing:border-box; font-size:0.8rem; padding:0.4rem;">
                         </div>
                     `).join('')}
-                    <button class="btn btn-secondary" style="font-size:0.75rem; margin-top:0.25rem;" onclick="saveNexusSettings('${mod.id}')">Save ${mod.name} Settings</button>
+                    <button class="btn btn-secondary" style="font-size:0.75rem; margin-top:0.25rem;" onclick="saveBridgeSettings('${mod.id}')">Save ${mod.name} Settings</button>
                 </div>
             `;
         }
 
         const authBtn = (mod.requires_auth && !mod.is_authorized)
-            ? `<button class="btn btn-primary" style="font-size:0.75rem; margin-top:0.5rem;" onclick="authorizeNexusModule('${mod.id}')">Connect ${mod.name}</button>`
+            ? `<button class="btn btn-primary" style="font-size:0.75rem; margin-top:0.5rem;" onclick="authorizeBridgeModule('${mod.id}')">Connect ${mod.name}</button>`
             : (mod.requires_auth ? `<span style="color:#00ff88; font-size:0.75rem; margin-top:0.5rem; display:block;"><i class="fas fa-check-circle"></i> Authorized</span>` : '');
 
         card.innerHTML = `
@@ -476,8 +476,8 @@ function renderNexusModules(modules) {
     }
 }
 
-async function saveNexusSettings(moduleId) {
-    const inputs = document.querySelectorAll(`.nexus-setting[data-mod="${moduleId}"]`);
+async function saveBridgeSettings(moduleId) {
+    const inputs = document.querySelectorAll(`.bridge-setting[data-mod="${moduleId}"]`);
     for (const input of inputs) {
         const key = input.getAttribute('data-key');
         const val = input.value.trim();
@@ -486,7 +486,7 @@ async function saveNexusSettings(moduleId) {
     showToast(`${moduleId} settings saved!`, 'success');
 }
 
-async function authorizeNexusModule(moduleId) {
+async function authorizeBridgeModule(moduleId) {
     if (moduleId === 'spotify') {
         const settings = {
             client_id: prefs.get('nexus.spotify.client_id', ''),
@@ -500,7 +500,7 @@ async function authorizeNexusModule(moduleId) {
         }
 
         try {
-            const res = await fetch('/api/companions/misakacipher/nexus/spotify/authorize', {
+            const res = await fetch('/api/companions/misakacipher/bridges/spotify/authorize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(settings)
