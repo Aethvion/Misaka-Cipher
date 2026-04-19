@@ -24,7 +24,7 @@
 
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <!-- 3D Viewer Infrastructure -->
     <script type="importmap">
     {
@@ -272,539 +272,561 @@
 
 <body>
 
-<!-- ── App Tab Bar ─────────────────────────────────────────────────────────── -->
-<div id="app-tab-bar">
-    <div class="atb-brand" onclick="ATB.switchTo('panel-home')" title="Go Home">
-        <span class="atb-brand-logo">✦</span>
-        <span class="atb-brand-name">Aethvion</span>
-    </div>
-    <div class="atb-tabs" id="atb-tabs">
-        <button class="atb-tab atb-tab--active" data-panel="panel-home" title="Home">
-            <span class="atb-tab-label">Home</span>
-            <span class="atb-tab-refresh" id="home-refresh" title="Refresh Dashboard"><i class="fas fa-sync-alt"></i></span>
-        </button>
-        <!-- App tabs are added here dynamically by app-tabs.js -->
-    </div>
-    <div class="atb-controls">
-        <button class="atb-quit-btn" id="atb-quit-btn" title="Shut down Aethvion Suite">
-            <i class="fas fa-power-off"></i>
-            <span>Quit</span>
-        </button>
-
-        <!-- Dynamic Running Services Monitor -->
-        <div class="atb-services-wrapper" id="atb-services-wrapper">
-            <button class="atb-services-btn" id="atb-services-btn" title="View running AI models">
-                <i class="fas fa-microchip"></i>
-                <span>Running Services</span>
-                <span id="active-services-count" class="services-badge">0</span>
+    <!-- ── App Tab Bar ─────────────────────────────────────────────────────────── -->
+    <div id="app-tab-bar">
+        <div class="atb-brand" onclick="ATB.switchTo('panel-home')" title="Go Home">
+            <span class="atb-brand-logo">✦</span>
+            <span class="atb-brand-name">Aethvion</span>
+        </div>
+        <div class="atb-tabs" id="atb-tabs">
+            <button class="atb-tab atb-tab--active" data-panel="panel-home" title="Home">
+                <span class="atb-tab-label">Home</span>
+                <span class="atb-tab-refresh" id="home-refresh" title="Refresh Dashboard"><i
+                        class="fas fa-sync-alt"></i></span>
             </button>
-            <div class="atb-services-menu" id="atb-services-menu">
-                <div class="services-menu-header">
-                    <i class="fas fa-server"></i> Active Background Models
+            <!-- App tabs are added here dynamically by app-tabs.js -->
+        </div>
+        <div class="atb-controls">
+            <button class="atb-quit-btn" id="atb-quit-btn" title="Shut down Aethvion Suite">
+                <i class="fas fa-power-off"></i>
+                <span>Quit</span>
+            </button>
+
+            <!-- Dynamic Running Services Monitor -->
+            <div class="atb-services-wrapper" id="atb-services-wrapper">
+                <button class="atb-services-btn" id="atb-services-btn" title="View running AI models">
+                    <i class="fas fa-microchip"></i>
+                    <span>Running Services</span>
+                    <span id="active-services-count" class="services-badge">0</span>
+                </button>
+                <div class="atb-services-menu" id="atb-services-menu">
+                    <div class="services-menu-header">
+                        <i class="fas fa-server"></i> Active Background Models
+                    </div>
+                    <div id="services-list-root">
+                        <div class="services-empty">
+                            <center>No models running.</center>
+                        </div>
+                    </div>
                 </div>
-                <div id="services-list-root">
-                    <div class="services-empty"><center>No models running.</center></div>
+            </div>
+
+            <div class="atb-apps-wrapper">
+                <button class="atb-apps-btn" id="atb-apps-btn" title="Open an Aethvion app">
+                    <i class="fas fa-th-large"></i>
+                    <span>Apps</span>
+                    <i class="fas fa-chevron-down atb-chevron"></i>
+                </button>
+                <div class="atb-apps-menu" id="atb-apps-menu">
+                    <!-- Populated by app-tabs.js -->
                 </div>
             </div>
         </div>
-
-        <div class="atb-apps-wrapper">
-            <button class="atb-apps-btn" id="atb-apps-btn" title="Open an Aethvion app">
-                <i class="fas fa-th-large"></i>
-                <span>Apps</span>
-                <i class="fas fa-chevron-down atb-chevron"></i>
-            </button>
-            <div class="atb-apps-menu" id="atb-apps-menu">
-                <!-- Populated by app-tabs.js -->
-            </div>
-        </div>
     </div>
-</div>
 
-<!-- ── Nexus Panel ─────────────────────────────────────────────────────────── -->
-<!-- Wraps the existing dashboard (header + content-wrapper). The app-panel CSS
+    <!-- ── Nexus Panel ─────────────────────────────────────────────────────────── -->
+    <!-- Wraps the existing dashboard (header + content-wrapper). The app-panel CSS
      makes it position:fixed below the tab bar, matching the old body layout. -->
-<div id="panel-home" class="app-panel app-panel--home">
+    <div id="panel-home" class="app-panel app-panel--home">
 
-    <!-- Startup Splash Screen -->
-    <div id="startup-splash" class="startup-splash">
-        <div class="splash-content">
-            <div class="splash-logo-container">
-                <img src="/assets/aethvion/aethvion_logo.png" alt="Aethvion Suite"
-                    class="splash-logo-img">
-            </div>
-            <h1 class="splash-logo">Aethvion Suite</h1>
-            <div class="splash-status-container">
-                <div class="splash-loader-bar">
-                    <div id="splash-progress" class="splash-progress"></div>
+        <!-- Startup Splash Screen -->
+        <div id="startup-splash" class="startup-splash">
+            <div class="splash-content">
+                <div class="splash-logo-container">
+                    <img src="/assets/aethvion/aethvion_logo.png" alt="Aethvion Suite" class="splash-logo-img">
                 </div>
-                <p id="splash-status-text" class="splash-status-text">INITIALIZING SYSTEM...</p>
-            </div>
-            <div id="splash-version" class="splash-version">v1.4</div>
-        </div>
-    </div>
-
-    <!-- Header -->
-    <header class="header">
-        <div class="header-top">
-            <div style="display: flex; align-items: center;">
-                <button id="sidebar-hide-toggle" class="sidebar-toggle-btn" title="Hide Sidebar">
-                    <i class="fas fa-angles-left"></i>
-                </button>
-                <button id="sidebar-toggle" class="sidebar-toggle-btn" title="Toggle Sidebar">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <h1 class="logo" style="margin-left: 10px; cursor: pointer;"
-                    onclick="setDashboardMode('home'); switchMainTab('suite-home');">Aethvion Suite</h1>
-                <div class="dash-mode-toggle" id="dashboard-mode-toggle">
-                    <div class="mode-btn active" data-value="home">HOME</div>
-                    <div class="mode-btn" data-value="ai">AI</div>
-                </div>
-            </div>
-            <div class="header-right">
-                <div class="compact-status" id="compact-status">
-                    <span title="Tokens Today">Tokens: <strong id="tokens-today">0</strong></span>
-                    <span class="status-divider">|</span>
-                    <span title="Cost Today">Cost: <strong id="cost-today">$0.00</strong></span>
-                </div>
-                <div class="status-indicator" id="home-status-indicator">
-                    <span class="status-dot"></span>
-                    <span class="status-text">Connecting...</span>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <div class="content-wrapper">
-        <aside class="sidebar-nav" id="sidebar-nav">
-            <!-- Sidebar search -->
-            <div class="sidebar-search-wrap mode-ai">
-                <div class="sidebar-search-inner">
-                    <i class="fas fa-search sidebar-search-icon"></i>
-                    <input type="text" id="sidebar-search-input" class="sidebar-search-input"
-                        placeholder="Search…" autocomplete="off" spellcheck="false">
-                    <button id="sidebar-search-clear" class="sidebar-search-clear" title="Clear">✕</button>
-                </div>
-            </div>
-            <div class="main-tabs" id="sidebar-tab-list">
-                <!-- Dynamically rendered by sidebar-manager.js -->
-            </div>
-
-            <div class="sidebar-bottom">
-                <!-- Customize button injected by sidebar-manager.js -->
-                <button class="main-tab mode-home mode-ai" data-maintab="settings" data-tooltip="Settings">
-                    <span class="tab-icon"><i class="fas fa-gear"></i></span><span class="tab-label">Settings</span>
-                </button>
-                <button class="main-tab mode-home mode-ai" data-maintab="version" data-tooltip="Version Control" title="Version Control">
-                    <span class="tab-icon"><i class="fas fa-bookmark"></i></span>
-                    <span class="tab-label">Version</span>
-                    <span id="suite-version-tag">Aethvion Suite v1.4</span><div id="sidebar-version-dot" style="display:none; width:8px; height:8px; background:#ff7675; border-radius:50%; margin-left:auto;"></div>
-                </button>
-            </div>
-
-        </aside>
-
-        <!-- Main Content Area -->
-        <main class="main-container">
-            <!-- Suite Home Panel -->
-            <div class="main-tab-panel active" id="suite-home-panel" data-partial="suite-home">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-            <!-- Chat Tab (4-column layout with threads) -->
-            <div class="main-tab-panel" id="chat-panel" data-partial="chat">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- ==================== AGENTS PANEL ==================== -->
-            <div class="main-tab-panel" id="agents-panel" data-partial="agents">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- ==================== SCHEDULE PANEL ==================== -->
-            <div class="main-tab-panel" id="schedule-panel" data-partial="schedule">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- ==================== SCHEDULED TASKS OVERVIEW (Knowledge) ==================== -->
-            <div class="main-tab-panel" id="sched-overview-panel" data-partial="sched-overview">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Agent Corp Tab -->
-            <div class="main-tab-panel" id="agent-corp-panel" data-partial="agent-corp">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div><!-- /agent-corp-panel -->
-
-            <!-- Arena Tab -->
-            <div class="main-tab-panel" id="arena-panel" data-partial="arena">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Logs Tab -->
-            <div class="main-tab-panel" id="logs-panel" data-partial="logs">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- AI Conversations Tab -->
-            <div class="main-tab-panel" id="aiconv-panel" data-partial="aiconv">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Advanced AI Conversations Tab -->
-            <div class="main-tab-panel" id="advaiconv-panel" data-partial="advaiconv">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-            
-            <!-- Research Board (Board of Directors) Tab -->
-            <div class="main-tab-panel" id="researchboard-panel" data-partial="researchboard">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Explained Tab -->
-            <div class="main-tab-panel" id="explained-panel" data-partial="explained">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Misaka Cipher (Companion) Tab -->
-            <div class="main-tab-panel" id="misaka-cipher-panel" data-partial="misaka-cipher">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Axiom (Companion) Tab -->
-            <div class="main-tab-panel" id="axiom-panel" data-partial="axiom">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Lyra (Companion) Tab -->
-            <div class="main-tab-panel" id="lyra-panel" data-partial="lyra">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Companion Creator Tab -->
-            <div class="main-tab-panel" id="companion-creator-panel">
-              <div id="companion-creator-root"></div>
-            </div>
-
-            <!-- Files Tab -->
-            <div class="main-tab-panel" id="files-panel"
-                style="flex-direction: column; height: 100%; overflow: hidden;" data-partial="files">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-
-
-
-
-            <!-- Memory Tab -->
-            <div class="main-tab-panel" id="memory-panel" data-partial="memory">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Companion Memory Tab -->
-            <div class="main-tab-panel" id="companion-memory-panel" data-partial="companion-memory">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Persistent Memory Tab -->
-            <div class="main-tab-panel" id="persistent-memory-panel" data-partial="persistent-memory">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Photo Studio Tab -->
-            <div class="main-tab-panel" id="photo-panel" data-partial="photo">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Audio Studio Tab -->
-            <div class="main-tab-panel" id="audio-panel" data-partial="audio">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Usage Tab -->
-            <div class="main-tab-panel" id="usage-panel" data-partial="usage">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Settings Tab -->
-            <div class="main-tab-panel" id="settings-panel" data-partial="settings">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div> <!-- closes main-tab-panel (settings) -->
-
-            <!-- Ports Tab -->
-            <div class="main-tab-panel" id="ports-panel" data-partial="ports">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Version Tab -->
-            <div class="main-tab-panel" id="version-panel" style="display: none; overflow-y: auto; height: 100%;" data-partial="version">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Games Panel: Logic Quest -->
-            <div class="main-tab-panel" id="game-logic-quest-panel" data-partial="game-logic-quest">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Games Panel: Results -->
-            <div class="main-tab-panel" id="game-results-panel" data-partial="game-results">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Games Panel: Blackjack -->
-            <div class="main-tab-panel" id="game-blackjack-panel" data-partial="game-blackjack">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Games Panel: Word Search -->
-            <div class="main-tab-panel" id="game-word-search-panel" data-partial="game-word-search">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Games Panel: Sudoku -->
-            <div class="main-tab-panel" id="game-sudoku-panel" data-partial="game-sudoku">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- Games Panel: Checkers -->
-            <div class="main-tab-panel" id="game-checkers-panel" data-partial="game-checkers">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div> <!-- Close main-tab-panel for game-checkers -->
-
-            <!-- Games Panel: Are You Smarter Than AI? -->
-            <div class="main-tab-panel" id="game-smarter-than-ai-panel" data-partial="game-smarter-than-ai">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div> <!-- Close main-tab-panel for game-smarter-than-ai -->
-
-            <!-- Documentation Panel -->
-            <div class="main-tab-panel" id="documentation-panel" data-partial="documentation">
-      <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-    </div>
-
-            <!-- System Status Panel -->
-            <div class="main-tab-panel" id="status-panel" data-partial="status">
-                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-            </div>
-
-            <!-- Model Hub: Local Models (Text & Chat) -->
-            <div class="main-tab-panel" id="local-models-panel" data-partial="local-models">
-                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-            </div>
-
-            <!-- Model Hub: Image Studio -->
-            <div class="main-tab-panel" id="image-models-panel" data-partial="image-models">
-                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-            </div>
-
-            <!-- Model Hub: Audio & Speech -->
-            <div class="main-tab-panel" id="audio-models-panel" data-partial="audio-models">
-                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-            </div>
-
-            <!-- Model Hub: API Providers -->
-            <div class="main-tab-panel" id="api-providers-panel" data-partial="api-providers">
-                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-            </div>
-
-            <!-- Model Hub: 3D Models -->
-            <div class="main-tab-panel" id="3d-models-panel" data-partial="3d-models">
-                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-            </div>
-
-            <!-- Model Hub: 3D Workspace -->
-            <div class="main-tab-panel" id="3d-gen-panel" data-partial="3d-gen">
-                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-            </div>
-
-            <!-- Games Center Hub -->
-            <div class="main-tab-panel" id="games-center-panel" data-partial="games-center">
-                <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
-            </div>
-
-            <!-- System Notifications -->
-            <div id="notification-container" class="notification-container"></div>
-
-            <!-- Floating Misaka Cipher Assistant -->
-            <div id="misaka-assistant-container" class="misaka-assistant-container hidden">
-                <div id="misaka-avatar" class="misaka-avatar">
-                    <img id="misaka-img" src="/static/misakacipher/expressions/misakacipher_default.png"
-                        alt="Misaka Cipher">
-                </div>
-                <div id="misaka-chat-window" class="misaka-dialog-window collapsed">
-                    <div class="misaka-dialog-left">
-                        <img id="misaka-img-dialog" src="/static/misakacipher/expressions/misakacipher_default.png"
-                            alt="Misaka Cipher Portrait">
+                <h1 class="splash-logo">Aethvion Suite</h1>
+                <div class="splash-status-container">
+                    <div class="splash-loader-bar">
+                        <div id="splash-progress" class="splash-progress"></div>
                     </div>
-                    <div class="misaka-dialog-right">
-                        <div class="misaka-dialog-header">
-                            <span class="misaka-title">Misaka Cipher</span>
-                            <button id="misaka-close-btn" class="icon-btn xs-btn" title="Close" aria-label="Close Misaka Cipher"><i
-                                    class="fas fa-times" aria-hidden="true"></i></button>
-                        </div>
-                        <div id="misaka-messages" class="misaka-dialog-messages">
-                            <div class="misaka-d-message system">Hi, I'm Misaka. What can I help with?</div>
-                        </div>
-                        <div class="misaka-dialog-input-area">
-                            <span class="user-prompt-indicator">&gt;</span>
-                            <input type="text" id="misaka-input" placeholder="Ask Misaka anything..." autocomplete="off">
-                            <button id="misaka-send-btn" class="send-button"><i class="fas fa-paper-plane"></i></button>
-                        </div>
+                    <p id="splash-status-text" class="splash-status-text">INITIALIZING SYSTEM...</p>
+                </div>
+                <div id="splash-version" class="splash-version">v1.4</div>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header class="header">
+            <div class="header-top">
+                <div style="display: flex; align-items: center;">
+                    <button id="sidebar-hide-toggle" class="sidebar-toggle-btn" title="Hide Sidebar">
+                        <i class="fas fa-angles-left"></i>
+                    </button>
+                    <button id="sidebar-toggle" class="sidebar-toggle-btn" title="Toggle Sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 class="logo" style="margin-left: 10px; cursor: pointer;"
+                        onclick="setDashboardMode('home'); switchMainTab('suite-home');">Aethvion Suite</h1>
+                    <div class="dash-mode-toggle" id="dashboard-mode-toggle">
+                        <div class="mode-btn active" data-value="home">HOME</div>
+                        <div class="mode-btn" data-value="ai">AI</div>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="compact-status" id="compact-status">
+                        <span title="Tokens Today">Tokens: <strong id="tokens-today">0</strong></span>
+                        <span class="status-divider">|</span>
+                        <span title="Cost Today">Cost: <strong id="cost-today">$0.00</strong></span>
+                    </div>
+                    <div class="status-indicator" id="home-status-indicator">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Connecting...</span>
                     </div>
                 </div>
             </div>
+        </header>
 
-        </main> <!-- main-container -->
-    </div> <!-- content-wrapper -->
-            <!-- Scripts -->
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
-            <script src="/static/lib/marked.min.js" defer></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/properties.min.js" defer></script>
-            <!-- Partial Loader — must come first -->
-            <script src="/static/js/partial-loader.js?v=10" defer></script>
-            <!-- Core & State Management -->
-            <script src="/static/js/core.js?v=10" defer></script>
-            <script src="/static/js/threads.js?v=10" defer></script>
-            <script src="/static/js/sidebar-manager.js?v=10" defer></script>
-            <script src="/static/js/suite-home.js?v=10" defer></script>
+        <div class="content-wrapper">
+            <aside class="sidebar-nav" id="sidebar-nav">
+                <!-- Sidebar search -->
+                <div class="sidebar-search-wrap mode-ai">
+                    <div class="sidebar-search-inner">
+                        <i class="fas fa-search sidebar-search-icon"></i>
+                        <input type="text" id="sidebar-search-input" class="sidebar-search-input" placeholder="Search…"
+                            autocomplete="off" spellcheck="false">
+                        <button id="sidebar-search-clear" class="sidebar-search-clear" title="Clear">✕</button>
+                    </div>
+                </div>
+                <div class="main-tabs" id="sidebar-tab-list">
+                    <!-- Dynamically rendered by sidebar-manager.js -->
+                </div>
 
-            <!-- Global Services -->
-            <script src="/static/js/assistant.js?v=10" defer></script>
-            <script src="/static/js/notifications.js?v=10" defer></script>
+                <div class="sidebar-bottom">
+                    <!-- Customize button injected by sidebar-manager.js -->
+                    <button class="main-tab mode-home mode-ai" data-maintab="settings" data-tooltip="Settings">
+                        <span class="tab-icon"><i class="fas fa-gear"></i></span><span class="tab-label">Settings</span>
+                    </button>
+                    <button class="main-tab mode-home mode-ai" data-maintab="version" data-tooltip="Version Control"
+                        title="Version Control">
+                        <span class="tab-icon"><i class="fas fa-bookmark"></i></span>
+                        <span class="tab-label">Version</span>
+                        <div id="sidebar-version-dot"
+                            style="display:none; width:8px; height:8px; background:#ff7675; border-radius:50%; margin-left:8px;">
+                        </div>
+                    </button>
+                </div>
+
+            </aside>
+
+            <!-- Main Content Area -->
+            <main class="main-container">
+                <!-- Suite Home Panel -->
+                <div class="main-tab-panel active" id="suite-home-panel" data-partial="suite-home">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+                <!-- Chat Tab (4-column layout with threads) -->
+                <div class="main-tab-panel" id="chat-panel" data-partial="chat">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- ==================== AGENTS PANEL ==================== -->
+                <div class="main-tab-panel" id="agents-panel" data-partial="agents">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- ==================== SCHEDULE PANEL ==================== -->
+                <div class="main-tab-panel" id="schedule-panel" data-partial="schedule">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- ==================== SCHEDULED TASKS OVERVIEW (Knowledge) ==================== -->
+                <div class="main-tab-panel" id="sched-overview-panel" data-partial="sched-overview">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Agent Corp Tab -->
+                <div class="main-tab-panel" id="agent-corp-panel" data-partial="agent-corp">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div><!-- /agent-corp-panel -->
+
+                <!-- Arena Tab -->
+                <div class="main-tab-panel" id="arena-panel" data-partial="arena">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Logs Tab -->
+                <div class="main-tab-panel" id="logs-panel" data-partial="logs">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- AI Conversations Tab -->
+                <div class="main-tab-panel" id="aiconv-panel" data-partial="aiconv">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Advanced AI Conversations Tab -->
+                <div class="main-tab-panel" id="advaiconv-panel" data-partial="advaiconv">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Research Board (Board of Directors) Tab -->
+                <div class="main-tab-panel" id="researchboard-panel" data-partial="researchboard">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Explained Tab -->
+                <div class="main-tab-panel" id="explained-panel" data-partial="explained">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Misaka Cipher (Companion) Tab -->
+                <div class="main-tab-panel" id="misaka-cipher-panel" data-partial="misaka-cipher">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Axiom (Companion) Tab -->
+                <div class="main-tab-panel" id="axiom-panel" data-partial="axiom">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Lyra (Companion) Tab -->
+                <div class="main-tab-panel" id="lyra-panel" data-partial="lyra">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Companion Creator Tab -->
+                <div class="main-tab-panel" id="companion-creator-panel">
+                    <div id="companion-creator-root"></div>
+                </div>
+
+                <!-- Files Tab -->
+                <div class="main-tab-panel" id="files-panel"
+                    style="flex-direction: column; height: 100%; overflow: hidden;" data-partial="files">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
 
 
-</div><!-- /panel-nexus -->
 
-<!-- ── App Iframe Panels ─────────────────────────────────────────────────── -->
-<!-- Iframe panels for each opened app are injected here by app-tabs.js.
+
+
+                <!-- Memory Tab -->
+                <div class="main-tab-panel" id="memory-panel" data-partial="memory">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Companion Memory Tab -->
+                <div class="main-tab-panel" id="companion-memory-panel" data-partial="companion-memory">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Persistent Memory Tab -->
+                <div class="main-tab-panel" id="persistent-memory-panel" data-partial="persistent-memory">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Photo Studio Tab -->
+                <div class="main-tab-panel" id="photo-panel" data-partial="photo">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Audio Studio Tab -->
+                <div class="main-tab-panel" id="audio-panel" data-partial="audio">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Usage Tab -->
+                <div class="main-tab-panel" id="usage-panel" data-partial="usage">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="main-tab-panel" id="settings-panel" data-partial="settings">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div> <!-- closes main-tab-panel (settings) -->
+
+                <!-- Ports Tab -->
+                <div class="main-tab-panel" id="ports-panel" data-partial="ports">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Version Tab -->
+                <div class="main-tab-panel" id="version-panel" style="display: none; overflow-y: auto; height: 100%;"
+                    data-partial="version">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Games Panel: Logic Quest -->
+                <div class="main-tab-panel" id="game-logic-quest-panel" data-partial="game-logic-quest">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Games Panel: Results -->
+                <div class="main-tab-panel" id="game-results-panel" data-partial="game-results">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Games Panel: Blackjack -->
+                <div class="main-tab-panel" id="game-blackjack-panel" data-partial="game-blackjack">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Games Panel: Word Search -->
+                <div class="main-tab-panel" id="game-word-search-panel" data-partial="game-word-search">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Games Panel: Sudoku -->
+                <div class="main-tab-panel" id="game-sudoku-panel" data-partial="game-sudoku">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Games Panel: Checkers -->
+                <div class="main-tab-panel" id="game-checkers-panel" data-partial="game-checkers">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div> <!-- Close main-tab-panel for game-checkers -->
+
+                <!-- Games Panel: Are You Smarter Than AI? -->
+                <div class="main-tab-panel" id="game-smarter-than-ai-panel" data-partial="game-smarter-than-ai">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div> <!-- Close main-tab-panel for game-smarter-than-ai -->
+
+                <!-- Documentation Panel -->
+                <div class="main-tab-panel" id="documentation-panel" data-partial="documentation">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- System Status Panel -->
+                <div class="main-tab-panel" id="status-panel" data-partial="status">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Model Hub: Local Models (Text & Chat) -->
+                <div class="main-tab-panel" id="local-models-panel" data-partial="local-models">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Model Hub: Image Studio -->
+                <div class="main-tab-panel" id="image-models-panel" data-partial="image-models">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Model Hub: Audio & Speech -->
+                <div class="main-tab-panel" id="audio-models-panel" data-partial="audio-models">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Model Hub: API Providers -->
+                <div class="main-tab-panel" id="api-providers-panel" data-partial="api-providers">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Model Hub: 3D Models -->
+                <div class="main-tab-panel" id="3d-models-panel" data-partial="3d-models">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Model Hub: 3D Workspace -->
+                <div class="main-tab-panel" id="3d-gen-panel" data-partial="3d-gen">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- Games Center Hub -->
+                <div class="main-tab-panel" id="games-center-panel" data-partial="games-center">
+                    <div class="partial-loading"><i class="fas fa-spinner fa-spin"></i></div>
+                </div>
+
+                <!-- System Notifications -->
+                <div id="notification-container" class="notification-container"></div>
+
+                <!-- Floating Misaka Cipher Assistant -->
+                <div id="misaka-assistant-container" class="misaka-assistant-container hidden">
+                    <div id="misaka-avatar" class="misaka-avatar">
+                        <img id="misaka-img" src="/static/misakacipher/expressions/misakacipher_default.png"
+                            alt="Misaka Cipher">
+                    </div>
+                    <div id="misaka-chat-window" class="misaka-dialog-window collapsed">
+                        <div class="misaka-dialog-left">
+                            <img id="misaka-img-dialog" src="/static/misakacipher/expressions/misakacipher_default.png"
+                                alt="Misaka Cipher Portrait">
+                        </div>
+                        <div class="misaka-dialog-right">
+                            <div class="misaka-dialog-header">
+                                <span class="misaka-title">Misaka Cipher</span>
+                                <button id="misaka-close-btn" class="icon-btn xs-btn" title="Close"
+                                    aria-label="Close Misaka Cipher"><i class="fas fa-times"
+                                        aria-hidden="true"></i></button>
+                            </div>
+                            <div id="misaka-messages" class="misaka-dialog-messages">
+                                <div class="misaka-d-message system">Hi, I'm Misaka. What can I help with?</div>
+                            </div>
+                            <div class="misaka-dialog-input-area">
+                                <span class="user-prompt-indicator">&gt;</span>
+                                <input type="text" id="misaka-input" placeholder="Ask Misaka anything..."
+                                    autocomplete="off">
+                                <button id="misaka-send-btn" class="send-button"><i
+                                        class="fas fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main> <!-- main-container -->
+        </div> <!-- content-wrapper -->
+        <!-- Scripts -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+        <script src="/static/lib/marked.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/properties.min.js"
+            defer></script>
+        <!-- Partial Loader — must come first -->
+        <script src="/static/js/partial-loader.js?v=10" defer></script>
+        <!-- Core & State Management -->
+        <script src="/static/js/core.js?v=10" defer></script>
+        <script src="/static/js/threads.js?v=10" defer></script>
+        <script src="/static/js/sidebar-manager.js?v=10" defer></script>
+        <script src="/static/js/suite-home.js?v=10" defer></script>
+
+        <!-- Global Services -->
+        <script src="/static/js/assistant.js?v=10" defer></script>
+        <script src="/static/js/notifications.js?v=10" defer></script>
+
+
+    </div><!-- /panel-nexus -->
+
+    <!-- ── App Iframe Panels ─────────────────────────────────────────────────── -->
+    <!-- Iframe panels for each opened app are injected here by app-tabs.js.
      Each panel is position:fixed with display:none until its tab is active. -->
-<div id="app-panels"></div>
+    <div id="app-panels"></div>
 
-<!-- ── Toast Container ───────────────────────────────────────────── -->
-<div id="toast-container"></div>
+    <!-- ── Toast Container ───────────────────────────────────────────── -->
+    <div id="toast-container"></div>
 
-<!-- ── Confirm Modal ─────────────────────────────────────────────── -->
-<div id="confirm-modal" class="confirm-modal-overlay" style="display:none;" role="dialog" aria-modal="true">
-    <div class="confirm-modal">
-        <div class="confirm-modal-icon">
-            <i class="fas fa-exclamation-triangle" id="confirm-modal-icon-i"></i>
-        </div>
-        <h3 id="confirm-modal-title">Are you sure?</h3>
-        <p id="confirm-modal-body"></p>
-        <div class="confirm-modal-actions">
-            <button class="btn-secondary" id="confirm-modal-cancel">Cancel</button>
-            <button class="btn-danger"    id="confirm-modal-ok">Confirm</button>
-        </div>
-    </div>
-</div>
-
-<!-- ── Keyboard Shortcuts Overlay ───────────────────────────────── -->
-<div id="kbd-overlay" class="kbd-overlay" style="display:none;" role="dialog" aria-modal="true">
-    <div class="kbd-panel">
-        <h2><i class="fas fa-keyboard"></i> Keyboard Shortcuts <small>Press ? or Esc to close</small></h2>
-
-        <div class="kbd-section-title">Navigation</div>
-        <div class="kbd-grid">
-            <div class="kbd-row"><span class="kbd-desc">Open shortcuts</span>        <span class="kbd-keys"><kbd>?</kbd></span></div>
-            <div class="kbd-row"><span class="kbd-desc">Close overlay / Cancel</span><span class="kbd-keys"><kbd>Esc</kbd></span></div>
-            <div class="kbd-row"><span class="kbd-desc">New thread</span>            <span class="kbd-keys"><kbd>Ctrl</kbd><kbd>T</kbd></span></div>
-            <div class="kbd-row"><span class="kbd-desc">Focus chat input</span>      <span class="kbd-keys"><kbd>Ctrl</kbd><kbd>L</kbd></span></div>
-            <div class="kbd-row"><span class="kbd-desc">Send message</span>          <span class="kbd-keys"><kbd>Enter</kbd></span></div>
-            <div class="kbd-row"><span class="kbd-desc">New line in message</span>   <span class="kbd-keys"><kbd>Shift</kbd><kbd>Enter</kbd></span></div>
-        </div>
-
-        <div class="kbd-section-title">Sidebar</div>
-        <div class="kbd-grid">
-            <div class="kbd-row"><span class="kbd-desc">Toggle sidebar</span>        <span class="kbd-keys"><kbd>Ctrl</kbd><kbd>B</kbd></span></div>
-            <div class="kbd-row"><span class="kbd-desc">Toggle threads panel</span>  <span class="kbd-keys"><kbd>Ctrl</kbd><kbd>H</kbd></span></div>
-            <div class="kbd-row"><span class="kbd-desc">Go to Home</span>            <span class="kbd-keys"><kbd>Ctrl</kbd><kbd>1</kbd></span></div>
-            <div class="kbd-row"><span class="kbd-desc">Go to Chat</span>            <span class="kbd-keys"><kbd>Ctrl</kbd><kbd>2</kbd></span></div>
-        </div>
-
-        <div class="kbd-section-title">Dashboard Modes</div>
-        <div class="kbd-grid">
-            <div class="kbd-row"><span class="kbd-desc">Home mode</span>             <span class="kbd-keys"><kbd>Alt</kbd><kbd>1</kbd></span></div>
-            <div class="kbd-row"><span class="kbd-desc">AI mode</span>               <span class="kbd-keys"><kbd>Alt</kbd><kbd>2</kbd></span></div>
+    <!-- ── Confirm Modal ─────────────────────────────────────────────── -->
+    <div id="confirm-modal" class="confirm-modal-overlay" style="display:none;" role="dialog" aria-modal="true">
+        <div class="confirm-modal">
+            <div class="confirm-modal-icon">
+                <i class="fas fa-exclamation-triangle" id="confirm-modal-icon-i"></i>
+            </div>
+            <h3 id="confirm-modal-title">Are you sure?</h3>
+            <p id="confirm-modal-body"></p>
+            <div class="confirm-modal-actions">
+                <button class="btn-secondary" id="confirm-modal-cancel">Cancel</button>
+                <button class="btn-danger" id="confirm-modal-ok">Confirm</button>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- ── App Tab System ────────────────────────────────────────────────────── -->
-<script src="/static/js/app-tabs.js?v=__VNUM__" defer></script>
+    <!-- ── Keyboard Shortcuts Overlay ───────────────────────────────── -->
+    <div id="kbd-overlay" class="kbd-overlay" style="display:none;" role="dialog" aria-modal="true">
+        <div class="kbd-panel">
+            <h2><i class="fas fa-keyboard"></i> Keyboard Shortcuts <small>Press ? or Esc to close</small></h2>
 
-<!-- Update Progress Overlay -->
-<div id="self-update-overlay" class="update-overlay">
-    <div class="update-content">
-        <div class="update-spinner">
-            <i class="fas fa-sync fa-spin"></i>
+            <div class="kbd-section-title">Navigation</div>
+            <div class="kbd-grid">
+                <div class="kbd-row"><span class="kbd-desc">Open shortcuts</span> <span
+                        class="kbd-keys"><kbd>?</kbd></span></div>
+                <div class="kbd-row"><span class="kbd-desc">Close overlay / Cancel</span><span
+                        class="kbd-keys"><kbd>Esc</kbd></span></div>
+                <div class="kbd-row"><span class="kbd-desc">New thread</span> <span
+                        class="kbd-keys"><kbd>Ctrl</kbd><kbd>T</kbd></span></div>
+                <div class="kbd-row"><span class="kbd-desc">Focus chat input</span> <span
+                        class="kbd-keys"><kbd>Ctrl</kbd><kbd>L</kbd></span></div>
+                <div class="kbd-row"><span class="kbd-desc">Send message</span> <span
+                        class="kbd-keys"><kbd>Enter</kbd></span></div>
+                <div class="kbd-row"><span class="kbd-desc">New line in message</span> <span
+                        class="kbd-keys"><kbd>Shift</kbd><kbd>Enter</kbd></span></div>
+            </div>
+
+            <div class="kbd-section-title">Sidebar</div>
+            <div class="kbd-grid">
+                <div class="kbd-row"><span class="kbd-desc">Toggle sidebar</span> <span
+                        class="kbd-keys"><kbd>Ctrl</kbd><kbd>B</kbd></span></div>
+                <div class="kbd-row"><span class="kbd-desc">Toggle threads panel</span> <span
+                        class="kbd-keys"><kbd>Ctrl</kbd><kbd>H</kbd></span></div>
+                <div class="kbd-row"><span class="kbd-desc">Go to Home</span> <span
+                        class="kbd-keys"><kbd>Ctrl</kbd><kbd>1</kbd></span></div>
+                <div class="kbd-row"><span class="kbd-desc">Go to Chat</span> <span
+                        class="kbd-keys"><kbd>Ctrl</kbd><kbd>2</kbd></span></div>
+            </div>
+
+            <div class="kbd-section-title">Dashboard Modes</div>
+            <div class="kbd-grid">
+                <div class="kbd-row"><span class="kbd-desc">Home mode</span> <span
+                        class="kbd-keys"><kbd>Alt</kbd><kbd>1</kbd></span></div>
+                <div class="kbd-row"><span class="kbd-desc">AI mode</span> <span
+                        class="kbd-keys"><kbd>Alt</kbd><kbd>2</kbd></span></div>
+            </div>
         </div>
-        <div class="update-title">APPLYING UPDATES</div>
-        <div id="update-status-text" class="update-status">Initializing Git lifecycle...</div>
-        <div class="update-progress-container">
-            <div id="update-progress-bar" class="update-progress-bar"></div>
-        </div>
-        <div class="update-hint">The suite will restart automatically once finished.</div>
     </div>
-</div>
 
-<script>
-    document.addEventListener('systemReady', () => {
-        // initResearchBoard queries elements inside researchboard partial —
-        // defer until that partial has been injected into the DOM.
-        const rbPanelId = 'researchboard-panel';
-        const rbPanel   = document.getElementById(rbPanelId);
-        const isLoaded  = rbPanel && !rbPanel.dataset.partial ||
-                          (window._partialLoader && window._partialLoader.isLoaded('researchboard'));
-        if (isLoaded) {
-            if (window.initResearchBoard) window.initResearchBoard();
-        } else {
-            document.addEventListener('panelLoaded', function _rbInit(e) {
-                if (e.detail.panelId === rbPanelId) {
-                    document.removeEventListener('panelLoaded', _rbInit);
-                    if (window.initResearchBoard) window.initResearchBoard();
-                }
-            });
-        }
-    });
-</script>
+    <!-- ── App Tab System ────────────────────────────────────────────────────── -->
+    <script src="/static/js/app-tabs.js?v=__VNUM__" defer></script>
 
-<script>
-// ── Custom Companions: Sidebar + Settings Dynamic Loader ──────────────────────
-async function loadCustomCompanionsSidebar() {
-    try {
-        const res = await fetch('/api/companions/list');
-        if (!res.ok) return;
-        const data = await res.json();
-        const companions = (data.companions || []).filter(c => !['misakacipher','axiom','lyra'].includes(c.id));
+    <!-- Update Progress Overlay -->
+    <div id="self-update-overlay" class="update-overlay">
+        <div class="update-content">
+            <div class="update-spinner">
+                <i class="fas fa-sync fa-spin"></i>
+            </div>
+            <div class="update-title">APPLYING UPDATES</div>
+            <div id="update-status-text" class="update-status">Initializing Git lifecycle...</div>
+            <div class="update-progress-container">
+                <div id="update-progress-bar" class="update-progress-bar"></div>
+            </div>
+            <div class="update-hint">The suite will restart automatically once finished.</div>
+        </div>
+    </div>
 
-        // ── Sidebar + panels ──────────────────────────────────────────────
-        const sidebarContainer = document.getElementById('custom-companions-sidebar');
-        if (sidebarContainer) {
-            sidebarContainer.innerHTML = '';
-            document.querySelectorAll('.custom-companion-panel').forEach(el => el.remove());
-
-            companions.forEach(c => {
-                const tabId = `custom-companion-${c.id}`;
-                const color = c.accent_color || '#6366f1';
-
-                // Sidebar button — attach click directly so it works even though
-                // initializeUI() already ran and won't see this dynamic element.
-                const btn = document.createElement('button');
-                btn.className = 'main-tab mode-ai';
-                btn.setAttribute('data-maintab', tabId);
-                btn.setAttribute('data-tooltip', c.description || c.name);
-                btn.innerHTML = `<span class="tab-icon" style="color:${color}">${c.avatar_symbol || '✦'}</span><span class="tab-label">${c.name}</span>`;
-                btn.addEventListener('click', () => {
-                    if (typeof switchMainTab === 'function') switchMainTab(tabId);
+    <script>
+        document.addEventListener('systemReady', () => {
+            // initResearchBoard queries elements inside researchboard partial —
+            // defer until that partial has been injected into the DOM.
+            const rbPanelId = 'researchboard-panel';
+            const rbPanel = document.getElementById(rbPanelId);
+            const isLoaded = rbPanel && !rbPanel.dataset.partial ||
+                (window._partialLoader && window._partialLoader.isLoaded('researchboard'));
+            if (isLoaded) {
+                if (window.initResearchBoard) window.initResearchBoard();
+            } else {
+                document.addEventListener('panelLoaded', function _rbInit(e) {
+                    if (e.detail.panelId === rbPanelId) {
+                        document.removeEventListener('panelLoaded', _rbInit);
+                        if (window.initResearchBoard) window.initResearchBoard();
+                    }
                 });
-                sidebarContainer.appendChild(btn);
+            }
+        });
+    </script>
 
-                // Panel — must use class 'main-tab-panel' so switchMainTab's
-                // querySelectorAll('.main-tab-panel') hides it when leaving.
-                if (!document.getElementById(`${tabId}-panel`)) {
-                    const panel = document.createElement('div');
-                    panel.id = `${tabId}-panel`;
-                    panel.className = 'main-tab-panel custom-companion-panel';
-                    panel.innerHTML = `
+    <script>
+        // ── Custom Companions: Sidebar + Settings Dynamic Loader ──────────────────────
+        async function loadCustomCompanionsSidebar() {
+            try {
+                const res = await fetch('/api/companions/list');
+                if (!res.ok) return;
+                const data = await res.json();
+                const companions = (data.companions || []).filter(c => !['misakacipher', 'axiom', 'lyra'].includes(c.id));
+
+                // ── Sidebar + panels ──────────────────────────────────────────────
+                const sidebarContainer = document.getElementById('custom-companions-sidebar');
+                if (sidebarContainer) {
+                    sidebarContainer.innerHTML = '';
+                    document.querySelectorAll('.custom-companion-panel').forEach(el => el.remove());
+
+                    companions.forEach(c => {
+                        const tabId = `custom-companion-${c.id}`;
+                        const color = c.accent_color || '#6366f1';
+
+                        // Sidebar button — attach click directly so it works even though
+                        // initializeUI() already ran and won't see this dynamic element.
+                        const btn = document.createElement('button');
+                        btn.className = 'main-tab mode-ai';
+                        btn.setAttribute('data-maintab', tabId);
+                        btn.setAttribute('data-tooltip', c.description || c.name);
+                        btn.innerHTML = `<span class="tab-icon" style="color:${color}">${c.avatar_symbol || '✦'}</span><span class="tab-label">${c.name}</span>`;
+                        btn.addEventListener('click', () => {
+                            if (typeof switchMainTab === 'function') switchMainTab(tabId);
+                        });
+                        sidebarContainer.appendChild(btn);
+
+                        // Panel — must use class 'main-tab-panel' so switchMainTab's
+                        // querySelectorAll('.main-tab-panel') hides it when leaving.
+                        if (!document.getElementById(`${tabId}-panel`)) {
+                            const panel = document.createElement('div');
+                            panel.id = `${tabId}-panel`;
+                            panel.className = 'main-tab-panel custom-companion-panel';
+                            panel.innerHTML = `
 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:1.5rem;padding:2rem;text-align:center;">
     <div style="font-size:3.5rem;line-height:1;">${c.avatar_symbol || '✦'}</div>
     <div style="font-size:1.4rem;font-weight:600;color:${color};">${c.name}</div>
@@ -816,27 +838,27 @@ async function loadCustomCompanionsSidebar() {
         <i class="fas fa-pencil-alt"></i> Edit in Companion Creator
     </button>
 </div>`;
-                    const mainContent = document.querySelector('.main-content') || document.body;
-                    mainContent.appendChild(panel);
+                            const mainContent = document.querySelector('.main-content') || document.body;
+                            mainContent.appendChild(panel);
+                        }
+                    });
                 }
-            });
-        }
 
-        // ── Settings panel: inject custom companion accordions ────────────────
-        const settingsPanel = document.getElementById('settings-panel-companions');
-        if (settingsPanel) {
-            settingsPanel.querySelectorAll('.custom-companion-card').forEach(el => el.remove());
+                // ── Settings panel: inject custom companion accordions ────────────────
+                const settingsPanel = document.getElementById('settings-panel-companions');
+                if (settingsPanel) {
+                    settingsPanel.querySelectorAll('.custom-companion-card').forEach(el => el.remove());
 
-            companions.forEach(c => {
-                const id  = c.id;
-                const pk  = `custom_companion.${id}`;   // prefs key prefix
-                const color = c.accent_color || '#6366f1';
-                const esc = c.name.replace(/'/g, "\\'");
+                    companions.forEach(c => {
+                        const id = c.id;
+                        const pk = `custom_companion.${id}`;   // prefs key prefix
+                        const color = c.accent_color || '#6366f1';
+                        const esc = c.name.replace(/'/g, "\\'");
 
-                const card = document.createElement('div');
-                card.className = 'setting-card companions-accordion custom-companion-card';
-                card.id = `card-companion-custom-${id}`;
-                card.innerHTML = `
+                        const card = document.createElement('div');
+                        card.className = 'setting-card companions-accordion custom-companion-card';
+                        card.id = `card-companion-custom-${id}`;
+                        card.innerHTML = `
 <div class="card-header companions-accordion-header" onclick="toggleCompanionAccordion('custom-${id}')">
     <div class="header-title">
         <span class="companion-avatar-mini" style="background:${color};color:#fff;">${c.avatar_symbol || '✦'}</span>
@@ -934,119 +956,122 @@ async function loadCustomCompanionsSidebar() {
         </div>
     </div>
 </div>`;
-                settingsPanel.insertBefore(card, settingsPanel.querySelector('.custom-companion-card') || null);
+                        settingsPanel.insertBefore(card, settingsPanel.querySelector('.custom-companion-card') || null);
 
-                // ── Bind all settings controls ────────────────────────────
-                const sp = window.savePreference;
-                const prefs = window.prefs;
+                        // ── Bind all settings controls ────────────────────────────
+                        const sp = window.savePreference;
+                        const prefs = window.prefs;
 
-                // Model select
-                const modelSel = card.querySelector(`#setting-custom-${id}-model`);
-                if (modelSel) {
-                    const prefModel = prefs ? prefs.get(`${pk}.model`, c.default_model || 'gemini-1.5-flash') : (c.default_model || 'gemini-1.5-flash');
-                    if (window._populateModelSelect) {
-                        window._populateModelSelect(modelSel, prefModel);
-                    } else {
-                        const opt = document.createElement('option');
-                        opt.value = prefModel; opt.textContent = prefModel;
-                        modelSel.appendChild(opt);
-                    }
-                    modelSel.onchange = e => sp && sp(`${pk}.model`, e.target.value);
-                }
+                        // Model select
+                        const modelSel = card.querySelector(`#setting-custom-${id}-model`);
+                        if (modelSel) {
+                            const prefModel = prefs ? prefs.get(`${pk}.model`, c.default_model || 'gemini-1.5-flash') : (c.default_model || 'gemini-1.5-flash');
+                            if (window._populateModelSelect) {
+                                window._populateModelSelect(modelSel, prefModel);
+                            } else {
+                                const opt = document.createElement('option');
+                                opt.value = prefModel; opt.textContent = prefModel;
+                                modelSel.appendChild(opt);
+                            }
+                            modelSel.onchange = e => sp && sp(`${pk}.model`, e.target.value);
+                        }
 
-                // Range helpers
-                const bindRange = (elId, prefKey, defaultVal) => {
-                    const el = card.querySelector(`#${elId}`);
-                    const disp = card.querySelector(`#${elId}-val`);
-                    if (!el) return;
-                    const val = prefs ? prefs.get(prefKey, defaultVal) : defaultVal;
-                    el.value = val;
-                    if (disp) disp.textContent = val;
-                    el.addEventListener('input', () => {
-                        if (disp) disp.textContent = el.value;
-                        if (sp) sp(prefKey, parseInt(el.value, 10));
+                        // Range helpers
+                        const bindRange = (elId, prefKey, defaultVal) => {
+                            const el = card.querySelector(`#${elId}`);
+                            const disp = card.querySelector(`#${elId}-val`);
+                            if (!el) return;
+                            const val = prefs ? prefs.get(prefKey, defaultVal) : defaultVal;
+                            el.value = val;
+                            if (disp) disp.textContent = val;
+                            el.addEventListener('input', () => {
+                                if (disp) disp.textContent = el.value;
+                                if (sp) sp(prefKey, parseInt(el.value, 10));
+                            });
+                        };
+
+                        bindRange(`setting-custom-${id}-context-limit`, `${pk}.context_limit`, 8);
+                        bindRange(`setting-custom-${id}-startup-hours`, `${pk}.startup_hours`, 4);
+                        bindRange(`setting-custom-${id}-startup-chance`, `${pk}.startup_chance`, 75);
+                        bindRange(`setting-custom-${id}-startup-delay-min`, `${pk}.startup_delay_min`, 10);
+                        bindRange(`setting-custom-${id}-startup-delay-max`, `${pk}.startup_delay_max`, 45);
+                        bindRange(`setting-custom-${id}-session-interval-min`, `${pk}.session_interval_min`, 45);
+                        bindRange(`setting-custom-${id}-session-interval-max`, `${pk}.session_interval_max`, 90);
+                        bindRange(`setting-custom-${id}-session-chance`, `${pk}.session_chance`, 60);
+
+                        // Checkbox helpers
+                        const bindCheck = (elId, prefKey, defaultVal) => {
+                            const el = card.querySelector(`#${elId}`);
+                            if (!el) return;
+                            el.checked = prefs ? prefs.get(prefKey, defaultVal) : defaultVal;
+                            el.addEventListener('change', () => sp && sp(prefKey, el.checked));
+                        };
+
+                        bindCheck(`setting-custom-${id}-proactive-enabled`, `${pk}.proactive_enabled`, false);
+                        bindCheck(`setting-custom-${id}-proactive-popup`, `${pk}.proactive_popup`, true);
                     });
-                };
-
-                bindRange(`setting-custom-${id}-context-limit`,       `${pk}.context_limit`,        8);
-                bindRange(`setting-custom-${id}-startup-hours`,        `${pk}.startup_hours`,        4);
-                bindRange(`setting-custom-${id}-startup-chance`,       `${pk}.startup_chance`,       75);
-                bindRange(`setting-custom-${id}-startup-delay-min`,    `${pk}.startup_delay_min`,    10);
-                bindRange(`setting-custom-${id}-startup-delay-max`,    `${pk}.startup_delay_max`,    45);
-                bindRange(`setting-custom-${id}-session-interval-min`, `${pk}.session_interval_min`, 45);
-                bindRange(`setting-custom-${id}-session-interval-max`, `${pk}.session_interval_max`, 90);
-                bindRange(`setting-custom-${id}-session-chance`,       `${pk}.session_chance`,       60);
-
-                // Checkbox helpers
-                const bindCheck = (elId, prefKey, defaultVal) => {
-                    const el = card.querySelector(`#${elId}`);
-                    if (!el) return;
-                    el.checked = prefs ? prefs.get(prefKey, defaultVal) : defaultVal;
-                    el.addEventListener('change', () => sp && sp(prefKey, el.checked));
-                };
-
-                bindCheck(`setting-custom-${id}-proactive-enabled`, `${pk}.proactive_enabled`, false);
-                bindCheck(`setting-custom-${id}-proactive-popup`,   `${pk}.proactive_popup`,   true);
-            });
+                }
+            } catch (e) {
+                console.warn('[CustomCompanions] Could not load:', e);
+            }
         }
-    } catch (e) {
-        console.warn('[CustomCompanions] Could not load:', e);
-    }
-}
 
-async function _deleteCustomCompanion(id, name) {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    try {
-        const res = await fetch(`/api/companion-creator/${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error((await res.json()).detail || 'Delete failed');
-        await loadCustomCompanionsSidebar();
-    } catch (e) {
-        alert(`Could not delete "${name}": ${e.message}`);
-    }
-}
+        async function _deleteCustomCompanion(id, name) {
+            if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+            try {
+                const res = await fetch(`/api/companion-creator/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error((await res.json()).detail || 'Delete failed');
+                await loadCustomCompanionsSidebar();
+            } catch (e) {
+                alert(`Could not delete "${name}": ${e.message}`);
+            }
+        }
 
-// Re-run settings-panel injection when the settings partial is lazy-loaded
-document.addEventListener('panelLoaded', (e) => {
-    if (e.detail && e.detail.tabName === 'settings') {
-        loadCustomCompanionsSidebar();
-    }
-});
+        // Re-run settings-panel injection when the settings partial is lazy-loaded
+        document.addEventListener('panelLoaded', (e) => {
+            if (e.detail && e.detail.tabName === 'settings') {
+                loadCustomCompanionsSidebar();
+            }
+        });
 
-// Load on DOMContentLoaded and also after systemReady
-document.addEventListener('DOMContentLoaded', loadCustomCompanionsSidebar);
-document.addEventListener('systemReady', loadCustomCompanionsSidebar);
-// Refresh after companion-creator tab operations
-window.addEventListener('customCompanionCreated', loadCustomCompanionsSidebar);
-window.addEventListener('customCompanionDeleted', loadCustomCompanionsSidebar);
-</script>
+        // Load on DOMContentLoaded and also after systemReady
+        document.addEventListener('DOMContentLoaded', loadCustomCompanionsSidebar);
+        document.addEventListener('systemReady', loadCustomCompanionsSidebar);
+        // Refresh after companion-creator tab operations
+        window.addEventListener('customCompanionCreated', loadCustomCompanionsSidebar);
+        window.addEventListener('customCompanionDeleted', loadCustomCompanionsSidebar);
+    </script>
 
 
-<!-- ── Profile Onboarding Modal ───────────────────────────────── -->
-<div id="profile-onboarding-overlay" class="profile-onboarding-overlay" aria-hidden="true">
-    <div class="profile-onboarding-modal" role="dialog" aria-modal="true" aria-label="Create a sidebar layout">
-        <div class="pon-header">
-            <div class="pon-badge"><i class="fas fa-layer-group"></i></div>
-            <h2 class="pon-title">Choose a Sidebar Layout</h2>
-            <p class="pon-sub">Pick a preset that matches how you work — or start from scratch. You can always change it later.</p>
-        </div>
-
-        <!-- Preset grid — populated by JS -->
-        <div class="pon-grid" id="pon-preset-grid"></div>
-
-        <div class="pon-footer">
-            <div class="pon-name-row">
-                <label class="pon-name-label" for="pon-name-input">Profile name</label>
-                <input type="text" id="pon-name-input" class="pon-name-input" placeholder="e.g. Work, Leisure, Research…" maxlength="32" autocomplete="off" spellcheck="false">
+    <!-- ── Profile Onboarding Modal ───────────────────────────────── -->
+    <div id="profile-onboarding-overlay" class="profile-onboarding-overlay" aria-hidden="true">
+        <div class="profile-onboarding-modal" role="dialog" aria-modal="true" aria-label="Create a sidebar layout">
+            <div class="pon-header">
+                <div class="pon-badge"><i class="fas fa-layer-group"></i></div>
+                <h2 class="pon-title">Choose a Sidebar Layout</h2>
+                <p class="pon-sub">Pick a preset that matches how you work — or start from scratch. You can always
+                    change it later.</p>
             </div>
-            <div class="pon-actions">
-                <button class="pon-btn-secondary" id="pon-skip-btn">Skip for now</button>
-                <button class="pon-btn-primary" id="pon-create-btn">
-                    <i class="fas fa-check"></i> Create Profile
-                </button>
+
+            <!-- Preset grid — populated by JS -->
+            <div class="pon-grid" id="pon-preset-grid"></div>
+
+            <div class="pon-footer">
+                <div class="pon-name-row">
+                    <label class="pon-name-label" for="pon-name-input">Profile name</label>
+                    <input type="text" id="pon-name-input" class="pon-name-input"
+                        placeholder="e.g. Work, Leisure, Research…" maxlength="32" autocomplete="off"
+                        spellcheck="false">
+                </div>
+                <div class="pon-actions">
+                    <button class="pon-btn-secondary" id="pon-skip-btn">Skip for now</button>
+                    <button class="pon-btn-primary" id="pon-create-btn">
+                        <i class="fas fa-check"></i> Create Profile
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
 </body>
 

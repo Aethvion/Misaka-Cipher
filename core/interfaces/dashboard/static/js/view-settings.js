@@ -2110,7 +2110,7 @@ async function saveAutoRoutingProfile(type) {
 }
 
 // ===== Version Control & Update Checker =====
-const REMOTE_VERSION_URL = "https://raw.githubusercontent.com/Aethvion/Misaka-Cipher/main/core/interfaces/dashboard/static/assets/system-status.json";
+const REMOTE_VERSION_URL = "https://raw.githubusercontent.com/Aethvion/Aethvion-Suite/main/core/interfaces/dashboard/static/assets/system-status.json";
 
 async function checkForUpdates(manual = false) {
     try {
@@ -2191,6 +2191,12 @@ async function renderVersionTabContent(localInfo = null, remoteData = null, remo
     
     // 1. Render Local Info Box
     if (localInfoBox) {
+        // Update sidebar tag as well if it exists
+        const sidebarTag = document.getElementById('suite-version-tag');
+        if (sidebarTag) {
+            sidebarTag.textContent = 'v' + localInfo.version;
+        }
+
         localInfoBox.innerHTML = `
             <div style="display: flex; align-items: center; gap: 12px;">
                 <div style="font-size: 2rem;">🛡️</div>

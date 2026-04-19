@@ -39,6 +39,7 @@
         'audio':            ['/static/js/mode-audio.js'],
         'usage':            ['/static/js/view-usage.js'],
         'settings':         ['/static/js/view-settings.js'],
+        'version':          ['/static/js/view-settings.js'],
         'ports':            ['/static/js/view-ports.js'],
         'documentation':    ['/static/js/view-documentation.js'],
         'status':           ['/static/js/view-status.js'],
