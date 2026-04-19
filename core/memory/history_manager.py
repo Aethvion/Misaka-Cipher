@@ -9,7 +9,7 @@ import threading
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from core.utils.logger import get_logger
+from core.utils import get_logger, utcnow_iso
 from core.utils.paths import HISTORY_CHAT, COMPANIONS_PERSONAS
 
 logger = get_logger(__name__)
