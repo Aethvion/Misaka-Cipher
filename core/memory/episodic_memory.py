@@ -119,7 +119,7 @@ class EpisodicMemoryStore:
                 from sentence_transformers import SentenceTransformer
                 self.embedding_model = SentenceTransformer(model_name, local_files_only=True)
                 logger.info("Loaded embedding model from local cache")
-            except:
+            except Exception:
                 logger.error("Could not load embedding model. Memory system will be limited.")
                 # Create a dummy embedding model that returns zeros
                 # This allows the system to start even without embeddings

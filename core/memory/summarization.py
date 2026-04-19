@@ -146,7 +146,7 @@ class Heartbeat:
                     summary = response.content
                 else:
                     summary = self._build_default_summary(domains_active, tools_generated, agents_spawned)
-            except:
+            except Exception:
                 summary = self._build_default_summary(domains_active, tools_generated, agents_spawned)
         else:
             summary = self._build_default_summary(domains_active, tools_generated, agents_spawned)

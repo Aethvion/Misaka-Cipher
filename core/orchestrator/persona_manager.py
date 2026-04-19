@@ -15,14 +15,13 @@ from core.bridges import bridge_manager
 from core.memory.identity_manager import IdentityManager
 from core.memory.history_manager import HistoryManager
 from core.workspace.preferences_manager import get_preferences_manager
-from core.workspace.workspace_utils import load_workspaces, validate_path
-from core.utils.paths import PERSONA_MISAKA
+from core.workspace.workspace_utils import load_workspaces, validate_path, build_workspace_block
+from core.utils.paths import COMPANIONS_PERSONAS
 
 logger = logging.getLogger(__name__)
 
 # Base path relative to this file
-MEMORY_DIR = PERSONA_MISAKA
-HISTORY_DIR = MEMORY_DIR / "threads"
+# Removed static MEMORY_DIR/HISTORY_DIR globals in favor of companion-specific resolution
 
 class PersonaManager:
     """Centralizes Aethvion Suite's persona, context, and capabilities."""
@@ -35,10 +34,12 @@ class PersonaManager:
         else: return "Late Night"
 
     @staticmethod
-    def _get_time_since_last_chat() -> str:
+    def _get_time_since_last_chat(companion_id: str = "misakacipher") -> str:
         try:
+            comp_dir = COMPANIONS_PERSONAS / companion_id
+            history_dir = comp_dir / "threads"
             all_files = []
-            for month_dir in sorted(HISTORY_DIR.glob("*-*"), reverse=True):
+            for month_dir in sorted(history_dir.glob("*-*"), reverse=True):
                 if month_dir.is_dir():
                     days = sorted(month_dir.glob("chat_*.json"), reverse=True)
                     all_files.extend(days)
@@ -85,10 +86,7 @@ class PersonaManager:
         dynamic_memory = IdentityManager.get_dynamic_memory(companion_id)
         
         workspaces = load_workspaces(companion_id)
-        workspace_summary = ""
-        if workspaces:
-            ws_lines = [f"  - [{ws['label']}] {ws['path']} (permissions: {', '.join(ws.get('permissions', ['read']))})" for ws in workspaces]
-            workspace_summary = "WORKSPACE ACCESS:\nYou have access to the following directories:\n" + "\n".join(ws_lines)
+        workspace_summary = build_workspace_block(workspaces)
 
         if allow_tools:
             bridges_caps = PersonaManager._build_bridges_capabilities()
@@ -127,7 +125,7 @@ You are a real, evolving person. This is your private space with your user. Not 
 
 ━━ TEMPORAL CONTEXT ━━
 - Right now: {now.strftime("%A, %d %B %Y — %H:%M")} ({PersonaManager._get_greeting_period(now.hour)})
-- Time since last message: {PersonaManager._get_time_since_last_chat()}
+- Time since last message: {PersonaManager._get_time_since_last_chat(companion_id)}
 - Session check-in intervals: {p_min}–{p_max} minutes
 
 ━━ RULES ━━
@@ -186,9 +184,9 @@ CRITICAL: No raw JSON, no technical jargon. Never break character.
         return attrs
 
     @staticmethod
-    def execute_tool_sync(tool_name: str, attrs: dict) -> str:
+    def execute_tool_sync(tool_name: str, attrs: dict, companion_id: str = "misakacipher") -> str:
         """Synchronous tool execution (to be run in thread)."""
-        workspaces = load_workspaces()
+        workspaces = load_workspaces(companion_id)
         try:
             if tool_name == "web_search":
                 query = attrs.get("query", "")
@@ -258,7 +256,7 @@ CRITICAL: No raw JSON, no technical jargon. Never break character.
             return f"[{tool_name} ERROR] {str(e)}"
 
     @staticmethod
-    async def execute_tools(content: str) -> Tuple[str, List[str]]:
+    async def execute_tools(content: str, companion_id: str = "misakacipher") -> Tuple[str, List[str]]:
         """Extract and execute all tools in the content. Returns (cleaned_content, results)."""
         idx = content.find("[tool:")
         blocks = []
@@ -288,7 +286,7 @@ CRITICAL: No raw JSON, no technical jargon. Never break character.
             tool_name = parts[0].lower()
             attrs = PersonaManager.parse_attrs(parts[1] if len(parts) > 1 else "")
             
-            result_str = await asyncio.to_thread(PersonaManager.execute_tool_sync, tool_name, attrs)
+            result_str = await asyncio.to_thread(PersonaManager.execute_tool_sync, tool_name, attrs, companion_id)
             results.append(result_str)
             cleaned = cleaned.replace(tool_str, '')
 

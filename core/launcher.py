@@ -64,7 +64,7 @@ def _log(msg):
     try:
         with open(_diag_log, "a", encoding="utf-8") as f:
             f.write(f"[{time.ctime()}] {msg}\n")
-    except:
+    except Exception:
         pass
 
 _log("--- Launcher script loaded ---")

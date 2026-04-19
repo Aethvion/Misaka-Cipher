@@ -10,14 +10,12 @@ import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from core.utils import utcnow_iso
-from core.utils.paths import COMPANIONS_PERSONAS, PERSONA_MISAKA
+from core.utils.paths import COMPANIONS_PERSONAS
 
 logger = logging.getLogger(__name__)
 
 def _get_companion_dir(companion_id: str) -> Path:
     """Get the persistent directory for a companion."""
-    if companion_id == "misakacipher":
-        return PERSONA_MISAKA
     return COMPANIONS_PERSONAS / companion_id
 
 class IdentityManager:

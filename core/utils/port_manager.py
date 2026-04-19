@@ -85,7 +85,7 @@ class PortManager:
                     lock_file.write_text(str(os.getpid()))
                     locked = True
                     break
-            except:
+            except Exception:
                 pass
             pytime.sleep(0.1)
             
@@ -120,7 +120,7 @@ class PortManager:
             if locked and lock_file.exists():
                 try:
                     lock_file.unlink()
-                except:
+                except Exception:
                     pass
 
     @classmethod
