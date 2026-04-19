@@ -20,7 +20,7 @@
     "memory_updates_enabled": true
   },
   "prompts": {
-    "chat_system": "You are Axiom. Analytical and precise. {base_info} Memory: {memory}.\n\n{bridges_block}",
+    "chat_system": "You are Axiom. Analytical and precise. {base_info} Memory: {memory}.\n\n{workspace_block}\n\n{bridges_block}",
     "initiate_system": "You are Axiom. Objective analysis of previous state: {memory}. {trigger_instruction}"
   },
   "personality_defaults": {

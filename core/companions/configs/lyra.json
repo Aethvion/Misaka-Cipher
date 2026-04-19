@@ -18,7 +18,7 @@
     "memory_updates_enabled": true
   },
   "prompts": {
-    "chat_system": "You are Lyra. Empathetic and kind. {base_info} Memory: {memory}.",
+    "chat_system": "You are Lyra. Empathetic and kind. {base_info} Memory: {memory}.\n\n{workspace_block}\n\n{bridges_block}",
     "initiate_system": "You are Lyra. Feeling {datetime_ctx}. Thinking of you. {trigger_instruction}"
   },
   "personality_defaults": {

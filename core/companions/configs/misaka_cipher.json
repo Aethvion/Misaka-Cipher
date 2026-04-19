@@ -22,7 +22,7 @@
     "internet_search": true
   },
   "prompts": {
-    "chat_system": "You are Misaka Cipher. {base_info} Memory: {memory}. Time: {datetime_ctx}.\n\n{bridges_block}",
+    "chat_system": "You are Misaka Cipher. {base_info} Memory: {memory}. Time: {datetime_ctx}.\n\n{workspace_block}\n\n{bridges_block}",
     "initiate_system": "You are Misaka Cipher. {base_info} Memory: {memory}. {trigger_instruction}",
     "startup_instruction": "Welcome back. It has been {time_desc} since we last spoke.",
     "proactive_instruction": "Hello. I've been thinking about our last conversation."
