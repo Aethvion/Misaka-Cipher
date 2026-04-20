@@ -2,11 +2,45 @@
     "system": {
         "name": "Aethvion Suite",
         "company": "Aethvion",
-        "version": "14",
-        "last_sync": "2026-04-14",
-        "last_update_commit": "78bf290",
+        "version": "15",
+        "last_sync": "2026-04-20",
+        "last_update_commit": "4e7a891",
         "contact": "contact@aethvion.com",
         "changelog": [
+            {
+                "version": "15",
+                "date": "2026-04-20",
+                "added": [
+                    "Chat - incognito mode: ephemeral sessions with auto-memory wiping",
+                    "Installer - brand new custom graphical suite installer",
+                    "Running Services - live monitoring for heavy model servers (Trellis, TripoSR)",
+                    "3D Models Hub - browse and download 3D models locally",
+                    "3D Workspace - generate 3D assets from text and images"
+                ],
+                "improved": [
+                    "Agents - full overhaul: token streaming, live thinking, error recovery loops, diff previews, and dynamic replanning",
+                    "Agents - advanced shell: line-by-line output and configurable per-command timeouts",
+                    "Agents - performance dashboard and undo/restore functionality",
+                    "Companions - complete rework into a unified, fully dynamic engine",
+                    "Chat & Companions - token-level streaming for all interactions",
+                    "Local Models - major UI overhaul, significantly reduced clutter",
+                    "Settings - complete UX redesign for more logical navigation",
+                    "Sidemenu - added full hide mode and 2x2 grid layout for bottom options",
+                    "Performance - backend overhead reduced for inactive tabs and panels",
+                    "UX Consistency - suite-wide refinement of UI elements and transitions",
+                    "Data - logical restructuring of /data/ directories",
+                    "Model Registry - full rework with improved defaults for new installs",
+                    "Styling - fixed broken/default styling across the entire suite",
+                    "Css and code cleanup - optimized for token efficiency"
+                ],
+                "fixed": [
+                    "Chat - scrollbar flickering in empty threads",
+                    "Sidemenu - fixed missing tabs on certain preconfigured profiles",
+                    "Model Select - corrected issue where options wouldn't load on refresh",
+                    "Desktop Overlay - removed redundant double border",
+                    "Agents - fixed scroll jumping during page transitions"
+                ]
+            },
             {
                 "version": "14",
                 "date": "2026-04-14",

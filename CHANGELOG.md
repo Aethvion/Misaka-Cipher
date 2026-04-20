@@ -1,27 +1,41 @@
 # Changelog
 
 All notable changes to Aethvion Suite will be documented in this file.
-The top section contains the latest changes that are already available on the `main` branch.
 
-## [Unreleased] / In Development
+## [v15] - 2026-04-20
 
-### Major Feature Set Expansion (WIP)
-- **Incognito Chat Mode:** Private sessions with fully ephemeral threads that wipe all data from memory on exit, bypass persistence, and force no-context mode.
-- **Hide Sidebar:** Added a new "Full Hide" control to the sidebar header to maximize workspace layout for focused work.
-- **3D Models Hub:** A new dedicated tab in the Model Hub featuring state-of-the-art 3D generation models (Trellis 2, TripoSR, CRM) with local generation and export controls.
+### Major Additions
+- **Incognito Chat Mode**: Private sessions with fully ephemeral threads that automatically wipe all data from memory on exit and bypass persistence.
+- **Custom Graphical Installer**: Replaced the raw CMD installer with a clean, modern Aethvion-branded installer for a much better first-time experience.
+- **Running Services Panel**: New panel to monitor and manage heavier local model servers (e.g. Trellis 2, TripoSR) running in their own isolated environments.
+- **3D Models Hub & Workspace**: Dedicated section for downloading and generating 3D models locally using models like Trellis 2 and TripoSR, with export controls.
 
-### Major Agent Improvements
-- Real token-level streaming with live thinking display
-- Automatic error recovery loop with intelligent repair passes
-- Dynamic replanning when steps fail or produce unexpected results
-- Robust file editing with diff preview panel and undo/restore functionality
-- Significantly improved context handling and tool usage
-- Better shell command output (line-by-line streaming with configurable timeout per command)
-- Enhanced web fetching for cleaner article and documentation content
-- New Agent performance dashboard (token usage, success rate, and average task duration)
+### Major Improvements
+- **Agents**: Massive upgrade including token-level streaming with live thinking, automatic error recovery with repair passes, dynamic replanning, robust file editing with diff preview + undo/restore, better context handling, line-by-line shell output, improved web fetching, and a new performance dashboard.
+- **Companions**: Complete rework — now fully dynamic with a unified companion engine. All companions (including custom ones) use the same backend.
+- **Local Models**: Major overhaul — much cleaner UI and better organization.
+- **Performance**: Significant backend improvements. Inactive tabs and non-visible panels now consume near-zero resources.
+- **Data Structure**: Restructured `/data/` directories for better organization and clarity.
+- **Model Registry**: Full rework with proper separation of defaults and suggested models. New users now get sensible defaults on first install.
+- **Sidebar**: Now supports full hide mode and improved bottom section layout (2x2 grid).
+- **Chat & Companions**: Token-level streaming everywhere + automatic thread creation when submitting a prompt with no active thread.
+- **Settings**: Major UI overhaul with much better logic and user experience.
+- **UX Consistency**: Large number of small improvements across all pages for a more polished and professional feel.
+- **Styling & Code**: Fixed broken/default styling, cleaned up CSS and code throughout the project.
+- **Desktop Overlay**: Removed the weird double border.
 
-### Other Improvements
-- Various stability and quality improvements across the agent system
+### Fixes
+- Chat threads scrollbar flickering in empty threads
+- Sidemenu missing tabs on preconfigured profiles (now shows all options correctly)
+- Model selector not loading options on refresh
+- Agents scrolling issues when switching/loading pages
+- Many smaller stability and visual fixes
+
+### How to Update
+- Use the built-in **self-update** button in **Settings → Version Control**
+- Or run `git pull` if you're using the git version
+
+---
 
 ## [v14] - 2026-04-14
 

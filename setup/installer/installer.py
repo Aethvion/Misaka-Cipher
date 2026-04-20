@@ -18,7 +18,7 @@ from PIL import Image, ImageDraw, ImageTk
 if sys.platform == "win32":
     try:
         import ctypes
-        myappid = 'com.aethvion.suite.installer.v14.final'
+        myappid = 'com.aethvion.suite.installer.v15.final'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except: pass
 
