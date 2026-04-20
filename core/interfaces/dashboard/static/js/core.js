@@ -17,15 +17,15 @@
  */
 function showToast(message, type = 'info', duration = 3500, opts = {}) {
     const container = document.getElementById('toast-container');
-    if (!container) { console.warn('[toast]', message); return { dismiss: () => {} }; }
+    if (!container) { console.warn('[toast]', message); return { dismiss: () => { } }; }
 
     const icons = {
         success: 'fa-circle-check',
-        error:   'fa-circle-xmark',
-        warn:    'fa-triangle-exclamation',
-        info:    'fa-circle-info',
+        error: 'fa-circle-xmark',
+        warn: 'fa-triangle-exclamation',
+        info: 'fa-circle-info',
     };
-    
+
     // Auto-extend duration for errors to allow reading/copying
     if (type === 'error' && duration === 3500) duration = 12000;
 
@@ -88,13 +88,13 @@ window.showToast = showToast;
  * @param {object} opts  { confirmLabel, icon }
  */
 function showConfirm(title, body, onConfirm, opts = {}) {
-    const overlay  = document.getElementById('confirm-modal');
+    const overlay = document.getElementById('confirm-modal');
     if (!overlay) { if (confirm(body)) onConfirm(); return; }
 
     document.getElementById('confirm-modal-title').textContent = title;
-    document.getElementById('confirm-modal-body').textContent  = body;
+    document.getElementById('confirm-modal-body').textContent = body;
 
-    const okBtn  = document.getElementById('confirm-modal-ok');
+    const okBtn = document.getElementById('confirm-modal-ok');
     const canBtn = document.getElementById('confirm-modal-cancel');
     okBtn.textContent = opts.confirmLabel || 'Confirm';
 
@@ -119,11 +119,11 @@ function showConfirm(title, body, onConfirm, opts = {}) {
         }, { once: true });
     };
 
-    const handleOk  = () => { close(); onConfirm(); cleanup(); };
+    const handleOk = () => { close(); onConfirm(); cleanup(); };
     const handleCan = () => { close(); cleanup(); };
     const handleKey = (e) => {
         if (e.key === 'Escape') { handleCan(); return; }
-        if (e.key === 'Enter')  { handleOk();  return; }
+        if (e.key === 'Enter') { handleOk(); return; }
         // Focus trap — keep Tab cycling inside modal
         if (e.key === 'Tab') {
             e.preventDefault();
@@ -149,7 +149,7 @@ function initKeyboardShortcuts() {
     const overlay = document.getElementById('kbd-overlay');
     if (!overlay) return;
 
-    const open  = () => { overlay.style.display = 'flex'; }
+    const open = () => { overlay.style.display = 'flex'; }
     const close = () => {
         overlay.classList.add('hiding');
         overlay.addEventListener('animationend', () => {
@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 1. Load preferences first (server source)
         if (window.prefs && typeof window.prefs.load === 'function') {
             await window.prefs.load();
-            
+
             // Cleanup legacy key if present in memory to prevent confusion
             if (window.prefs.data && window.prefs.data.active_tab) {
                 delete window.prefs.data.active_tab;
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 2. Identify the authoritative mode (Server pref > Local hint > Default)
         const modeHint = localStorage.getItem('dashboard_mode_hint') || 'home';
-        const authoritativeMode = (window.prefs && typeof window.prefs.get === 'function') 
+        const authoritativeMode = (window.prefs && typeof window.prefs.get === 'function')
             ? window.prefs.get('dashboard_mode', modeHint)
             : modeHint;
 
@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
             }
-            
+
             const threadsCollapsed = window.prefs.get('threads_collapsed', false);
             if (threadsCollapsed === true || threadsCollapsed === 'true') {
                 const layout = document.querySelector('.three-column-layout');
@@ -409,13 +409,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.addEventListener('notif-navigate', (e) => {
         const { tab, context } = e.detail;
         if (!tab) return;
-        
+
         // Handle AI mode switching if needed
         const AI_TABS = ['chat', 'agents', 'agent-corp', 'schedule', 'photo', 'audio'];
         if (AI_TABS.includes(tab)) {
             if (typeof setDashboardMode === 'function') setDashboardMode('ai');
         }
-        
+
         // Switch tab if it exists and we're not already on it
         if (typeof switchMainTab === 'function') {
             switchMainTab(tab);
@@ -441,7 +441,7 @@ async function pollStartupStatus() {
             .then(r => r.json())
             .then(data => {
                 if (data.system) {
-                    splashVersion.textContent = `BUILD v${data.system.version}-STABLE`;
+                    splashVersion.textContent = `BUILD v${data.system.version}`;
                 }
             }).catch(e => console.warn("Could not load version for splash:", e));
     }
@@ -455,7 +455,7 @@ async function pollStartupStatus() {
 
                     if (progressBar) progressBar.style.width = `${data.progress}%`;
                     if (percentText) percentText.textContent = `${Math.round(data.progress)}%`;
-                    
+
                     if (statusText && data.status) {
                         statusText.textContent = data.status;
                     }
@@ -463,7 +463,7 @@ async function pollStartupStatus() {
                     if (data.initialized) {
                         if (progressBar) progressBar.style.width = `100%`;
                         if (percentText) percentText.textContent = `100%`;
-                        
+
                         setTimeout(() => {
                             splash.classList.add('fade-out');
                             setTimeout(() => {
@@ -592,7 +592,7 @@ function initializeUI() {
             await openModuleFolder(path);
         }
     });
-    
+
     // Periodically update module badges (paused when hidden)
     setInterval(() => {
         if (!document.hidden) updateModuleStatusBadges();
@@ -615,7 +615,7 @@ function initializeUI() {
                 }
                 savePreference('sidebar_hidden', false);
             }
-            
+
             sidebarNav.classList.toggle('collapsed');
             if (typeof savePreference === 'function') {
                 savePreference('sidebar_collapsed', sidebarNav.classList.contains('collapsed'));
@@ -677,7 +677,7 @@ function initializeUI() {
     // Threads Collapse Toggle
     const toggleThreadsBtn = document.getElementById('toggle-threads-btn');
     const threeColumnLayout = document.querySelector('.three-column-layout');
-    
+
     if (toggleThreadsBtn && threeColumnLayout) {
         toggleThreadsBtn.addEventListener('click', () => {
             threeColumnLayout.classList.toggle('threads-collapsed');
@@ -876,7 +876,7 @@ async function setDashboardMode(mode, save = true) {
 
     // Restore the last active tab for this mode
     let targetTab = dashboardMode === 'home' ? 'suite-home' : 'chat';
-    
+
     // 1. Try Hint for instant restore
     const hintTab = localStorage.getItem(`active_tab_hint_${dashboardMode}`);
     if (hintTab) targetTab = hintTab;
@@ -885,15 +885,15 @@ async function setDashboardMode(mode, save = true) {
     if (window.prefs && typeof window.prefs.get === 'function') {
         const savedTab = window.prefs.get(`active_tab_${dashboardMode}`);
         if (savedTab) targetTab = savedTab;
-        
+
         // Final Purge of legacy key (if it still leaks from old caches)
-        localStorage.removeItem('active_tab'); 
+        localStorage.removeItem('active_tab');
     }
 
     // Validate target tab exists. 
     // If not found yet, it might still be rendering (race condition with sidebar-manager)
     let targetBtn = document.querySelector(`.main-tab[data-maintab="${targetTab}"]`);
-    
+
     if (!targetBtn) {
         // Patient Retry: The sidebar might be rendering precisely now
         for (let i = 0; i < 5; i++) {
@@ -915,7 +915,7 @@ async function setDashboardMode(mode, save = true) {
 function initCategoryCollapse() {
     document.querySelectorAll('.sidebar-category[data-cat]').forEach(catEl => {
         const catId = catEl.dataset.cat;
-        const body  = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
+        const body = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
         if (!body) return;
 
         // Add tab count to label
@@ -943,7 +943,7 @@ function initCategoryCollapse() {
 
 function toggleCategory(catId) {
     const catEl = document.querySelector(`.sidebar-category[data-cat="${catId}"]`);
-    const body  = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
+    const body = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
     if (!catEl || !body) return;
 
     const isNowCollapsed = body.classList.toggle('cat-collapsed');
@@ -958,7 +958,7 @@ function toggleCategory(catId) {
 function initSectionCollapse() {
     document.querySelectorAll('.sidebar-section-header[data-section]').forEach(secEl => {
         const secId = secEl.dataset.section;
-        const body  = document.querySelector(`.section-body[data-section-body="${secId}"]`);
+        const body = document.querySelector(`.section-body[data-section-body="${secId}"]`);
         if (!body) return;
 
         // Restore saved state
@@ -978,7 +978,7 @@ function initSectionCollapse() {
 
 function toggleSection(secId) {
     const secEl = document.querySelector(`.sidebar-section-header[data-section="${secId}"]`);
-    const body  = document.querySelector(`.section-body[data-section-body="${secId}"]`);
+    const body = document.querySelector(`.section-body[data-section-body="${secId}"]`);
     if (!secEl || !body) return;
 
     const isNowCollapsed = body.classList.toggle('section-collapsed');
@@ -1003,13 +1003,13 @@ function applyNavVisibility() {
     // Then hide categories if all their tabs are hidden
     document.querySelectorAll('.sidebar-category[data-cat]').forEach(catEl => {
         const catId = catEl.dataset.cat;
-        const body  = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
+        const body = document.querySelector(`.cat-body[data-cat-body="${catId}"]`);
         const catPrefHidden = prefs.get(`nav_cat_hidden_${catId}`, false);
-        
+
         let allTabsHidden = false;
         if (body) {
             const tabs = body.querySelectorAll('.main-tab');
-            allTabsHidden = tabs.length > 0 && Array.from(tabs).every(t => 
+            allTabsHidden = tabs.length > 0 && Array.from(tabs).every(t =>
                 t.classList.contains('nav-hidden') || t.classList.contains('mode-hidden')
             );
         }
@@ -1022,11 +1022,11 @@ function applyNavVisibility() {
     // Finally hide sections if everything inside them is hidden
     document.querySelectorAll('.sidebar-section-header[data-section]').forEach(secEl => {
         const secId = secEl.dataset.section;
-        const body  = document.querySelector(`.section-body[data-section-body="${secId}"]`);
+        const body = document.querySelector(`.section-body[data-section-body="${secId}"]`);
         if (!body) return;
 
         const contents = body.querySelectorAll('.main-tab, .sidebar-category');
-        const everyThingHidden = contents.length > 0 && Array.from(contents).every(el => 
+        const everyThingHidden = contents.length > 0 && Array.from(contents).every(el =>
             el.classList.contains('nav-hidden') || el.classList.contains('mode-hidden')
         );
 
@@ -1067,9 +1067,9 @@ function _renderPanelTimestamp(panelKey) {
     if (!el) return;
     const diff = Math.round((Date.now() - ts) / 1000);
     let label = diff < 10 ? 'just now'
-        : diff < 60  ? `${diff}s ago`
-        : diff < 3600 ? `${Math.floor(diff/60)}m ago`
-        : `${Math.floor(diff/3600)}h ago`;
+        : diff < 60 ? `${diff}s ago`
+            : diff < 3600 ? `${Math.floor(diff / 60)}m ago`
+                : `${Math.floor(diff / 3600)}h ago`;
     el.textContent = `Updated ${label}`;
     el.title = new Date(ts).toLocaleTimeString();
 }
@@ -1098,7 +1098,7 @@ async function switchMainTab(tabName, save = true) {
         // Show the panel (spinner state) immediately so navigation feels instant
         document.querySelectorAll('.main-tab-panel').forEach(p => p.classList.remove('active'));
         const _eagerPanel = document.getElementById(
-            ['output','screenshots','camera','uploads'].includes(actualTabName)
+            ['output', 'screenshots', 'camera', 'uploads'].includes(actualTabName)
                 ? 'files-panel' : `${actualTabName}-panel`
         );
         if (_eagerPanel) _eagerPanel.classList.add('active');
@@ -1285,7 +1285,7 @@ async function launchModule(name) {
         console.log(`Launching module: ${name}`);
         const response = await fetch('/api/system/ports');
         if (!response.ok) throw new Error("Failed to fetch registered ports");
-        
+
         const ports = await response.json();
         // Fuzzy search for the module name in the registered list
         let port = null;
@@ -1321,7 +1321,7 @@ async function launchModule(name) {
 async function runModuleService(moduleName) {
     const btn = document.querySelector(`.run-module-btn[data-module="${moduleName}"]`);
     const originalText = btn ? btn.innerText : 'START SERVICE';
-    
+
     if (btn) {
         btn.disabled = true;
         btn.innerText = 'STARTING...';
@@ -1386,7 +1386,7 @@ async function updateModuleStatusBadges() {
         const response = await fetch('/api/system/ports');
         if (!response.ok) return;
         const ports = await response.json();
-        
+
         const registeredModules = Object.values(ports).map(m => m.toLowerCase());
 
         ['vtuber', 'tracking', 'photo', 'audio', 'driveinfo', 'finance', 'kanban'].forEach(mod => {
@@ -1427,7 +1427,7 @@ window._aeClickAwayManager = {
             this.registrations.forEach(reg => {
                 const panel = typeof reg.panel === 'string' ? document.getElementById(reg.panel) : reg.panel;
                 const trigger = typeof reg.trigger === 'string' ? document.getElementById(reg.trigger) : reg.trigger;
-                
+
                 if (panel && reg.isOpen() && !panel.contains(e.target)) {
                     if (trigger && (trigger === e.target || trigger.contains(e.target))) return;
                     reg.onClose();
@@ -1598,7 +1598,7 @@ async function loadChatModels() {
 
     // If no selects found, we still might want to fetch and cache the data
     // for panels that might load later.
-    
+
     try {
         const res = await fetch('/api/registry/models/chat');
         if (!res.ok) throw new Error('Failed to load chat models');
@@ -1615,7 +1615,7 @@ async function loadChatModels() {
 
         const chatOptions = generateCategorizedModelOptions(data, 'chat');
         const agentOptions = generateCategorizedModelOptions(data, 'agent');
-        
+
         // Always cache the latest options
         window._cachedChatModelOptions = chatOptions;
         window._cachedAgentModelOptions = agentOptions;
@@ -1687,7 +1687,7 @@ document.addEventListener('tabChanged', (e) => {
     } else {
         loadChatModels();
     }
-    
+
     // Fallback for extreme race conditions (e.g. partial loader cache)
     setTimeout(loadChatModels, 500);
     setTimeout(loadChatModels, 2000);
@@ -2008,15 +2008,15 @@ function initColumnResizeHandles() {
     // Threads column (left of chat): dragging right expands threads
     setupHandle('resize-threads-chat', '--col-threads', 160, 400, 'left');
     // Agents column (right of chat): dragging left expands agents
-    setupHandle('resize-chat-agents',  '--col-agents',  200, 500, 'right');
+    setupHandle('resize-chat-agents', '--col-agents', 200, 500, 'right');
 }
 
 // ── Preferences (defined here so all scripts can use `prefs` on load) ─────────
 // ─── Sidebar Search ───────────────────────────────────────────────────────────
 (function initSidebarSearch() {
     function run() {
-        const input     = document.getElementById('sidebar-search-input');
-        const clearBtn  = document.getElementById('sidebar-search-clear');
+        const input = document.getElementById('sidebar-search-input');
+        const clearBtn = document.getElementById('sidebar-search-clear');
         if (!input) return;
 
         // One empty-state message element, injected once
