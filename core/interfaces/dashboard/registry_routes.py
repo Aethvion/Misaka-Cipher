@@ -14,7 +14,7 @@ from typing import Dict, Any
 CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0
 from fastapi import APIRouter, HTTPException, Request
 
-from core.utils import get_logger
+from core.utils import get_logger, atomic_json_write
 from core.utils.model_downloader import ModelDownloader
 from core.utils.registry_utils import ensure_registry_initialized
 from core.utils.paths import (
@@ -269,9 +269,7 @@ def _save_registry(data: Dict[str, Any]) -> None:
                         cleaned_models[model_key] = model_info
                 provider["models"] = cleaned_models
 
-    REGISTRY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(REGISTRY_PATH, 'w') as f:
-        json.dump(data, f, indent=4)
+    atomic_json_write(REGISTRY_PATH, data, indent=4)
     logger.info("Model registry saved to disk (cleaned)")
 
 
@@ -952,8 +950,7 @@ def _load_icfg() -> dict:
 
 
 def _save_icfg(cfg: dict):
-    _INFERENCE_CFG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _INFERENCE_CFG_PATH.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    atomic_json_write(_INFERENCE_CFG_PATH, cfg)
 
 
 @router.get("/local/inference-config")
@@ -1113,8 +1110,7 @@ async def get_system_specs():
 
     # ── Save to data/system_specs.json ───────────────────────────────────────
     try:
-        SYSTEM_SPECS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        SYSTEM_SPECS_PATH.write_text(json.dumps(specs, indent=2))
+        atomic_json_write(SYSTEM_SPECS_PATH, specs)
     except Exception as exc:
         logger.warning(f"Could not save system specs: {exc}")
 

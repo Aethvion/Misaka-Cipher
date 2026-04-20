@@ -646,7 +646,7 @@ def main() -> None:
                         if s.connect_ex(('127.0.0.1', dashboard_port)) == 0:
                             port_ready = True
                             break
-                except:
+                except OSError:
                     pass
                 time.sleep(0.5)
 

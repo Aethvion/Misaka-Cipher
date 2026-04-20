@@ -4,6 +4,8 @@ Tracks API calls, token usage, and estimated costs.
 """
 
 import json
+import os
+import tempfile
 import threading
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -150,7 +152,7 @@ class UsageTracker:
         if metadata.get("routing_reason"):
             entry["routing_reason"] = metadata["routing_reason"]
 
-        # Append to daily file
+        # Append to daily file (atomic write under lock for thread + crash safety)
         path = self._get_daily_log_path(now)
         try:
             with _lock:
@@ -159,8 +161,17 @@ class UsageTracker:
                     with open(path, "r", encoding="utf-8") as f:
                         logs = json.load(f)
                 logs.append(entry)
-                with open(path, "w", encoding="utf-8") as f:
-                    json.dump(logs, f, indent=2)
+                fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+                try:
+                    with os.fdopen(fd, "w", encoding="utf-8") as f:
+                        json.dump(logs, f, indent=2)
+                    os.replace(tmp_path, str(path))
+                except Exception:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+                    raise
         except Exception as e:
             logger.error(f"Failed to log usage to {path}: {e}")
 

@@ -138,7 +138,9 @@ async def search_workspace_files(req: SemanticSearchRequest):
                         try:
                             content = path.read_text(encoding='utf-8', errors='ignore')
                             store.index_file(f['path'], content, {"domain": f['domain']})
-                        except: continue
+                        except Exception as e:
+                            logger.debug(f"File index error for {f['path']!r}: {e}")
+                            continue
         
         results = store.search(req.query, limit=req.limit, domain=req.domain)
         
@@ -185,7 +187,9 @@ async def reindex_workspace_files():
                         content = path.read_text(encoding='utf-8', errors='ignore')
                         if store.index_file(f['path'], content, {"domain": f['domain']}):
                             indexed_count += 1
-                    except: continue
+                    except Exception as e:
+                        logger.debug(f"File reindex error for {f['path']!r}: {e}")
+                        continue
         
         return {"status": "success", "indexed_count": indexed_count}
     except Exception as e:

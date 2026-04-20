@@ -3,6 +3,7 @@ Aethvion Suite - Agent Runner
 Multi-step ReAct-style execution loop with persistent state.
 """
 import json
+import os
 import queue
 import re
 import subprocess
@@ -12,7 +13,7 @@ from pathlib import Path
 from typing import Callable, Optional, List, Dict, Any
 
 from core.utils.logger import get_logger
-from core.utils import utcnow_iso
+from core.utils import utcnow_iso, atomic_json_write
 from core.orchestrator.task_queue import is_agent_task_cancelled
 from core.ai.call_contexts import CallSource
 
@@ -299,7 +300,7 @@ class AgentState:
                 "prior_tasks": self.prior_tasks,
                 "file_digests": self.file_digests,
             }
-            p.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            atomic_json_write(p, data)
         except Exception as e:
             logger.warning(f"[AgentState] Could not save state to {self.state_path}: {e}")
 
@@ -1296,7 +1297,9 @@ class AgentRunner:
         three strategies fail is ``patch_file FAILED`` returned.
         """
         try:
-            fp = self.workspace / path
+            fp, err = self._safe_path(path)
+            if err:
+                return err
             if not fp.exists():
                 return f"Error: {path} does not exist — use write_file to create it first."
             if not old:
@@ -1364,9 +1367,32 @@ class AgentRunner:
         except Exception as e:
             return f"Error: {e}"
 
+    # ── Path safety helper ────────────────────────────────────────────────
+
+    def _safe_path(self, path: str) -> "tuple[Path | None, str | None]":
+        """Resolve *path* relative to workspace and block directory traversal.
+
+        Returns ``(resolved_path, None)`` on success, or ``(None, error_message)``
+        when the resolved path escapes the workspace root.
+        """
+        try:
+            resolved = (self.workspace / path).resolve()
+            ws_root  = self.workspace.resolve()
+            # str comparison is safe because resolve() returns absolute paths
+            if not str(resolved).startswith(str(ws_root) + os.sep) and resolved != ws_root:
+                return None, (
+                    f"Security: path {path!r} resolves outside the workspace. "
+                    "Use relative paths that stay within the workspace directory."
+                )
+            return resolved, None
+        except Exception as e:
+            return None, f"Invalid path {path!r}: {e}"
+
     def _write_file(self, path: str, content: str) -> str:
         try:
-            fp = self.workspace / path
+            fp, err = self._safe_path(path)
+            if err:
+                return err
             fp.parent.mkdir(parents=True, exist_ok=True)
             fp.write_text(content, encoding="utf-8")
             return f"Written {len(content.encode()):,} bytes"
@@ -1376,7 +1402,9 @@ class AgentRunner:
     def _append_file(self, path: str, content: str) -> str:
         """Append `content` to the end of a file (creates it if it doesn't exist)."""
         try:
-            fp = self.workspace / path
+            fp, err = self._safe_path(path)
+            if err:
+                return err
             fp.parent.mkdir(parents=True, exist_ok=True)
             with open(fp, "a", encoding="utf-8") as f:
                 # Ensure we start on a new line if the file already has content
@@ -1389,7 +1417,9 @@ class AgentRunner:
 
     def _delete_file(self, path: str) -> str:
         try:
-            fp = self.workspace / path
+            fp, err = self._safe_path(path)
+            if err:
+                return err
             if not fp.exists():
                 return f"Not found: {path}"
             if fp.is_dir():
@@ -1410,7 +1440,9 @@ class AgentRunner:
         """
         MAX_CHARS = 50_000
         try:
-            fp = self.workspace / path
+            fp, err = self._safe_path(path)
+            if err:
+                return err
             if not fp.exists():
                 return f"Not found: {path}"
             content = fp.read_text(encoding="utf-8", errors="replace")
@@ -1452,7 +1484,12 @@ class AgentRunner:
 
     def _list_dir(self, path: str) -> str:
         try:
-            target = self.workspace / path if path else self.workspace
+            if path:
+                target, err = self._safe_path(path)
+                if err:
+                    return err
+            else:
+                target = self.workspace
             if not target.exists():
                 return f"Not found: {path}"
             entries = [
@@ -1467,7 +1504,12 @@ class AgentRunner:
     def _glob(self, pattern: str, sub_path: str = "") -> str:
         """Find files matching a glob pattern. Returns workspace-relative paths."""
         try:
-            root = self.workspace / sub_path if sub_path else self.workspace
+            if sub_path:
+                root, err = self._safe_path(sub_path)
+                if err:
+                    return f"Error: {err}"
+            else:
+                root = self.workspace
             if not root.exists():
                 return f"Error: path '{sub_path}' not found."
             matches = sorted(root.glob(pattern))
@@ -1493,8 +1535,12 @@ class AgentRunner:
         try:
             if not src or not dst:
                 return "Error: move_file requires non-empty 'src' and 'dst'."
-            src_fp = self.workspace / src
-            dst_fp = self.workspace / dst
+            src_fp, err = self._safe_path(src)
+            if err:
+                return err
+            dst_fp, err = self._safe_path(dst)
+            if err:
+                return err
             if not src_fp.exists():
                 return f"Error: {src} not found."
             dst_fp.parent.mkdir(parents=True, exist_ok=True)
@@ -1515,7 +1561,9 @@ class AgentRunner:
         try:
             if not path:
                 return "Error: create_directory requires a non-empty 'path'."
-            dp = self.workspace / path
+            dp, err = self._safe_path(path)
+            if err:
+                return err
             dp.mkdir(parents=True, exist_ok=True)
             return f"Created directory: {path}"
         except Exception as e:
@@ -1695,9 +1743,44 @@ class AgentRunner:
         except Exception as e:
             return f"Search error: {e}"
 
+    # Patterns that are unconditionally blocked regardless of workspace isolation.
+    # These represent irreversible destructive operations that no legitimate agent
+    # task should ever need to perform.
+    _BLOCKED_COMMAND_PATTERNS = [
+        # Windows: wipe entire drive / system directories
+        r"(?i)\bformat\s+[a-z]:",
+        r"(?i)del\s+/[sq].*\s+[a-z]:\\",
+        r"(?i)rmdir\s+/[sq].*\s+[a-z]:\\",
+        r"(?i)rd\s+/[sq].*\s+[a-z]:\\",
+        # POSIX: recursive delete from root or home
+        r"rm\s+-[^\s]*r[^\s]*\s+/\s*$",
+        r"rm\s+-[^\s]*r[^\s]*\s+~/",
+        # Registry destruction
+        r"(?i)reg\s+delete\s+hk[lcmu]",
+        # Shutdown / reboot
+        r"(?i)\bshutdown\b",
+        r"(?i)\breboot\b",
+    ]
+
     def _run_command(self, command: str, timeout: int = 120) -> str:
         """Run a shell command, streaming output line-by-line via run_command_line events."""
+        import re
         import time
+
+        # ── Safety guard: block catastrophically destructive patterns ────────
+        for pattern in self._BLOCKED_COMMAND_PATTERNS:
+            if re.search(pattern, command):
+                logger.warning(
+                    "[AgentRunner] Blocked destructive command (pattern=%r): %r",
+                    pattern, command[:200],
+                )
+                return (
+                    "Error: command blocked — matches a destructive pattern that is "
+                    "never permitted within the workspace. Revise your approach."
+                )
+
+        logger.info("[AgentRunner] run_command (workspace=%s): %s", self.workspace.name, command[:200])
+
         try:
             proc = subprocess.Popen(
                 command, shell=True, cwd=str(self.workspace),

@@ -10,7 +10,7 @@ import json
 import asyncio
 from pydantic import BaseModel
 
-from core.utils import get_logger, utcnow_iso
+from core.utils import get_logger, utcnow_iso, atomic_json_write
 from core.memory import get_episodic_memory, get_knowledge_graph
 from core.utils.paths import PERSISTENT_MEMORY_JSON
 
@@ -191,7 +191,7 @@ async def update_persistent_memory(req: MemoryUpdateRequest):
         }
         
         PERSISTENT_MEMORY_JSON.parent.mkdir(parents=True, exist_ok=True)
-        PERSISTENT_MEMORY_JSON.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding='utf-8')
+        atomic_json_write(PERSISTENT_MEMORY_JSON, data)
         return {"status": "success", "topic": req.topic}
     except Exception as e:
         logger.error(f"Error updating persistent memory topic '{req.topic}': {e}")
@@ -208,7 +208,7 @@ async def delete_persistent_memory_topic(topic: str):
         data = json.loads(PERSISTENT_MEMORY_JSON.read_text(encoding='utf-8'))
         if topic in data:
             del data[topic]
-            PERSISTENT_MEMORY_JSON.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding='utf-8')
+            atomic_json_write(PERSISTENT_MEMORY_JSON, data)
             return {"status": "success", "topic": topic}
         
         return {"status": "skipped", "reason": "Topic not found"}

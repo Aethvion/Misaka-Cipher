@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import time
 
-from core.utils import get_logger
+from core.utils import get_logger, atomic_json_write
 from core.utils.paths import APP_ARENA, HISTORY_AI_CONV
 from core.ai.call_contexts import CallSource
 
@@ -53,9 +53,7 @@ def _load_leaderboard() -> Dict[str, Any]:
 
 def _save_leaderboard(data: Dict[str, Any]) -> None:
     """Save leaderboard to disk."""
-    APP_ARENA.mkdir(parents=True, exist_ok=True)
-    with open(LEADERBOARD_FILE, 'w') as f:
-        json.dump(data, f, indent=2)
+    atomic_json_write(LEADERBOARD_FILE, data)
 
 
 async def _call_model(provider_manager, prompt: str, model_id: str, trace_id: str):
@@ -430,7 +428,7 @@ async def save_aiconv_conversation(req: AIConvSaveRequest):
         "messageHistory": req.messageHistory,
         "stats":          req.stats or {}
     }
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    atomic_json_write(path, data)
     return {"id": conv_id, "updated": now}
 
 
@@ -461,5 +459,5 @@ async def rename_aiconv_conversation(conv_id: str, req: AIConvRenameRequest):
     data = json.loads(path.read_text(encoding="utf-8"))
     data["name"] = req.name
     data["updated"] = _now_iso()
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    atomic_json_write(path, data)
     return {"status": "ok"}

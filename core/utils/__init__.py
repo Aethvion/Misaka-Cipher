@@ -4,6 +4,11 @@ Utilities for tracing, logging, and validation
 """
 
 from datetime import datetime, timezone as _tz
+import json as _json
+import os as _os
+import tempfile as _tempfile
+from pathlib import Path as _Path
+from typing import Union as _Union
 
 
 def utcnow_iso() -> str:
@@ -14,6 +19,45 @@ def utcnow_iso() -> str:
     Use this everywhere a timestamp is stored so the format is consistent.
     """
     return datetime.now(_tz.utc).strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z'
+
+
+def atomic_json_write(
+    path: _Union[str, "_Path"],
+    data: _Union[dict, list],
+    *,
+    indent: int = 2,
+    ensure_ascii: bool = False,
+) -> None:
+    """Write *data* as JSON to *path* atomically.
+
+    Writes to a temporary file in the same directory, then renames it into
+    place.  This prevents a partial / corrupt file being left on disk if the
+    process is killed mid-write.  ``os.replace()`` is atomic on POSIX and
+    near-atomic on Windows (uses MoveFileEx MOVEFILE_REPLACE_EXISTING).
+
+    Args:
+        path: Destination file path (``str`` or ``Path``).
+        data: JSON-serialisable ``dict`` or ``list``.
+        indent: JSON indent level (default 2).
+        ensure_ascii: Passed through to ``json.dump`` (default False → keep
+            Unicode characters as-is).
+
+    Raises:
+        Whatever ``json.dump`` or ``os.replace`` raises on genuine failure.
+    """
+    path = _Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = _tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    try:
+        with _os.fdopen(fd, "w", encoding="utf-8") as f:
+            _json.dump(data, f, indent=indent, ensure_ascii=ensure_ascii)
+        _os.replace(tmp_path, str(path))
+    except Exception:
+        try:
+            _os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 from .trace_manager import (
@@ -38,6 +82,9 @@ from .validators import (
 __all__ = [
     # Time
     'utcnow_iso',
+
+    # I/O helpers
+    'atomic_json_write',
 
     # Trace Management
     'TraceManager',

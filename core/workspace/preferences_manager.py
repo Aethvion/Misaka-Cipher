@@ -4,6 +4,8 @@ Manages user UI preferences and persistence to a local JSON file.
 """
 
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Dict, Any, Optional
 from core.utils import get_logger
@@ -74,13 +76,20 @@ class PreferencesManager:
             self.preferences = {}
             
     def _save_prefs(self) -> None:
-        """Save preferences to file."""
+        """Save preferences to file (atomic write to prevent corruption on crash)."""
         try:
-            # Ensure workspace directory exists
             self.config_root.mkdir(parents=True, exist_ok=True)
-            
-            with open(self.prefs_file, 'w') as f:
-                json.dump(self.preferences, f, indent=2)
+            fd, tmp_path = tempfile.mkstemp(dir=str(self.config_root), suffix=".tmp")
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as f:
+                    json.dump(self.preferences, f, indent=2)
+                os.replace(tmp_path, str(self.prefs_file))
+            except Exception:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+                raise
             logger.debug("Saved user preferences")
         except Exception as e:
             logger.error(f"Failed to save user preferences: {e}")

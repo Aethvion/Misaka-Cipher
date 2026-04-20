@@ -96,13 +96,13 @@ async def _call_ai(session: AIGameSession, user_message: str, expected_action: O
                     if match: text = match.group(1).strip()
 
                 try: return json.loads(text)
-                except: pass
-                
+                except (json.JSONDecodeError, ValueError): pass
+
                 # Regex block extraction
                 match = re.search(r'(\{.*\})', text, re.DOTALL)
                 if match:
                     try: return json.loads(match.group(1))
-                    except: text = match.group(1)
+                    except (json.JSONDecodeError, ValueError): text = match.group(1)
 
                 repaired = text
                 # Repair incomplete lists
@@ -118,11 +118,11 @@ async def _call_ai(session: AIGameSession, user_message: str, expected_action: O
                 if open_braces > 0: repaired += '}' * open_braces
                 
                 try: return json.loads(repaired)
-                except:
+                except (json.JSONDecodeError, ValueError):
                     if ',' in repaired:
                         last_comma = repaired.rfind(',')
                         try: return json.loads(repaired[:last_comma] + '}')
-                        except: pass
+                        except (json.JSONDecodeError, ValueError): pass
                 return None
 
             parsed = repair_and_parse(raw)
@@ -453,7 +453,8 @@ async def get_game_stats():
                                 })
                             
                             stats["game_types"][game_type_dir.name] = type_stats
-                        except:
+                        except Exception as e:
+                            logger.debug(f"Stats aggregation error for {game_type_dir.name}: {e}")
                             continue
 
         # Sort recent games and take last 10

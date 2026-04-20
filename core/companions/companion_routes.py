@@ -90,14 +90,21 @@ async def upload_context(companion_id: str, file: UploadFile = File(...)):
     upload_dir = COMPANIONS / companion_id / "uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
     
-    file_path = upload_dir / file.filename
+    # Sanitize: strip any directory components so a filename like
+    # "../../evil.py" can't escape the upload directory.
+    safe_name = Path(file.filename or "upload").name
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+    file_path = upload_dir / safe_name
+
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    
+
+    content_type: str = file.content_type or ""
     return {
-        "filename": file.filename,
+        "filename": safe_name,
         "path": str(file_path),
-        "is_image": file.content_type.startswith("image/")
+        "is_image": content_type.startswith("image/"),
     }
 
 @router.get("/{companion_id}/expressions")

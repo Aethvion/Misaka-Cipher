@@ -85,7 +85,7 @@ class AIGameSession:
                 try:
                     with open(history_file, 'r', encoding='utf-8') as f:
                         all_history = json.load(f)
-                except:
+                except (json.JSONDecodeError, OSError):
                     all_history = []
 
             # Session data snapshot

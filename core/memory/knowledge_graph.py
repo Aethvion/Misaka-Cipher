@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional, Set
 from datetime import datetime
 
-from core.utils import get_logger, utcnow_iso
+from core.utils import get_logger, utcnow_iso, atomic_json_write
 from core.utils.paths import KNOWLEDGE_GRAPH
 
 logger = get_logger(__name__)
@@ -367,9 +367,7 @@ class KnowledgeGraph:
                 ]
             }
             
-            with open(self.storage_path, 'w') as f:
-                json.dump(data, f, indent=2)
-            
+            atomic_json_write(self.storage_path, data)
             logger.debug(f"Saved Knowledge Graph to {self.storage_path}")
             
         except Exception as e:

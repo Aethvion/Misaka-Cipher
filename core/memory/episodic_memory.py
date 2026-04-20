@@ -90,7 +90,7 @@ class EpisodicMemoryStore:
         try:
             self.collection = self.client.get_collection(name=collection_name)
             logger.info(f"Loaded existing ChromaDB collection: {collection_name}")
-        except:
+        except Exception:
             self.collection = self.client.create_collection(
                 name=collection_name,
                 metadata={"description": "Aethvion Suite Episodic Memory"}
@@ -373,7 +373,8 @@ class EpisodicMemoryStore:
         
         try:
             return self.collection.count()
-        except:
+        except Exception as e:
+            logger.warning(f"Collection count failed: {e}")
             return 0
     
     def _check_and_prune(self):

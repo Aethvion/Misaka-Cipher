@@ -116,7 +116,7 @@ async def assistant_chat(request: AssistantChatRequest):
                 args = call.get('arguments', {})
                 if isinstance(args, str):
                     try: args = json.loads(args)
-                    except: args = {}
+                    except (json.JSONDecodeError, ValueError): args = {}
                 
                 if func_name in ASSISTANT_TOOL_MAP:
                     logger.info(f"[{trace_id}] Assistant executing tool: {func_name} with {args}")

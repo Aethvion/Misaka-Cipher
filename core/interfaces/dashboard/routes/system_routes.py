@@ -17,7 +17,7 @@ import asyncio
 import psutil
 import json
 
-from core.utils import utcnow_iso
+from core.utils import utcnow_iso, atomic_json_write
 from core.version import VERSION
 
 logger = logging.getLogger(__name__)
@@ -112,12 +112,7 @@ async def _perform_telemetry_sync(app_state) -> Dict[str, Any]:
     metrics_path = Path(__file__).parent.parent / "static" / "assets" / "system-metrics.json"
     metrics_path.parent.mkdir(parents=True, exist_ok=True)
     
-    def save_json():
-        with open(metrics_path, 'w') as f:
-            json.dump(metrics, f, indent=2)
-            
-    import json
-    await asyncio.to_thread(save_json)
+    await asyncio.to_thread(atomic_json_write, metrics_path, metrics)
     return metrics
 
 @router.get("/health")
@@ -264,7 +259,9 @@ async def get_system_status(request: Request):
         try:
             from core.workspace.usage_tracker import get_usage_tracker
             usage_today = get_usage_tracker().get_today_summary()
-        except: usage_today = {"tokens": 0, "cost": 0.0}
+        except Exception as e:
+            logger.warning(f"Usage tracker unavailable: {e}")
+            usage_today = {"tokens": 0, "cost": 0.0}
         
         return {
             "aether": status,
@@ -282,8 +279,8 @@ async def get_version_info():
     root_dir = Path(__file__).resolve().parent.parent.parent.parent.parent
     current_commit = "Unknown"
     try: current_commit = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], cwd=str(root_dir), text=True, stderr=subprocess.DEVNULL, creationflags=CREATE_NO_WINDOW).strip()
-    except: pass
-    
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired): pass
+
     last_update_commit = "Unknown"
     changelog = []
     status_path = Path(__file__).parent.parent / "static" / "assets" / "system-status.json"
@@ -293,8 +290,8 @@ async def get_version_info():
                 data = json.load(f).get("system", {})
                 last_update_commit = data.get("last_update_commit", "Unknown")
                 changelog = data.get("changelog", [])
-        except: pass
-        
+        except (OSError, json.JSONDecodeError, KeyError): pass
+
     remote_commit = await asyncio.to_thread(_get_git_remote_head, root_dir)
     return {"local": {"version": str(VERSION), "commit": current_commit, "last_update_commit": last_update_commit, "changelog": changelog}, "remote": {"commit": remote_commit}}
 

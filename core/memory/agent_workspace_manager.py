@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional
 from core.utils.logger import get_logger
-from core.utils import utcnow_iso
+from core.utils import utcnow_iso, atomic_json_write
 
 logger = get_logger(__name__)
 
@@ -33,7 +33,7 @@ class AgentWorkspaceManager:
         ws = self.get_workspace(workspace_id)
         if ws:
             ws["last_active"] = utcnow_iso()
-            self._ws_file(workspace_id).write_text(json.dumps(ws, indent=2))
+            atomic_json_write(self._ws_file(workspace_id), ws)
 
     # --- Workspace CRUD ---
     def list_workspaces(self) -> list:
@@ -64,7 +64,7 @@ class AgentWorkspaceManager:
             "created_at": now,
             "last_active": now,
         }
-        self._ws_file(workspace_id).write_text(json.dumps(workspace, indent=2))
+        atomic_json_write(self._ws_file(workspace_id), workspace)
         return workspace
 
     def get_workspace(self, workspace_id: str) -> Optional[dict]:
@@ -80,7 +80,7 @@ class AgentWorkspaceManager:
         if path is not None:
             ws["path"] = path
         ws["last_active"] = utcnow_iso()
-        self._ws_file(workspace_id).write_text(json.dumps(ws, indent=2))
+        atomic_json_write(self._ws_file(workspace_id), ws)
         return ws
 
     def delete_workspace(self, workspace_id: str) -> bool:
@@ -129,7 +129,7 @@ class AgentWorkspaceManager:
             "last_active": now,
             "messages": [],
         }
-        self._thread_file(workspace_id, thread_id).write_text(json.dumps(thread, indent=2))
+        atomic_json_write(self._thread_file(workspace_id, thread_id), thread)
         self._touch_workspace(workspace_id)
         return {k: v for k, v in thread.items() if k != "messages"}
 
@@ -149,7 +149,7 @@ class AgentWorkspaceManager:
         if not thread:
             return False
         thread["name"] = name
-        self._thread_file(workspace_id, thread_id).write_text(json.dumps(thread, indent=2))
+        atomic_json_write(self._thread_file(workspace_id, thread_id), thread)
         return True
 
     def append_messages(self, workspace_id: str, thread_id: str, messages: list) -> bool:
@@ -158,7 +158,7 @@ class AgentWorkspaceManager:
             return False
         thread["messages"].extend(messages)
         thread["last_active"] = utcnow_iso()
-        self._thread_file(workspace_id, thread_id).write_text(json.dumps(thread, indent=2))
+        atomic_json_write(self._thread_file(workspace_id, thread_id), thread)
         self._touch_workspace(workspace_id)
         return True
 

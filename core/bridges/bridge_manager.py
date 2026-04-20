@@ -60,10 +60,31 @@ def call_module(module_id: str, command: str, args: dict = None) -> str:
     if not module_path:
         return f"Bridge Error: Module '{module_id}' has no module_path defined."
 
+    # Security: only allow modules inside the core.bridges package.
+    # This prevents a tampered registry.json from loading arbitrary system modules.
+    _ALLOWED_PREFIX = "core.bridges."
+    if not module_path.startswith(_ALLOWED_PREFIX):
+        logger.error(
+            f"Bridge Security: Refusing to import '{module_path}' — "
+            f"only '{_ALLOWED_PREFIX}*' modules are permitted."
+        )
+        return (
+            f"Bridge Error: Module '{module_id}' has an invalid module_path "
+            f"(must be within core.bridges)."
+        )
+
+    # Security: block dunder / private attribute access to prevent abuse via getattr.
+    if not command or command.startswith("_"):
+        logger.error(
+            f"Bridge Security: Refusing command '{command}' — "
+            "commands must not start with an underscore."
+        )
+        return f"Bridge Error: Invalid command '{command}'."
+
     try:
         # Import the module dynamically
         module = importlib.import_module(module_path)
-        
+
         # Get the command function
         func = getattr(module, command, None)
         if not func:

@@ -6,7 +6,7 @@ Manages system configuration and user preferences
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional
-from core.utils import get_logger
+from core.utils import get_logger, atomic_json_write
 from core.utils.paths import SETTINGS
 
 logger = get_logger(__name__)
@@ -64,10 +64,9 @@ class SettingsManager:
         }
     
     def save_settings(self) -> bool:
-        """Save settings to file."""
+        """Save settings to file (atomic write to prevent corruption on crash)."""
         try:
-            with open(SETTINGS_FILE, 'w') as f:
-                json.dump(self.settings, f, indent=2)
+            atomic_json_write(SETTINGS_FILE, self.settings)
             logger.info("Settings saved successfully")
             return True
         except Exception as e:

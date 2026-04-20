@@ -8,8 +8,11 @@ A server restart is required after creation to register the new routes.
 """
 
 import json
+import os
 import re
+import tempfile
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, HTTPException
@@ -48,6 +51,37 @@ class CompanionUpdateRequest(CompanionCreateRequest):
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+_SAFE_ID_RE = re.compile(r"^[a-z0-9_]{1,64}$")
+
+
+def _validate_companion_id(companion_id: str) -> None:
+    """Raise 400 if *companion_id* is not a safe slug (blocks path traversal)."""
+    if not _SAFE_ID_RE.match(companion_id):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Invalid companion ID {companion_id!r}. "
+                "IDs must contain only lowercase letters, digits, and underscores."
+            ),
+        )
+
+
+def _atomic_write_json(path: Path, data: dict | list) -> None:
+    """Write a JSON value atomically via a temp file + rename."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_path, str(path))
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
 def _slug(name: str) -> str:
     """Turn a display name into a safe ID slug."""
     s = name.lower().strip()
@@ -67,6 +101,7 @@ def _list_custom_companions() -> list[dict]:
 
 
 def _load_config(companion_id: str) -> dict:
+    _validate_companion_id(companion_id)
     path = _CUSTOM_DIR / companion_id / "config.json"
     if not path.exists():
         raise HTTPException(status_code=404, detail=f"Companion '{companion_id}' not found")
@@ -84,6 +119,7 @@ async def list_companions():
 @router.get("/{companion_id}/memory")
 async def get_companion_memory(companion_id: str):
     """Return the base_info.json and memory.json for a custom companion."""
+    _validate_companion_id(companion_id)
     companion_dir = _CUSTOM_DIR / companion_id
     if not companion_dir.exists():
         raise HTTPException(status_code=404, detail=f"Custom companion '{companion_id}' not found.")
@@ -150,7 +186,7 @@ async def create_companion(req: CompanionCreateRequest):
     }
 
     config_path = companion_dir / "config.json"
-    config_path.write_text(json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8")
+    _atomic_write_json(config_path, config)
 
     # Write initial base_info.json
     base_info = {
@@ -163,21 +199,15 @@ async def create_companion(req: CompanionCreateRequest):
         "dislikes":      req.dislikes,
         "autonomy_level": "Medium",
     }
-    (companion_dir / "base_info.json").write_text(
-        json.dumps(base_info, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    _atomic_write_json(companion_dir / "base_info.json", base_info)
 
     # Write initial memory.json
-    from datetime import datetime
-    (companion_dir / "memory.json").write_text(
-        json.dumps({
-            "user_info": {},
-            "recent_observations": [],
-            "synthesis_notes": [],
-            "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        }, indent=2),
-        encoding="utf-8"
-    )
+    _atomic_write_json(companion_dir / "memory.json", {
+        "user_info": {},
+        "recent_observations": [],
+        "synthesis_notes": [],
+        "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    })
 
     logger.info(f"Custom companion created: {companion_id} ({req.name})")
     return {
@@ -213,9 +243,7 @@ async def update_companion(companion_id: str, req: CompanionUpdateRequest):
         "moods":         moods,
     }
 
-    (companion_dir / "config.json").write_text(
-        json.dumps(config, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    _atomic_write_json(companion_dir / "config.json", config)
 
     # Update base_info.json too
     base_info_path = companion_dir / "base_info.json"
@@ -233,7 +261,7 @@ async def update_companion(companion_id: str, req: CompanionUpdateRequest):
         "likes":         req.likes,
         "dislikes":      req.dislikes,
     })
-    base_info_path.write_text(json.dumps(base_info, indent=2, ensure_ascii=False), encoding="utf-8")
+    _atomic_write_json(base_info_path, base_info)
 
     return {"success": True, "id": companion_id, "message": "Config updated. Restart to apply changes."}
 
@@ -241,6 +269,7 @@ async def update_companion(companion_id: str, req: CompanionUpdateRequest):
 @router.delete("/{companion_id}")
 async def delete_companion(companion_id: str):
     """Delete a custom companion (cannot delete built-ins)."""
+    _validate_companion_id(companion_id)
     builtin_ids = {"misaka_cipher", "axiom", "lyra"}
     if companion_id in builtin_ids:
         raise HTTPException(status_code=403, detail="Cannot delete built-in companions.")

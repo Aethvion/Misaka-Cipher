@@ -15,7 +15,7 @@ import asyncio
 import time
 import uuid
 from datetime import datetime
-from core.utils import utcnow_iso
+from core.utils import utcnow_iso, atomic_json_write
 import json
 from pathlib import Path
 from core.utils.paths import HISTORY_ADVANCED
@@ -159,8 +159,7 @@ def run_simulation(nexus, thread_id: str):
                     "content": sys_event,
                     "timestamp": utcnow_iso()
                 })
-                with open(t_dir / "messages.json", 'w') as f:
-                    json.dump(messages, f, indent=4)
+                atomic_json_write(t_dir / "messages.json", messages, indent=4)
             continue
         elif c == 1:
             # Pick next person round robin
@@ -254,9 +253,8 @@ CRITICAL: You MUST reply in the exact JSON format below. Do not wrap in markdown
                 speaker['message_count'] = speaker.get('message_count', 0) + 1
                 
                 # Save Person
-                with open(p_file, 'w') as f:
-                    json.dump(speaker, f, indent=4)
-                    
+                atomic_json_write(p_file, speaker, indent=4)
+
                 # Append Message
                 msg_id = uuid.uuid4().hex[:8]
                 new_msg = {
@@ -266,9 +264,8 @@ CRITICAL: You MUST reply in the exact JSON format below. Do not wrap in markdown
                     "timestamp": utcnow_iso()
                 }
                 messages.append(new_msg)
-                
-                with open(t_dir / "messages.json", 'w') as f:
-                    json.dump(messages, f, indent=4)
+
+                atomic_json_write(t_dir / "messages.json", messages, indent=4)
                     
             except Exception as e:
                 print_error(f"Failed to parse or apply generated turn: {e}")
@@ -325,9 +322,9 @@ def create_thread(nexus):
         "id": thread_id, "name": name, "topic": topic, "created_at": utcnow_iso(),
         "updated_at": utcnow_iso(), "active_person_ids": active_ids
     }
-    with open(t_dir / "meta.json", 'w') as f: json.dump(meta, f, indent=4)
-    with open(t_dir / "messages.json", 'w') as f: json.dump([], f)
-    with open(t_dir / "snapshots.json", 'w') as f: json.dump([], f)
+    atomic_json_write(t_dir / "meta.json", meta, indent=4)
+    atomic_json_write(t_dir / "messages.json", [])
+    atomic_json_write(t_dir / "snapshots.json", [])
     
     run_simulation(nexus, thread_id)
     

@@ -17,6 +17,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
+from core.utils import atomic_json_write
 from core.ai.call_contexts import CallSource
 
 logger = get_logger(__name__)
@@ -48,7 +49,7 @@ def _load_config() -> dict:
 
 def _save_config(cfg: dict):
     EXT_API_DIR.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(cfg, indent=2))
+    atomic_json_write(CONFIG_PATH, cfg)
 
 
 def _load_keys() -> dict:
@@ -62,7 +63,7 @@ def _load_keys() -> dict:
 
 def _save_keys(keys: dict):
     EXT_API_DIR.mkdir(parents=True, exist_ok=True)
-    KEYS_PATH.write_text(json.dumps(keys, indent=2))
+    atomic_json_write(KEYS_PATH, keys)
 
 
 def _check_auth(authorization: Optional[str]):

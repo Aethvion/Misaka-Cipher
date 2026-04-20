@@ -53,6 +53,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
+from core.utils import atomic_json_write
 
 logger = get_logger(__name__)
 
@@ -124,8 +125,7 @@ def _load_webhooks() -> Dict[str, Dict]:
 
 
 def _save_webhooks(data: Dict[str, Dict]) -> None:
-    _WEBHOOKS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    _WEBHOOKS_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    atomic_json_write(_WEBHOOKS_FILE, data)
 
 
 # ── Public Python API ─────────────────────────────────────────────────────────

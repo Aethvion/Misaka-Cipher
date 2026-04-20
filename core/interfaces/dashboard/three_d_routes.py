@@ -104,9 +104,9 @@ async def get_or_start_worker(model: str):
                             err_msg = res_data.get("error", "Unknown loading error")
                             logger.error(f"[3D] Worker {model} reported loading failure: {err_msg}")
                             return None, f"Model failed to load: {err_msg}"
-                except:
+                except (httpx.RequestError, asyncio.TimeoutError, OSError):
                     pass
-                
+
                 await asyncio.sleep(2.0)
                 
                 if proc.poll() is not None:
@@ -338,7 +338,7 @@ async def stop_worker(model: str):
             # Wait briefly or kill if stubborn
             try:
                 proc.wait(timeout=2)
-            except:
+            except subprocess.TimeoutExpired:
                 proc.kill()
         
         del _WORKER_PROCESS[model]
@@ -560,13 +560,13 @@ async def install_3d_model(model: str):
                 # To be safe on Windows, we use rmdir /s /q which is more aggressive
                 try:
                     subprocess.run(f'cmd /c rmdir /s /q "{repo_dir}"', shell=True)
-                except: pass
+                except (subprocess.SubprocessError, OSError): pass
                 wrapper_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Ensure repo_dir is clean
             if repo_dir.exists():
                 try: subprocess.run(f'cmd /c rmdir /s /q "{repo_dir}"', shell=True)
-                except: pass
+                except (subprocess.SubprocessError, OSError): pass
                 
             # 2. Setup Virtual Environment
             yield f"data: {json.dumps({'line': f'Creating isolated virtual environment at {venv_dir.relative_to(LOCAL_MODELS_3D)}...'})}\n\n"

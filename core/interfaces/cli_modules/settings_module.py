@@ -9,6 +9,7 @@ from core.interfaces.cli_modules.utils import (
     console, clear_screen, print_header, print_menu, get_user_choice,
     print_success, print_error, print_warning, print_key_value, confirm, pause
 )
+from core.utils import atomic_json_write
 from core.utils.paths import MODEL_REGISTRY
 
 SETTINGS_FILE = MODEL_REGISTRY
@@ -31,10 +32,9 @@ def load_settings():
 
 
 def save_settings(data):
-    """Persist settings to disk."""
+    """Persist settings to disk (atomic write to prevent corruption on crash)."""
     try:
-        with open(SETTINGS_FILE, 'w') as f:
-            json.dump(data, f, indent=4)
+        atomic_json_write(SETTINGS_FILE, data, indent=4)
         return True
     except Exception as e:
         print_error(f"Failed to save settings: {e}")

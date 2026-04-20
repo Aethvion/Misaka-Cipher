@@ -21,6 +21,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from core.utils.logger import get_logger
+from core.utils import atomic_json_write
 from core.ai.call_contexts import CallSource, build_overlay_prompt, validate_call_context
 
 logger = get_logger(__name__)
@@ -55,7 +56,7 @@ def _load_config() -> dict:
 
 def _save_config(cfg: dict) -> None:
     OVERLAY_DIR.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    atomic_json_write(CONFIG_PATH, cfg)
 
 
 def _overlay_running() -> bool:

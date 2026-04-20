@@ -10,12 +10,30 @@ history_dir/
 from __future__ import annotations
 import datetime
 import json
+import os
 import shutil
+import tempfile
 from pathlib import Path
 from typing import Callable
 from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _atomic_write_list(path: Path, data: list) -> None:
+    """Write a JSON list atomically: write to temp file, then rename into place."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+        os.replace(tmp_path, str(path))
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def _default_time_formatter(total_seconds: int) -> str:
@@ -94,7 +112,7 @@ class CompanionHistory:
                 entry["attachments"] = attachments
             entry.update(extra)
             history.append(entry)
-            day_file.write_text(json.dumps(history, indent=4, ensure_ascii=False), encoding="utf-8")
+            _atomic_write_list(day_file, history)
         except Exception as e:
             logger.error(f"{self._name}: Failed to save history message: {e}")
 

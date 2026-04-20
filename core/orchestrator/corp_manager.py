@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from core.utils.logger import get_logger
-from core.utils import utcnow_iso
+from core.utils import utcnow_iso, atomic_json_write
 from core.utils.paths import CORP_ROOT, MODEL_REGISTRY
 
 logger = get_logger(__name__)
@@ -101,7 +101,7 @@ class WorkerStats:
         path.parent.mkdir(parents=True, exist_ok=True)
         data = {k: getattr(self, k) for k in self._PERSISTENT}
         try:
-            path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            atomic_json_write(path, data)
         except Exception as e:
             logger.warning(f"[WorkerStats] Could not save stats to {path}: {e}")
 
@@ -247,7 +247,7 @@ class CorpManager:
         d = self._corp_dir(corp_id)
         d.mkdir(parents=True, exist_ok=True)
         (d / "workspace").mkdir(exist_ok=True)
-        self._config_path(corp_id).write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+        atomic_json_write(self._config_path(corp_id), cfg)
         self._tasks_path(corp_id).write_text("[]", encoding="utf-8")
         self._log_path(corp_id).write_text(f"# {name} — Team Log\n\n", encoding="utf-8")
         return cfg
@@ -262,7 +262,7 @@ class CorpManager:
         return cfg
 
     def _save_config(self, corp_id: str, cfg: Dict[str, Any]) -> None:
-        self._config_path(corp_id).write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+        atomic_json_write(self._config_path(corp_id), cfg)
 
     def update_corp(self, corp_id: str, **fields) -> Dict[str, Any]:
         """Update top-level fields on a corp (name, description, workspace_path, goal…)."""
@@ -353,7 +353,7 @@ class CorpManager:
             return []
 
     def _save_tasks(self, corp_id: str, tasks: List[Dict]) -> None:
-        self._tasks_path(corp_id).write_text(json.dumps(tasks, indent=2), encoding="utf-8")
+        atomic_json_write(self._tasks_path(corp_id), tasks)
 
     def add_task(self, corp_id: str, title: str, description: str,
                  assigned_to: str = "any", priority: str = "medium",
@@ -511,8 +511,7 @@ class CorpManager:
             "author":  worker_name,
             "ts":      utcnow_iso(),
         }
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        atomic_json_write(p, data)
         return f"Shared memory updated: [{key}]"
 
     # ── persistent feed ──────────────────────────────────────────────────────

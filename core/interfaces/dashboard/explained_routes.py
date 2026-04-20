@@ -14,7 +14,7 @@ import json
 import shutil
 from pathlib import Path
 
-from core.utils import get_logger, utcnow_iso
+from core.utils import get_logger, utcnow_iso, atomic_json_write
 from core.utils.paths import EXPLAINED, HISTORY_AGENTS
 from core.memory.agent_workspace_manager import AgentWorkspaceManager
 
@@ -569,8 +569,7 @@ async def delete_thread(thread_id: str):
 # --------------------------------------------------------------------------- #
 
 def _write_meta(path: Path, meta: dict):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(meta, indent=4), encoding="utf-8")
+    atomic_json_write(path, meta, indent=4)
 
 
 def _next_display_id() -> int:
