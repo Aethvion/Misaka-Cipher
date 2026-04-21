@@ -110,7 +110,10 @@ function showGameOverlay(gameType, data) {
 
     if (titleEl) titleEl.textContent = data.title || 'SOLVED';
     if (subtitleEl) subtitleEl.textContent = data.subtitle || '';
-    if (scoreEl && data.score !== undefined) scoreEl.textContent = `Score: ${data.score}`;
+    if (scoreEl && data.score !== undefined) {
+        const label = data.scoreLabel || 'Score';
+        scoreEl.textContent = `${label}: ${data.score}`;
+    }
 
     el.style.display = 'flex';
 }

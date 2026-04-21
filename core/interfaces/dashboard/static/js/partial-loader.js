@@ -55,7 +55,10 @@
         'game-word-search': ['/static/games/common/games-shared.js', '/static/games/word_search/word_search.js'],
         'game-sudoku':      ['/static/games/common/games-shared.js', '/static/games/sudoku/sudoku.js'],
         'game-checkers':    ['/static/games/common/games-shared.js', '/static/games/checkers/checkers.js'],
-        'game-smarter-than-ai': ['/static/games/common/games-shared.js', '/static/games/smarter_than_ai/smarter_than_ai.js']
+        'game-smarter-than-ai': ['/static/games/common/games-shared.js', '/static/games/smarter_than_ai/smarter_than_ai.js'],
+        'game-code-golf':   ['/static/games/common/games-shared.js', '/static/games/code-golf/code-golf.js'],
+        'game-debug-this':  ['/static/games/common/games-shared.js', '/static/games/debug-this/debug-this.js']
+
     };
 
     /**

@@ -24,6 +24,9 @@ def load_game_module(name: str, path: str):
 STATIC_GAMES = Path(__file__).parent / "static" / "games"
 LogicQuestGame = load_game_module("logic_quest", str(STATIC_GAMES / "logic-quest" / "logic_quest.py")).LogicQuestGame
 BlackJackGame = load_game_module("blackjack", str(STATIC_GAMES / "blackjack" / "blackjack.py")).BlackJackGame
+CodeGolfGame = load_game_module("code-golf", str(STATIC_GAMES / "code-golf" / "code_golf.py")).CodeGolfGame
+DebugThisGame = load_game_module("debug-this", str(STATIC_GAMES / "debug-this" / "debug_this.py")).DebugThisGame
+
 
 logger = get_logger(__name__)
 
@@ -45,6 +48,10 @@ class AIGameSession:
             self.game = LogicQuestGame(difficulty)
         elif game_type == "blackjack":
             self.game = BlackJackGame(difficulty)
+        elif game_type == "code-golf":
+            self.game = CodeGolfGame(difficulty)
+        elif game_type == "debug-this":
+            self.game = DebugThisGame(difficulty)
         else:
             self.game = None
 
