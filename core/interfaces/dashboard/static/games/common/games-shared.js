@@ -39,16 +39,18 @@ async function gameApiFetch(endpoint) {
     return await res.json();
 }
 
-// ─── Model list loader ────────────────────────────────────────────────────────
-
+const UNIVERSAL_MODEL_KEY = 'games.universal_model';
+const _knownModelSelects = new Set();
 let _cachedModels = null;
 
 async function loadGameModels(selectEl) {
     if (!selectEl) return;
+    
+    // Add to known selects for synchronization
+    _knownModelSelects.add(selectEl);
 
     if (!_cachedModels) {
         try {
-            // Fetch directly from the main registry to get the same exact data as the chat (including profiles)
             const res = await fetch('/api/registry/models/chat');
             _cachedModels = await res.json();
         } catch (e) {
@@ -56,16 +58,42 @@ async function loadGameModels(selectEl) {
         }
     }
 
+    const universalModel = (window.prefs && typeof window.prefs.get === 'function') 
+        ? window.prefs.get(UNIVERSAL_MODEL_KEY, 'auto') 
+        : 'auto';
+
     if (typeof generateCategorizedModelOptions === 'function') {
-        // Generate the identical <optgroup> architecture as the chat dropdown
-        selectEl.innerHTML = generateCategorizedModelOptions(_cachedModels, 'chat', 'auto');
+        selectEl.innerHTML = generateCategorizedModelOptions(_cachedModels, 'chat', universalModel);
     } else {
-        // Fallback
         const models = _cachedModels.models || [];
         selectEl.innerHTML = models.map(m =>
-            `<option value="${m.id}">${m.id === 'auto' ? '⚡ Auto' : m.id}</option>`
+            `<option value="${m.id}" ${m.id === universalModel ? 'selected' : ''}>${m.id === 'auto' ? '⚡ Auto' : m.id}</option>`
         ).join('');
     }
+
+    // Ensure the value is set correctly (sometimes needed after innerHTML if generateCategorizedModelOptions didn't handle it perfectly)
+    if (selectEl.value !== universalModel && [...selectEl.options].some(o => o.value === universalModel)) {
+        selectEl.value = universalModel;
+    }
+
+    // Sync listener
+    selectEl.addEventListener('change', async (e) => {
+        const newVal = e.target.value;
+        
+        // Save to preferences
+        if (window.savePreference) {
+            await window.savePreference(UNIVERSAL_MODEL_KEY, newVal);
+        }
+
+        // Update all other loaded game selects and clean up disconnected ones
+        _knownModelSelects.forEach(sel => {
+            if (!sel.isConnected) {
+                _knownModelSelects.delete(sel);
+            } else if (sel !== selectEl) {
+                sel.value = newVal;
+            }
+        });
+    });
 }
 
 // ─── Shared UI helpers ────────────────────────────────────────────────────────
