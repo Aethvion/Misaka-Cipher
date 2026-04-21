@@ -105,14 +105,16 @@
     }
 
     // Register with framework
-    document.addEventListener('DOMContentLoaded', () => {
+    function resultsInit() {
         document.getElementById(elements.refreshBtn)?.addEventListener('click', loadStats);
+    }
 
-        registerGame('game-results', {
-            onTabSwitch: () => {
-                loadStats();
-            }
-        });
+    // Register with framework
+    registerGame('game-results', {
+        onLoad: resultsInit,
+        onTabSwitch: () => {
+            loadStats();
+        }
     });
 
     window.refreshGameStats = loadStats;

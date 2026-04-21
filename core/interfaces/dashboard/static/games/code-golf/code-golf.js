@@ -128,21 +128,23 @@
     }
 
     // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
+    function codeGolfInit() {
         loadGameModels(document.getElementById(elements.modelSelect));
         document.getElementById(elements.submitBtn)?.addEventListener('click', submitSolution);
         document.getElementById(elements.resetBtn)?.addEventListener('click', startNewGame);
         document.getElementById(elements.hintBtn)?.addEventListener('click', requestHint);
         document.getElementById(elements.solutionInput)?.addEventListener('input', updateCharCount);
+    }
 
-        registerGame('code-golf', {
-            onTabSwitch: () => {
-                if (!session) {
-                    const overlay = document.getElementById('game-overlay-code-golf-start');
-                    if (overlay) overlay.style.display = 'flex';
-                }
+    // Register with framework
+    registerGame('code-golf', {
+        onLoad: codeGolfInit,
+        onTabSwitch: () => {
+            if (!session) {
+                const overlay = document.getElementById('game-overlay-code-golf-start');
+                if (overlay) overlay.style.display = 'flex';
             }
-        });
+        }
     });
 
     window.startCodeGolf = startNewGame;

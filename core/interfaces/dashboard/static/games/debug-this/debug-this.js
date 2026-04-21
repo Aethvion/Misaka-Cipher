@@ -120,20 +120,22 @@
     }
 
     // Initialize
-    document.addEventListener('DOMContentLoaded', () => {
+    function debugThisInit() {
         loadGameModels(document.getElementById(elements.modelSelect));
         document.getElementById(elements.submitBtn)?.addEventListener('click', submitFix);
         document.getElementById(elements.resetBtn)?.addEventListener('click', startNewGame);
         document.getElementById(elements.hintBtn)?.addEventListener('click', requestHint);
+    }
 
-        registerGame('debug-this', {
-            onTabSwitch: () => {
-                if (!session) {
-                    const overlay = document.getElementById('game-overlay-debug-this-start');
-                    if (overlay) overlay.style.display = 'flex';
-                }
+    // Register with framework
+    registerGame('debug-this', {
+        onLoad: debugThisInit,
+        onTabSwitch: () => {
+            if (!session) {
+                const overlay = document.getElementById('game-overlay-debug-this-start');
+                if (overlay) overlay.style.display = 'flex';
             }
-        });
+        }
     });
 
     window.startDebugThis = startNewGame;

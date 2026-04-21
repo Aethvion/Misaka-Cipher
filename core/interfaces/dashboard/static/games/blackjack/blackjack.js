@@ -326,7 +326,7 @@
     }
 
     // Register with framework
-    document.addEventListener('DOMContentLoaded', () => {
+    function blackjackInit() {
         loadGameModels(document.getElementById(elements.modelSelect));
 
         document.getElementById(elements.hitBtn)?.addEventListener('click', hit);
@@ -334,16 +334,18 @@
         document.getElementById(elements.resetBtn)?.addEventListener('click', startNewDuel);
         document.getElementById(elements.hintBtn)?.addEventListener('click', getTip);
         document.getElementById(elements.revealBtn)?.addEventListener('click', fold);
+    }
 
-        registerGame('blackjack', {
-            onTabSwitch: () => {
-                // If there is no active session, show the start overlay instead of auto-starting
-                if (!session) {
-                    const overlay = document.getElementById('game-overlay-blackjack-start');
-                    if (overlay) overlay.style.display = 'flex';
-                }
+    // Register with framework
+    registerGame('blackjack', {
+        onLoad: blackjackInit,
+        onTabSwitch: () => {
+            // If there is no active session, show the start overlay instead of auto-starting
+            if (!session) {
+                const overlay = document.getElementById('game-overlay-blackjack-start');
+                if (overlay) overlay.style.display = 'flex';
             }
-        });
+        }
     });
 
     window.startPlayingCards = startNewDuel;

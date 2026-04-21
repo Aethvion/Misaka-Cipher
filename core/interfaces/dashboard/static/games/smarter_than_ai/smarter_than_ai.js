@@ -665,7 +665,7 @@
 
     // ── Register ───────────────────────────────────────────────────────────────
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function smarterThanAIInit() {
         staInit();
 
         // Human answer submit button
@@ -675,15 +675,17 @@
         el('sta-human-answer-input')?.addEventListener('keydown', e => {
             if (e.key === 'Enter') staSubmitHumanAnswer();
         });
+    }
 
-        if (typeof registerGame === 'function') {
-            registerGame('smarter-than-ai', {
-                onTabSwitch: () => {
-                    // Nothing special needed on tab switch
-                }
-            });
-        }
-    });
+    // Register with framework
+    if (typeof registerGame === 'function') {
+        registerGame('smarter-than-ai', {
+            onLoad: smarterThanAIInit,
+            onTabSwitch: () => {
+                // Nothing special needed on tab switch
+            }
+        });
+    }
 
     // Expose to inline onclick
     window._staRemovePlayer = function(localId) {

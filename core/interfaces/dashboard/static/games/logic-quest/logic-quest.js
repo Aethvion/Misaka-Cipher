@@ -220,8 +220,7 @@
         }
     }
 
-    // Initialize the module
-    document.addEventListener('DOMContentLoaded', () => {
+    function logicQuestInit() {
         // Models dropdown
         loadGameModels(document.getElementById(elements.modelSelect));
 
@@ -238,17 +237,18 @@
         document.getElementById(elements.guessInput)?.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') submitGuess();
         });
+    }
 
-        // Register with framework
-        registerGame('logic-quest', {
-            onTabSwitch: () => {
-                // If there is no active session, show the start overlay instead of auto-starting
-                if (!session) {
-                    const overlay = document.getElementById('game-overlay-logic-quest-start');
-                    if (overlay) overlay.style.display = 'flex';
-                }
+    // Register with framework
+    registerGame('logic-quest', {
+        onLoad: logicQuestInit,
+        onTabSwitch: () => {
+            // If there is no active session, show the start overlay instead of auto-starting
+            if (!session) {
+                const overlay = document.getElementById('game-overlay-logic-quest-start');
+                if (overlay) overlay.style.display = 'flex';
             }
-        });
+        }
     });
 
     // Expose start function for "Play Again" buttons
