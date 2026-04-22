@@ -729,6 +729,12 @@ const LocalModels = {
             }
             statusRow.innerHTML = html;
 
+            // Engine Missing Banner
+            const engineBanner = document.getElementById('llm-engine-banner');
+            if (engineBanner) {
+                engineBanner.style.display = gpu.llama_cpp_installed ? 'none' : 'flex';
+            }
+
         } catch (e) {
             statusRow.innerHTML = `<span class="gpu-badge gpu-badge-off"><i class="fas fa-question-circle"></i> Status unavailable</span>`;
         }
@@ -807,6 +813,74 @@ const LocalModels = {
             showNotification(`Error: ${e.message}`, 'error');
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-bolt"></i> Install CUDA Build';
+        }
+    },
+
+    async installEngine() {
+        const btn = document.getElementById('install-llm-engine-btn');
+        const log = document.getElementById('llm-engine-log');
+        if (!btn) return;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Installing llama-cpp-python…';
+        if (log) {
+            log.style.display = 'block';
+            log.innerHTML = 'Starting installation of llama-cpp-python...<br>';
+        }
+
+        try {
+            console.log("[LocalModels] Starting install-engine fetch...");
+            const resp = await fetch('/api/registry/local/install-engine', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (!resp.ok) {
+                const errText = await resp.text();
+                throw new Error(`Server returned ${resp.status}: ${errText}`);
+            }
+
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            console.log("[LocalModels] Stream reader acquired.");
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const parts = buffer.split('\n\n');
+                buffer = parts.pop();
+
+                for (const part of parts) {
+                    if (!part.startsWith('data: ')) continue;
+                    let msg;
+                    try { msg = JSON.parse(part.slice(6)); } catch { continue; }
+
+                    if (msg.line) {
+                        if (log) {
+                            log.innerHTML += msg.line + '<br>';
+                            log.scrollTop = log.scrollHeight;
+                        }
+                    } else if (msg.done) {
+                        if (msg.success) {
+                            showNotification('llama-cpp-python installed successfully! Please restart Aethvion Suite to apply changes.', 'success');
+                            btn.innerHTML = '<i class="fas fa-check"></i> Installed (Restart Required)';
+                            if (log) log.innerHTML += '<b>Successfully installed llama-cpp-python.</b><br>';
+                        } else {
+                            showNotification('llama-cpp-python installation failed. Check the logs.', 'error');
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fas fa-download"></i> Retry Installation';
+                            if (log) log.innerHTML += '<b style="color:#ef4444;">Installation failed.</b><br>';
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            showNotification('Connection error: ' + e.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-download"></i> Install llama-cpp-python';
         }
     },
 

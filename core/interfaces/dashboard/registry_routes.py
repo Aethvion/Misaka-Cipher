@@ -4,6 +4,7 @@ API endpoints for managing the Model Registry (config/model_registry.json)
 """
 
 import json
+import asyncio
 import os
 import re
 import subprocess
@@ -809,6 +810,47 @@ async def download_local_model_stream(request: Request):
     )
 
 
+@router.post("/local/install-engine")
+async def install_llm_engine(request: Request):
+    """pip-install the local-llm dependencies (llama-cpp-python, etc) with SSE streaming."""
+    from fastapi.responses import StreamingResponse
+    import sys
+    import os
+
+    async def _generate():
+        yield f"data: {json.dumps({'line': 'Connecting to pip manager...'})}\n\n"
+        
+        try:
+            # Using shell=True for better Windows command resolution
+            cmd = f'"{sys.executable}" -m pip install -e .[local-llm]'
+            proc = await asyncio.create_subprocess_shell(
+                cmd,
+                cwd=str(PROJECT_ROOT),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                creationflags=CREATE_NO_WINDOW
+            )
+            
+            yield f"data: {json.dumps({'line': 'Installation started...'})}\n\n"
+            
+            async for raw_line in proc.stdout:
+                line = raw_line.decode("utf-8", errors="replace").rstrip()
+                if line:
+                    yield f"data: {json.dumps({'line': line})}\n\n"
+                
+            await proc.wait()
+            rc = proc.returncode
+            yield f"data: {json.dumps({'done': True, 'success': rc == 0, 'returncode': rc})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'line': f'Error starting process: {str(e)}', 'done': True, 'success': False})}\n\n"
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.post("/local/models/download")
 async def download_local_model(data: Dict[str, Any]):
     """Initiate a model download from Hugging Face."""
@@ -972,6 +1014,7 @@ async def save_inference_config(request: Request):
 async def get_gpu_status():
     """Report GPU availability for local inference."""
     result = {
+        "llama_cpp_installed": False,
         "llama_cuda": False,
         "cuda_available": False,
         "gpu_name": None,
@@ -988,6 +1031,7 @@ async def get_gpu_status():
     # 2 — Check if CUDA llama-cpp build is active
     try:
         import llama_cpp
+        result["llama_cpp_installed"] = True
         result["llama_cuda"] = bool(
             getattr(llama_cpp, "llama_supports_gpu_offload", lambda: False)()
         )
