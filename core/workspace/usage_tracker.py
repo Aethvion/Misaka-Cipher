@@ -426,9 +426,11 @@ class UsageTracker:
         """Get aggregated usage summary for trace_id. Scans last 7 days."""
         start = datetime.utcnow() - timedelta(days=7)
         entries = self._get_entries_for_range(start)
-        # Search for main ID and router-specific ID
-        router_trace_id = f"{trace_id}-router"
-        calls = [e for e in entries if e.get("trace_id") in [trace_id, router_trace_id]]
+        # Search for entries where the trace_id exactly matches OR starts with "target-id-" (captures iterations like -i0, -i1, etc)
+        calls = [
+            e for e in entries 
+            if e.get("trace_id") == trace_id or e.get("trace_id", "").startswith(f"{trace_id}-")
+        ]
         if not calls:
             return {}
 

@@ -9,6 +9,7 @@
     let exPlaceholder, exFrame;
     let exHistoryList;
     let exPageNav, exPageTabs;
+    let exUsageCard, esuModel, esuTokens, esuCost, esuDuration;
 
     let exIsGenerating = false;
     let exCurrentThreadId = null;
@@ -39,6 +40,12 @@
         exHistoryList = document.getElementById('explained-history-list');
         exPageNav     = document.getElementById('explained-page-nav');
         exPageTabs    = document.getElementById('explained-page-tabs');
+
+        exUsageCard   = document.getElementById('explained-usage-card');
+        esuModel      = document.getElementById('esu-model');
+        esuTokens     = document.getElementById('esu-tokens');
+        esuCost       = document.getElementById('esu-cost');
+        esuDuration   = document.getElementById('esu-duration');
 
         // Event Listeners
         if (exCollapseBtn) exCollapseBtn.addEventListener('click', toggleSidebar);
@@ -79,6 +86,7 @@
         exGenerateBtn.innerHTML = '<i class="fas fa-wand-sparkles"></i> Build Page';
         if (exFolderBtn) exFolderBtn.classList.add('hidden');
         hidePageNav();
+        if (exUsageCard) exUsageCard.classList.add('hidden');
         if (exSidebar.classList.contains('collapsed')) toggleSidebar();
         if (window.showToast) window.showToast('Ready for a new topic.', 'info');
     }
@@ -198,6 +206,7 @@
                     // Use AI-generated title if available, otherwise fall back to prompt
                     const title = data.display_title || exPrompt.value.trim();
                     addToHistory(title, exCurrentThreadId, exCurrentDeepDive);
+                    updateUsageInfo(data.usage, data.duration, data.actual_model || data.model_id);
                 } else if (data.status === 'failed') {
                     clearInterval(interval);
                     setLoading(false);
@@ -403,11 +412,38 @@
             } else {
                 hidePageNav();
             }
+            updateUsageInfo(data.usage, data.duration, data.actual_model);
         } catch (e) {
             if (window.showToast) window.showToast('Error loading: ' + e.message, 'error');
         } finally {
             setLoading(false);
         }
+    }
+
+    function updateUsageInfo(usage, duration, actualModel) {
+        if (!exUsageCard) return;
+        
+        if (!usage && !duration) {
+            exUsageCard.classList.add('hidden');
+            return;
+        }
+
+        if (esuModel) esuModel.innerText = actualModel || 'AI';
+        if (esuTokens) esuTokens.innerText = usage ? (usage.total_tokens || '-') : '-';
+        if (esuCost) esuCost.innerText = usage ? `$${(usage.total_cost || 0).toFixed(4)}` : '$0.00';
+        
+        if (esuDuration) {
+            const sec = Math.round(duration || 0);
+            if (sec > 60) {
+                const m = Math.floor(sec / 60);
+                const s = sec % 60;
+                esuDuration.innerText = `${m}m ${s}s`;
+            } else {
+                esuDuration.innerText = `${sec}s`;
+            }
+        }
+
+        exUsageCard.classList.remove('hidden');
     }
 
     window.deleteExplanation = async function(threadId, event) {

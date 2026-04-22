@@ -277,6 +277,45 @@ async def get_task_status(task_id: str):
                 display_title = line.replace("TITLE:", "").strip()
                 break
 
+    # Extract usage and duration if completed
+    usage = None
+    duration = None
+    actual_model = None
+    if fe_status == "completed":
+        duration = task_dict.get("duration")
+        result = task_dict.get("result", {})
+        usage = result.get("usage")
+        actual_model = task_dict.get("metadata", {}).get("actual_model")
+        if not actual_model:
+            if usage and usage.get("models_used"):
+                actual_model = list(usage["models_used"].keys())[-1]
+            elif result.get("model_id"):
+                actual_model = result.get("model_id")
+
+        # Persist this to meta.json if not already there
+        if ws_id:
+            expl_dir = EXPLAINED / ws_id
+            meta_path = expl_dir / "meta.json"
+            if meta_path.exists():
+                try:
+                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                    # We update if missing OR if actual_model was previously generic/null
+                    should_update = False
+                    if "usage" not in meta or meta["usage"] is None:
+                        meta["usage"] = usage
+                        should_update = True
+                    if "duration" not in meta or meta["duration"] is None:
+                        meta["duration"] = duration
+                        should_update = True
+                    if actual_model and (meta.get("actual_model") in [None, "auto", "AI"]):
+                        meta["actual_model"] = actual_model
+                        should_update = True
+                    
+                    if should_update:
+                        _write_meta(meta_path, meta)
+                except Exception:
+                    pass
+
     return {
         "status": fe_status,
         "step": logs[-1]["msg"] if logs else ("Working..." if fe_status == "running" else ""),
@@ -285,6 +324,9 @@ async def get_task_status(task_id: str):
         "display_title": display_title,
         "error": task_dict.get("error") if fe_status == "failed" else None,
         "thread_id": task_dict.get("metadata", {}).get("workspace_id"),
+        "usage": usage,
+        "duration": duration,
+        "actual_model": actual_model,
     }
 
 
@@ -334,6 +376,9 @@ async def get_thread_result(thread_id: str):
         "display_title": meta.get("display_title", thread_id),
         "topic": meta.get("topic", ""),
         "deep_dive": meta.get("deep_dive", False),
+        "usage": meta.get("usage"),
+        "duration": meta.get("duration"),
+        "actual_model": meta.get("actual_model"),
     }
 
 

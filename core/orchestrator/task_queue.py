@@ -270,6 +270,7 @@ class TaskWorker:
                             memories_queried=0,
                             execution_time=0.0,
                             success=True,
+                            model_id=model_id,
                         )
                     else:
                         # ── Regular chat task → orchestrator ───────────────────────

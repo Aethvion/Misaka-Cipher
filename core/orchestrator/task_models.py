@@ -102,7 +102,8 @@ class Task:
             'worker_id': self.worker_id,
             'result': _sanitize_for_json(self.result),
             'error': self.error,
-            'metadata': _sanitize_for_json(self.metadata)
+            'metadata': _sanitize_for_json(self.metadata),
+            'duration': self.duration
         }
     
     @property
