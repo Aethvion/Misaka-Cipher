@@ -3,13 +3,14 @@ core/interfaces/dashboard/routes/system_routes.py
 ══════════════════════════════════════════════════════
 API routes for system management, telemetry, and health.
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 from datetime import datetime
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import platform
@@ -22,6 +23,28 @@ from core.version import VERSION
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["system"])
+
+@router.post("/api/system/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """Neutral file upload for general chat tasks."""
+    upload_dir = Path("data/uploads")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    safe_name = Path(file.filename or "upload").name
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+        
+    file_path = upload_dir / safe_name
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    content_type: str = file.content_type or ""
+    return {
+        "filename": safe_name,
+        "path": str(file_path),
+        "is_image": content_type.startswith("image/"),
+    }
 
 # Windows window suppression
 CREATE_NO_WINDOW = 0x08000000 if os.name == 'nt' else 0

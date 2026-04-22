@@ -219,6 +219,91 @@ function initKeyboardShortcuts() {
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 }
 
+/**
+ * SmoothTypist handles character-by-character text rendering 
+ * to decouple network chunk arrival from UI updates.
+ * This eliminates jitter and creates a "typing" feel.
+ */
+class SmoothTypist {
+    constructor(callback, charRate = 75, onComplete = null) {
+        this.callback = callback;
+        this.onComplete = onComplete;
+        this.charRate = charRate; // target characters per second
+        this.queue = "";
+        this.displayed = "";
+        this.isRunning = false;
+        this.isFinished = false; // set to true when stream ends
+        this.lastFrameTime = 0;
+        this.rafId = null;
+    }
+
+    add(text) {
+        this.queue += text;
+        if (!this.isRunning && this.queue.length > 0) {
+            this.isRunning = true;
+            this.lastFrameTime = performance.now();
+            this.rafId = requestAnimationFrame(this.tick.bind(this));
+        }
+    }
+
+    // Call this when the source stream is done
+    finish() {
+        this.isFinished = true;
+        // If not running (queue empty), trigger complete immediately
+        if (!this.isRunning && typeof this.onComplete === 'function') {
+            this.onComplete(this.displayed);
+        }
+    }
+
+    tick(now) {
+        if (!this.isRunning) return;
+
+        const delta = (now - this.lastFrameTime) / 1000;
+        this.lastFrameTime = now;
+
+        // Base characters to add this frame
+        let charsToAdd = delta * this.charRate;
+        
+        // Aggressive pressure logic:
+        // If we're behind by more than 20 chars, start scaling up linearly.
+        if (this.queue.length > 20) {
+            const pressure = Math.min(10, 1 + (this.queue.length - 20) / 25);
+            charsToAdd *= pressure;
+        }
+
+        const actualAdd = Math.max(1, Math.floor(charsToAdd));
+
+        if (this.queue.length > 0) {
+            const chunk = this.queue.substring(0, actualAdd);
+            this.queue = this.queue.substring(actualAdd);
+            this.displayed += chunk;
+            this.callback(this.displayed, chunk);
+            this.rafId = requestAnimationFrame(this.tick.bind(this));
+        } else {
+            this.isRunning = false;
+            // If stream is finished and queue is empty, we are done
+            if (this.isFinished && typeof this.onComplete === 'function') {
+                this.onComplete(this.displayed);
+            }
+        }
+    }
+
+    stop() {
+        this.isRunning = false;
+        if (this.rafId) cancelAnimationFrame(this.rafId);
+        // Flush remaining text immediately
+        if (this.queue.length > 0) {
+            this.displayed += this.queue;
+            this.queue = "";
+            this.callback(this.displayed, "");
+        }
+        if (typeof this.onComplete === 'function') {
+            this.onComplete(this.displayed);
+        }
+    }
+}
+window.SmoothTypist = SmoothTypist;
+
 // Global variables
 let chatWs = null;
 let logsWs = null;

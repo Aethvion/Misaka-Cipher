@@ -1172,7 +1172,7 @@ async function sendMessage() {
         try {
             const formData = new FormData();
             formData.append('file', window._mainChatAttachedFile.file, window._mainChatAttachedFile.name);
-            const uploadRes = await fetch('/api/companions/misakacipher/upload-context', {
+            const uploadRes = await fetch('/api/system/upload', {
                 method: 'POST',
                 body: formData
             });
@@ -1344,7 +1344,7 @@ function streamChatTokens(taskId, threadId) {
 
         streamContent = document.createElement('div');
         streamContent.className = 'message-content stream-content';
-        streamContent.innerHTML = '<strong>Chat:</strong> <div class="stream-text" style="display:inline-block;width:100%;white-space:pre-wrap;"></div>';
+        streamContent.innerHTML = '<strong>Chat:</strong> <div class="stream-text" style="display:inline-block;width:100%;"></div>';
 
         streamCursor = document.createElement('span');
         streamCursor.className = 'stream-cursor';
@@ -1354,16 +1354,55 @@ function streamChatTokens(taskId, threadId) {
         streamBubble.appendChild(streamCursor);
         messagesEl.appendChild(streamBubble);
         messagesEl.scrollTop = messagesEl.scrollHeight;
+
+        // Initialize SmoothTypist for jitter-free rendering
+        let lastMarkdownUpdate = 0;
+        const typist = new SmoothTypist((fullText) => {
+            const textEl = streamContent.querySelector('.stream-text');
+            if (textEl) {
+                const now = Date.now();
+                // Progressive markdown parsing with 50ms throttle to prevent UI lag on large messages
+                if (now - lastMarkdownUpdate > 50 || fullText.length < 100) {
+                    try {
+                        if (typeof marked !== 'undefined') {
+                            textEl.innerHTML = marked.parse(fullText);
+                        } else {
+                            textEl.textContent = fullText;
+                        }
+                    } catch (e) {
+                        textEl.textContent = fullText;
+                    }
+                    lastMarkdownUpdate = now;
+                }
+                messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+        }, 75, (finalText) => {
+            // This is called when the typist is actually DONE with the queue
+            if (finalized) {
+                // Render via the standard addMessageToThread path (handles markdown, model label, etc.)
+                // We pass the accumulated taskData if available
+                const finalContent = taskData?.result?.response ?? finalText;
+                addMessageToThread(threadId, 'assistant', finalContent, taskId, taskData);
+                delete _activeStreams[taskId];
+            }
+        });
+
         // Register for cancel support
-        _activeStreams[taskId] = { evtSource, bubble: streamBubble };
+        _activeStreams[taskId] = { evtSource, bubble: streamBubble, typist };
     }
 
     // Append a raw token to the live bubble
     function _appendToken(token) {
         if (!streamContent) _createBubble();
-        accumulated += token;
-        const textEl = streamContent.querySelector('.stream-text');
-        if (textEl) textEl.textContent = accumulated;
+        const typist = _activeStreams[taskId]?.typist;
+        if (typist) {
+            typist.add(token);
+        } else {
+            // Fallback if typist not ready
+            accumulated += token;
+            const textEl = streamContent.querySelector('.stream-text');
+            if (textEl) textEl.textContent = accumulated;
+        }
         const messagesEl = document.getElementById('chat-messages');
         if (messagesEl) messagesEl.scrollTop = messagesEl.scrollHeight;
     }
@@ -1373,13 +1412,22 @@ function streamChatTokens(taskId, threadId) {
         if (finalized) return;
         finalized = true;
 
-        // Remove cursor and bubble
-        if (streamBubble) streamBubble.remove();
-        streamBubble = null;
+        // Signal typist that stream is finished. 
+        // addMessageToThread will be called by typist.onComplete
+        const typist = _activeStreams[taskId]?.typist;
+        if (typist) {
+            typist.finish();
+        }
 
-        // Render via the standard addMessageToThread path (handles markdown, model label, etc.)
-        const finalContent = taskData?.result?.response ?? accumulated;
-        addMessageToThread(threadId, 'assistant', finalContent, taskId, taskData);
+        // Remove cursor
+        if (streamCursor) streamCursor.remove();
+        streamCursor = null;
+        
+        // Note: we don't remove streamBubble here anymore; 
+        // we remove it inside addMessageToThread or let it be handled there.
+        // Actually, addMessageToThread re-renders the whole list or appends.
+        // To prevent double-messages during the gap, we'll keep the bubble 
+        // until addMessageToThread is ready to take over.
 
         // Syntax highlighting
         if (typeof hljs !== 'undefined') {

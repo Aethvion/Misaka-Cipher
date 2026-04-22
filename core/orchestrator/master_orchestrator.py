@@ -113,8 +113,8 @@ class MasterOrchestrator:
         if not companion_id:
             if source in ["misakacipher", "axiom", "lyra"]:
                 companion_id = source
-            else:
-                companion_id = "misakacipher"
+            # General chat should NOT default to misakacipher or any persona
+            # This prevents companion-specific emotions/context from leaking into standard chat
 
         logger.info(f"[{trace_id}] Processing message (companion={companion_id}): {user_message[:50]}...")
         
@@ -223,6 +223,22 @@ class MasterOrchestrator:
                 execution_time=(datetime.now() - start_time).total_seconds(),
                 error=str(e)
             )
+
+    async def stream_message(self, user_message: str, trace_id: Optional[str] = None, model_id: Optional[str] = None, source: str = "chat"):
+        """Stream a chat message response."""
+        if not trace_id:
+            trace_id = generate_trace_id()
+        
+        request = Request(
+            prompt=user_message,
+            request_type="streaming",
+            trace_id=trace_id,
+            metadata={"source": source},
+            model=model_id
+        )
+        
+        for chunk in self.aether.route_stream(request):
+            yield chunk
 
     async def _execute_persona_chat(self, user_message: str, trace_id: str, model_id: Optional[str], images: Optional[List[Dict[str, Any]]], source: str, system_prompt: Optional[str] = None, security_context: str = "", allow_tools: bool = True, internet_search: bool = False, companion_id: str = "misakacipher") -> ExecutionResult:
         """Handle persona-based chat with iterative tool execution."""

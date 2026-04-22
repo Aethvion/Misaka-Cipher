@@ -59,7 +59,7 @@ function addMessage(sender, content, metadata = {}) {
     if (sender === 'ai') {
         html = `
             <div class="message-header">
-                <span class="message-sender">Misaka</span>
+                <span class="message-sender">Chat</span>
                 ${metadata.trace_id ? `<span class="trace-id">${metadata.trace_id}</span>` : ''}
             </div>
             <div class="message-content">${marked.parse(content)}</div>
@@ -73,7 +73,7 @@ function addMessage(sender, content, metadata = {}) {
                 const detailsPart = '<details>' + parts.slice(1).join('<details>');
                 html = `
                     <div class="message-header">
-                        <span class="message-sender">Misaka</span>
+                        <span class="message-sender">Chat</span>
                         ${metadata.trace_id ? `<span class="trace-id">${metadata.trace_id}</span>` : ''}
                     </div>
                     <div class="message-content">

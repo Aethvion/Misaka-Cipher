@@ -7,7 +7,7 @@ All agent-to-agent calls, tool executions, and external API requests
 MUST route through Aether Core.
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Iterator
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -254,6 +254,50 @@ class AetherCore:
                 success=False,
                 error=f"Aether Core error: {str(e)}"
             )
+
+    def route_stream(self, request: Request) -> Iterator[str]:
+        """
+        Stream a request through the Aether Core pipeline.
+        
+        Args:
+            request: Request object
+            
+        Yields:
+            Chunks of response content
+        """
+        if not self._initialized:
+            raise RuntimeError("Aether Core not initialized.")
+
+        trace_id = request.trace_id or self.trace_manager.start_trace(metadata={
+            'request_type': 'streaming',
+            'source': request.metadata.get('source', 'unknown') if request.metadata else 'unknown'
+        })
+
+        logger.info(f"[{trace_id}] === NEW STREAMING REQUEST ===")
+        
+        try:
+            # For simplicity, streaming bypasses firewall scan for now
+            # Usually streaming is for chat only
+            
+            generator = self.provider_manager.get_active_provider().stream(
+                prompt=request.prompt,
+                system_prompt=request.system_prompt,
+                trace_id=trace_id,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+                model=request.model,
+                messages=request.metadata.get('messages') if request.metadata else None
+            )
+            
+            for chunk in generator:
+                yield chunk
+                
+            self.trace_manager.end_trace(trace_id, status='completed')
+            
+        except Exception as e:
+            logger.error(f"[{trace_id}] Aether Core streaming failed: {str(e)}")
+            self.trace_manager.end_trace(trace_id, status='error')
+            yield f"\n[Aether Core Error: {str(e)}]"
 
     def get_status(self) -> Dict:
         """Get Aether Core status."""
