@@ -256,11 +256,8 @@ async def update_participants(thread_id: str, participants: List[str]):
 
 @router.post("/threads/{thread_id}/generate")
 async def generate_response(thread_id: str, req: GenerateRequest, request: Request):
-    nexus = getattr(request.app.state, 'nexus', None)
-    if not nexus:
-        raise HTTPException(503, "System not initialized")
-        
-    pm = nexus.provider_manager
+    from core.providers import ProviderManager
+    pm = ProviderManager()
     t_dir = THREADS_DIR / thread_id
     
     # Load thread data

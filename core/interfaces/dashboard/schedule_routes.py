@@ -181,7 +181,6 @@ async def update_settings(task_id: str, req: UpdateSettingsRequest):
 async def chat(task_id: str, req: ChatRequest, request: Request):
     """Send a user message; AI responds and optionally configures the schedule."""
     from core.schedulers.schedule_manager import get_schedule_manager
-    _nexus = request.app.state.aether
 
     mgr = get_schedule_manager()
     task = mgr.get_task(task_id)
@@ -207,19 +206,18 @@ async def chat(task_id: str, req: ChatRequest, request: Request):
 
     # Call AI
     try:
-        if not _nexus:
-            ai_reply = "(Aethvion is still starting up — please wait a moment and try again.)"
-        else:
-            model = req.model_id or task.get('model_id')
-            response = _nexus.provider_manager.call_with_failover(
-                prompt=prompt,
-                trace_id=f"sched-chat-{task_id[:8]}",
-                temperature=0.7,
-                model=model if model and model != 'auto' else None,
-                request_type='generation',
-                source='schedule',
-            )
-            ai_reply = response.content
+        from core.providers import ProviderManager
+        pm = ProviderManager()
+        model = req.model_id or task.get('model_id')
+        response = pm.call_with_failover(
+            prompt=prompt,
+            trace_id=f"sched-chat-{task_id[:8]}",
+            temperature=0.7,
+            model=model if model and model != 'auto' else None,
+            request_type='generation',
+            source='schedule',
+        )
+        ai_reply = response.content
     except Exception as exc:
         logger.error("[schedule/chat] AI call failed: %s", exc)
         ai_reply = f"Error communicating with AI: {exc}"
@@ -251,10 +249,6 @@ async def run_now(task_id: str, request: Request):
     task = mgr.get_task(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    # Give nexus to manager if not yet set
-    _nexus = request.app.state.aether
-    if _nexus:
-        mgr.set_nexus(_nexus)
     return mgr.run_now(task_id)
 
 

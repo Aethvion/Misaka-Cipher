@@ -100,10 +100,6 @@ async def generate_explanation(req: ExplainedRequest, request: Request):
     """
     from core.orchestrator.task_queue import get_task_queue_manager
 
-    nexus = getattr(request.app.state, 'nexus', None)
-    if not nexus:
-        raise HTTPException(503, "System not initialized")
-
     task_manager = get_task_queue_manager()
 
     # ── Resolve or create the underlying Agent workspace ─────────────────── #

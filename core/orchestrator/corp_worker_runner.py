@@ -83,7 +83,6 @@ class CorpWorkerRunner(AgentRunner):
         self,
         task: str,
         workspace_path: str,
-        nexus,
         step_callback: Callable[[Dict[str, Any]], None],
         model_id: Optional[str] = None,
         state_path: Optional[Path] = None,
@@ -99,7 +98,6 @@ class CorpWorkerRunner(AgentRunner):
         super().__init__(
             task=task,
             workspace_path=workspace_path,
-            nexus=nexus,
             step_callback=step_callback,
             model_id=model_id,
             state_path=state_path,

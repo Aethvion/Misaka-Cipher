@@ -526,16 +526,17 @@ class AgentRunner:
         self,
         task: str,
         workspace_path: str,
-        nexus,
         step_callback: Callable[[Dict[str, Any]], None],
         model_id: Optional[str] = None,
         trace_id: Optional[str] = None,
         state_path: Optional[Path] = None,
         images: Optional[List[Dict]] = None,
+        nexus=None,  # Deprecated argument to prevent callers from crashing
     ):
         self.task = task
         self.workspace = Path(workspace_path) if workspace_path else Path.cwd()
-        self.nexus = nexus
+        from core.providers import ProviderManager
+        self.pm = ProviderManager()
         self.step_callback = step_callback
         self.model_id = model_id
         self.trace_id = trace_id
@@ -778,7 +779,7 @@ class AgentRunner:
         try:
             chunks: list[str] = []
             _llm_start = datetime.utcnow()
-            for chunk in self.nexus.provider_manager.call_with_failover_stream(
+            for chunk in self.pm.call_with_failover_stream(
                 prompt=prompt,
                 trace_id=f"{self.trace_id}-i{iteration}",
                 temperature=0.2,

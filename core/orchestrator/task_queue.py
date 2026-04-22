@@ -248,7 +248,6 @@ class TaskWorker:
                         runner = AgentRunner(
                             task=task.prompt,
                             workspace_path=workspace_path,
-                            nexus=self.orchestrator.nexus,
                             step_callback=_agent_step_callback,
                             model_id=model_id,
                             trace_id=task.id,

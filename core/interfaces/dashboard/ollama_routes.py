@@ -157,7 +157,7 @@ async def ollama_register(request: Request):
     }
     _save_registry(registry)
 
-    if hasattr(request.app.state, "nexus"):
+    if hasattr(request.app.state, "aether"):
         request.app.state.aether.reload_config()
 
     return {"success": True, "model": name}
@@ -179,7 +179,7 @@ async def ollama_unregister(request: Request):
     ollama_models.pop(name, None)
     _save_registry(registry)
 
-    if hasattr(request.app.state, "nexus"):
+    if hasattr(request.app.state, "aether"):
         request.app.state.aether.reload_config()
 
     return {"success": True}

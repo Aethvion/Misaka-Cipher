@@ -799,10 +799,7 @@ class CorpManager:
 
                         from core.orchestrator.corp_worker_runner import CorpWorkerRunner as _CWR
 
-                        plan_nexus = self._get_nexus()
-                        if plan_nexus is None:
-                            await asyncio.sleep(10)
-                            continue
+                        from core.orchestrator.corp_worker_runner import CorpWorkerRunner as _CWR
 
                         plan_ws = str(self._workspace_path(corp_id))
                         os.makedirs(plan_ws, exist_ok=True)
@@ -836,7 +833,6 @@ class CorpManager:
                         planning_runner = _CWR(
                             task=planning_prompt,
                             workspace_path=plan_ws,
-                            nexus=plan_nexus,
                             step_callback=plan_step_cb,
                             model_id=worker_fresh.get("model"),
                             state_path=self._state_path(corp_id, worker_id),
@@ -959,19 +955,12 @@ class CorpManager:
                 # Import lazily to avoid circular imports at module load time
                 from core.orchestrator.corp_worker_runner import CorpWorkerRunner
 
-                nexus = self._get_nexus()
-                if nexus is None:
-                    logger.error("[CorpManager] Cannot run worker — nexus not initialized yet")
-                    await asyncio.sleep(10)
-                    continue
-
                 workspace_path = str(self._workspace_path(corp_id))
                 os.makedirs(workspace_path, exist_ok=True)
 
                 runner = CorpWorkerRunner(
                     task=prompt,
                     workspace_path=workspace_path,
-                    nexus=nexus,
                     step_callback=step_cb,
                     model_id=worker.get("model"),
                     state_path=self._state_path(corp_id, worker_id),
@@ -1230,18 +1219,7 @@ class CorpManager:
             f'ACTION: {{"type": "done", "summary": "Created N tasks: ..."}}\n'
         )
 
-    # ── nexus accessor ────────────────────────────────────────────────────────
 
-    def _get_nexus(self):
-        """Get the provider nexus from the global task queue manager."""
-        try:
-            from core.orchestrator.task_queue import get_task_queue_manager
-            mgr = get_task_queue_manager()
-            if mgr and mgr.orchestrator:
-                return mgr.orchestrator.nexus
-        except Exception as e:
-            logger.warning(f"[CorpManager] Could not get nexus: {e}")
-        return None
 
 
 # ── Global singleton ──────────────────────────────────────────────────────────

@@ -124,7 +124,6 @@ class ScheduleManager:
     def __init__(self, data_dir: Path):
         self.data_dir = data_dir
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        self.nexus = None
         self._lock = threading.Lock()
         self._stop_evt = threading.Event()
         self._checked: set = set()   # minute-keys already processed
@@ -137,8 +136,7 @@ class ScheduleManager:
         threading.Thread(target=self._startup_catchup, daemon=True,
                          name="ScheduleManager-catchup").start()
 
-    def set_nexus(self, nexus) -> None:
-        self.nexus = nexus
+
 
     # ── Startup catch-up ───────────────────────────────────────────
 
@@ -383,19 +381,18 @@ class ScheduleManager:
             status = 'failed'
             try:
                 prompt = task.get('prompt') or f"[No prompt configured for task: {task.get('name')}]"
-                if self.nexus:
-                    response = self.nexus.provider_manager.call_with_failover(
-                        prompt=prompt,
-                        trace_id=f"sched-{run_id}",
-                        temperature=0.7,
-                        model=task.get('model_id'),
-                        request_type='generation',
-                        source='schedule',
-                    )
-                    result_text = response.content
-                    status = 'success'
-                else:
-                    result_text = '(System not yet initialised — try again after startup)'
+                from core.providers import ProviderManager
+                pm = ProviderManager()
+                response = pm.call_with_failover(
+                    prompt=prompt,
+                    trace_id=f"sched-{run_id}",
+                    temperature=0.7,
+                    model=task.get('model_id'),
+                    request_type='generation',
+                    source='schedule',
+                )
+                result_text = response.content
+                status = 'success'
             except Exception as exc:
                 result_text = f'Error: {exc}'
                 logger.error("[ScheduleManager] Run %s failed: %s", run_id, exc)
@@ -495,11 +492,9 @@ class ScheduleManager:
 _instance: Optional[ScheduleManager] = None
 
 
-def get_schedule_manager(nexus=None) -> ScheduleManager:
+def get_schedule_manager() -> ScheduleManager:
     global _instance
     if _instance is None:
         from core.utils.paths import SCHEDULED_TASKS
         _instance = ScheduleManager(SCHEDULED_TASKS)
-    if nexus is not None and _instance.nexus is None:
-        _instance.set_nexus(nexus)
     return _instance
