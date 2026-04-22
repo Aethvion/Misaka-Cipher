@@ -1,53 +1,5 @@
 // Handles interacting with the System Status and Roadmap data
 
-async function loadHeaderStatus() {
-    const indicator = document.getElementById('home-status-indicator');
-    const updateUI = (isOnline) => {
-        if (!indicator) return;
-        const dot = indicator.querySelector('.status-dot');
-        const text = indicator.querySelector('.status-text');
-        
-        const color = isOnline ? 'var(--success)' : 'var(--error)';
-        const statusText = isOnline ? 'Online' : 'Offline';
-        
-        if (dot) {
-            dot.style.backgroundColor = color;
-            if (isOnline) dot.style.boxShadow = `0 0 8px ${color}`;
-            else dot.style.boxShadow = 'none';
-        }
-        if (indicator) {
-            indicator.style.borderColor = isOnline ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)';
-            indicator.style.background = isOnline ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)';
-            indicator.style.color = color;
-        }
-        if (text) text.textContent = statusText;
-    };
-
-    try {
-        const response = await fetch('/api/system/status');
-        if (!response.ok) {
-            updateUI(false);
-            return;
-        }
-        const data = await response.json();
-        const isOnline = data.aether && data.aether.initialized;
-        updateUI(isOnline);
-
-        if (data.usage_today) {
-            const tokensEl = document.getElementById('tokens-today');
-            const costEl = document.getElementById('cost-today');
-            if (tokensEl && typeof formatNumber === 'function') {
-                tokensEl.textContent = formatNumber(data.usage_today.tokens || 0);
-            }
-            if (costEl && typeof formatCost === 'function') {
-                costEl.textContent = formatCost(data.usage_today.cost || 0);
-            }
-        }
-    } catch (error) {
-        console.error("Failed to load header status:", error);
-        updateUI(false);
-    }
-}
 
 async function loadSystemStatusTab() {
     const container = document.querySelector('.roadmap-tree');
