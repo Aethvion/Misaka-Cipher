@@ -30,6 +30,28 @@
     box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
 }
 
+/* Web search indicator badge on AI messages */
+.web-search-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 20px;
+    padding: 2px 9px;
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.15);
+}
+
+.web-search-badge i {
+    font-size: 0.7rem;
+}
+
 /* Usage chart controls overlay */
 .chart-header-row {
     display: flex;

@@ -192,7 +192,7 @@ CRITICAL: No raw JSON, no technical jargon. Never break character.
                 query = attrs.get("query", "")
                 if not query: return "[web_search ERROR] No query provided"
                 try:
-                    from duckduckgo_search import DDGS
+                    from ddgs import DDGS
                     results = []
                     with DDGS() as ddgs:
                         for r in ddgs.text(query, max_results=6):

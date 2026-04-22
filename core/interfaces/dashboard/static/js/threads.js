@@ -541,7 +541,19 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
         }
 
         // Wrap in a div to ensure block styles work correctly after the strong tag
-        messageContent = `${modelLabel} <strong>Chat:</strong> <div style="display:inline-block; width:100%;">${parsedContent}</div>`;
+        messageContent = `${modelLabel} <strong>Chat:</strong> <div style="display:inline-block; width:100%;">`;
+
+        // Show a clear internet search indicator when search was actually performed
+        const actionsArr = taskData?.result?.actions_taken || [];
+        const didWebSearch = actionsArr.includes('web_search_pre_executed') ||
+                             actionsArr.some(a => a.startsWith('tools_executed'));
+        const searchSettings = taskData?.metadata?.settings;
+        const searchEnabled = searchSettings?.internet_search === true;
+        if (didWebSearch || searchEnabled) {
+            messageContent += `<div class="web-search-badge"><i class="fas fa-globe"></i> Web Search</div>`;
+        }
+
+        messageContent += `${parsedContent}</div>`;
 
 
         // Add persistent memory updates
@@ -550,7 +562,7 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
                 messageContent += `
                     <details class="agent-step-details memory-update" open>
                         <summary class="agent-step-summary memory-summary">
-                            <span class="step-icon">🧠</span>
+                            <span class="step-icon"></span>
                             <span class="step-title">New info saved: ${update.topic}</span>
                         </summary>
                         <div class="step-content">
@@ -615,11 +627,30 @@ function addMessageToThread(threadId, role, content, taskId = null, taskData = n
                             </div>
                             <div style="margin-top: 0.3rem;"><strong>Model:</strong> ${taskData.result?.model_id || taskData.metadata?.actual_model || 'N/A'}</div>
                             <div style="margin-top: 0.3rem;"><strong>Mode:</strong> ${taskData.metadata?.mode || 'N/A'}</div>
-                            <div style="margin-top: 0.3rem;"><strong>Selection:</strong> ${taskData.metadata?.selected_model === 'auto' ? '⚡ Auto Routing' : (taskData.metadata?.selected_model || 'Default')}</div>
+                            <div style="margin-top: 0.3rem;"><strong>Selection:</strong> ${taskData.metadata?.selected_model === 'auto' ? 'Auto Routing' : (taskData.metadata?.selected_model || 'Default')}</div>
                             ${(taskData.result?.usage?.routing_model || taskData.metadata?.routing_model) ? `<div style="margin-top: 0.3rem;"><strong>Route Picker:</strong> ${taskData.result?.usage?.routing_model || taskData.metadata?.routing_model}</div>` : ''}
                             ${(taskData.result?.usage?.routed_model || taskData.metadata?.routed_model) ? `<div style="margin-top: 0.3rem;"><strong>Routed To:</strong> <span style="color: var(--primary);">${taskData.result?.usage?.routed_model || taskData.metadata?.routed_model}</span></div>` : ''}
-                            ${(taskData.result?.usage?.routing_reason || taskData.metadata?.routing_reason) ? `<div style="margin-top: 0.5rem; padding: 0.4rem 0.6rem; background: rgba(0,212,255,0.06); border-left: 3px solid var(--primary); border-radius: 4px; font-style: italic; font-size: 0.78rem; color: var(--text-secondary);">🧠 ${taskData.result?.usage?.routing_reason || taskData.metadata?.routing_reason}</div>` : ''}
-                            ${taskData.result?.actions_taken?.length > 0 ? `<div style="margin-top: 0.3rem;"><strong>Actions:</strong> ${taskData.result.actions_taken.join(', ')}</div>` : ''}
+                            ${(taskData.result?.usage?.routing_reason || taskData.metadata?.routing_reason) ? `<div style="margin-top: 0.5rem; padding: 0.4rem 0.6rem; background: rgba(0,212,255,0.06); border-left: 3px solid var(--primary); border-radius: 4px; font-style: italic; font-size: 0.78rem; color: var(--text-secondary);">${taskData.result?.usage?.routing_reason || taskData.metadata?.routing_reason}</div>` : ''}
+                            ${taskData.result?.actions_taken?.length > 0 ? (() => {
+                                const ACTION_LABELS = {
+                                    'neutral_tool_chat':      'Chat',
+                                    'web_search_pre_executed':'Internet Search',
+                                    'persona_chat':           'Persona Chat',
+                                    'direct_response':        'Direct Response',
+                                    'spawn_agent':            'Agent Spawned',
+                                    'query_memory':           'Memory Queried',
+                                    'system_status':          'System Status',
+                                };
+                                const labels = taskData.result.actions_taken.map(a => {
+                                    if (ACTION_LABELS[a]) return ACTION_LABELS[a];
+                                    if (a.startsWith('tools_executed_')) {
+                                        const n = a.replace('tools_executed_', '');
+                                        return `Tool${n !== '1' ? 's' : ''} Used (${n})`;
+                                    }
+                                    return a;
+                                });
+                                return `<div style="margin-top: 0.3rem;"><strong>What happened:</strong> ${labels.join(' → ')}</div>`;
+                            })() : ''}
                             ${taskData.result?.agents_spawned?.length > 0 ? `<div style="margin-top: 0.3rem;"><strong>Agents:</strong> ${taskData.result.agents_spawned.join(', ')}</div>` : ''}
                             ${taskData.metadata?.folder_id ? `<div style="margin-top: 0.3rem;"><strong>Folder:</strong> ${taskData.metadata?.folder_title || taskData.metadata?.folder_id}</div>` : ''}
                             ${usageHtml}
